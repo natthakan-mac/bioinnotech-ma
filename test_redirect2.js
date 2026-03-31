@@ -1,0 +1,1 @@
+﻿const https = require('https'); https.get('https://maps.app.goo.gl/v6D7XqYXJ3W9T7YJ6', {headers: {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}}, res => console.log(res.statusCode, res.headers.location));

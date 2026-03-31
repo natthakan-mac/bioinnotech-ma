@@ -1,0 +1,361 @@
+/* =========================================
+   Wes Bos Menu Style (Anchor Positioning)
+   ========================================= */
+
+/* --- SHARED STYLES --- */
+
+/* Wrapper for the Pill Menu */
+.nav-wrap {
+    position: relative;
+    background: rgba(15, 23, 42, 0.8);
+    /* Dark background */
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 500px;
+    padding: 6px;
+    display: inline-flex;
+    /* Fit content */
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+    margin: 0;
+    width: auto;
+    z-index: 10;
+    /* Above other elements, but below sticky header */
+}
+
+/* Flex Container for Buttons */
+.nav-items {
+    display: flex;
+    gap: 5px;
+    /* Spacing between buttons */
+    position: relative;
+    z-index: 10;
+}
+
+/* Common Bubble Base Styles */
+.bubble {
+    position: absolute;
+    border-radius: 500px;
+    pointer-events: none;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Anchor Positioning Magic */
+    top: anchor(top);
+    bottom: anchor(bottom);
+    left: anchor(left);
+    right: anchor(right);
+}
+
+/* Common Active Bubble Style */
+.active-bubble,
+.active-bubble-mobile {
+    position-anchor: --active-item;
+    /* Default desktop */
+    background: linear-gradient(180deg, rgba(56, 189, 248, 0.15), rgba(56, 189, 248, 0.05));
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    box-shadow:
+        0 4px 15px rgba(56, 189, 248, 0.2),
+        inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    z-index: 5;
+}
+
+/* Common Hover Bubble Style */
+.hover-bubble,
+.hover-bubble-mobile {
+    position-anchor: --hover-item;
+    /* Default desktop */
+    background: rgba(255, 255, 255, 0.05);
+    /* Subtle white hover */
+    z-index: 4;
+    opacity: 0;
+    /* Hidden by default */
+    transition: opacity 0.2s, top 0.2s, bottom 0.2s, left 0.2s, right 0.2s;
+}
+
+
+/* --- DESKTOP SPECIFIC --- */
+
+.desktop-menu {
+    position: relative;
+    display: flex;
+    justify-content: flex-end;
+    /* Right aligned */
+    align-items: center;
+}
+
+.desktop-menu .nav-btn {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    position: relative;
+    transition: color 0.2s ease;
+    border-radius: 500px;
+    padding: 10px 20px;
+    margin: 0;
+    min-height: auto;
+}
+
+.desktop-menu .nav-btn span {
+    font-weight: 500;
+}
+
+/* Desktop Anchors */
+.desktop-menu .nav-btn.active {
+    anchor-name: --active-item;
+    color: var(--primary-color);
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+.desktop-menu .nav-btn:not(.active):hover {
+    anchor-name: --hover-item;
+    color: var(--text-color);
+}
+
+.desktop-menu .nav-btn:not(.active):hover~.hover-bubble,
+.desktop-menu:has(.nav-btn:not(.active):hover) .hover-bubble {
+    opacity: 1;
+}
+
+
+/* --- MOBILE SPECIFIC --- */
+
+/* App Footer Container - Full Width Bottom Bar */
+.app-footer.mobile-menu {
+    justify-content: center !important;
+    background: transparent !important;
+    /* Wrapper is transparent, nav-wrap handles bg */
+    backdrop-filter: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    pointer-events: none;
+    /* Let clicks pass */
+    padding: 0 !important;
+    z-index: 2000 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+}
+
+/* Nav Wrap - The Actual Bar */
+.mobile-menu .nav-wrap {
+    pointer-events: auto;
+    background: rgba(15, 23, 42, 0.3);
+    /* User requested opacity 0.3 */
+    backdrop-filter: blur(10px);
+    border-radius: 20px 20px 0 0;
+    /* Modern top-rounded sheet look */
+    border: none;
+    border-top: 1px solid var(--glass-border);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    /* Full Width */
+    margin: 0;
+    padding: 0.5rem 1rem;
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+    /* Add safe area here */
+    display: flex;
+    justify-content: space-around;
+    /* Spread items */
+}
+
+/* Flex Item Container */
+.mobile-menu .nav-items {
+    width: 100%;
+    justify-content: space-around;
+    /* Spread items evenly */
+    gap: 0;
+}
+
+/* Adjust button layout for mobile bar */
+.mobile-menu .nav-btn {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    position: relative;
+    transition: color 0.2s ease;
+    border-radius: 12px;
+    /* Softer radius for items in bar */
+    padding: 8px 12px;
+    margin: 0;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    /* Equal width */
+    max-width: 80px;
+    /* Don't stretch too wide */
+}
+
+.mobile-menu .nav-btn i {
+    font-size: 1.25rem;
+    margin-bottom: 2px;
+}
+
+.mobile-menu .nav-btn span {
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+/* Mobile Anchors */
+.mobile-menu .nav-btn.active {
+    anchor-name: --active-item-mobile;
+    color: var(--primary-color);
+}
+
+.mobile-menu .nav-btn:not(.active):active {
+    anchor-name: --hover-item-mobile;
+}
+
+/* Adjust Bubble for Full Width Layout */
+.active-bubble-mobile {
+    position-anchor: --active-item-mobile !important;
+    border-radius: 16px;
+    /* Match button shape more */
+}
+
+.hover-bubble-mobile {
+    position-anchor: --hover-item-mobile !important;
+    border-radius: 16px;
+}
+
+/* Show hover bubble on touch/active */
+.mobile-menu .nav-btn:not(.active):active~.hover-bubble-mobile {
+    opacity: 1;
+}
+
+
+/* --- VIEW TOGGLES (WES BOS STYLE) --- */
+
+.view-toggles.nav-wrap {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--glass-border);
+    padding: 4px;
+    border-radius: 500px;
+}
+
+.view-toggles .toggle-btn {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    position: relative;
+    z-index: 10;
+    padding: 0.5rem 1.25rem;
+    border-radius: 500px;
+    color: var(--text-muted);
+    transition: color 0.2s ease;
+}
+
+.view-toggles .toggle-btn.active {
+    anchor-name: --v-active;
+    color: #fff;
+    /* White text on blue background */
+    font-weight: 600;
+}
+
+.view-toggles .toggle-btn:not(.active):hover {
+    anchor-name: --v-hover;
+    color: var(--text-color);
+}
+
+.v-active-bubble {
+    position: absolute;
+    position-anchor: --v-active;
+    background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+    /* Blue Gradient */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 500px;
+    pointer-events: none;
+    z-index: 5;
+    transition: all 0.35s cubic-bezier(0.68, -0.6, 0.32, 1.6);
+    /* Springy */
+
+    top: anchor(top);
+    bottom: anchor(bottom);
+    left: anchor(left);
+    right: anchor(right);
+}
+
+.v-hover-bubble {
+    position: absolute;
+    position-anchor: --v-hover;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 500px;
+    pointer-events: none;
+    z-index: 4;
+    opacity: 0;
+    transition: opacity 0.2s, top 0.2s, bottom 0.2s, left 0.2s, right 0.2s;
+
+    top: anchor(top);
+    bottom: anchor(bottom);
+    left: anchor(left);
+    right: anchor(right);
+}
+
+.view-toggles:has(.toggle-btn:not(.active):hover) .v-hover-bubble {
+    opacity: 1;
+}
+
+/* Fallback for no-anchor support */
+@supports not (anchor-name: --test) {
+
+    .v-active-bubble,
+    .v-hover-bubble {
+        display: none;
+    }
+
+    .view-toggles .toggle-btn.active {
+        background: var(--primary-color) !important;
+        color: #fff !important;
+    }
+}
+
+
+/* --- FALLBACKS --- */
+
+@supports not (anchor-name: --test) {
+    .nav-wrap {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        padding: 0;
+    }
+
+    .active-bubble,
+    .hover-bubble,
+    .active-bubble-mobile,
+    .hover-bubble-mobile {
+        display: none;
+    }
+
+    .desktop-menu .nav-btn.active,
+    .mobile-menu .nav-btn.active {
+        background: rgba(56, 189, 248, 0.1) !important;
+        border: 1px solid rgba(56, 189, 248, 0.2) !important;
+        border-radius: 12px !important;
+        /* Revert to rounded rect for fallback */
+    }
+
+    /* Restore mobile bar background if anchor not supported */
+    .app-footer.mobile-menu {
+        background: rgba(15, 23, 42, 0.9) !important;
+        backdrop-filter: blur(10px) !important;
+        pointer-events: auto;
+        border-top: 1px solid var(--glass-border) !important;
+        width: 100%;
+        padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom)) !important;
+    }
+
+    .mobile-menu .nav-wrap {
+        background: transparent;
+        box-shadow: none;
+        border: none;
+        width: 100%;
+        padding: 0;
+        display: flex;
+        justify-content: space-around;
+    }
+
+    .mobile-menu .nav-items {
+        width: 100%;
+        justify-content: space-around;
+    }
+}

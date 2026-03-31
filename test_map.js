@@ -1,0 +1,1 @@
+﻿const html = require('fs').readFileSync('maps_test.html','utf8'); const m1 = html.match(/meta content="([^"]+)" itemprop="image"/); console.log('Itemprop image:', m1 ? m1[1] : 'none'); const m2 = html.match(/meta property="og:image" content="([^"]+)"/); console.log('OG image:', m2 ? m2[1] : 'none');

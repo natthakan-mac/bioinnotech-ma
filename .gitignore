@@ -1,0 +1,9 @@
+node_modules/
+.firebase/
+*.bak
+*.bak2
+*.log
+.vscode/
+temp_*
+*.live
+style.css_backup

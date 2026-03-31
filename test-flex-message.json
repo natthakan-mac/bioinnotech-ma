@@ -1,0 +1,87 @@
+{
+  "type": "flex",
+  "altText": "Test Site Notification",
+  "contents": {
+    "type": "bubble",
+    "header": {
+      "type": "box",
+      "layout": "vertical",
+      "contents": [
+        {
+          "type": "text",
+          "text": "🏢 มีการเพิ่มสถานที่ใหม่!",
+          "weight": "bold",
+          "size": "lg",
+          "color": "#ffffff"
+        }
+      ],
+      "backgroundColor": "#17c1e8"
+    },
+    "body": {
+      "type": "box",
+      "layout": "vertical",
+      "contents": [
+        {
+          "type": "box",
+          "layout": "baseline",
+          "contents": [
+            { "type": "text", "text": "รหัส:", "size": "sm", "color": "#aaaaaa", "flex": 2 },
+            { "type": "text", "text": "C001", "size": "sm", "wrap": true, "flex": 5 }
+          ]
+        },
+        {
+          "type": "box",
+          "layout": "baseline",
+          "contents": [
+            { "type": "text", "text": "ชื่อ:", "size": "sm", "color": "#aaaaaa", "flex": 2 },
+            { "type": "text", "text": "Test Site", "size": "sm", "wrap": true, "flex": 5, "weight": "bold" }
+          ]
+        }
+      ],
+      "spacing": "md"
+    },
+    "footer": {
+      "type": "box",
+      "layout": "vertical",
+      "contents": [
+        {
+          "type": "text",
+          "text": "เพิ่มเมื่อ: 11/3/2569 10:00:00",
+          "size": "xs",
+          "color": "#aaaaaa",
+          "margin": "md"
+        },
+        {
+          "type": "box",
+          "layout": "horizontal",
+          "contents": [
+            {
+              "type": "button",
+              "action": {
+                "type": "uri",
+                "label": "📍 ดูตำแหน่ง",
+                "uri": "https://maps.google.com"
+              },
+              "style": "primary",
+              "color": "#17c1e8",
+              "height": "sm"
+            },
+            {
+              "type": "button",
+              "action": {
+                "type": "uri",
+                "label": "🏢 ดูสถานที่",
+                "uri": "https://water-plant-maintenance.web.app?siteId=test123"
+              },
+              "style": "primary",
+              "color": "#82b440",
+              "height": "sm"
+            }
+          ],
+          "spacing": "sm",
+          "margin": "md"
+        }
+      ]
+    }
+  }
+}

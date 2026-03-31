@@ -1,0 +1,1553 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIO WPM | ระบบจัดการการซ่อมบำรุง</title>
+
+    <!-- Premium Fonts: Outfit & Prompt (for Thai) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Flatpickr (Date Picker) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
+
+    <!-- SheetJS (XLSX) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- Firebase / App Icons -->
+    <link rel="icon" type="image/svg+xml" href="app-ico.svg">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+    <script>
+        window.DEBUG_LOGS = [];
+        function log(msg) {
+            console.log('[Inline Debug] ' + msg);
+            window.DEBUG_LOGS.push(msg);
+        }
+        window.onerror = function (msg, url, line, col, error) {
+            var extra = !col ? '' : ' col: ' + col;
+            log("Error: " + msg + " url: " + url + " line: " + line + extra);
+
+            // Show error on splash if visible
+            const splash = document.getElementById('loading-splash');
+            if (splash && !splash.classList.contains('hidden')) {
+                const p = splash.querySelector('p');
+                if (p) {
+                    p.innerHTML = `<span style="color: #ef4444;">เกิดข้อผิดพลาด: ${msg}</span><br><small style="font-size: 0.8em; opacity: 0.8;">กรุณารีเฟรชหน้าจอ</small>`;
+                    // Make sure spinner stops or indicates error
+                    const spinner = splash.querySelector('.spinner');
+                    if (spinner) spinner.style.borderTopColor = '#ef4444';
+                    spinner.style.animation = 'none';
+                }
+            }
+        };
+        log("Page loading...");
+        window.addEventListener('DOMContentLoaded', () => log("DOM Content Loaded"));
+        window.addEventListener('load', () => log("Window Loaded"));
+
+        // Fail-safe Timeout: Remove splash if app takes too long (e.g. 15 seconds)
+        setTimeout(() => {
+            const splash = document.getElementById('loading-splash');
+            if (splash && !splash.classList.contains('hidden')) {
+                console.warn("Loading taking too long, forcing splash removal...");
+                const p = splash.querySelector('p');
+                if (p && !p.textContent.includes('ผิดพลาด')) {
+                    p.innerHTML = "การโหลดล่าช้า... <br><small>แตะเพื่อเริ่มใช้งาน</small>";
+                    splash.style.cursor = "pointer";
+                    splash.title = "คลิกเพื่อปิด";
+                    splash.onclick = () => splash.classList.add('hidden');
+                }
+            }
+        }, 15000);
+    </script>
+
+    <link rel="stylesheet" href="style.css?v=UIUpgrade21">
+    <link rel="stylesheet" href="menu.css">
+    <link rel="stylesheet" href="ma-form-modern.css">
+
+    <!-- Cropper.js -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
+    <!-- Signature Pad -->
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.2.0/dist/signature_pad.umd.min.js"></script>
+
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+
+<body>
+    <!-- MODAL: Themed Dialog -->
+    <div id="modal-themed-dialog" class="modal-overlay modal-layer-top hidden">
+        <div class="modal glass-panel" style="max-width: 400px; text-align: center; border: 1px solid var(--glass-border); background: var(--surface-bg);">
+            <div class="modal-body" style="padding: 2rem 1.5rem;">
+                <div style="margin-bottom: 1rem;">
+                    <i id="dialog-icon" class="fa-solid fa-triangle-exclamation" style="font-size: 3rem; opacity: 0.8;"></i>
+                </div>
+                <h3 id="dialog-title" style="margin-bottom: 0.5rem; color: var(--text-color);">การยืนยัน</h3>
+                <p id="dialog-message" style="color: var(--text-muted); line-height: 1.6; margin-bottom: 0; white-space: pre-wrap;">ข้อความ</p>
+            </div>
+            <div class="modal-actions" style="justify-content: center; gap: 1rem; padding-bottom: 1.5rem;">
+                <button type="button" class="btn-secondary" id="btn-dialog-cancel">ยกเลิก</button>
+                <button type="button" class="btn-primary" id="btn-dialog-confirm">ตกลง</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Splash Screen -->
+    <div id="loading-splash">
+        <div class="spinner"></div>
+        <p>กำลังโหลด...</p>
+    </div>
+
+    <div class="bg-bubbles">
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+    </div>
+
+    <!-- Intl-Tel-Input Library -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/css/intlTelInput.css">
+    <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/intlTelInput.min.js"></script>
+
+    <!-- Google Maps API -->
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUfUISFNz5tEb-xvb9fkAOBQC54w-uqas&v=weekly&libraries=places,marker&loading=async"></script>
+
+    <!-- App Scripts (Type Module for Firebase 9+) -->
+    <script type="module" src="app.js"></script>
+</body>
+<!-- LOGIN VIEW -->
+<section id="login-view" class="login-container hidden">
+    <div class="login-card glass-panel">
+        <div class="login-header">
+            <div class="login-logo">
+                <i class="fa-solid fa-house-flood-water"></i>
+            </div>
+            <h2>BIO Water Plant Maintenance</h2>
+            <p>ระบบบริหารจัดการและซ่อมบำรุง BIO Water Tank</p>
+        </div>
+
+        <form id="login-form" autocomplete="off">
+            <div class="form-group">
+                <label for="login-email"><i class="fa-solid fa-envelope"></i> เบอร์โทรศัพท์ หรือ อีเมล์</label>
+                <input type="text" id="login-email" placeholder="เบอร์โทรศัพท์ หรือ อีเมล์" required autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="login-password"><i class="fa-solid fa-key"></i> PIN Code</label>
+                <div class="password-wrapper">
+                    <input type="password" id="login-password" placeholder="••••••" maxlength="6" inputmode="numeric"
+                        pattern="[0-9]*" class="pin-input" required autocomplete="off">
+                    <button type="button" class="btn-toggle-password" aria-label="แสดงรหัสผ่าน">
+                        <i class="fa-regular fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <button type="submit" class="btn-primary" id="btn-login-email"
+                style="width: 100%; justify-content: center;">
+                เข้าสู่ระบบ
+            </button>
+
+            <div class="divider"
+                style="display: flex; align-items: center; margin: 1.5rem 0; color: var(--text-muted);">
+                <span style="flex: 1; height: 1px; background: var(--glass-border);"></span>
+                <span style="padding: 0 0.5rem; font-size: 0.85rem;">หรือ</span>
+                <span style="flex: 1; height: 1px; background: var(--glass-border);"></span>
+            </div>
+
+            <button type="button" id="btn-line-login" class="btn-line" style="width: 100%; justify-content: center;">
+                <i class="fa-brands fa-line" style="font-size: 1.2rem;"></i> เข้าสู่ระบบด้วย LINE
+            </button>
+        </form>
+
+
+    </div>
+    <div class="login-footer">
+        © 2026 BIO Thailand Group. All rights reserved.
+    </div>
+</section>
+
+<div class="app-container hidden">
+    <!-- Navigation Sidebar / Header -->
+    <header class="app-header">
+        <div class="brand">
+            <div class="logo-icon">
+                <i class="fa-solid fa-house-flood-water" style="font-size: 2.75rem;"></i>
+            </div>
+            <h1 class="desktop-only-text">BIO Water Plant Maintenance</h1>
+            <span class="mobile-only-text">BIO Water Plant Maintenance</span>
+        </div>
+
+        <!-- Mobile Search Bar (Mid) -->
+        <div id="mobile-header-search" class="mobile-search-wrapper hidden">
+            <i class="fa-solid fa-magnifying-glass mobile-search-icon"></i>
+            <input type="text" id="site-search-mobile" placeholder="ค้นหา..." autocomplete="off">
+        </div>
+
+        <!-- Navigation (Desktop Only) -->
+        <nav class="app-footer desktop-menu" role="navigation" aria-label="Main Navigation">
+            <div class="nav-wrap">
+                <div class="bubble active-bubble"></div>
+                <div class="bubble hover-bubble"></div>
+                <div class="nav-items">
+                    <button class="nav-btn active" id="nav-sites-desktop" data-view="admin-view"
+                        aria-label="จัดการสถานที่ (Manage Sites)">
+                        <i class="fa-solid fa-house-chimney" aria-hidden="true"></i>
+                        <span>จัดการสถานที่</span>
+                    </button>
+
+                    <button class="nav-btn" id="nav-logs-desktop" data-view="engineer-view"
+                        aria-label="บันทึกการทำงาน (Work Logs)">
+                        <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                        <span>บันทึก</span>
+                    </button>
+
+                    <button class="nav-btn" id="nav-recycle-desktop" data-view="recycle-bin-view"
+                        aria-label="ถังขยะ (Recycle Bin)">
+                        <i class="fa-solid fa-trash-arrow-up" aria-hidden="true"></i>
+                        <span>ถังขยะ</span>
+                    </button>
+
+                    <button class="nav-btn" id="nav-profile-desktop" data-view="profile-view"
+                        aria-label="ข้อมูลส่วนตัว (User Profile)">
+                        <i class="fa-solid fa-user" aria-hidden="true"></i>
+                        <span>ข้อมูลส่วนตัว</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="header-profile-actions">
+            <div class="user-avatar-small" id="header-avatar" tabindex="0" role="button"
+                aria-label="โปรไฟล์ผู้ใช้ (User Profile)">
+                <i class="fa-solid fa-user" aria-hidden="true"></i>
+            </div>
+            <button id="btn-header-logout" class="btn-icon" title="ออกจากระบบ" style="color: white;">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
+        </div>
+
+    </header>
+
+    <!-- Mobile Navigation (Bottom Fixed) -->
+    <nav class="app-footer mobile-menu" role="navigation" aria-label="Mobile Navigation">
+        <div class="nav-wrap">
+            <div class="bubble active-bubble-mobile"></div>
+            <div class="bubble hover-bubble-mobile"></div>
+            <div class="nav-items">
+                <button class="nav-btn active" id="nav-sites-mobile" data-view="admin-view"
+                    aria-label="จัดการสถานที่ (Manage Sites)">
+                    <i class="fa-solid fa-house-chimney" aria-hidden="true"></i>
+                    <span>จัดการสถานที่</span>
+                </button>
+
+                <button class="nav-btn" id="nav-logs-mobile" data-view="engineer-view"
+                    aria-label="บันทึกการทำงาน (Work Logs)">
+                    <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                    <span>บันทึก</span>
+                </button>
+
+                <button class="nav-btn" id="nav-recycle-mobile" data-view="recycle-bin-view"
+                    aria-label="ถังขยะ (Recycle Bin)">
+                    <i class="fa-solid fa-trash-arrow-up" aria-hidden="true"></i>
+                    <span>ถังขยะ</span>
+                </button>
+
+                <button class="nav-btn" id="nav-profile-mobile" data-view="profile-view"
+                    aria-label="ข้อมูลส่วนตัว (User Profile)">
+                    <i class="fa-solid fa-user" aria-hidden="true"></i>
+                    <span>ข้อมูลส่วนตัว</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+
+
+    <!-- Main Content Area -->
+    <main class="content-area">
+
+        <!-- PROFILE VIEW -->
+        <section id="profile-view" class="view-section">
+            <!-- Profile Tabs -->
+            <div class="profile-tabs-wrapper">
+                <div class="profile-tabs">
+                    <button class="profile-tab active" data-tab="profile-settings">
+                        <i class="fa-solid fa-user"></i>
+                        <span>ข้อมูลส่วนตัว</span>
+                    </button>
+                    <button class="profile-tab" data-tab="user-management" id="user-management-tab" style="display: none;">
+                        <i class="fa-solid fa-users-gear"></i>
+                        <span>จัดการผู้ใช้งาน</span>
+                    </button>
+                    <button class="profile-tab" data-tab="notification-settings" id="notification-settings-tab" style="display: none;">
+                        <i class="fa-solid fa-bell"></i>
+                        <span>การแจ้งเตือน</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="profile-unified-container">
+                <!-- Profile Settings Tab -->
+                <div class="profile-tab-content active" id="profile-settings">
+                    <div class="profile-unified-card glass-panel">
+                        <div class="profile-layout-grid">
+                            <!-- Left Column: Identity & Logout -->
+                            <div class="profile-left-col">
+                                <div class="profile-header-section">
+                                    <div class="profile-avatar-large">
+                                        <img id="profile-image-preview" src="" alt="รูปโปรไฟล์ปัจจุบัน"
+                                            onerror="this.src='https://ui-avatars.com/api/?name=User&background=random'">
+
+                                        <!-- Edit Photo Button -->
+                                        <label for="profile-upload-input" class="btn-icon-circle edit-photo-btn"
+                                            title="เปลี่ยนรูปโปรไฟล์">
+                                            <i class="fa-solid fa-camera"></i>
+                                        </label>
+                                        <input type="file" id="profile-upload-input" accept="image/*"
+                                            style="display: none;">
+
+                                        <button class="btn-icon-circle reset-photo-btn" id="btn-reset-photo"
+                                            title="ใช้รูปพื้นฐาน" aria-label="ใช้รูปพื้นฐาน" style="display: none;">
+                                            <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                    <h2 id="profile-display-name-heading">User Name</h2>
+                                    <p id="profile-email-display" class="text-muted">Loading...</p>
+                                </div>
+                            </div>
+
+                            <!-- Right Column: Form & Actions -->
+                            <div class="profile-right-col">
+                                <div class="profile-form-section">
+                                    <h3 class="profile-subsection-title">
+                                        <i class="fa-solid fa-id-card"></i>
+                                        จัดการข้อมูลส่วนตัว
+                                    </h3>
+                                    <form id="profile-form" autocomplete="off">
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="profile-name"><i class="fa-solid fa-user"></i> ชื่อที่แสดง
+                                                    (Display Name)</label>
+                                                <input type="text" id="profile-name" placeholder="ระบุชื่อของคุณ" required autocomplete="off">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="profile-email"><i class="fa-solid fa-envelope"></i> อีเมล
+                                                    (Email Address)</label>
+                                                <input type="email" id="profile-email" placeholder="ระบุอีเมลของคุณ"
+                                                    required autocomplete="off">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="profile-phone"><i class="fa-solid fa-phone"></i>
+                                                    เบอร์โทรศัพท์</label>
+                                                <input type="tel" id="profile-phone" placeholder="08XXXXXXXX" maxlength="12"
+                                                    inputmode="numeric" autocomplete="off">
+                                            </div>
+                                        </div>
+
+                                        <!-- Change Password Section -->
+                                        <div class="password-section profile-subsection">
+                                            <h3 class="profile-subsection-title">
+                                                <i class="fa-solid fa-signature"></i>
+                                                ลายเซ็นส่วนตัว
+                                            </h3>
+                                            <div id="profile-signature-preview" style="margin-bottom: 0.75rem; text-align: center;">
+                                                <img id="profile-signature-img" src="" alt="Signature" style="max-width: 300px; max-height: 100px; border: 1px dashed var(--border-color); border-radius: 8px; display: none; background: #fff; padding: 8px; margin: 0 auto;">
+                                                <p id="profile-signature-empty" style="color: var(--text-muted); font-size: 0.85rem;">ยังไม่มีลายเซ็น</p>
+                                            </div>
+                                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center;">
+                                                <button type="button" class="btn-secondary" id="btn-draw-signature">
+                                                    <i class="fa-solid fa-pen-nib"></i> วาดลายเซ็น
+                                                </button>
+                                                <button type="button" class="btn-secondary" id="btn-upload-signature">
+                                                    <i class="fa-solid fa-upload"></i> อัปโหลด
+                                                </button>
+                                                <input type="file" id="upload-signature-input" accept="image/*" style="display: none;">
+                                                <button type="button" class="btn-secondary" id="btn-clear-profile-signature" style="display: none; color: #ef4444;">
+                                                    <i class="fa-solid fa-trash"></i> ลบ
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div class="password-section profile-subsection">
+                                            <h3 class="profile-subsection-title">
+                                                <i class="fa-solid fa-key"></i>
+                                                เปลี่ยน PIN Code
+                                            </h3>
+                                            <div class="form-group">
+                                                <label for="new-password">PIN Code ใหม่</label>
+                                                <div class="password-wrapper">
+                                                    <input type="password" id="new-password" placeholder="••••••"
+                                                        maxlength="6" inputmode="numeric" pattern="[0-9]*" class="pin-input"
+                                                        autocomplete="new-password">
+                                                    <button type="button" class="btn-toggle-password"
+                                                        aria-label="แสดงรหัสผ่าน">
+                                                        <i class="fa-regular fa-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button type="submit" class="btn-primary" style="width: 100%; margin-top: 1rem;">
+                                            <i class="fa-solid fa-floppy-disk"></i> บันทึกการเปลี่ยนแปลง
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <div class="profile-section profile-subsection">
+                                    <h3 class="profile-subsection-title">
+                                        <i class="fa-solid fa-link"></i>
+                                        บัญชีที่เชื่อมต่อ
+                                    </h3>
+                                    <div id="linked-accounts-container">
+                                        <!-- Content injected dynamically via JS -->
+                                        <p class="text-muted" style="font-size: 0.9rem;">กำลังโหลดข้อมูล...</p>
+                                    </div>
+                                </div>
+
+                                <div class="sidebar-actions" style="margin-top: 2rem;">
+                                    <button class="btn-logout-polished" id="btn-logout-profile">
+                                        <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Management Tab -->
+                <div class="profile-tab-content" id="user-management">
+                    <div class="profile-unified-card glass-panel">
+                        <div class="user-management-header">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                                <div>
+                                    <h2>
+                                        <i class="fa-solid fa-users-gear"></i>
+                                        จัดการสิทธิ์ผู้ใช้งาน
+                                    </h2>
+                                    <p class="text-muted">จัดการบทบาทและสิทธิ์การเข้าถึงของผู้ใช้งานในระบบ</p>
+                                </div>
+                                <button id="btn-cleanup-users" class="btn-secondary" style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fa-solid fa-broom"></i>
+                                    <span>ล้างข้อมูลผู้ใช้ไม่ถูกต้อง</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="user-roles-container">
+                            <div class="user-roles-search">
+                                <input type="text" id="user-search-input" placeholder="ค้นหาผู้ใช้ (ชื่อ, อีเมล)..." class="form-control" autocomplete="off">
+                            </div>
+                            <div id="users-list" class="users-list">
+                                <p class="text-muted" style="font-size: 0.9rem;">กำลังโหลดข้อมูล...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notification Settings Tab -->
+                <div class="profile-tab-content" id="notification-settings">
+                    <div class="profile-unified-card glass-panel">
+                        <div style="margin-bottom: 2rem;">
+                            <h2>
+                                <i class="fa-solid fa-bell"></i>
+                                ตั้งค่าการแจ้งเตือน
+                            </h2>
+                            <p class="text-muted">กำหนดค่าการแจ้งเตือนผ่าน Email, LINE และ Telegram</p>
+                        </div>
+
+                        <form id="notification-settings-form" autocomplete="off">
+                            <!-- Email SMTP Settings -->
+                            <div class="notification-section">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <h3 class="profile-subsection-title" style="margin: 0; display: flex; align-items: center; gap: 0.75rem;">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Gmail_Icon.png" alt="Gmail" style="width: 32px; height: 32px; object-fit: contain;">
+                                        <span>Email SMTP Settings</span>
+                                    </h3>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="email-enabled">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="smtp-host"><i class="fa-solid fa-server"></i> SMTP Host</label>
+                                        <input type="text" id="smtp-host" placeholder="smtp.gmail.com" autocomplete="off">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="smtp-port"><i class="fa-solid fa-plug"></i> SMTP Port</label>
+                                        <input type="number" id="smtp-port" placeholder="587" autocomplete="off">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="smtp-user"><i class="fa-solid fa-user"></i> SMTP Username</label>
+                                        <input type="text" id="smtp-user" placeholder="your-email@gmail.com" autocomplete="off">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="smtp-password"><i class="fa-solid fa-key"></i> SMTP Password</label>
+                                        <input type="password" id="smtp-password" placeholder="••••••••" autocomplete="off">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="smtp-from"><i class="fa-solid fa-paper-plane"></i> From Email</label>
+                                    <input type="email" id="smtp-from" placeholder="noreply@example.com" autocomplete="off">
+                                </div>
+                                <div class="form-group">
+                                    <label for="smtp-recipients"><i class="fa-solid fa-users"></i> Recipients (Email Addresses)</label>
+                                    <div id="email-recipients-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                        <div class="email-recipient-row" style="display: flex; gap: 0.5rem; align-items: center;">
+                                            <input type="email" class="email-recipient-input" placeholder="recipient@example.com" autocomplete="off" style="flex: 1;">
+                                            <button type="button" class="btn-icon btn-remove-recipient" title="Remove" style="display: none;">
+                                                <i class="fa-solid fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button type="button" id="btn-add-email-recipient" class="btn-secondary" style="margin-top: 0.5rem; width: auto;">
+                                        <i class="fa-solid fa-plus"></i> Add Recipient
+                                    </button>
+                                    <small class="text-muted">Add one or more email addresses to receive notifications</small>
+                                </div>
+                                <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="smtp-secure" style="width: auto;">
+                                    <label for="smtp-secure" style="margin: 0;">Use TLS/SSL</label>
+                                </div>
+                            </div>
+
+                            <!-- LINE Messaging API Settings -->
+                            <div class="notification-section">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <h3 class="profile-subsection-title" style="margin: 0; display: flex; align-items: center; gap: 0.75rem;">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" alt="LINE" style="width: 32px; height: 32px; object-fit: contain;">
+                                        <span>LINE Messaging API</span>
+                                    </h3>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="line-enabled">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label for="line-channel-access-token"><i class="fa-solid fa-key"></i> Channel Access Token</label>
+                                    <input type="text" id="line-channel-access-token" placeholder="Your LINE Channel Access Token" autocomplete="off">
+                                </div>
+                                <div class="form-group">
+                                    <label for="line-channel-secret"><i class="fa-solid fa-lock"></i> Channel Secret</label>
+                                    <input type="password" id="line-channel-secret" placeholder="Your LINE Channel Secret" autocomplete="off">
+                                </div>
+                                <div class="form-group">
+                                    <label for="line-user-id"><i class="fa-solid fa-user"></i> Default User ID (Optional)</label>
+                                    <input type="text" id="line-user-id" placeholder="U1234567890abcdef..." autocomplete="off">
+                                    <small class="text-muted">ใช้สำหรับส่งข้อความถึงผู้ใช้เฉพาะ</small>
+                                </div>
+                            </div>
+
+                            <!-- Telegram Bot Settings -->
+                            <div class="notification-section">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <h3 class="profile-subsection-title" style="margin: 0; display: flex; align-items: center; gap: 0.75rem;">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" alt="Telegram" style="width: 32px; height: 32px; object-fit: contain;">
+                                        <span>Telegram Bot API</span>
+                                    </h3>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="telegram-enabled">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label for="telegram-bot-token"><i class="fa-solid fa-key"></i> Bot Token</label>
+                                    <input type="text" id="telegram-bot-token" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" autocomplete="off">
+                                </div>
+                                <div class="form-group">
+                                    <label for="telegram-chat-id"><i class="fa-solid fa-comments"></i> Chat ID</label>
+                                    <input type="text" id="telegram-chat-id" placeholder="-1001234567890" autocomplete="off">
+                                    <small class="text-muted">Chat ID ของกลุ่มหรือผู้ใช้ที่ต้องการส่งข้อความ</small>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn-primary" style="width: 100%; margin-top: 1rem;">
+                                <i class="fa-solid fa-floppy-disk"></i> บันทึกการตั้งค่า
+                            </button>
+                            <button type="button" id="btn-clear-notification-settings" class="btn-secondary" style="width: 100%; margin-top: 0.5rem; background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                                <i class="fa-solid fa-trash"></i> ล้างการตั้งค่าทั้งหมด
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ADMIN VIEW: Manage Sites -->
+        <section id="admin-view" class="view-section active">
+            <div class="section-header">
+                <h2>รายชื่อสถานที่ดูแล <span id="header-sites-count" class="header-counter"></span></h2>
+
+                <!-- Desktop Filter Bar (Inside section-header) -->
+                <div class="filters-bar desktop-only" style="margin-bottom: 1rem; flex-wrap: wrap; width: 100%;">
+                    <div class="filter-group">
+                        <label>ค้นหา</label>
+                        <input type="text" id="site-search-input" placeholder="ชื่อ, หน่วยงาน, ที่อยู่..."
+                            class="site-search-input-wide" autocomplete="off">
+                    </div>
+
+                    <div class="filter-group">
+                        <label>จังหวัด</label>
+                        <select id="filter-site-province">
+                            <option value="all">ทั้งหมด</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label>หน่วยงานที่รับผิดชอบ</label>
+                        <select id="filter-site-agency">
+                            <option value="all">ทั้งหมด</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group actions-filter">
+                        <label>ตัวเลือก</label>
+                        <div class="filter-actions-row">
+                            <button id="btn-clear-site-filters" class="btn-secondary btn-outline-danger"
+                                title="ล้างตัวกรอง" style="flex: 1; min-width: 80px; justify-content: center;">
+                                <i class="fa-solid fa-rotate-left"></i> ล้าง
+                            </button>
+                            <button id="btn-export-sites" class="btn-secondary btn-outline-success" title="ส่งออก"
+                                style="flex: 1; min-width: 80px; justify-content: center;">
+                                <i class="fa-solid fa-file-excel"></i> ส่งออก
+                            </button>
+                            <button class="btn-success desktop-only" id="btn-add-site" title="เพิ่มสถานที่ใหม่"
+                                style="flex: 2; min-width: 120px; justify-content: center;">
+                                <i class="fa-solid fa-plus"></i> เพิ่มสถานที่ใหม่
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Search Box (Always Visible) -->
+            <div class="filter-group mobile-only" style="width: 100%; margin-bottom: 1rem;">
+                <input type="text" id="site-search-input-mobile" placeholder="ชื่อ, หน่วยงาน, ที่อยู่..."
+                    class="site-search-input-wide" autocomplete="off">
+            </div>
+
+            <!-- Mobile Filter Toggle -->
+            <button id="btn-toggle-site-filters" class="btn-secondary mobile-only"
+                style="width: 100%; margin-bottom: 1rem; justify-content: center;">
+                <i class="fa-solid fa-filter"></i> <span style="margin-left: 0.5rem;">แสดงตัวกรอง</span>
+            </button>
+
+            <!-- Mobile Filter Bar (Below Toggle) -->
+            <div id="site-filters-mobile" class="filters-bar mobile-only hidden"
+                style="margin-bottom: 1rem; flex-wrap: wrap; width: 100%;">
+                <div class="filter-group">
+                    <label>จังหวัด</label>
+                    <select id="filter-site-province-mobile">
+                        <option value="all">ทั้งหมด</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>หน่วยงานที่รับผิดชอบ</label>
+                    <select id="filter-site-agency-mobile">
+                        <option value="all">ทั้งหมด</option>
+                    </select>
+                </div>
+
+                <div class="filter-group actions-filter">
+                    <label>ตัวเลือก</label>
+                    <div class="filter-actions-row">
+                        <button id="btn-clear-site-filters-mobile" class="btn-secondary btn-outline-danger"
+                            title="ล้างตัวกรอง" style="flex: 1; min-width: 80px; justify-content: center;">
+                            <i class="fa-solid fa-rotate-left"></i> ล้าง
+                        </button>
+                        <button id="btn-export-sites-mobile" class="btn-secondary btn-outline-success"
+                            title="Export as Excel" style="flex: 1; min-width: 80px; justify-content: center;">
+                            <i class="fa-solid fa-file-excel"></i> Export
+                        </button>
+                        <button class="btn-success mobile-only hidden" id="btn-add-site-mobile" title="เพิ่มสถานที่ใหม่"
+                            style="flex: 2; min-width: 120px; justify-content: center;">
+                            <i class="fa-solid fa-plus"></i> <span class="btn-text">เพิ่มสถานที่</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- Map Removed -->
+
+            <div id="sites-grid" class="cards-grid">
+                <!-- Site Cards Injected Here -->
+                <div class="empty-state">
+                    <p>ยังไม่มีข้อมูลสถานที่ในระบบ</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ADMIN VIEW: Manage Users -->
+
+
+        <!-- ENGINEER VIEW: Maintenance Logs -->
+        <section id="engineer-view" class="view-section">
+            <div class="section-header">
+                <h2>ประวัติการซ่อมบำรุง <span id="header-logs-count" class="header-counter"></span></h2>
+
+                <div class="view-toggles nav-wrap">
+                    <div class="v-active-bubble"></div>
+                    <div class="v-hover-bubble"></div>
+                    <button class="toggle-btn active" id="btn-view-list" title="มุมมองรายการ">
+                        <i class="fa-solid fa-list"></i> <span>รายการ</span>
+                    </button>
+                    <button class="toggle-btn" id="btn-view-calendar" title="มุมมองปฏิทิน">
+                        <i class="fa-regular fa-calendar"></i> <span>ปฏิทิน</span>
+                    </button>
+                </div>
+
+                <button class="btn-success desktop-only" id="btn-log-maintenance">
+                    <i class="fa-solid fa-screwdriver-wrench"></i> <span class="btn-text">บันทึกงานใหม่</span>
+                </button>
+
+
+            </div>
+
+
+            <!-- Mobile Filter Toggle -->
+            <button id="btn-toggle-filters" class="btn-secondary mobile-only"
+                style="width: 100%; margin-bottom: 1rem; justify-content: center;">
+                <i class="fa-solid fa-filter"></i>
+            </button>
+
+            <div class="filters-bar">
+                <!-- Site Filter -->
+                <div class="filter-group site-filter-group">
+                    <label class="desktop-only">ค้นหา</label>
+                    <input type="text" id="site-filter-input" placeholder="ค้นหาสถานที่, รหัสเคส, หรือรายละเอียด..." autocomplete="off"
+                        class="site-search-input-wide">
+                </div>
+
+                <!-- Category Filter -->
+                <div class="filter-group">
+                    <label>หมวดหมู่</label>
+                    <select id="filter-category">
+                        <option value="all">📋 ทั้งหมด</option>
+                        <option value="Maintenance">🔧 Maintenance</option>
+                        <option value="Incident">⚠️ Incident</option>
+                    </select>
+                </div>
+
+                <!-- Status Filter -->
+                <div class="filter-group">
+                    <label>สถานะ</label>
+                    <select id="filter-status">
+                        <option value="all">📋 ทั้งหมด</option>
+                        <option value="Open">🟡 เปิดงาน</option>
+                        <option value="Planning">🔵 วางแผน</option>
+                        <option value="On Process">🟠 กำลังดำเนินการ</option>
+                        <option value="Done">🟣 เสร็จสิ้น</option>
+                        <option value="Case Closed">🟢 ปิดเคส</option>
+                        <option value="Cancel">🔴 ยกเลิก</option>
+                    </select>
+                </div>
+
+                <!-- Date Filter -->
+                <div class="filter-group date-filter">
+                    <label>วันที่</label>
+                    <div class="input-range-group" id="date-range-group">
+                        <input type="date" id="filter-start-date" placeholder="เริ่มต้น" autocomplete="off">
+                        <span class="range-separator">-</span>
+                        <input type="date" id="filter-end-date" placeholder="สิ้นสุด" autocomplete="off">
+                    </div>
+                    <!-- Calendar Month/Year Controls (Hidden by default) -->
+                    <div class="input-range-group hidden" id="calendar-date-controls" style="gap: 0.5rem;">
+                        <select id="filter-cal-month" style="width: auto; flex: 1;">
+                            <!-- Populated dynamically by initCalendarControls() -->
+                        </select>
+                        <select id="filter-cal-year" style="width: auto; flex: 1;">
+                            <!-- Populated dynamically by initCalendarControls() -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Total Cost -->
+                <div class="filter-group">
+                    <label>ยอดรวม</label>
+                    <div class="filter-summary stacked-summary">
+                        <span id="total-cost-display" class="summary-cost">0.00 บาท</span>
+                        <span id="total-logs-count" class="summary-count">0 รายการ</span>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="filter-group actions-filter">
+                    <label>ตัวเลือก</label>
+                    <div class="filter-actions-row">
+                        <button id="btn-clear-filters" class="btn-secondary" title="ล้างตัวกรอง">
+                            <i class="fa-solid fa-filter-circle-xmark"></i> <span>ล้าง</span>
+                        </button>
+                        <button id="btn-export-excel" class="btn-secondary" title="Export as Excel">
+                            <i class="fa-solid fa-file-excel"></i> <span>ส่งออก</span>
+                        </button>
+
+                    </div>
+                </div>
+            </div>
+
+            <div id="logs-feed" class="logs-feed">
+                <!-- Logs Injected Here -->
+                <div class="empty-state">
+                    <p>ไม่พบประวัติการซ่อมบำรุง</p>
+                </div>
+            </div>
+
+            <!-- CALENDAR VIEW CONTAINER -->
+            <div id="logs-calendar-view" class="calendar-container hidden">
+                <div class="calendar-header">
+                    <button class="btn-icon" id="cal-prev-month"><i class="fa-solid fa-chevron-left"></i></button>
+                    <h3 id="cal-current-month">มกราคม 2026</h3>
+                    <button class="btn-icon" id="cal-next-month"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+                <div class="calendar-grid" id="calendar-grid">
+                    <!-- Calendar Days Injected Here -->
+                </div>
+                <div id="calendar-details-panel" class="hidden">
+                    <!-- Clicked Day Logs -->
+                    <h4>กิจกรรมในวันที่ <span id="cal-selected-date"></span></h4>
+                    <div id="cal-selected-logs" class="cal-logs-list"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RECYCLE BIN VIEW -->
+        <section id="recycle-bin-view" class="view-section">
+            <div class="section-header">
+                <h2>ถังขยะ (Recycle Bin)</h2>
+                <div class="view-toggles nav-wrap">
+                    <div class="v-active-bubble"></div>
+                    <div class="v-hover-bubble"></div>
+                    <button class="toggle-btn active" id="btn-rb-recycle">
+                        <i class="fa-solid fa-trash-arrow-up"></i> <span>ถังขยะ</span>
+                    </button>
+                    <button class="toggle-btn" id="btn-rb-actionlog">
+                        <i class="fa-solid fa-clock-rotate-left"></i> <span>Action Log</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="content-rb-recycle" class="table-container">
+                <div class="filters-bar" style="margin-bottom: 1rem; flex-wrap: wrap; width: 100%;">
+                    <div class="filter-group" style="flex: 1; min-width: 180px;">
+                        <label>ค้นหา</label>
+                        <input type="text" id="recycle-search-input" placeholder="ค้นหารายการ..." autocomplete="off" oninput="filterRecycleBin()">
+                    </div>
+                    <div class="filter-group">
+                        <label>ประเภท</label>
+                        <select id="recycle-filter-type" onchange="filterRecycleBin()">
+                            <option value="all">ทั้งหมด</option>
+                            <option value="sites">สถานที่</option>
+                            <option value="logs">เคส/บันทึก</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>ลบโดย</label>
+                        <select id="recycle-filter-deletedby" onchange="filterRecycleBin()">
+                            <option value="all">ทั้งหมด</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>วันที่ลบ</label>
+                        <input type="date" id="recycle-date-filter" onchange="filterRecycleBin()">
+                    </div>
+                    <div class="filter-group actions-filter">
+                        <label>ตัวเลือก</label>
+                        <div class="filter-actions-row">
+                            <button class="btn-secondary" onclick="clearRecycleBinFilters()" style="flex: 1; min-width: 80px; justify-content: center;">
+                                <i class="fa-solid fa-rotate-left"></i> ล้าง
+                            </button>
+                            <button class="btn-secondary btn-outline-danger" onclick="handleEmptyRecycleBin()" style="flex: 1; min-width: 80px; justify-content: center;">
+                                <i class="fa-solid fa-trash"></i> ล้างถังขยะ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 8%; text-align: center;">ประเภท</th>
+                            <th style="width: 45%;">รายการ</th>
+                            <th style="width: 15%;">ลบโดย</th>
+                            <th style="width: 15%;">วันที่ลบ</th>
+                            <th style="width: 10%; text-align: center;">ตัวเลือก</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recycle-bin-table-body">
+                        <!-- Items -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="content-rb-actionlog" class="table-container hidden">
+            </div>
+        </section>
+
+
+    </main>
+
+    <!-- FABs (Floating Action Buttons) - Root Level -->
+    <!-- FABs (Floating Action Buttons) - Root Level -->
+    <button class="btn-success mobile-only fab-btn hidden" id="btn-add-site-fab" aria-label="เพิ่มสถานที่ใหม่"
+        title="เพิ่มสถานที่ใหม่">
+        <i class="fa-solid fa-plus" aria-hidden="true"></i>
+    </button>
+    <button class="btn-success mobile-only fab-btn hidden" id="btn-log-maintenance-fab" aria-label="บันทึกงานซ่อมบำรุง"
+        title="บันทึกงานซ่อมบำรุง">
+        <i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i>
+    </button>
+</div>
+
+<!-- MODAL: Add/Edit Site -->
+<div id="modal-add-site" class="modal-overlay modal-layer-form hidden">
+    <div class="modal glass-panel">
+        <div class="modal-header">
+            <div>
+                <h3 id="modal-site-title">เพิ่มสถานที่ผลิตน้ำ</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 400;">Add Water Production Site</p>
+            </div>
+            <button class="close-modal">&times;</button>
+        </div>
+        <form id="form-add-site" autocomplete="off">
+            <input type="hidden" name="siteId" id="site-id-hidden">
+
+            <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                    <label class="required-label" style="margin-bottom: 0;"><i class="fa-solid fa-water"></i>
+                        ชื่อสถานที่</label>
+                    <label
+                        style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-color);">
+                        <input type="checkbox" id="check-custom-name" style="width: auto; margin: 0;">
+                        กำหนดชื่อเอง
+                    </label>
+                </div>
+                <input type="text" name="siteName" id="input-site-name"
+                    placeholder="ชื่อสถานที่ (สร้างอัตโนมัติจากที่อยู่)" required readonly autocomplete="off">
+            </div>
+
+            <div class="form-row form-row-3col">
+                <div class="form-group autocomplete-wrapper">
+                    <label class="required-label"><i class="fa-solid fa-map"></i> จังหวัด</label>
+                    <input type="text" name="province" id="input-province" placeholder="ค้นหาจังหวัด..."
+                        autocomplete="off" required>
+                    <div id="dropdown-province" class="autocomplete-dropdown hidden"></div>
+                </div>
+                <div class="form-group autocomplete-wrapper">
+                    <label class="required-label"><i class="fa-solid fa-map-location-dot"></i> อำเภอ/เขต</label>
+                    <input type="text" name="district" id="input-amphoe" placeholder="ค้นหาอำเภอ..." autocomplete="off"
+                        required disabled>
+                    <div id="dropdown-amphoe" class="autocomplete-dropdown hidden"></div>
+                </div>
+                <div class="form-group autocomplete-wrapper">
+                    <label class="required-label"><i class="fa-solid fa-location-dot"></i> ตำบล/แขวง</label>
+                    <input type="text" name="subdistrict" id="input-tambon" placeholder="ค้นหาตำบล..."
+                        autocomplete="off" required disabled>
+                    <div id="dropdown-tambon" class="autocomplete-dropdown hidden"></div>
+                </div>
+            </div>
+
+            <div class="form-row form-row-3col">
+                <div class="form-group">
+                    <label><i class="fa-solid fa-house"></i> ชื่อหมู่บ้าน/อาคาร</label>
+                    <input type="text" name="villageName" placeholder="ระบุชื่อหมู่บ้าน (ถ้ามี)" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-map-pin"></i> หมู่ที่</label>
+                    <input type="number" name="moo" id="input-moo" placeholder="ระบุหมู่ที่" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-envelope"></i> รหัสไปรษณีย์</label>
+                    <input type="text" name="zipcode" id="input-zipcode" placeholder="กรอกรหัสไปรษณีย์" pattern="[0-9]*"
+                        inputmode="numeric" autocomplete="off">
+                </div>
+            </div>
+
+            <div class="form-row form-row-3col">
+                <div class="form-group autocomplete-wrapper">
+                    <label class="required-label"><i class="fa-solid fa-building-columns"></i>
+                        หน่วยงานที่รับผิดชอบ</label>
+                    <input type="text" id="input-agency-text" placeholder="ค้นหาหน่วยงาน..." autocomplete="off"
+                        required>
+                    <input type="hidden" id="input-agency" name="responsibleAgency">
+                    <div id="dropdown-agency" class="autocomplete-dropdown hidden"></div>
+                </div>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-user-tie"></i> ชื่อผู้ดูแล (PIC)</label>
+                    <input type="text" name="picName" id="site-pic-name" placeholder="ชื่อผู้รับผิดชอบหน้างาน" autocomplete="off" list="pic-name-list">
+                    <datalist id="pic-name-list"></datalist>
+                </div>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-phone"></i> เบอร์โทรศัพท์</label>
+                    <input type="tel" name="contactPhone" id="site-contact-phone" placeholder="0xx-xxx-xxxx"
+                        maxlength="12" inputmode="numeric" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label class="required-label"><i class="fa-solid fa-rotate"></i> รอบ MA (วัน)</label>
+                    <input type="number" name="maintenanceCycle" step="1" placeholder="ระบุจำนวนวัน (เช่น 30, 90)"
+                        required autocomplete="off">
+                </div>
+            </div>
+
+            <div class="form-row form-row-3col">
+                <div class="form-group">
+                    <label class="required-label"><i class="fa-regular fa-calendar-check"></i>
+                        วันที่เริ่มคุ้มครองประกัน</label>
+                    <input type="date" name="insuranceStartDate" placeholder="เลือกวันที่" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label class="required-label"><i class="fa-regular fa-calendar-xmark"></i>
+                        วันที่สิ้นสุดประกัน</label>
+                    <input type="date" name="insuranceEndDate" placeholder="เลือกวันที่" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label class="required-label"><i class="fa-regular fa-calendar-plus"></i>
+                        วันที่เข้าซ่อมบำรุงครั้งแรก</label>
+                    <input type="date" name="firstMaDate" placeholder="เลือกวันที่" required autocomplete="off">
+                </div>
+            </div>
+
+            <!-- Map & Details Row (50/50 on Desktop) -->
+            <div class="form-row form-row-2col">
+                <div class="form-group">
+                    <label><i class="fa-solid fa-map-location-dot"></i> ลิงก์ Google Maps (ถ้ามี)</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="url" name="locationUrl" id="input-location-url"
+                            placeholder="https://goo.gl/maps/..." style="flex: 1;">
+                        <button type="button" class="btn-secondary" id="btn-get-location" title="ระบุตำแหน่งปัจจุบัน"
+                            style="white-space: nowrap;">
+                            <i class="fa-solid fa-location-crosshairs"></i> ดึงตำแหน่งปัจจุบัน
+                        </button>
+                    </div>
+                    <div id="map-preview"
+                        style="width: 100%; height: 240px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: none; margin-top: 0.5rem; z-index: 1;">
+                    </div>
+                </div>
+
+                <div class="form-group" style="display: flex; flex-direction: column;">
+                    <label><i class="fa-solid fa-align-left"></i> รายละเอียดเพิ่มเติม</label>
+                    <textarea name="description" placeholder="ข้อมูลเบื้องต้นของสถานที่..." rows="2" style="min-height: 60px;"></textarea>
+                    
+                    <label style="margin-top: 1rem;">แนบไฟล์/รูปภาพ <span
+                            style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">(รองรับรูปภาพและไฟล์เอกสาร
+                            : สูงสุด 25MB ต่อไฟล์)</span></label>
+                    <div style="display: flex; flex-direction: column; gap: 10px; flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="file" id="site-attachment-input" multiple
+                                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt" style="display: none;">
+                            <button type="button" class="btn-secondary" id="btn-site-attachment"
+                                style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;">
+                                <i class="fa-solid fa-paperclip"></i> <span>เลือกไฟล์</span>
+                            </button>
+                            <span id="site-attachment-count"
+                                style="font-size: 0.9rem; color: var(--text-muted);">ไม่ได้เลือกไฟล์</span>
+                        </div>
+
+                        <div id="site-attachment-preview-container"
+                            style="display: flex; gap: 10px; padding: 10px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; height: 120px; background: rgba(255,255,255,0.02); overflow-x: auto; overflow-y: hidden; flex: 1;"></div>
+
+                        <!-- Hidden input to store existing attachments during edit -->
+                        <input type="hidden" name="existingAttachmentsJSON">
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary close-modal-btn">ยกเลิก</button>
+                <button type="submit" class="btn-primary" id="btn-submit-site">บันทึกข้อมูล</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: Log Maintenance -->
+<div id="modal-log-maintenance" class="modal-overlay modal-layer-form hidden">
+    <div class="modal glass-panel">
+        <div class="modal-header">
+            <div>
+                <div id="ma-form-case-id" style="color: var(--primary-color); font-size: 0.9rem; font-weight: 600; margin-bottom: 0.25rem;"></div>
+                <h3 id="ma-form-title" style="margin: 0;">บันทึกการเข้าซ่อมบำรุง</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 400;">Maintenance Record Form</p>
+            </div>
+            <button class="close-modal">&times;</button>
+        </div>
+        <form id="form-log-maintenance" autocomplete="off">
+            <input type="hidden" name="logId" id="log-id-hidden">
+            
+            <!-- Site Selection -->
+            <div class="form-group autocomplete-wrapper">
+                <label class="required-label"><i class="fa-solid fa-location-dot"></i> สถานที่</label>
+                <input type="text" id="log-site-input" placeholder="ค้นหาสถานที่..." autocomplete="off" required>
+                <input type="hidden" id="log-site-select" name="siteId">
+                <div id="dropdown-log-site" class="autocomplete-dropdown hidden"></div>
+            </div>
+            
+            <!-- Date and Category -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="required-label"><i class="fa-regular fa-calendar"></i> วันที่</label>
+                    <input type="date" name="date" required>
+                </div>
+                <div class="form-group">
+                    <label class="required-label"><i class="fa-solid fa-tag"></i> หมวดหมู่</label>
+                    <select name="category" id="log-category-select" required>
+                        <option value="Maintenance" selected>🔧 Maintenance</option>
+                        <option value="Incident">⚠️ Incident</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Responder -->
+            <div class="form-group">
+                <label class="required-label"><i class="fa-solid fa-user-gear"></i> ผู้รับผิดชอบ (Case Responder)</label>
+                <select name="responderId" id="log-responder-select" required>
+                    <option value="">-- เลือกผู้รับผิดชอบ --</option>
+                </select>
+            </div>
+
+            <!-- Description -->
+            <div class="form-group" style="display: flex; flex-direction: column;">
+                <label><i class="fa-solid fa-align-left"></i> คำอธิบายงาน</label>
+                <textarea name="objective" id="log-description" placeholder="รายละเอียดงาน..." rows="2" style="min-height: 60px;" required></textarea>
+                
+                <label style="margin-top: 1rem;">แนบไฟล์/รูปภาพ <span
+                        style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">(รองรับรูปภาพและไฟล์เอกสาร
+                        : สูงสุด 10MB ต่อไฟล์)</span></label>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px; width: fit-content;">
+                        <input type="file" id="description-attachment-input" multiple
+                            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt" style="display: none;">
+                        <button type="button" class="btn-secondary" id="btn-attach-description"
+                            style="cursor: pointer; display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.8rem; width: fit-content;">
+                            <i class="fa-solid fa-paperclip"></i> <span>เลือกไฟล์</span>
+                        </button>
+                        <span id="description-attachment-count"
+                            style="font-size: 0.9rem; color: var(--text-muted);">ไม่ได้เลือกไฟล์</span>
+                    </div>
+
+                    <div id="description-attachments-preview"
+                        style="display: flex; gap: 10px; padding: 10px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; height: 120px; background: rgba(255,255,255,0.02); overflow-x: auto; overflow-y: hidden;"></div>
+                </div>
+            </div>
+
+            <!-- Line Items -->
+            <div class="form-group" id="line-items-form-group">
+                <label><i class="fa-solid fa-list"></i> รายการและค่าใช้จ่าย</label>
+                <div id="line-items-container"></div>
+                <div id="line-items-footer-placeholder"></div>
+                <input type="hidden" name="lineItemsJSON" id="line-items-json">
+                <input type="hidden" name="details" id="log-details-input" value="">
+                <input type="hidden" name="cost" id="log-cost-hidden" value="0">
+            </div>
+
+            <datalist id="log-details-list"></datalist>
+
+            <!-- Upload Progress -->
+            <div id="upload-progress-container" style="display: none; margin-top: 1rem; padding: 0.75rem; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px;">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <i class="fa-solid fa-cloud-arrow-up" style="color: var(--primary-color); font-size: 1.1rem;"></i>
+                    <span style="color: var(--text-color); font-weight: 500; font-size: 0.9rem;">กำลังอัปโหลด...</span>
+                </div>
+                <div style="width: 100%; height: 5px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                    <div id="upload-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary-color), #0ea5e9); transition: width 0.3s ease;"></div>
+                </div>
+                <div style="margin-top: 0.4rem; font-size: 0.8rem; color: var(--text-muted);">
+                    <span id="upload-progress-text">0%</span>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary close-modal-btn">ยกเลิก</button>
+                <button type="submit" class="btn-primary">บันทึก</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: Signature Pad -->
+<div id="modal-signature" class="modal-overlay modal-layer-action hidden">
+    <div class="modal glass-panel" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3 style="margin: 0;">ลงลายเซ็น</h3>
+            <button class="close-modal" onclick="closeSignatureModal()">&times;</button>
+        </div>
+        <div style="padding: 1.5rem;">
+            <p style="margin: 0 0 0.75rem; color: var(--text-muted); font-size: 0.85rem;">กรุณากรอกข้อมูลและลงลายเซ็นก่อนเปลี่ยนสถานะ</p>
+            <div id="signature-contact-fields" style="display: none;">
+                <div style="display: flex; gap: 0.75rem; margin-bottom: 0.75rem;">
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem; color: var(--text-color);"><i class="fa-solid fa-user"></i> ชื่อ-นามสกุล <span style="color: #ef4444;">*</span></label>
+                        <input type="text" id="signature-name" placeholder="ชื่อผู้ลงลายเซ็น" autocomplete="off" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--surface-card); color: var(--text-color); font-size: 0.9rem;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem; color: var(--text-color);"><i class="fa-solid fa-phone"></i> เบอร์โทร <span style="color: #ef4444;">*</span></label>
+                        <input type="tel" id="signature-tel" placeholder="08XXXXXXXX" autocomplete="off" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--surface-card); color: var(--text-color); font-size: 0.9rem;">
+                    </div>
+                </div>
+            </div>
+            <div style="border: 2px dashed var(--border-color); border-radius: 8px; overflow: hidden; background: #fff;">
+                <canvas id="signature-canvas" width="460" height="200" style="width: 100%; cursor: crosshair; touch-action: none;"></canvas>
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                <button class="btn-secondary" onclick="clearSignatureCanvas()" style="flex: 1;">
+                    <i class="fa-solid fa-eraser"></i> ล้าง
+                </button>
+                <button class="btn-primary" onclick="confirmSignature()" style="flex: 1;">
+                    <i class="fa-solid fa-check"></i> ยืนยัน
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Delete Confirm -->
+<div id="modal-delete-confirm" class="modal-overlay modal-layer-confirm hidden">
+    <div class="modal glass-panel" style="max-width: 400px;">
+        <div class="modal-header">
+            <div>
+                <h3 style="margin: 0;">ยืนยันการลบ</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 400;">Confirm Deletion</p>
+            </div>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body" style="padding-bottom: 1.5rem;">
+            <p style="color: var(--text-muted); line-height: 1.6;">คุณแน่ใจหรือไม่ที่จะลบสถานที่นี้?
+                ข้อมูลประวัติการซ่อมบำรุงทั้งหมดจะถูกลบไปด้วย</p>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn-secondary close-modal-btn">ยกเลิก</button>
+            <button type="button" class="btn-primary" id="btn-confirm-delete"
+                style="background: #ef4444; border: none;">ลบสถานที่</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Site Details -->
+<div id="modal-site-details" class="modal-overlay modal-layer-base hidden">
+    <div class="modal glass-panel" style="max-width: 1000px;">
+        <div class="modal-header">
+            <div>
+                <h3 id="detail-site-name" style="color: var(--primary-color); margin: 0;">รายละเอียดสถานที่</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 400;">Site Details</p>
+            </div>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="site-detail-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <!-- Left Column -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <!-- Agency & Contact -->
+                <div class="detail-section">
+                    <h4
+                        style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem;">
+                        <i class="fa-solid fa-building-columns"></i> ข้อมูลทั่วไป
+                    </h4>
+                    <div style="display: grid; gap: 0.75rem;">
+                        <div class="detail-row">
+                            <span style="color: var(--text-muted); width: 120px; display: inline-block;">หน่วยงาน:</span>
+                            <span id="detail-agency" style="font-weight: 500;">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span style="color: var(--text-muted); width: 120px; display: inline-block;">ผู้ดูแล (PIC):</span>
+                            <span id="detail-pic-name">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span
+                                style="color: var(--text-muted); width: 120px; display: inline-block;">เบอร์โทรศัพท์:</span>
+                            <span id="detail-phone">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="width: 100%; height: 1px; background: rgba(255,255,255,0.1);"></div>
+
+                <!-- Location -->
+                <div class="detail-section">
+                    <h4
+                        style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem;">
+                        <i class="fa-solid fa-location-dot"></i> ที่ตั้ง
+                    </h4>
+                    <p id="detail-address" style="line-height: 1.6; margin-bottom: 0.5rem;">-</p>
+                </div>
+
+                <div style="width: 100%; height: 1px; background: rgba(255,255,255,0.1);"></div>
+
+                <!-- Description -->
+                <div class="detail-section">
+                    <h4
+                        style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem;">
+                        <i class="fa-solid fa-circle-info"></i> รายละเอียดเพิ่มเติม
+                    </h4>
+                    <p id="detail-description" style="line-height: 1.6; color: var(--text-color); white-space: pre-wrap; word-break: break-word;">-
+                    </p>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <!-- Maintenance Cycle -->
+                <div class="detail-section">
+                    <h4
+                        style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem;">
+                        <i class="fa-solid fa-clock-rotate-left"></i> รอบการซ่อมบำรุง
+                    </h4>
+                    <div style="display: grid; gap: 0.75rem;">
+                        <div class="detail-row">
+                            <span style="color: var(--text-muted); width: 140px; display: inline-block;">รอบซ่อมบำรุง
+                                (วัน):</span>
+                            <span id="detail-maintenance-cycle" style="font-weight: 500;">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span
+                                style="color: var(--text-muted); width: 140px; display: inline-block;">เข้าซ่อมบำรุงครั้งแรก:</span>
+                            <span id="detail-first-ma" style="font-weight: 500;">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span
+                                style="color: var(--text-muted); width: 140px; display: inline-block;">วันซ่อมบำรุงถัดไป:</span>
+                            <span id="detail-next-ma" style="font-weight: 600;">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="width: 100%; height: 1px; background: rgba(255,255,255,0.1);"></div>
+
+                <!-- Insurance -->
+                <div class="detail-section">
+                    <h4
+                        style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem;">
+                        <i class="fa-solid fa-shield-halved"></i> ระยะเวลาประกัน
+                    </h4>
+                    <div class="detail-row">
+                        <span id="detail-insurance" style="color: var(--primary-color); font-weight: 500;">-</span>
+                    </div>
+                </div>
+
+                <div style="width: 100%; height: 1px; background: rgba(255,255,255,0.1);"></div>
+
+                <!-- Attachments Display -->
+                <div class="detail-section">
+                    <h4
+                        style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem;">
+                        <i class="fa-solid fa-paperclip"></i> รูปภาพ/เอกสารแนบ
+                    </h4>
+                    <div class="detail-row" id="detail-site-attachment-row" style="display: none; align-items: flex-start;">
+                        <div id="detail-site-attachment-list"
+                            style="display: flex; flex-wrap: wrap; gap: 10px; width: 100%;">
+                            <!-- Attachments Injected Here -->
+                        </div>
+                    </div>
+                    <p id="detail-site-no-attachments"
+                        style="line-height: 1.6; color: var(--text-muted); font-style: italic;">ไม่มีไฟล์แนบ</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-actions" id="detail-modal-actions" style="margin-top: 2rem; justify-content: space-between;">
+            <button type="button" class="btn-secondary close-modal-btn">ปิด</button>
+            <button type="button" class="btn-primary" id="btn-view-ma-records" style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-list-check"></i>
+                <span>ดูประวัติการซ่อมบำรุง</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Log Details -->
+<div id="modal-log-details" class="modal-overlay modal-layer-base hidden">
+    <div class="modal glass-panel" style="max-width: 900px;">
+        <div class="modal-header">
+            <div>
+                <h3 id="detail-log-date" style="color: white; margin: 0;">รายละเอียดการซ่อมบำรุง</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 400;">Maintenance Record Details</p>
+            </div>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="site-detail-content log-detail-layout-grid">
+
+            <!-- Left Column: Details & Images -->
+            <div class="log-detail-left-col">
+                <!-- Site & Category -->
+                <div class="detail-section">
+                    <h4
+                        style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                        ข้อมูลงาน</h4>
+                    <div style="display: grid; gap: 0.75rem;">
+                        <!-- Case ID and Category on same row -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                            <div class="detail-row">
+                                <span style="color: var(--text-muted); width: 80px; display: inline-block;">รหัสเคส:</span>
+                                <span id="detail-log-case-id" style="font-weight: 600; font-family: 'Courier New', monospace; color: var(--primary-color);">-</span>
+                            </div>
+                            <div class="detail-row">
+                                <span style="color: var(--text-muted); width: 80px; display: inline-block;">หมวดหมู่:</span>
+                                <span id="detail-log-category">-</span>
+                            </div>
+                        </div>
+                        <!-- Site on its own row -->
+                        <div class="detail-row">
+                            <span style="color: var(--text-muted); width: 80px; display: inline-block;">สถานที่:</span>
+                            <span id="detail-log-site" style="font-weight: 500;">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span style="color: var(--text-muted); width: 80px; display: inline-block;">ผู้รับผิดชอบ:</span>
+                            <span id="detail-log-responder" style="font-weight: 500;">-</span>
+                        </div>
+                        
+                        <!-- Status Timeline -->
+                        <div style="margin-top: 1rem;">
+                            <div id="status-timeline" class="status-timeline">
+                                <!-- Timeline will be injected here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="width: 100%; height: 1px; background: rgba(255,255,255,0.1);"></div>
+
+                <!-- Details (Bill Style) -->
+                <div class="detail-section" style="margin-top: 5px;">
+                    <div class="bill-receipt-box">
+                        <div style="text-align: center; border-bottom: 2px dashed #94a3b8; padding-bottom: 0.25rem;">
+                            <h4
+                                style="color: #0f172a; font-size: 1.1rem; margin: 0; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em;">
+                                รายละเอียดงาน & ค่าใช้จ่าย
+                            </h4>
+                        </div>
+                        <div id="detail-log-details" class="bill-receipt-content">-</div>
+                        <div class="bill-receipt-footer">
+                            <span class="bill-receipt-total-label">ยอดรวมสุทธิ</span>
+                            <span id="detail-log-cost" class="bill-receipt-total-value">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div> <!-- End Left Column -->
+
+            <!-- Right Column: Comments -->
+            <div class="log-detail-right-col">
+                <!-- Comments -->
+                <div class="detail-section" id="log-comment-section"
+                    style="flex: 1; display: flex; flex-direction: column;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                        <h4 onclick="toggleCommentSection()" style="color: var(--text-muted); font-size: 0.85rem; margin: 0; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem; cursor: pointer;">
+                            <i class="fa-solid fa-comments"></i> ความคิดเห็น
+                            <i id="comment-collapse-icon" class="fa-solid fa-chevron-up" style="font-size: 0.7rem; transition: transform 0.2s;"></i>
+                        </h4>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" id="btn-goto-latest-comment" onclick="scrollToLatestComment()" 
+                                style="display: none; padding: 0.4rem 0.75rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 6px; color: #22c55e; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; font-weight: 500; align-items: center; gap: 0.4rem;">
+                                <i class="fa-solid fa-arrow-up"></i> <span>ล่าสุด</span>
+                            </button>
+                            <button type="button" id="btn-goto-initial-comment" onclick="scrollToInitialComment()" 
+                                style="display: none; padding: 0.4rem 0.75rem; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px; color: var(--primary-color); font-size: 0.8rem; cursor: pointer; transition: all 0.2s; font-weight: 500; align-items: center; gap: 0.4rem;">
+                                <i class="fa-solid fa-arrow-down"></i> <span>รายละเอียดเริ่มต้น</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="comment-collapsible">
+                    <div id="log-comments-list"
+                        style="display:flex; flex-direction:column; gap:0.6rem; margin-bottom:0.75rem; max-height: 400px; overflow-y: auto;">
+                    </div>
+
+                    <div class="chat-input-wrapper">
+                        <input type="file" id="comment-attachment-input" accept="image/*,application/pdf,.doc,.docx" style="display:none;" multiple>
+                        <textarea id="log-comment-input" class="chat-input-textarea" placeholder="เพิ่มความคิดเห็น..."
+                            rows="1"></textarea>
+                        <button id="btn-attach-file" type="button" class="chat-input-attach-btn" title="แนบไฟล์">
+                            <i class="fa-solid fa-paperclip"></i>
+                        </button>
+                        <button id="btn-post-comment" type="button" class="chat-input-send-btn"
+                            title="โพสต์ความคิดเห็น">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <div id="comment-attachments-preview" style="display:none;"></div>
+                    </div> <!-- End comment-collapsible -->
+                </div>
+            </div> <!-- End Right Column -->
+
+        </div>
+
+        <!-- Record Info Footer -->
+        <div class="modal-record-footer"
+            style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; color: var(--text-muted); font-size: 0.85rem;">
+            <!-- Content will be injected by JavaScript -->
+        </div>
+
+        <div class="modal-actions" id="log-detail-modal-actions" style="display: none;">
+        </div>
+    </div>
+</div>
+
+
+
+<!-- MODAL: Custom Themed Dialog (Alert/Confirm) -->
+<!-- MODAL: Referral Code Gate -->
+
+
+
+<!-- MODAL: Image Cropper -->
+<div id="modal-crop-image" class="modal-overlay modal-layer-top hidden">
+    <div class="modal glass-panel" style="max-width: 500px; width: 90%;">
+        <div class="modal-header">
+            <div>
+                <h3 style="margin: 0;">ปรับแต่งรูปโปรไฟล์</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 400;">Crop Profile Picture</p>
+            </div>
+            <button class="close-modal" id="btn-close-crop">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 1rem 0;">
+            <div class="img-container"
+                style="max-height: 400px; min-height: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #000;">
+                <img id="image-to-crop" src="" alt="Picture" style="max-width: 100%; display: block;">
+            </div>
+        </div>
+        <div class="modal-actions" style="justify-content: flex-end; gap: 1rem;">
+            <button type="button" class="btn-secondary" id="btn-cancel-crop">ยกเลิก</button>
+            <button type="button" class="btn-primary" id="btn-save-crop">
+                <i class="fa-solid fa-crop-simple"></i> บันทึกรูปภาพ
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification Container -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- Scripts -->
+<!-- app.js loaded once in <head> above -->
+<!-- Image Viewer Modal -->
+<div id="image-viewer-modal" class="image-viewer-overlay">
+    <div class="image-viewer-toolbar">
+        <button id="btn-zoom-out" title="Zoom Out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+        <button id="btn-zoom-reset" title="Reset"><i class="fa-solid fa-compress"></i></button>
+        <button id="btn-zoom-in" title="Zoom In"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+        <button id="btn-viewer-close" title="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="image-viewer-content" id="image-viewer-container">
+        <img id="image-viewer-img" src="" alt="Preview">
+    </div>
+</div>
+</body>
+
+</html>
