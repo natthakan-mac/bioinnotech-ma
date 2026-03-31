@@ -5,7 +5,7 @@
 }
 
 #modal-log-maintenance .modal-header {
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 1px solid rgba(0,0,0,0.08);
     padding: 1.5rem 2rem;
 }
 
@@ -55,7 +55,7 @@
 }
 
 .form-section {
-    background: rgba(255,255,255,0.02);
+    background: rgba(0,0,0,0.02);
     border-radius: 12px;
     padding: 1.5rem;
     margin-bottom: 1.5rem;
@@ -77,13 +77,13 @@
     gap: 0.75rem;
     margin-bottom: 1.25rem;
     padding-bottom: 0.75rem;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
 }
 
 .section-icon {
     width: 32px;
     height: 32px;
-    background: rgba(56, 189, 248, 0.1);
+    background: rgba(0,0,0,0.06);
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -128,7 +128,7 @@
     font-size: 0.95rem;
     transition: all 0.2s ease;
     background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid rgba(0,0,0,0.08);
 }
 
 #form-log-maintenance input[type="text"]:focus,
@@ -136,8 +136,8 @@
 #form-log-maintenance select:focus,
 #form-log-maintenance textarea:focus {
     border-color: var(--primary-color);
-    background: rgba(255,255,255,0.05);
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08);
+    background: rgba(0,0,0,0.04);
+    box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
 }
 
 #form-log-maintenance textarea {
@@ -147,8 +147,8 @@
 }
 
 #case-id-display {
-    background: rgba(56, 189, 248, 0.08) !important;
-    border: 1px solid rgba(56, 189, 248, 0.2) !important;
+    background: rgba(0,0,0,0.05) !important;
+    border: 1px solid rgba(0,0,0,0.12) !important;
     font-family: 'Courier New', monospace;
     font-weight: 600;
     color: var(--primary-color) !important;
@@ -246,7 +246,7 @@
 }
 
 .info-box {
-    background: rgba(59, 130, 246, 0.05);
+    background: rgba(0,0,0,0.03);
     border-left: 2px solid var(--primary-color);
     padding: 0.75rem 1rem;
     border-radius: 6px;
@@ -271,7 +271,7 @@
 #form-log-maintenance .modal-actions {
     gap: 0.75rem;
     padding-top: 1.5rem;
-    border-top: 1px solid rgba(255,255,255,0.08);
+    border-top: 1px solid rgba(0,0,0,0.06);
     margin-top: 0.5rem;
 }
 
@@ -294,9 +294,9 @@
 }
 
 #form-log-maintenance .btn-primary:hover:not(:disabled) {
-    background: #0ea5e9;
+    background: #333333;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
 }
 
 #form-log-maintenance .btn-primary:disabled {
@@ -305,7 +305,7 @@
 }
 
 #form-log-maintenance .btn-secondary:hover {
-    background: rgba(255,255,255,0.08);
+    background: rgba(0,0,0,0.06);
 }
 
 .form-row {
@@ -331,14 +331,14 @@
 }
 
 .chat-input-attach-btn:hover {
-    background: rgba(56, 189, 248, 0.1);
+    background: rgba(0,0,0,0.06);
 }
 
 /* Header Icon */
 .header-icon-wrapper {
     width: 40px;
     height: 40px;
-    background: rgba(56, 189, 248, 0.1);
+    background: rgba(0,0,0,0.06);
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -353,7 +353,7 @@
 
 /* Initial Comment Highlight Styles */
 .comment-item-initial {
-    background: rgba(56, 189, 248, 0.08) !important;
+    background: rgba(0,0,0,0.05) !important;
 }
 
 .comment-badge-initial {
@@ -361,7 +361,7 @@
     align-items: center;
     gap: 0.35rem;
     padding: 0.25rem 0.65rem;
-    background: rgba(56, 189, 248, 0.15);
+    background: rgba(0,0,0,0.09);
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
@@ -376,7 +376,7 @@
 
 /* Go to Initial Comment Button */
 #btn-goto-initial-comment:hover {
-    background: rgba(56, 189, 248, 0.2);
+    background: rgba(0,0,0,0.12);
     border-color: var(--primary-color);
     transform: translateY(-1px);
 }
@@ -408,7 +408,7 @@
     font-size: 0.95rem;
     transition: all 0.2s ease;
     background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid rgba(0,0,0,0.08);
     color: var(--text-color);
     cursor: pointer;
     -webkit-appearance: none;
@@ -417,14 +417,14 @@
 }
 
 .status-quick-select:hover {
-    background: rgba(255,255,255,0.05);
-    border-color: rgba(255,255,255,0.15);
+    background: rgba(0,0,0,0.04);
+    border-color: rgba(0,0,0,0.1);
 }
 
 .status-quick-select:focus {
     border-color: var(--primary-color);
-    background: rgba(255,255,255,0.05);
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08);
+    background: rgba(0,0,0,0.04);
+    box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
     outline: none;
 }
 

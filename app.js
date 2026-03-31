@@ -72,13 +72,13 @@ import {
 
 // --- Firebase Configuration ---
 const firebaseConfig = {
-    apiKey: "AIzaSyAeTQMv8r3XnhDvG81QKBK0VJUBwLiEvKU",
-    authDomain: "water-plant-maintenance.web.app",
-    projectId: "water-plant-maintenance",
-    storageBucket: "water-plant-maintenance.firebasestorage.app",
-    messagingSenderId: "455946912986",
-    appId: "1:455946912986:web:e0672d2a2eacc073d951e3",
-    measurementId: "G-634K0QZHEG",
+    apiKey: "AIzaSyDIgPA8WHnxP5X_JoRQtwdGDIqGYRdCZOI",
+    authDomain: "casp-ma.firebaseapp.com",
+    projectId: "casp-ma",
+    storageBucket: "casp-ma.firebasestorage.app",
+    messagingSenderId: "155537603365",
+    appId: "1:155537603365:web:df993623c42b613b6278cc",
+    measurementId: "G-SKXRYFVDHR",
 };
 
 // Initialize Firebase
@@ -2255,7 +2255,8 @@ function initAddressAutocompletes() {
 
 // --- Init Site Autocompletes ---
 function initSiteAutocompletes() {
-    // 1. Site Filter - now a simple search input, add event listener
+    // Hospital autocomplete
+    initHospitalAutocomplete();
     const siteFilterInput = document.getElementById("site-filter-input");
     if (siteFilterInput) {
         siteFilterInput.addEventListener("input", () => {
@@ -2396,7 +2397,7 @@ function resetSiteForm() {
     document.getElementById("site-id-hidden").value = "";
 
     document.getElementById("modal-site-title").textContent =
-        "เพิ่มสถานที่ผลิตน้ำ";
+        "เพิ่มอุปกรณ์";
     document.getElementById("btn-submit-site").textContent = "บันทึกข้อมูล";
 
     if (addressInputs.province) addressInputs.province.value = "";
@@ -2415,33 +2416,26 @@ function resetSiteForm() {
     [
         "insuranceStartDate",
         "insuranceEndDate",
-        "responsibleAgency",
         "contactName",
         "contactPhone",
         "villageName",
         "locationUrl",
         "maintenanceCycle",
         "firstMaDate",
-        "siteName"
+        "siteName",
+        "deviceType",
+        "brand",
+        "model",
+        "serialNumber",
+        "hospital"
     ].forEach((name) => {
         const input = form.querySelector(`[name="${name}"]`);
         if (input) input.value = "";
     });
 
-    // Clear agency autocomplete text input
-    const agencyTextInput = document.getElementById("input-agency-text");
-    if (agencyTextInput) {
-        agencyTextInput.value = "";
-        agencyTextInput.placeholder = "กรุณาเลือกจังหวัดและอำเภอก่อน";
-    }
-    
-    // Clear hidden agency input
-    const agencyHiddenInput = document.getElementById("input-agency");
-    if (agencyHiddenInput) {
-        agencyHiddenInput.value = "";
-    }
-    
-    agencyOptions = [];
+    // Clear hospital input
+    const hospitalTextInput = document.getElementById("input-hospital-text");
+    if (hospitalTextInput) hospitalTextInput.value = "";
 
     // Hide all autocomplete dropdowns
     document.querySelectorAll('.autocomplete-dropdown').forEach(dropdown => {
@@ -2514,59 +2508,56 @@ function populatePicNameList() {
 }
 
 function updateSiteName() {
-    const siteNameInput = document.querySelector('input[name="siteName"]');
-    if (!siteNameInput || siteNameInput.dataset.manual === "true") return;
-
-    const village =
-        document.querySelector('input[name="villageName"]')?.value || "";
-    const moo = document.querySelector('input[name="moo"]')?.value || "";
-    const province = addressInputs.province?.value || "";
-    const amphoe = addressInputs.amphoe?.value || "";
-    const tambon = addressInputs.tambon?.value || "";
-
-    // Build the name: [Village] หมู่ [Moo] [Tambon] [Amphoe] [Province]
-    const parts = [];
-    if (village) parts.push(village);
-    if (moo) parts.push(`หมู่ ${moo}`);
-    if (tambon) parts.push(tambon);
-    if (amphoe) parts.push(amphoe);
-    if (province) parts.push(province);
-
-    if (parts.length > 0) {
-        siteNameInput.value = parts.join(" ");
-    }
+    // Device name is entered manually — no auto-generation needed
 }
 
 function setupSiteNameAutoGeneration() {
-    const siteNameInput = document.querySelector('input[name="siteName"]');
-    if (siteNameInput) {
-        // Lock on manual edit
-        siteNameInput.addEventListener("input", () => {
-            siteNameInput.dataset.manual = "true";
+    // No-op for device manager
+}
+
+function initHospitalAutocomplete() {
+    const textInput = document.getElementById("input-hospital-text");
+    const dropdown = document.getElementById("dropdown-hospital");
+    if (!textInput || !dropdown) return;
+
+    const wrapper = textInput.closest('.autocomplete-wrapper');
+    const hospitals = (typeof HOSPITAL_LIST !== 'undefined') ? HOSPITAL_LIST : [];
+
+    function renderHospitalDropdown(query) {
+        const q = query.trim().toLowerCase();
+        const matches = q
+            ? hospitals.filter(h => h.toLowerCase().includes(q)).slice(0, 50)
+            : hospitals.slice(0, 50);
+
+        if (matches.length === 0) {
+            dropdown.classList.add("hidden");
+            if (wrapper) wrapper.classList.remove("active");
+            return;
+        }
+
+        dropdown.innerHTML = matches.map(h =>
+            `<div class="autocomplete-item" data-value="${h}">${h}</div>`
+        ).join('');
+        dropdown.classList.remove("hidden");
+        if (wrapper) wrapper.classList.add("active");
+
+        dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+            item.addEventListener("mousedown", (e) => {
+                e.preventDefault();
+                textInput.value = item.dataset.value;
+                dropdown.classList.add("hidden");
+                if (wrapper) wrapper.classList.remove("active");
+            });
         });
     }
 
-    // Triggers for auto-generation
-    const triggers = [
-        'input[name="villageName"]',
-        'input[name="moo"]',
-        'input[name="province"]',
-        'input[name="district"]', // Amphoe
-        'input[name="subdistrict"]', // Tambon (hidden/auto)
-        // Also catch our specific address inputs if they differ
-        "#input-province",
-        "#input-amphoe",
-        "#input-tambon",
-    ];
-
-    triggers.forEach((selector) => {
-        const el = document.querySelector(selector);
-        if (el) {
-            el.addEventListener("input", updateSiteName);
-            // Also listen for change/blur if autocomplete fills it
-            // (though our autocomplete typically sets value then might trigger events,
-            // the safest is to hook into the autocomplete selection handlers too)
-        }
+    textInput.addEventListener("input", () => renderHospitalDropdown(textInput.value));
+    textInput.addEventListener("focus", () => renderHospitalDropdown(textInput.value));
+    textInput.addEventListener("blur", () => {
+        setTimeout(() => {
+            dropdown.classList.add("hidden");
+            if (wrapper) wrapper.classList.remove("active");
+        }, 150);
     });
 }
 
@@ -2780,17 +2771,23 @@ async function handleSiteSubmit(e) {
         const siteData = {
             name: name,
             description: formData.get("description"),
-            fullAddress: fullAddress, // Kept for legacy display compatibility
+            fullAddress: fullAddress,
 
-            // Structured Address
+            // Device Info
+            deviceType: formData.get("deviceType") || "",
+            brand: formData.get("brand") || "",
+            model: formData.get("model") || "",
+            serialNumber: formData.get("serialNumber") || "",
+            hospital: formData.get("hospital") || "",
+
+            // Location
             villageName: villageName,
             moo: moo,
-            subdistrict: tambon, // Tambon
-            district: amphoe, // Amphoe
+            subdistrict: tambon,
+            district: amphoe,
             province: province,
             zipcode: zipcode,
 
-            responsibleAgency: formData.get("responsibleAgency"),
             picName: formData.get("picName") || "",
             contactName: formData.get("contactName"),
             contactPhone: window.itiInstances.site
@@ -2921,7 +2918,7 @@ async function handleSiteSubmit(e) {
                 }
             }
 
-            showToast("อัปเดตข้อมูลสถานที่สำเร็จ", "success");
+            showToast("อัปเดตข้อมูลอุปกรณ์สำเร็จ", "success");
         } else {
             // --- Auto-generate Site Code ---
             const regionPrefix = await getRdpbRegionCode(siteData.province || "");
@@ -2940,7 +2937,7 @@ async function handleSiteSubmit(e) {
             siteData.siteCode = `${regionPrefix}${String(nextNumber).padStart(3, "0")}`;
 
             const newSiteId = await FirestoreService.addSite(siteData);
-            showToast("เพิ่มสถานที่ใหม่สำเร็จ", "success");
+            showToast("เพิ่มอุปกรณ์ใหม่สำเร็จ", "success");
 
             // Auto-create initial MA log if applicable
             if (siteData.maintenanceCycle && siteData.firstMaDate) {
@@ -3003,16 +3000,14 @@ function editSite(id) {
     };
 
     setVal("siteName", site.name);
-    // Disable auto-generation for existing sites by default (Treat as custom)
-    const siteNameInput = form.querySelector('input[name="siteName"]');
-    const customNameCheck = document.getElementById("check-custom-name");
-
-    if (customNameCheck) {
-        customNameCheck.checked = true;
-        siteNameInput.removeAttribute("readonly");
-    }
-
-    if (siteNameInput) siteNameInput.dataset.manual = "true";
+    setVal("deviceType", site.deviceType);
+    setVal("brand", site.brand);
+    setVal("model", site.model);
+    setVal("serialNumber", site.serialNumber);
+    setVal("hospital", site.hospital);
+    // Sync hospital text input
+    const hospitalTextInput = document.getElementById("input-hospital-text");
+    if (hospitalTextInput) hospitalTextInput.value = site.hospital || "";
     if (form.querySelector('textarea[name="description"]'))
         form.querySelector('textarea[name="description"]').value =
             site.description || "";
@@ -3032,7 +3027,7 @@ function editSite(id) {
     setVal("firstMaDate", site.firstMaDate);
 
     const titleEl = document.getElementById("modal-site-title");
-    if (titleEl) titleEl.textContent = "แก้ไขข้อมูลสถานที่";
+    if (titleEl) titleEl.textContent = "แก้ไขข้อมูลอุปกรณ์";
 
     const btnEl = document.getElementById("btn-submit-site");
     if (btnEl) btnEl.textContent = "อัปเดตข้อมูล";
@@ -3065,17 +3060,6 @@ function editSite(id) {
     } catch (e) {
         console.error("Address population failed", e);
     }
-
-    // Agency field — set AFTER address restoration so filterAgenciesByLocation
-    // (triggered by handleProvinceSelect) doesn't wipe the value.
-    setTimeout(() => {
-        const agencyTextInput = document.getElementById("input-agency-text");
-        const agencyHiddenInput = document.getElementById("input-agency");
-        if (site.responsibleAgency) {
-            if (agencyTextInput) agencyTextInput.value = site.responsibleAgency;
-            if (agencyHiddenInput) agencyHiddenInput.value = site.responsibleAgency;
-        }
-    }, 50);
 
     // --- Attachments Logic for Edit ---
     let currentAttachments = [];
@@ -6680,36 +6664,19 @@ function setupSiteManagerFilters() {
 function populateSiteFilters() {
     const sites = state.sites;
     const provinceSelect = document.getElementById("filter-site-province");
-    const agencySelect = document.getElementById("filter-site-agency");
-    const provinceSelectMobile = document.getElementById(
-        "filter-site-province-mobile",
-    );
-    const agencySelectMobile = document.getElementById(
-        "filter-site-agency-mobile",
-    );
+    const provinceSelectMobile = document.getElementById("filter-site-province-mobile");
 
-    if (!provinceSelect || !agencySelect) return;
+    if (!provinceSelect) return;
 
-    // Populate Province
     const provinces = [
         ...new Set(sites.map((s) => s.province).filter(Boolean)),
     ].sort();
-    const agencies = [
-        ...new Set(sites.map((s) => s.responsibleAgency).filter(Boolean)),
-    ].sort();
 
-    // Preserve current selection or reset if invalid
     const currentProvince = provinceSelect.value;
-    const currentAgency = agencySelect.value;
 
-    // Clear options (keep "all")
     provinceSelect.innerHTML = '<option value="all">ทั้งหมด</option>';
-    agencySelect.innerHTML = '<option value="all">ทั้งหมด</option>';
-
     if (provinceSelectMobile)
         provinceSelectMobile.innerHTML = '<option value="all">ทั้งหมด</option>';
-    if (agencySelectMobile)
-        agencySelectMobile.innerHTML = '<option value="all">ทั้งหมด</option>';
 
     provinces.forEach((p) => {
         const opt = document.createElement("option");
@@ -6717,7 +6684,6 @@ function populateSiteFilters() {
         opt.textContent = p;
         provinceSelect.appendChild(opt);
 
-        // Also add to mobile dropdown
         if (provinceSelectMobile) {
             const optMobile = document.createElement("option");
             optMobile.value = p;
@@ -6726,29 +6692,9 @@ function populateSiteFilters() {
         }
     });
 
-    agencies.forEach((a) => {
-        const opt = document.createElement("option");
-        opt.value = a;
-        opt.textContent = a;
-        agencySelect.appendChild(opt);
-
-        // Also add to mobile dropdown
-        if (agencySelectMobile) {
-            const optMobile = document.createElement("option");
-            optMobile.value = a;
-            optMobile.textContent = a;
-            agencySelectMobile.appendChild(optMobile);
-        }
-    });
-
-    // Restore selection if exists
     if (provinces.includes(currentProvince)) {
         provinceSelect.value = currentProvince;
         if (provinceSelectMobile) provinceSelectMobile.value = currentProvince;
-    }
-    if (agencies.includes(currentAgency)) {
-        agencySelect.value = currentAgency;
-        if (agencySelectMobile) agencySelectMobile.value = currentAgency;
     }
 }
 
@@ -6766,36 +6712,33 @@ function renderSites() {
     const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
     const provinceFilter =
         document.getElementById("filter-site-province")?.value || "all";
-    const agencyFilter =
-        document.getElementById("filter-site-agency")?.value || "all";
 
     let sitesToRender = state.sites.filter((site) => {
         const nameMatch = (site.name || "").toLowerCase().includes(searchTerm);
         const provinceMatch = (site.province || "")
             .toLowerCase()
             .includes(searchTerm);
-        const agencyMatch = (site.responsibleAgency || "")
+        const hospitalMatch = (site.hospital || "")
             .toLowerCase()
             .includes(searchTerm);
 
-        // Check other address fields since they are flattened
         const otherFields = [
             site.district,
             site.subdistrict,
             site.zipcode,
-            site.moo,
             site.villageName,
+            site.deviceType,
+            site.brand,
+            site.model,
         ].join(" ");
         const addressMatch = otherFields.toLowerCase().includes(searchTerm);
 
         const isSearchMatch =
-            nameMatch || provinceMatch || agencyMatch || addressMatch;
+            nameMatch || provinceMatch || hospitalMatch || addressMatch;
         const isProvinceMatch =
             provinceFilter === "all" || site.province === provinceFilter;
-        const isAgencyMatch =
-            agencyFilter === "all" || site.responsibleAgency === agencyFilter;
 
-        return isSearchMatch && isProvinceMatch && isAgencyMatch;
+        return isSearchMatch && isProvinceMatch;
     });
 
     // Sort logic (optional, keep if exists)
@@ -6832,20 +6775,40 @@ function renderSites() {
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 0.25rem; flex-grow: 1;">
-                ${site.responsibleAgency
-                ? `
-                    <div style="display: inline-block;">
+                ${site.deviceType
+                ? `<div style="display: inline-block;">
                         <span style="background: rgba(56, 189, 248, 0.1); color: var(--primary-color); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; border: 1px solid rgba(56, 189, 248, 0.2);">
-                            <i class="fa-solid fa-building-columns" style="font-size: 0.7rem; margin-right: 4px;"></i>${site.responsibleAgency}
+                            <i class="fa-solid fa-tag" style="font-size: 0.7rem; margin-right: 4px;"></i>${site.deviceType}
                         </span>
                     </div>`
                 : ""
             }
-                    
-            <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
-                <i class="fa-solid fa-location-dot" style="color: var(--text-muted); margin-right: 4px; font-size: 0.8rem;"></i>
-                ${site.subdistrict || "-"} ${site.district ? `, ${site.district}` : ""} ${site.province ? `, ${site.province}` : ""}
-            </div>
+                ${site.hospital
+                ? `<div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
+                        <i class="fa-solid fa-hospital" style="margin-right: 4px; font-size: 0.8rem;"></i>${site.hospital}
+                    </div>`
+                : ""
+            }
+                ${site.brand || site.model
+                ? `<div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
+                        <i class="fa-solid fa-industry" style="margin-right: 4px; font-size: 0.8rem;"></i>
+                        ${[site.brand, site.model].filter(Boolean).join(" · ")}
+                    </div>`
+                : ""
+            }
+                ${site.serialNumber
+                ? `<div style="color: var(--text-muted); font-size: 0.85rem;">
+                        <i class="fa-solid fa-barcode" style="margin-right: 4px; font-size: 0.8rem;"></i>${site.serialNumber}
+                    </div>`
+                : ""
+            }
+                ${site.villageName || site.province
+                ? `<div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
+                        <i class="fa-solid fa-location-dot" style="margin-right: 4px; font-size: 0.8rem;"></i>
+                        ${[site.villageName, site.district, site.province].filter(Boolean).join(", ")}
+                    </div>`
+                : ""
+            }
             
             ${(() => {
                 if (site.maintenanceCycle && site.firstMaDate) {
@@ -7028,33 +6991,28 @@ function viewSiteDetails(id) {
     }
 
     document.getElementById("detail-agency").textContent =
-        site.responsibleAgency || "-";
+        site.deviceType || "-";
     document.getElementById("detail-pic-name").textContent =
-        site.picName || "-";
+        [site.brand, site.model].filter(Boolean).join(" / ") || "-";
 
-    // Phone with link
+    // Serial number in phone field
     const phoneEl = document.getElementById("detail-phone");
-    if (site.contactPhone) {
-        phoneEl.innerHTML = `<a href="tel:${site.contactPhone.replace(/-/g, "")}" style="color: var(--primary-color); text-decoration: none;">${site.contactPhone}</a>`;
-    } else {
-        phoneEl.textContent = "-";
-    }
+    phoneEl.textContent = site.serialNumber || "-";
 
-    // Address construction — single line: label: value · label: value
+    // Address construction — install location + contact
     const addrEl = document.getElementById("detail-address");
     if (addrEl) {
         const addrFields = [
-            { label: "หมู่บ้าน/อาคาร", value: site.villageName },
-            { label: "หมู่ที่", value: site.moo },
+            { label: "โรงพยาบาล", value: site.hospital },
+            { label: "สถานที่ติดตั้ง", value: site.villageName },
             { label: "ตำบล/แขวง", value: site.subdistrict },
             { label: "อำเภอ/เขต", value: site.district },
             { label: "จังหวัด", value: site.province },
-            { label: "รหัสไปรษณีย์", value: site.zipcode },
+            { label: "ผู้ดูแล (PIC)", value: site.picName },
+            { label: "เบอร์โทร", value: site.contactPhone },
         ].filter((f) => f.value);
 
         addrEl.style.display = "block";
-        addrEl.style.flexDirection = "";
-        addrEl.style.gap = "";
         addrEl.style.fontSize = "0.85rem";
         addrEl.style.lineHeight = "1.7";
         if (addrFields.length > 0) {
@@ -7063,7 +7021,7 @@ function viewSiteDetails(id) {
                     (f) =>
                         `<span style="color:var(--text-muted);">${f.label}:</span> <span style="font-weight:500;">${f.value}</span>`,
                 )
-                .join(" ");
+                .join(" &nbsp;·&nbsp; ");
         } else {
             addrEl.innerHTML =
                 '<span style="color:var(--text-muted); font-style:italic;">-</span>';
@@ -9001,8 +8959,6 @@ async function exportSitesToExcel() {
     const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
     const provinceFilter =
         document.getElementById("filter-site-province")?.value || "all";
-    const agencyFilter =
-        document.getElementById("filter-site-agency")?.value || "all";
 
     // 2. Filter Sites (Logic mirrors renderSites)
     const filteredSites = state.sites.filter((site) => {
@@ -9010,7 +8966,7 @@ async function exportSitesToExcel() {
         const provinceMatch = (site.province || "")
             .toLowerCase()
             .includes(searchTerm);
-        const agencyMatch = (site.responsibleAgency || "")
+        const hospitalMatch = (site.hospital || "")
             .toLowerCase()
             .includes(searchTerm);
 
@@ -9018,19 +8974,19 @@ async function exportSitesToExcel() {
             site.district,
             site.subdistrict,
             site.zipcode,
-            site.moo,
             site.villageName,
+            site.deviceType,
+            site.brand,
+            site.model,
         ].join(" ");
         const addressMatch = otherFields.toLowerCase().includes(searchTerm);
 
         const isSearchMatch =
-            nameMatch || provinceMatch || agencyMatch || addressMatch;
+            nameMatch || provinceMatch || hospitalMatch || addressMatch;
         const isProvinceMatch =
             provinceFilter === "all" || site.province === provinceFilter;
-        const isAgencyMatch =
-            agencyFilter === "all" || site.responsibleAgency === agencyFilter;
 
-        return isSearchMatch && isProvinceMatch && isAgencyMatch;
+        return isSearchMatch && isProvinceMatch;
     });
 
     if (filteredSites.length === 0) {
@@ -9084,7 +9040,6 @@ async function exportSitesToExcel() {
             "จังหวัด": site.province || "-",
             "รหัสไปรษณีย์": site.zipcode || "-",
             "ที่อยู่เต็ม": address || "-",
-            "หน่วยงานที่รับผิดชอบ": site.responsibleAgency || "-",
             "เบอร์โทรศัพท์": site.contactPhone || "-",
             "ลิงก์ Google Maps": site.locationUrl || "-",
             "รอบ MA (วัน)": site.maintenanceCycle || "-",
@@ -9101,9 +9056,8 @@ async function exportSitesToExcel() {
     const worksheet = XLSX.utils.json_to_sheet(dataForSheet, { origin: "A2" });
 
     // Title Row
-    let titleLabel = "รายชื่อสถานที่ดูแล";
+    let titleLabel = "รายชื่ออุปกรณ์";
     if (provinceFilter !== "all") titleLabel += ` (จังหวัด ${provinceFilter})`;
-    if (agencyFilter !== "all") titleLabel += ` (หน่วยงาน ${agencyFilter})`;
 
     // Search query info
     let subtitle = "";
@@ -11715,7 +11669,6 @@ async function renderRecycleBin() {
                     <span class="badge-info"><i class="fa-solid fa-map-pin"></i> ${data.subdistrict || "-"}</span>
                     <span class="badge-info"><i class="fa-solid fa-map"></i> ${data.district || "-"}</span>
                     <span class="badge-info"><i class="fa-solid fa-location-dot"></i> ${data.province || "-"}</span>
-                    <span class="badge-info"><i class="fa-solid fa-building-columns"></i> ${data.responsibleAgency || "-"}</span>
                 `;
                 itemHtml = `
                     <div class="item-cell-content">

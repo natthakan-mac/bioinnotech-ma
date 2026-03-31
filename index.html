@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIO WPM | ระบบจัดการการซ่อมบำรุง</title>
+    <title>Maintenance System | ระบบจัดการการซ่อมบำรุง</title>
 
     <!-- Premium Fonts: Outfit & Prompt (for Thai) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -132,6 +132,7 @@
         src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUfUISFNz5tEb-xvb9fkAOBQC54w-uqas&v=weekly&libraries=places,marker&loading=async"></script>
 
     <!-- App Scripts (Type Module for Firebase 9+) -->
+    <script src="hospital-data.js"></script>
     <script type="module" src="app.js"></script>
 </body>
 <!-- LOGIN VIEW -->
@@ -141,8 +142,8 @@
             <div class="login-logo">
                 <i class="fa-solid fa-house-flood-water"></i>
             </div>
-            <h2>BIO Water Plant Maintenance</h2>
-            <p>ระบบบริหารจัดการและซ่อมบำรุง BIO Water Tank</p>
+            <h2>Maintenance System</h2>
+            <p>ระบบบริหารจัดการและซ่อมบำรุง</p>
         </div>
 
         <form id="login-form" autocomplete="off">
@@ -180,7 +181,7 @@
 
     </div>
     <div class="login-footer">
-        © 2026 BIO Thailand Group. All rights reserved.
+        © 2026 Maintenance System. All rights reserved.
     </div>
 </section>
 
@@ -191,8 +192,8 @@
             <div class="logo-icon">
                 <i class="fa-solid fa-house-flood-water" style="font-size: 2.75rem;"></i>
             </div>
-            <h1 class="desktop-only-text">BIO Water Plant Maintenance</h1>
-            <span class="mobile-only-text">BIO Water Plant Maintenance</span>
+            <h1 class="desktop-only-text">Maintenance System</h1>
+            <span class="mobile-only-text">Maintenance System</span>
         </div>
 
         <!-- Mobile Search Bar (Mid) -->
@@ -208,9 +209,9 @@
                 <div class="bubble hover-bubble"></div>
                 <div class="nav-items">
                     <button class="nav-btn active" id="nav-sites-desktop" data-view="admin-view"
-                        aria-label="จัดการสถานที่ (Manage Sites)">
-                        <i class="fa-solid fa-house-chimney" aria-hidden="true"></i>
-                        <span>จัดการสถานที่</span>
+                        aria-label="จัดการอุปกรณ์ (Device Manager)">
+                        <i class="fa-solid fa-microchip" aria-hidden="true"></i>
+                        <span>จัดการอุปกรณ์</span>
                     </button>
 
                     <button class="nav-btn" id="nav-logs-desktop" data-view="engineer-view"
@@ -253,9 +254,9 @@
             <div class="bubble hover-bubble-mobile"></div>
             <div class="nav-items">
                 <button class="nav-btn active" id="nav-sites-mobile" data-view="admin-view"
-                    aria-label="จัดการสถานที่ (Manage Sites)">
-                    <i class="fa-solid fa-house-chimney" aria-hidden="true"></i>
-                    <span>จัดการสถานที่</span>
+                    aria-label="จัดการอุปกรณ์ (Device Manager)">
+                    <i class="fa-solid fa-microchip" aria-hidden="true"></i>
+                    <span>จัดการอุปกรณ์</span>
                 </button>
 
                 <button class="nav-btn" id="nav-logs-mobile" data-view="engineer-view"
@@ -596,7 +597,7 @@
         <!-- ADMIN VIEW: Manage Sites -->
         <section id="admin-view" class="view-section active">
             <div class="section-header">
-                <h2>รายชื่อสถานที่ดูแล <span id="header-sites-count" class="header-counter"></span></h2>
+                <h2>รายการอุปกรณ์ <span id="header-sites-count" class="header-counter"></span></h2>
 
                 <!-- Desktop Filter Bar (Inside section-header) -->
                 <div class="filters-bar desktop-only" style="margin-bottom: 1rem; flex-wrap: wrap; width: 100%;">
@@ -613,13 +614,6 @@
                         </select>
                     </div>
 
-                    <div class="filter-group">
-                        <label>หน่วยงานที่รับผิดชอบ</label>
-                        <select id="filter-site-agency">
-                            <option value="all">ทั้งหมด</option>
-                        </select>
-                    </div>
-
                     <div class="filter-group actions-filter">
                         <label>ตัวเลือก</label>
                         <div class="filter-actions-row">
@@ -631,9 +625,9 @@
                                 style="flex: 1; min-width: 80px; justify-content: center;">
                                 <i class="fa-solid fa-file-excel"></i> ส่งออก
                             </button>
-                            <button class="btn-success desktop-only" id="btn-add-site" title="เพิ่มสถานที่ใหม่"
+                            <button class="btn-success desktop-only" id="btn-add-site" title="เพิ่มอุปกรณ์ใหม่"
                                 style="flex: 2; min-width: 120px; justify-content: center;">
-                                <i class="fa-solid fa-plus"></i> เพิ่มสถานที่ใหม่
+                                <i class="fa-solid fa-plus"></i> เพิ่มอุปกรณ์ใหม่
                             </button>
                         </div>
                     </div>
@@ -642,7 +636,7 @@
 
             <!-- Mobile Search Box (Always Visible) -->
             <div class="filter-group mobile-only" style="width: 100%; margin-bottom: 1rem;">
-                <input type="text" id="site-search-input-mobile" placeholder="ชื่อ, หน่วยงาน, ที่อยู่..."
+                <input type="text" id="site-search-input-mobile" placeholder="ชื่อ, ประเภท, ยี่ห้อ..."
                     class="site-search-input-wide" autocomplete="off">
             </div>
 
@@ -662,13 +656,6 @@
                     </select>
                 </div>
 
-                <div class="filter-group">
-                    <label>หน่วยงานที่รับผิดชอบ</label>
-                    <select id="filter-site-agency-mobile">
-                        <option value="all">ทั้งหมด</option>
-                    </select>
-                </div>
-
                 <div class="filter-group actions-filter">
                     <label>ตัวเลือก</label>
                     <div class="filter-actions-row">
@@ -680,9 +667,9 @@
                             title="Export as Excel" style="flex: 1; min-width: 80px; justify-content: center;">
                             <i class="fa-solid fa-file-excel"></i> Export
                         </button>
-                        <button class="btn-success mobile-only hidden" id="btn-add-site-mobile" title="เพิ่มสถานที่ใหม่"
+                        <button class="btn-success mobile-only hidden" id="btn-add-site-mobile" title="เพิ่มอุปกรณ์ใหม่"
                             style="flex: 2; min-width: 120px; justify-content: center;">
-                            <i class="fa-solid fa-plus"></i> <span class="btn-text">เพิ่มสถานที่</span>
+                                <i class="fa-solid fa-plus"></i> <span class="btn-text">เพิ่มอุปกรณ์</span>
                         </button>
                     </div>
                 </div>
@@ -693,9 +680,9 @@
             <!-- Map Removed -->
 
             <div id="sites-grid" class="cards-grid">
-                <!-- Site Cards Injected Here -->
+                <!-- Device Cards Injected Here -->
                 <div class="empty-state">
-                    <p>ยังไม่มีข้อมูลสถานที่ในระบบ</p>
+                    <p>ยังไม่มีข้อมูลอุปกรณ์ในระบบ</p>
                 </div>
             </div>
         </section>
@@ -910,8 +897,8 @@
 
     <!-- FABs (Floating Action Buttons) - Root Level -->
     <!-- FABs (Floating Action Buttons) - Root Level -->
-    <button class="btn-success mobile-only fab-btn hidden" id="btn-add-site-fab" aria-label="เพิ่มสถานที่ใหม่"
-        title="เพิ่มสถานที่ใหม่">
+    <button class="btn-success mobile-only fab-btn hidden" id="btn-add-site-fab" aria-label="เพิ่มอุปกรณ์ใหม่"
+        title="เพิ่มอุปกรณ์ใหม่">
         <i class="fa-solid fa-plus" aria-hidden="true"></i>
     </button>
     <button class="btn-success mobile-only fab-btn hidden" id="btn-log-maintenance-fab" aria-label="บันทึกงานซ่อมบำรุง"
@@ -925,149 +912,134 @@
     <div class="modal glass-panel">
         <div class="modal-header">
             <div>
-                <h3 id="modal-site-title">เพิ่มสถานที่ผลิตน้ำ</h3>
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 400;">Add Water Production Site</p>
+                <h3 id="modal-site-title">เพิ่มอุปกรณ์</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 400;">Add Device</p>
             </div>
             <button class="close-modal">&times;</button>
         </div>
         <form id="form-add-site" autocomplete="off">
             <input type="hidden" name="siteId" id="site-id-hidden">
 
+            <!-- Device Name -->
             <div class="form-group">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                    <label class="required-label" style="margin-bottom: 0;"><i class="fa-solid fa-water"></i>
-                        ชื่อสถานที่</label>
-                    <label
-                        style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-color);">
-                        <input type="checkbox" id="check-custom-name" style="width: auto; margin: 0;">
-                        กำหนดชื่อเอง
-                    </label>
-                </div>
-                <input type="text" name="siteName" id="input-site-name"
-                    placeholder="ชื่อสถานที่ (สร้างอัตโนมัติจากที่อยู่)" required readonly autocomplete="off">
+                <label class="required-label"><i class="fa-solid fa-microchip"></i> ชื่ออุปกรณ์</label>
+                <input type="text" name="siteName" id="input-site-name" placeholder="ระบุชื่ออุปกรณ์" required autocomplete="off">
             </div>
 
+            <!-- Hospital -->
+            <div class="form-group autocomplete-wrapper" style="z-index: 20;">
+                <label><i class="fa-solid fa-hospital"></i> โรงพยาบาล</label>
+                <input type="text" id="input-hospital-text" name="hospital" placeholder="ค้นหาโรงพยาบาล..." autocomplete="off">
+                <div id="dropdown-hospital" class="autocomplete-dropdown hidden"></div>
+            </div>
+
+            <!-- Device Info Row -->
+            <div class="form-row form-row-3col">
+                <div class="form-group">
+                    <label class="required-label"><i class="fa-solid fa-tag"></i> ประเภทอุปกรณ์</label>
+                    <input type="text" name="deviceType" placeholder="เช่น ปั๊มน้ำ, มอเตอร์, เซ็นเซอร์" autocomplete="off" required>
+                </div>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-industry"></i> ยี่ห้อ (Brand)</label>
+                    <input type="text" name="brand" placeholder="ระบุยี่ห้อ" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-cube"></i> รุ่น (Model)</label>
+                    <input type="text" name="model" placeholder="ระบุรุ่น" autocomplete="off">
+                </div>
+            </div>
+
+            <!-- Serial / Install Location Row -->
+            <div class="form-row form-row-2col">
+                <div class="form-group">
+                    <label><i class="fa-solid fa-barcode"></i> Serial Number</label>
+                    <input type="text" name="serialNumber" placeholder="ระบุ Serial Number" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-location-dot"></i> สถานที่ติดตั้ง</label>
+                    <input type="text" name="villageName" placeholder="ระบุสถานที่ติดตั้ง" autocomplete="off">
+                </div>
+            </div>
+
+            <!-- Address Row (Province/District for agency filtering) -->
             <div class="form-row form-row-3col">
                 <div class="form-group autocomplete-wrapper">
-                    <label class="required-label"><i class="fa-solid fa-map"></i> จังหวัด</label>
-                    <input type="text" name="province" id="input-province" placeholder="ค้นหาจังหวัด..."
-                        autocomplete="off" required>
+                    <label><i class="fa-solid fa-map"></i> จังหวัด</label>
+                    <input type="text" name="province" id="input-province" placeholder="ค้นหาจังหวัด..." autocomplete="off">
                     <div id="dropdown-province" class="autocomplete-dropdown hidden"></div>
                 </div>
                 <div class="form-group autocomplete-wrapper">
-                    <label class="required-label"><i class="fa-solid fa-map-location-dot"></i> อำเภอ/เขต</label>
-                    <input type="text" name="district" id="input-amphoe" placeholder="ค้นหาอำเภอ..." autocomplete="off"
-                        required disabled>
+                    <label><i class="fa-solid fa-map-location-dot"></i> อำเภอ/เขต</label>
+                    <input type="text" name="district" id="input-amphoe" placeholder="ค้นหาอำเภอ..." autocomplete="off" disabled>
                     <div id="dropdown-amphoe" class="autocomplete-dropdown hidden"></div>
                 </div>
                 <div class="form-group autocomplete-wrapper">
-                    <label class="required-label"><i class="fa-solid fa-location-dot"></i> ตำบล/แขวง</label>
-                    <input type="text" name="subdistrict" id="input-tambon" placeholder="ค้นหาตำบล..."
-                        autocomplete="off" required disabled>
+                    <label><i class="fa-solid fa-location-dot"></i> ตำบล/แขวง</label>
+                    <input type="text" name="subdistrict" id="input-tambon" placeholder="ค้นหาตำบล..." autocomplete="off" disabled>
                     <div id="dropdown-tambon" class="autocomplete-dropdown hidden"></div>
                 </div>
             </div>
 
+            <!-- Contact Row -->
             <div class="form-row form-row-3col">
-                <div class="form-group">
-                    <label><i class="fa-solid fa-house"></i> ชื่อหมู่บ้าน/อาคาร</label>
-                    <input type="text" name="villageName" placeholder="ระบุชื่อหมู่บ้าน (ถ้ามี)" autocomplete="off">
-                </div>
-                <div class="form-group">
-                    <label><i class="fa-solid fa-map-pin"></i> หมู่ที่</label>
-                    <input type="number" name="moo" id="input-moo" placeholder="ระบุหมู่ที่" autocomplete="off">
-                </div>
-                <div class="form-group">
-                    <label><i class="fa-solid fa-envelope"></i> รหัสไปรษณีย์</label>
-                    <input type="text" name="zipcode" id="input-zipcode" placeholder="กรอกรหัสไปรษณีย์" pattern="[0-9]*"
-                        inputmode="numeric" autocomplete="off">
-                </div>
-            </div>
-
-            <div class="form-row form-row-3col">
-                <div class="form-group autocomplete-wrapper">
-                    <label class="required-label"><i class="fa-solid fa-building-columns"></i>
-                        หน่วยงานที่รับผิดชอบ</label>
-                    <input type="text" id="input-agency-text" placeholder="ค้นหาหน่วยงาน..." autocomplete="off"
-                        required>
-                    <input type="hidden" id="input-agency" name="responsibleAgency">
-                    <div id="dropdown-agency" class="autocomplete-dropdown hidden"></div>
-                </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-user-tie"></i> ชื่อผู้ดูแล (PIC)</label>
-                    <input type="text" name="picName" id="site-pic-name" placeholder="ชื่อผู้รับผิดชอบหน้างาน" autocomplete="off" list="pic-name-list">
+                    <input type="text" name="picName" id="site-pic-name" placeholder="ชื่อผู้รับผิดชอบ" autocomplete="off" list="pic-name-list">
                     <datalist id="pic-name-list"></datalist>
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-phone"></i> เบอร์โทรศัพท์</label>
-                    <input type="tel" name="contactPhone" id="site-contact-phone" placeholder="0xx-xxx-xxxx"
-                        maxlength="12" inputmode="numeric" autocomplete="off">
+                    <input type="tel" name="contactPhone" id="site-contact-phone" placeholder="0xx-xxx-xxxx" maxlength="12" inputmode="numeric" autocomplete="off">
                 </div>
                 <div class="form-group">
-                    <label class="required-label"><i class="fa-solid fa-rotate"></i> รอบ MA (วัน)</label>
-                    <input type="number" name="maintenanceCycle" step="1" placeholder="ระบุจำนวนวัน (เช่น 30, 90)"
-                        required autocomplete="off">
+                    <label><i class="fa-solid fa-rotate"></i> รอบ MA (วัน)</label>
+                    <input type="number" name="maintenanceCycle" step="1" placeholder="ระบุจำนวนวัน (เช่น 30, 90)" autocomplete="off">
                 </div>
             </div>
 
+            <!-- MA Cycle Section -->
             <div class="form-row form-row-3col">
                 <div class="form-group">
-                    <label class="required-label"><i class="fa-regular fa-calendar-check"></i>
-                        วันที่เริ่มคุ้มครองประกัน</label>
-                    <input type="date" name="insuranceStartDate" placeholder="เลือกวันที่" required autocomplete="off">
+                    <label><i class="fa-regular fa-calendar-check"></i> วันที่เริ่มคุ้มครองประกัน</label>
+                    <input type="date" name="insuranceStartDate" placeholder="เลือกวันที่" autocomplete="off">
                 </div>
                 <div class="form-group">
-                    <label class="required-label"><i class="fa-regular fa-calendar-xmark"></i>
-                        วันที่สิ้นสุดประกัน</label>
-                    <input type="date" name="insuranceEndDate" placeholder="เลือกวันที่" required autocomplete="off">
+                    <label><i class="fa-regular fa-calendar-xmark"></i> วันที่สิ้นสุดประกัน</label>
+                    <input type="date" name="insuranceEndDate" placeholder="เลือกวันที่" autocomplete="off">
                 </div>
                 <div class="form-group">
-                    <label class="required-label"><i class="fa-regular fa-calendar-plus"></i>
-                        วันที่เข้าซ่อมบำรุงครั้งแรก</label>
-                    <input type="date" name="firstMaDate" placeholder="เลือกวันที่" required autocomplete="off">
+                    <label><i class="fa-regular fa-calendar-plus"></i> วันที่เข้าซ่อมบำรุงครั้งแรก</label>
+                    <input type="date" name="firstMaDate" placeholder="เลือกวันที่" autocomplete="off">
                 </div>
             </div>
 
-            <!-- Map & Details Row (50/50 on Desktop) -->
+            <!-- Map & Details Row -->
             <div class="form-row form-row-2col">
                 <div class="form-group">
                     <label><i class="fa-solid fa-map-location-dot"></i> ลิงก์ Google Maps (ถ้ามี)</label>
                     <div style="display: flex; gap: 0.5rem;">
-                        <input type="url" name="locationUrl" id="input-location-url"
-                            placeholder="https://goo.gl/maps/..." style="flex: 1;">
-                        <button type="button" class="btn-secondary" id="btn-get-location" title="ระบุตำแหน่งปัจจุบัน"
-                            style="white-space: nowrap;">
+                        <input type="url" name="locationUrl" id="input-location-url" placeholder="https://goo.gl/maps/..." style="flex: 1;">
+                        <button type="button" class="btn-secondary" id="btn-get-location" title="ระบุตำแหน่งปัจจุบัน" style="white-space: nowrap;">
                             <i class="fa-solid fa-location-crosshairs"></i> ดึงตำแหน่งปัจจุบัน
                         </button>
                     </div>
-                    <div id="map-preview"
-                        style="width: 100%; height: 240px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: none; margin-top: 0.5rem; z-index: 1;">
-                    </div>
+                    <div id="map-preview" style="width: 100%; height: 240px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: none; margin-top: 0.5rem; z-index: 1;"></div>
                 </div>
 
                 <div class="form-group" style="display: flex; flex-direction: column;">
                     <label><i class="fa-solid fa-align-left"></i> รายละเอียดเพิ่มเติม</label>
-                    <textarea name="description" placeholder="ข้อมูลเบื้องต้นของสถานที่..." rows="2" style="min-height: 60px;"></textarea>
-                    
-                    <label style="margin-top: 1rem;">แนบไฟล์/รูปภาพ <span
-                            style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">(รองรับรูปภาพและไฟล์เอกสาร
-                            : สูงสุด 25MB ต่อไฟล์)</span></label>
+                    <textarea name="description" placeholder="ข้อมูลเบื้องต้นของอุปกรณ์..." rows="2" style="min-height: 60px;"></textarea>
+
+                    <label style="margin-top: 1rem;">แนบไฟล์/รูปภาพ <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">(รองรับรูปภาพและไฟล์เอกสาร : สูงสุด 25MB ต่อไฟล์)</span></label>
                     <div style="display: flex; flex-direction: column; gap: 10px; flex: 1;">
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="file" id="site-attachment-input" multiple
-                                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt" style="display: none;">
-                            <button type="button" class="btn-secondary" id="btn-site-attachment"
-                                style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;">
+                            <input type="file" id="site-attachment-input" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt" style="display: none;">
+                            <button type="button" class="btn-secondary" id="btn-site-attachment" style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;">
                                 <i class="fa-solid fa-paperclip"></i> <span>เลือกไฟล์</span>
                             </button>
-                            <span id="site-attachment-count"
-                                style="font-size: 0.9rem; color: var(--text-muted);">ไม่ได้เลือกไฟล์</span>
+                            <span id="site-attachment-count" style="font-size: 0.9rem; color: var(--text-muted);">ไม่ได้เลือกไฟล์</span>
                         </div>
-
-                        <div id="site-attachment-preview-container"
-                            style="display: flex; gap: 10px; padding: 10px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; height: 120px; background: rgba(255,255,255,0.02); overflow-x: auto; overflow-y: hidden; flex: 1;"></div>
-
-                        <!-- Hidden input to store existing attachments during edit -->
+                        <div id="site-attachment-preview-container" style="display: flex; gap: 10px; padding: 10px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; height: 120px; background: rgba(255,255,255,0.02); overflow-x: auto; overflow-y: hidden; flex: 1;"></div>
                         <input type="hidden" name="existingAttachmentsJSON">
                     </div>
                 </div>
@@ -1248,8 +1220,8 @@
     <div class="modal glass-panel" style="max-width: 1000px;">
         <div class="modal-header">
             <div>
-                <h3 id="detail-site-name" style="color: var(--primary-color); margin: 0;">รายละเอียดสถานที่</h3>
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 400;">Site Details</p>
+                <h3 id="detail-site-name" style="color: var(--primary-color); margin: 0;">รายละเอียดอุปกรณ์</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 400;">Device Details</p>
             </div>
             <button class="close-modal">&times;</button>
         </div>
@@ -1260,20 +1232,19 @@
                 <div class="detail-section">
                     <h4
                         style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem;">
-                        <i class="fa-solid fa-building-columns"></i> ข้อมูลทั่วไป
+                        <i class="fa-solid fa-microchip"></i> ข้อมูลอุปกรณ์
                     </h4>
                     <div style="display: grid; gap: 0.75rem;">
                         <div class="detail-row">
-                            <span style="color: var(--text-muted); width: 120px; display: inline-block;">หน่วยงาน:</span>
+                            <span style="color: var(--text-muted); width: 120px; display: inline-block;">ประเภท:</span>
                             <span id="detail-agency" style="font-weight: 500;">-</span>
                         </div>
                         <div class="detail-row">
-                            <span style="color: var(--text-muted); width: 120px; display: inline-block;">ผู้ดูแล (PIC):</span>
+                            <span style="color: var(--text-muted); width: 120px; display: inline-block;">ยี่ห้อ / รุ่น:</span>
                             <span id="detail-pic-name">-</span>
                         </div>
                         <div class="detail-row">
-                            <span
-                                style="color: var(--text-muted); width: 120px; display: inline-block;">เบอร์โทรศัพท์:</span>
+                            <span style="color: var(--text-muted); width: 120px; display: inline-block;">Serial No.:</span>
                             <span id="detail-phone">-</span>
                         </div>
                     </div>
@@ -1285,7 +1256,7 @@
                 <div class="detail-section">
                     <h4
                         style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem;">
-                        <i class="fa-solid fa-location-dot"></i> ที่ตั้ง
+                        <i class="fa-solid fa-location-dot"></i> สถานที่ติดตั้ง / ผู้ดูแล
                     </h4>
                     <p id="detail-address" style="line-height: 1.6; margin-bottom: 0.5rem;">-</p>
                 </div>

@@ -1,27 +1,26 @@
 /* Global Reset & Variables */
 :root {
-    --bg-color: #0f172a;
-    --text-color: #f8fafc;
-    --text-muted: #94a3b8;
-    --primary-color: #38bdf8;
-    /* Light Blue */
-    --primary-hover: #0ea5e9;
-    --secondary-color: #334155;
-    --success-color: #22c55e;
-    --danger-color: #ef4444;
-    --glass-bg: rgba(30, 41, 59, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --card-bg: rgba(30, 41, 59, 0.4);
+    --bg-color: #f5f5f5;
+    --text-color: #111111;
+    --text-muted: #666666;
+    --primary-color: #111111;
+    --primary-hover: #333333;
+    --secondary-color: #e0e0e0;
+    --success-color: #1a7a3a;
+    --danger-color: #c0392b;
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(0, 0, 0, 0.1);
+    --card-bg: rgba(255, 255, 255, 0.9);
 
     --font-main: 'Outfit', 'Prompt', sans-serif;
     --radius-lg: 16px;
     --radius-md: 8px;
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 
-    --border-color: rgba(255, 255, 255, 0.1);
-    --surface-bg: rgba(30, 41, 59, 1);
-    --surface-ground: rgba(15, 23, 42, 1);
+    --border-color: rgba(0, 0, 0, 0.1);
+    --surface-bg: #ffffff;
+    --surface-ground: #f0f0f0;
 }
 
 * {
@@ -37,9 +36,7 @@
 
 body {
     background-color: var(--bg-color);
-    background-image:
-        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.15) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.15) 0px, transparent 50%);
+    background-image: none;
     background-attachment: fixed;
     color: var(--text-color);
     min-height: 100vh;
@@ -75,14 +72,12 @@ body {
     align-items: center;
     padding: 1rem 2rem;
     border-bottom: 1px solid var(--glass-border);
-    /* Sticky Desktop Header */
+    background: #ffffff;
     position: sticky;
     top: 0;
     z-index: 50;
-    backdrop-filter: blur(12px);
+    backdrop-filter: none;
     margin: -2rem -2rem 2rem -2rem;
-    /* Negative margin to span container padding */
-
 }
 
 .brand {
@@ -92,12 +87,8 @@ body {
 }
 
 .logo-icon {
-    background: -webkit-linear-gradient(#06b6d4, #3b82f6);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    filter: drop-shadow(0 2px 4px rgba(6, 182, 212, 0.3));
+    color: #111111;
+    filter: none;
 }
 
 .header-profile-actions {
@@ -193,14 +184,14 @@ h1 {
 }
 
 .nav-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: white;
+    background: rgba(0,0,0,0.04);
+    color: #111111;
 }
 
 .nav-btn.active {
-    background: rgba(56, 189, 248, 0.1);
+    background: rgba(0,0,0,0.08);
     color: var(--primary-color);
-    border-color: rgba(56, 189, 248, 0.2);
+    border-color: rgba(0,0,0,0.16);
 }
 
 .nav-btn.active i {
@@ -221,9 +212,9 @@ h1 {
         z-index: 1000;
         height: 60px;
         padding: 0 1rem;
-        background: rgba(15, 23, 42, 0.85);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+        background: #f5f5f5;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
         border-bottom: 1px solid var(--glass-border);
         box-shadow: var(--shadow-md);
         margin: 0 !important;
@@ -248,7 +239,7 @@ h1 {
         flex: 1;
         font-size: 1.1rem;
         font-weight: 600;
-        color: white;
+        color: #111111;
         margin: 0;
         margin-left: 0.75rem;
         white-space: nowrap;
@@ -274,11 +265,11 @@ h1 {
         align-items: center;
         justify-content: center;
         height: 100%;
-        background: -webkit-linear-gradient(#06b6d4, #3b82f6);
+        background: -webkit-linear-gradient(#111111, #333333);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        filter: drop-shadow(0 2px 4px rgba(6, 182, 212, 0.3));
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.10));
     }
 
     .brand .logo-icon i {
@@ -341,13 +332,13 @@ h1 {
         width: 100%;
         height: 40px;
         /* Exact match for profile avatar */
-        background: rgba(255, 255, 255, 0.08);
+        background: rgba(0,0,0,0.06);
         /* More subtle */
         border: 1px solid var(--glass-border);
         border-radius: 99px;
         padding: 0 1rem 0 2.2rem;
         /* Adjusted padding for height */
-        color: white;
+        color: #111111;
         font-size: 0.9rem;
         outline: none;
         transition: all 0.2s;
@@ -358,7 +349,7 @@ h1 {
     .mobile-search-wrapper input:focus {
         border-color: var(--primary-color);
         background: rgba(255, 255, 255, 0.12);
-        box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.1);
+        box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
     }
 
     /* Toggle Menus */
@@ -374,10 +365,10 @@ h1 {
         width: 100%;
         transform: none;
         border-radius: 0;
-        background: rgba(15, 23, 42, 0);
+        background: rgba(255,255,255,0);
         /* Transparent blur background */
-        backdrop-filter: blur(5px);
-        -webkit-backdrop-filter: blur(5px);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
         border: none;
         border-top: 1px solid var(--glass-border);
         justify-content: space-around;
@@ -434,19 +425,19 @@ h1 {
 
 .nav-btn:hover {
     color: var(--text-color);
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(0,0,0,0.04);
 }
 
 .nav-btn.active {
     background: var(--primary-color);
-    color: white;
-    box-shadow: 0 2px 4px rgba(56, 189, 248, 0.3);
+    color: #111111;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.24);
 }
 
 /* Buttons */
 .btn-primary {
     background: var(--primary-color);
-    color: white;
+    color: #111111;
     border: none;
     padding: 0.5rem 1rem;
     border-radius: var(--radius-md);
@@ -459,7 +450,7 @@ h1 {
 .btn-primary:hover {
     background: var(--primary-hover);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.20);
 }
 
 .btn-secondary {
@@ -603,28 +594,28 @@ h1 {
 }
 
 .card-btn-maps {
-    background: rgba(56, 189, 248, 0.12);
+    background: rgba(0,0,0,0.10);
     color: var(--primary-color);
-    border-color: rgba(56, 189, 248, 0.25);
+    border-color: rgba(0,0,0,0.20);
 }
 
 .card-btn-maps:hover {
-    background: rgba(56, 189, 248, 0.28);
+    background: rgba(0,0,0,0.22);
     border-color: var(--primary-color);
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    box-shadow: 0 0 8px rgba(0,0,0,0.1);
     color: var(--primary-color);
 }
 
 .card-btn-log {
     background: rgba(100, 116, 139, 0.15);
-    color: #cbd5e1;
+    color: #444444;
     border-color: rgba(100, 116, 139, 0.3);
 }
 
 .card-btn-log:hover {
     background: rgba(100, 116, 139, 0.3);
-    border-color: #cbd5e1;
-    color: #ffffff;
+    border-color: #444444;
+    color: #111111;
     box-shadow: 0 0 10px rgba(100, 116, 139, 0.4);
 }
 
@@ -692,7 +683,7 @@ h1 {
 }
 
 .btn-icon:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(0,0,0,0.08);
     transform: scale(1.1);
 }
 
@@ -709,7 +700,7 @@ h1 {
 }
 
 #btn-header-logout {
-    color: white !important;
+    color: #111111 !important;
     font-size: 1.25rem;
 }
 
@@ -724,7 +715,7 @@ h1 {
     width: 36px;
     height: 36px;
     background: #ef4444;
-    color: white;
+    color: #111111;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -809,7 +800,7 @@ h2 {
     border-radius: var(--radius-lg);
     padding: 1.5rem;
     position: relative;
-    backdrop-filter: blur(10px);
+    backdrop-filter: none;
     transition: transform 0.2s;
     /* Flexbox for vertical layout matching */
     display: flex;
@@ -821,8 +812,8 @@ h2 {
 .site-card:hover {
     transform: translateY(-4px);
     border-color: var(--primary-color);
-    box-shadow: 0 4px 20px rgba(56, 189, 248, 0.2);
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.16);
+    background: linear-gradient(135deg, rgba(0,0,0,0.06) 0%, rgba(255, 255, 255, 0.03) 100%);
 }
 
 .card-header {
@@ -856,7 +847,7 @@ h2 {
     gap: 0.25rem;
     margin-bottom: 1rem;
     padding-bottom: 0.75rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(0,0,0,0.04);
 }
 
 .location-item {
@@ -924,8 +915,8 @@ h2 {
 }
 
 .log-item:hover {
-    border-color: rgba(56, 189, 248, 0.5);
-    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(0,0,0,0.40);
+    background: rgba(0,0,0,0.06);
 }
 
 .log-main {
@@ -970,7 +961,7 @@ h2 {
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(4px);
+    backdrop-filter: none;
     z-index: 2000;
     display: flex;
     justify-content: center;
@@ -1001,7 +992,7 @@ h2 {
 }
 
 .modal {
-    background: #1e293b;
+    background: #ffffff;
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
     width: 100%;
@@ -1024,7 +1015,7 @@ h2 {
 }
 
 #modal-add-site .modal-header {
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 1px solid rgba(0,0,0,0.08);
     padding-bottom: 1.5rem;
     margin-bottom: 1.5rem;
 }
@@ -1155,8 +1146,8 @@ input[type="number"] {
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(1);
-    opacity: 0.7;
+    filter: none;
+    opacity: 0.5;
     cursor: pointer;
     transition: opacity 0.2s;
 }
@@ -1176,7 +1167,7 @@ select {
 }
 
 option {
-    background: #1e293b;
+    background: #ffffff;
     color: var(--text-color);
 }
 
@@ -1191,7 +1182,7 @@ option {
     text-align: center;
     padding: 3rem;
     color: var(--text-muted);
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(0,0,0,0.02);
     border-radius: var(--radius-lg);
     border: 2px dashed var(--glass-border);
 }
@@ -1317,7 +1308,7 @@ option {
 .filter-summary {
     width: 100%;
     /* Fill the group */
-    background: rgba(56, 189, 248, 0.1);
+    background: rgba(0,0,0,0.08);
     color: var(--primary-color);
     padding: 0.5rem 1rem;
     border-radius: var(--radius-md);
@@ -1400,8 +1391,8 @@ option {
         bottom: 0;
         left: 0;
         width: 100%;
-        background: rgba(15, 23, 42, 0.95);
-        backdrop-filter: blur(12px);
+        background: #f5f5f5;
+        backdrop-filter: none;
         border-top: 1px solid var(--glass-border);
         border-radius: 20px 20px 0 0;
         padding: 0.5rem 1rem 1.5rem;
@@ -1439,7 +1430,7 @@ option {
     }
 
     .nav-btn.active i {
-        filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.6));
+        filter: drop-shadow(0 0 8px rgba(0,0,0,0.48));
     }
 
     /* Floating Action Buttons (FAB) */
@@ -1608,7 +1599,7 @@ option {
         width: 100%;
         justify-content: flex-end;
         padding-top: 0.5rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        border-top: 1px solid rgba(0,0,0,0.04);
     }
 
     /* Log Item specific */
@@ -1631,7 +1622,7 @@ option {
         width: 100%;
         text-align: left;
         padding-top: 0.5rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        border-top: 1px solid rgba(0,0,0,0.04);
         color: var(--primary-color);
         font-size: 1rem;
     }
@@ -1738,7 +1729,7 @@ option {
     .data-table td {
         text-align: left;
         padding: 0.5rem 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(0,0,0,0.04);
         display: grid;
         grid-template-columns: 100px 1fr;
         align-items: flex-start;
@@ -1752,7 +1743,7 @@ option {
         gap: 0.5rem;
         padding-top: 0.5rem;
         margin-top: 0.5rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        border-top: 1px solid rgba(0,0,0,0.04);
     }
 
     .data-table td::before {
@@ -1808,7 +1799,7 @@ option {
 
 /* Flatpickr Customization (Glass/Dark Theme) */
 .flatpickr-calendar {
-    background: #1e293b !important;
+    background: #ffffff !important;
     border: 1px solid var(--glass-border) !important;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3) !important;
     font-family: var(--font-main) !important;
@@ -1816,12 +1807,12 @@ option {
 
 .flatpickr-calendar.arrowTop:before,
 .flatpickr-calendar.arrowTop:after {
-    border-bottom-color: #1e293b !important;
+    border-bottom-color: #ffffff !important;
 }
 
 .flatpickr-calendar.arrowBottom:before,
 .flatpickr-calendar.arrowBottom:after {
-    border-top-color: #1e293b !important;
+    border-top-color: #ffffff !important;
 }
 
 .flatpickr-months .flatpickr-month {
@@ -1841,7 +1832,7 @@ option {
 }
 
 .flatpickr-current-month .flatpickr-monthDropdown-months {
-    background: #1e293b !important;
+    background: #ffffff !important;
 }
 
 span.flatpickr-weekday {
@@ -1857,7 +1848,7 @@ span.flatpickr-weekday {
 .flatpickr-day.prevMonthDay:hover,
 .flatpickr-day.nextMonthDay:hover,
 .flatpickr-day:focus {
-    background: rgba(56, 189, 248, 0.2) !important;
+    background: rgba(0,0,0,0.16) !important;
     border-color: transparent !important;
 }
 
@@ -1881,7 +1872,7 @@ span.flatpickr-weekday {
 .flatpickr-day.endRange.nextMonthDay {
     background: var(--primary-color) !important;
     border-color: var(--primary-color) !important;
-    color: white !important;
+    color: #111111 !important;
 }
 
 .flatpickr-day.today {
@@ -1896,7 +1887,7 @@ span.flatpickr-weekday {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(56, 189, 248, 0.1);
+    background: rgba(0,0,0,0.08);
     color: var(--primary-color);
     padding: 0.25rem 0.75rem;
     border-radius: 999px;
@@ -1904,12 +1895,12 @@ span.flatpickr-weekday {
     font-size: 0.875rem;
     font-weight: 500;
     transition: all 0.2s;
-    border: 1px solid rgba(56, 189, 248, 0.2);
+    border: 1px solid rgba(0,0,0,0.16);
 }
 
 .phone-link-btn:hover {
     background: var(--primary-color);
-    color: white;
+    color: #111111;
     transform: translateY(-1px);
 }
 
@@ -2001,7 +1992,7 @@ span.flatpickr-weekday {
     width: 100%;
     max-height: 200px;
     overflow-y: auto;
-    background: #1e293b;
+    background: #ffffff;
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);
     z-index: 100;
@@ -2017,7 +2008,7 @@ span.flatpickr-weekday {
     padding: 0.75rem 1rem;
     cursor: pointer;
     color: var(--text-color);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(0,0,0,0.04);
     transition: background 0.15s;
     font-size: 0.95rem;
 }
@@ -2027,8 +2018,8 @@ span.flatpickr-weekday {
 }
 
 .autocomplete-item:hover {
-    background: rgba(56, 189, 248, 0.2);
-    color: white;
+    background: rgba(0,0,0,0.16);
+    color: #111111;
 }
 
 /* Background Bubbles Animation */
@@ -2048,7 +2039,7 @@ span.flatpickr-weekday {
     list-style: none;
     width: 20px;
     height: 20px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(0,0,0,0.08);
     animation: rise 25s infinite linear;
     bottom: -150px;
     border-radius: 50%;
@@ -2077,7 +2068,7 @@ span.flatpickr-weekday {
 
 .site-log-count:hover {
     color: var(--primary-color);
-    background: rgba(56, 189, 248, 0.1);
+    background: rgba(0,0,0,0.08);
 }
 
 .site-log-count i {
@@ -2302,8 +2293,8 @@ span.flatpickr-weekday {
 
 .cal-day.today {
     border-color: var(--primary-color);
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.1) 0%, rgba(56, 189, 248, 0.02) 100%);
-    box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.1);
+    background: linear-gradient(135deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.02) 100%);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.08);
 }
 
 .day-number {
@@ -2324,7 +2315,7 @@ span.flatpickr-weekday {
 
 .cal-event-badge {
     display: block;
-    background: rgba(56, 189, 248, 0.2);
+    background: rgba(0,0,0,0.16);
     color: var(--text-color);
     font-size: 0.75rem;
     padding: 2px 4px;
@@ -2341,7 +2332,7 @@ span.flatpickr-weekday {
 .cal-event-badge:hover {
     transform: scale(1.02);
     z-index: 2;
-    background: rgba(56, 189, 248, 0.4);
+    background: rgba(0,0,0,0.32);
 }
 
 /* Details Panel */
@@ -2454,7 +2445,7 @@ span.flatpickr-weekday {
 
 @media (min-width: 768px) {
     .log-detail-left-col {
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        border-right: 1px solid rgba(0,0,0,0.08);
         padding-right: 1.5rem;
     }
 }
@@ -2493,7 +2484,7 @@ span.flatpickr-weekday {
 /* Bill/Receipt Style Box for Job Details & Cost */
 .bill-receipt-box {
     background: #f8fafc;
-    color: #0f172a;
+    color: #f5f5f5;
     border-radius: 4px;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
@@ -2530,8 +2521,8 @@ span.flatpickr-weekday {
 
 /* Force dark text and light borders for anything rendered inside (like tables from Javascript) */
 .bill-receipt-content * {
-    color: #0f172a !important;
-    border-color: #cbd5e1 !important;
+    color: #f5f5f5 !important;
+    border-color: #444444 !important;
 }
 
 /* Header styling if the user didn't use line items */
@@ -2544,21 +2535,21 @@ span.flatpickr-weekday {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-top: 2px dashed #94a3b8;
+    border-top: 2px dashed #888888;
     padding-top: 1rem;
     margin-top: 0.5rem;
 }
 
 .bill-receipt-total-label {
     font-size: 0.95rem;
-    color: #475569;
+    color: #555555;
     font-weight: 700;
     text-transform: uppercase;
 }
 
 .bill-receipt-total-value {
     font-size: 1.5rem;
-    color: #0f172a;
+    color: #f5f5f5;
     font-weight: 800;
 }
 
@@ -2567,8 +2558,8 @@ span.flatpickr-weekday {
     position: relative;
     display: flex;
     align-items: center;
-    background: rgba(255, 255, 255, 0.05);
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0,0,0,0.04);
+    border: 2px solid rgba(0,0,0,0.08);
     border-radius: 12px;
     transition: all 0.3s ease;
     padding: 0.5rem;
@@ -2578,8 +2569,8 @@ span.flatpickr-weekday {
 
 .chat-input-wrapper:focus-within {
     border-color: var(--primary-color);
-    background: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 16px rgba(56, 189, 248, 0.15), 0 0 0 3px rgba(56, 189, 248, 0.1);
+    background: rgba(0,0,0,0.06);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 0 0 3px rgba(0,0,0,0.08);
 }
 
 /* Comment Attachments Preview - Horizontal Scroll */
@@ -2590,11 +2581,11 @@ span.flatpickr-weekday {
     flex-wrap: nowrap !important;
     gap: 10px;
     padding: 10px;
-    border: 2px dashed rgba(255,255,255,0.2);
+    border: 2px dashed rgba(0,0,0,0.12);
     border-radius: 8px;
     min-height: 120px;
     max-height: 120px;
-    background: rgba(255,255,255,0.02);
+    background: rgba(0,0,0,0.02);
     overflow-x: auto !important;
     overflow-y: hidden !important;
     margin-top: 0.5rem;
@@ -2619,19 +2610,19 @@ span.flatpickr-weekday {
 
 #comment-attachments-preview::-webkit-scrollbar-track,
 #description-attachments-preview::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.05);
+    background: rgba(0,0,0,0.04);
     border-radius: 4px;
 }
 
 #comment-attachments-preview::-webkit-scrollbar-thumb,
 #description-attachments-preview::-webkit-scrollbar-thumb {
-    background: rgba(56, 189, 248, 0.3);
+    background: rgba(0,0,0,0.24);
     border-radius: 4px;
 }
 
 #comment-attachments-preview::-webkit-scrollbar-thumb:hover,
 #description-attachments-preview::-webkit-scrollbar-thumb:hover {
-    background: rgba(56, 189, 248, 0.5);
+    background: rgba(0,0,0,0.40);
 }
 
 .chat-input-textarea {
@@ -2647,7 +2638,7 @@ span.flatpickr-weekday {
     max-height: 120px;
     outline: none;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    scrollbar-color: rgba(0,0,0,0.12) transparent;
     line-height: 1.5;
 }
 
@@ -2665,18 +2656,18 @@ span.flatpickr-weekday {
 }
 
 .chat-input-textarea::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(0,0,0,0.12);
     border-radius: 3px;
 }
 
 .chat-input-textarea::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(0,0,0,0.15);
 }
 
 
 .chat-input-send-btn {
     background: var(--primary-color);
-    color: white;
+    color: #111111;
     border: none;
     border-radius: 10px;
     width: 40px;
@@ -2687,18 +2678,18 @@ span.flatpickr-weekday {
     cursor: pointer;
     transition: all 0.2s ease;
     flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.24);
 }
 
 .chat-input-send-btn:hover {
     background: var(--primary-hover);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.32);
 }
 
 .chat-input-send-btn:active {
     transform: translateY(0);
-    box-shadow: 0 2px 6px rgba(56, 189, 248, 0.3);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.24);
 }
 
 .chat-input-send-btn i {
@@ -2721,7 +2712,7 @@ span.flatpickr-weekday {
 }
 
 .chat-input-attach-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(0,0,0,0.06);
     color: var(--primary-color);
     transform: scale(1.1);
 }
@@ -2756,7 +2747,7 @@ span.flatpickr-weekday {
     display: flex;
     gap: 0.75rem;
     padding: 1rem;
-    background: rgba(56, 189, 248, 0.08);
+    background: rgba(0,0,0,0.06);
     border-radius: 12px;
     margin-bottom: 0.75rem;
     transition: background 0.2s;
@@ -2764,7 +2755,7 @@ span.flatpickr-weekday {
 }
 
 .comment-item:hover {
-    background: rgba(56, 189, 248, 0.12);
+    background: rgba(0,0,0,0.10);
 }
 
 /* System Log Comment Styling */
@@ -2783,7 +2774,7 @@ span.flatpickr-weekday {
 }
 
 .comment-item-system-log .comment-avatar {
-    background: linear-gradient(135deg, #64748b, #475569);
+    background: linear-gradient(135deg, #666666, #555555);
 }
 
 .comment-avatar {
@@ -2791,7 +2782,7 @@ span.flatpickr-weekday {
     height: 40px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
-    color: white;
+    color: #111111;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2894,7 +2885,7 @@ span.flatpickr-weekday {
 }
 
 .image-overlay i {
-    color: white;
+    color: #111111;
     font-size: 1.5rem;
 }
 
@@ -2903,8 +2894,8 @@ span.flatpickr-weekday {
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0,0,0,0.04);
+    border: 1px solid rgba(0,0,0,0.08);
     border-radius: 8px;
     text-decoration: none;
     color: var(--text-color);
@@ -2913,9 +2904,9 @@ span.flatpickr-weekday {
 }
 
 .comment-file-attachment:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(0,0,0,0.06);
     border-color: var(--primary-color);
-    box-shadow: 0 2px 8px rgba(56, 189, 248, 0.2);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.16);
 }
 
 .file-icon {
@@ -2925,7 +2916,7 @@ span.flatpickr-weekday {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(0,0,0,0.08);
     border-radius: 6px;
     flex-shrink: 0;
 }
@@ -2992,15 +2983,15 @@ span.flatpickr-weekday {
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0,0,0,0.04);
+    border: 1px solid rgba(0,0,0,0.08);
     border-radius: 8px;
     transition: all 0.2s;
 }
 
 .attachment-preview-list-item:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(0,0,0,0.06);
+    border-color: rgba(0,0,0,0.12);
 }
 
 .preview-thumbnail {
@@ -3027,7 +3018,7 @@ span.flatpickr-weekday {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(0,0,0,0.04);
 }
 
 .preview-file-icon i {
@@ -3082,7 +3073,7 @@ span.flatpickr-weekday {
 .upload-progress-bar {
     flex: 1;
     height: 4px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(0,0,0,0.08);
     border-radius: 2px;
     overflow: hidden;
     position: relative;
@@ -3147,8 +3138,8 @@ span.flatpickr-weekday {
 
 .attachment-preview-item {
     position: relative;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0,0,0,0.04);
+    border: 1px solid rgba(0,0,0,0.08);
     border-radius: 8px;
     padding: 0.5rem;
     display: flex;
@@ -3174,7 +3165,7 @@ span.flatpickr-weekday {
     width: 100%;
     height: 100px;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(0,0,0,0.04);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -3224,7 +3215,7 @@ span.flatpickr-weekday {
     height: 24px;
     border-radius: 50%;
     background: var(--danger-color);
-    color: white;
+    color: #111111;
     border: 2px solid var(--bg-color);
     cursor: pointer;
     display: flex;
@@ -3255,7 +3246,7 @@ span.flatpickr-weekday {
     padding: 1rem;
     background: rgba(255, 255, 255, 0.03);
     border-radius: 10px;
-    border: 2px dashed rgba(255, 255, 255, 0.15);
+    border: 2px dashed rgba(0,0,0,0.1);
     position: relative;
 }
 
@@ -3277,7 +3268,7 @@ span.flatpickr-weekday {
     overflow-y: auto;
     padding-right: 0.5rem;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    scrollbar-color: rgba(0,0,0,0.12) transparent;
 }
 
 #log-comments-list::-webkit-scrollbar {
@@ -3289,12 +3280,12 @@ span.flatpickr-weekday {
 }
 
 #log-comments-list::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(0,0,0,0.12);
     border-radius: 3px;
 }
 
 #log-comments-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(0,0,0,0.15);
 }
 
 
@@ -3324,7 +3315,7 @@ span.flatpickr-weekday {
 }
 
 .data-table th {
-    background: rgba(30, 41, 59, 0.8);
+    background: #ffffff;
     font-weight: 600;
     color: var(--primary-color);
 }
@@ -3334,7 +3325,7 @@ span.flatpickr-weekday {
 }
 
 .data-table tr:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(0,0,0,0.04);
 }
 
 .data-table .cell-date {
@@ -3379,7 +3370,7 @@ span.flatpickr-weekday {
     top: 100%;
     left: 0;
     right: 0;
-    background: #1e293b;
+    background: #ffffff;
     /* Solid background */
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-sm);
@@ -3416,7 +3407,7 @@ span.flatpickr-weekday {
 .autocomplete-item {
     padding: 0.75rem 1rem;
     cursor: pointer;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(0,0,0,0.04);
     transition: background 0.2s;
     color: var(--text-color);
 }
@@ -3426,8 +3417,8 @@ span.flatpickr-weekday {
 }
 
 .autocomplete-item:hover {
-    background: rgba(56, 189, 248, 0.2);
-    color: white;
+    background: rgba(0,0,0,0.16);
+    color: #111111;
 }
 
 /* Helper for Marquee Duplication */
@@ -3498,7 +3489,7 @@ span.flatpickr-weekday {
         font-size: 0.8rem;
         font-weight: 700;
         color: var(--primary-color);
-        background: rgba(56, 189, 248, 0.1);
+        background: rgba(0,0,0,0.08);
         padding: 0.2rem 0.6rem;
         border-radius: 6px;
     }
@@ -3507,7 +3498,7 @@ span.flatpickr-weekday {
         font-size: 0.8rem;
         font-weight: 700;
         color: var(--primary-color);
-        background: rgba(56, 189, 248, 0.1);
+        background: rgba(0,0,0,0.08);
         padding: 0.2rem 0.6rem;
         border-radius: 6px;
     }
@@ -3553,7 +3544,7 @@ span.flatpickr-weekday {
     .mc-footer {
         padding-top: 0.6rem;
         margin-top: 0.2rem;
-        border-top: 1px solid rgba(255,255,255,0.05);
+        border-top: 1px solid rgba(0,0,0,0.04);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -3604,14 +3595,14 @@ span.flatpickr-weekday {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(56, 189, 248, 0.05));
+    background: linear-gradient(135deg, rgba(0,0,0,0.12), rgba(0,0,0,0.04));
     color: var(--primary-color);
     padding: 0.35rem 0.9rem;
     border-radius: 9999px;
     font-size: 0.8rem;
     font-weight: 600;
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    backdrop-filter: blur(4px);
+    border: 1px solid rgba(0,0,0,0.24);
+    backdrop-filter: none;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: default;
@@ -3619,15 +3610,15 @@ span.flatpickr-weekday {
 }
 
 .site-log-count:hover {
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(56, 189, 248, 0.15));
-    border-color: rgba(56, 189, 248, 0.5);
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);
+    background: linear-gradient(135deg, rgba(0,0,0,0.20), rgba(0,0,0,0.12));
+    border-color: rgba(0,0,0,0.40);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.16);
     transform: translateY(-2px);
 }
 
 .site-log-count i {
     font-size: 0.9rem;
-    filter: drop-shadow(0 0 2px rgba(56, 189, 248, 0.4));
+    filter: drop-shadow(0 0 2px rgba(0,0,0,0.32));
 }
 
 /* --- Login Page Styles --- */
@@ -3649,12 +3640,11 @@ span.flatpickr-weekday {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    background: rgba(17, 24, 39, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(12px);
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.1);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    backdrop-filter: none;
     border-radius: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .login-header {
@@ -3665,29 +3655,27 @@ span.flatpickr-weekday {
 .login-logo {
     width: 64px;
     height: 64px;
-    background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(59, 130, 246, 0.2));
+    background: #f5f5f5;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto 1.25rem;
-    border: 1px solid rgba(14, 165, 233, 0.3);
-    box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+    border: 1px solid rgba(0,0,0,0.1);
+    box-shadow: none;
 }
 
 .login-logo i {
     font-size: 1.75rem;
-    color: var(--primary-color);
+    color: #111111;
 }
 
 .login-header h2 {
     font-size: 1.5rem;
     font-weight: 600;
     margin-bottom: 0.5rem;
-    background: linear-gradient(to right, #38bdf8, #818cf8);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #111111;
+    -webkit-text-fill-color: #111111;
 }
 
 .login-header p {
@@ -3715,7 +3703,7 @@ span.flatpickr-weekday {
     content: "";
     flex: 1;
     height: 1px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(0,0,0,0.08);
 }
 
 .login-divider span {
@@ -3746,7 +3734,7 @@ span.flatpickr-weekday {
 
 .btn-line {
     background: #06c755;
-    color: white;
+    color: #111111;
 }
 
 .btn-line:hover {
@@ -3773,9 +3761,9 @@ span.flatpickr-weekday {
 }
 
 .role-user {
-    background: rgba(56, 189, 248, 0.15);
-    color: #38bdf8;
-    border: 1px solid rgba(56, 189, 248, 0.3);
+    background: rgba(0,0,0,0.12);
+    color: #111111;
+    border: 1px solid rgba(0,0,0,0.24);
 }
 
 /* Recycle Bin Refactor Styles */
@@ -3800,10 +3788,10 @@ span.flatpickr-weekday {
 
 /* Blue Schema for Sites */
 .icon-type-site {
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.1) 0%, rgba(56, 189, 248, 0.2) 100%);
-    color: #38bdf8;
+    background: linear-gradient(135deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.16) 100%);
+    color: #111111;
     /* Sky-400 */
-    border: 1px solid rgba(56, 189, 248, 0.3);
+    border: 1px solid rgba(0,0,0,0.24);
 }
 
 /* Orange Schema for Logs */
@@ -3839,7 +3827,7 @@ span.flatpickr-weekday {
     font-size: 0.75rem;
     padding: 2px 8px;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(0,0,0,0.04);
     color: var(--text-muted);
     border: 1px solid var(--glass-border);
     display: inline-flex;
@@ -3964,8 +3952,8 @@ span.flatpickr-weekday {
         justify-content: space-between;
         align-items: center;
         background: transparent;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
         border-bottom: 1px solid var(--glass-border);
         position: sticky;
         top: 0;
@@ -3999,7 +3987,7 @@ span.flatpickr-weekday {
     }
 
     .nav-btn:hover {
-        background: rgba(56, 189, 248, 0.1);
+        background: rgba(0,0,0,0.08);
         color: var(--primary-color);
     }
 }
@@ -4016,8 +4004,8 @@ span.flatpickr-weekday {
         grid-template-columns: 3rem 1fr 3rem;
         gap: 0.5rem;
         background: transparent;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
         border-bottom: 1px solid var(--glass-border);
         z-index: 1000;
     }
@@ -4030,9 +4018,9 @@ span.flatpickr-weekday {
         right: 0;
         /* Ensures full width stretch */
         width: 100% !important;
-        background: rgba(30, 41, 59, 0.98);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
+        background: #ffffff;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
         border-top: 1px solid var(--glass-border);
         padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom));
         display: flex;
@@ -4088,7 +4076,7 @@ span.flatpickr-weekday {
     width: 100%;
     padding: 0.25rem;
     background: transparent;
-    color: white;
+    color: #111111;
     /* #ef4444 */
     border: 1px solid white;
     /* Explicit Red Border */
@@ -4136,7 +4124,7 @@ span.flatpickr-weekday {
 
 .btn-sync-polished:hover {
     background: var(--primary-color);
-    color: white;
+    color: #111111;
     border-color: var(--primary-color);
 }
 
@@ -4180,7 +4168,7 @@ span.flatpickr-weekday {
 
 .btn-line-polished.linked:hover {
     background: #f97316;
-    color: white;
+    color: #111111;
     border-color: #ea580c;
     box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4);
     transform: translateY(-1px);
@@ -4200,7 +4188,7 @@ span.flatpickr-weekday {
 
 .login-footer {
     margin-top: 2rem;
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(0,0,0,0.4);
     font-size: 0.85rem;
     text-align: center;
     width: 100%;
@@ -4233,7 +4221,7 @@ span.flatpickr-weekday {
 #loading-splash .spinner {
     width: 48px;
     height: 48px;
-    border: 4px solid rgba(59, 130, 246, 0.2);
+    border: 4px solid rgba(0,0,0,0.10);
     border-top: 4px solid var(--primary-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
@@ -4311,9 +4299,9 @@ span.flatpickr-weekday {
 }
 
 .profile-unified-card {
-    background: rgba(30, 41, 59, 0.7);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: none;
+    border: 1px solid rgba(0,0,0,0.06);
     border-radius: 24px;
     padding: 2.5rem;
     width: 100%;
@@ -4347,7 +4335,7 @@ span.flatpickr-weekday {
 .notification-section {
     margin-bottom: 2rem;
     padding: 1.5rem;
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(0,0,0,0.02);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);
 }
@@ -4389,7 +4377,7 @@ span.flatpickr-weekday {
     width: 18px;
     left: 3px;
     bottom: 3px;
-    background-color: white;
+    background-color: #111111;
     transition: 0.3s;
     border-radius: 50%;
 }
@@ -4420,7 +4408,7 @@ span.flatpickr-weekday {
     background: rgba(255, 255, 255, 0.03);
     border-radius: 12px;
     padding: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(0,0,0,0.08);
     width: fit-content;
 }
 
@@ -4447,7 +4435,7 @@ span.flatpickr-weekday {
 
 .profile-tab:hover {
     color: var(--text-color);
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(0,0,0,0.04);
 }
 
 .profile-tab:hover i {
@@ -4455,9 +4443,9 @@ span.flatpickr-weekday {
 }
 
 .profile-tab.active {
-    color: white;
+    color: #111111;
     background: var(--primary-color);
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.24);
 }
 
 .profile-tab-content {
@@ -4484,9 +4472,9 @@ span.flatpickr-weekday {
 .user-management-header {
     margin-bottom: 2rem;
     padding: 2rem;
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.1), rgba(56, 189, 248, 0.05));
+    background: linear-gradient(135deg, rgba(0,0,0,0.08), rgba(0,0,0,0.04));
     border-radius: 12px;
-    border: 1px solid rgba(56, 189, 248, 0.2);
+    border: 1px solid rgba(0,0,0,0.16);
 }
 
 .user-management-header h2 {
@@ -4536,8 +4524,8 @@ span.flatpickr-weekday {
 .user-roles-search .form-control {
     width: 100%;
     padding: 1rem 1rem 1rem 3rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0,0,0,0.04);
+    border: 2px solid rgba(0,0,0,0.08);
     border-radius: 12px;
     color: var(--text-color);
     font-size: 0.95rem;
@@ -4552,8 +4540,8 @@ span.flatpickr-weekday {
 .user-roles-search .form-control:focus {
     outline: none;
     border-color: var(--primary-color);
-    background: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.1);
+    background: rgba(0,0,0,0.06);
+    box-shadow: 0 0 0 4px rgba(0,0,0,0.08);
 }
 
 .users-list {
@@ -4570,17 +4558,17 @@ span.flatpickr-weekday {
 }
 
 .users-list::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(0,0,0,0.04);
     border-radius: 4px;
 }
 
 .users-list::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(0,0,0,0.12);
     border-radius: 4px;
 }
 
 .users-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(0,0,0,0.15);
 }
 
 .user-role-item {
@@ -4590,14 +4578,14 @@ span.flatpickr-weekday {
     gap: 1.5rem;
     padding: 1.5rem;
     background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(0,0,0,0.08);
     border-radius: 12px;
     transition: all 0.3s ease;
 }
 
 .user-role-item:hover {
     background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(0,0,0,0.12);
     transform: translateY(-2px);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
@@ -4612,11 +4600,11 @@ span.flatpickr-weekday {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
+    color: #111111;
     font-weight: 700;
     font-size: 1.5rem;
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
-    border: 3px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.24);
+    border: 3px solid rgba(0,0,0,0.08);
 }
 
 .user-role-avatar img {
@@ -4676,8 +4664,8 @@ span.flatpickr-weekday {
 .user-role-select {
     min-width: 180px;
     padding: 0.75rem 1.25rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0,0,0,0.04);
+    border: 2px solid rgba(0,0,0,0.08);
     border-radius: 8px;
     color: var(--text-color);
     font-size: 0.95rem;
@@ -4692,14 +4680,14 @@ span.flatpickr-weekday {
 }
 
 .user-role-select:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(0,0,0,0.06);
     border-color: var(--primary-color);
 }
 
 .user-role-select:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15);
+    box-shadow: 0 0 0 4px rgba(0,0,0,0.12);
 }
 
 .user-role-select:disabled {
@@ -4732,9 +4720,9 @@ span.flatpickr-weekday {
 }
 
 .user-role-badge.editor {
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.1));
+    background: linear-gradient(135deg, rgba(0,0,0,0.16), rgba(0,0,0,0.08));
     color: var(--primary-color);
-    border: 1px solid rgba(56, 189, 248, 0.3);
+    border: 1px solid rgba(0,0,0,0.24);
 }
 
 .user-role-badge.viewer {
@@ -4809,7 +4797,7 @@ span.flatpickr-weekday {
     justify-content: center;
     /* Vertical Center */
     text-align: center;
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    border-right: 1px solid rgba(0,0,0,0.08);
     padding-right: 2rem;
     height: 100%;
 }
@@ -4835,7 +4823,7 @@ span.flatpickr-weekday {
     /* Allow button to sit on edge */
     position: relative;
     margin-bottom: 1.5rem;
-    border: 4px solid rgba(255, 255, 255, 0.1);
+    border: 4px solid rgba(0,0,0,0.08);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
@@ -4889,7 +4877,7 @@ span.flatpickr-weekday {
     border-radius: 12px;
     padding: 1.5rem;
     margin-top: 2rem;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(0,0,0,0.04);
 }
 
 @media (max-width: 850px) {
@@ -4901,7 +4889,7 @@ span.flatpickr-weekday {
     .profile-left-col {
         border-right: none;
         padding-right: 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid rgba(0,0,0,0.08);
         padding-bottom: 2rem;
     }
 
@@ -4974,14 +4962,14 @@ summary:focus-visible {
 .toast {
     background: linear-gradient(135deg, rgba(26, 32, 44, 0.95) 0%, rgba(26, 32, 44, 0.98) 100%);
     backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(0,0,0,0.08);
     border-radius: 12px;
     padding: 1rem 1.25rem;
     min-width: 320px;
     box-shadow:
         0 8px 32px rgba(0, 0, 0, 0.4),
         0 2px 8px rgba(0, 0, 0, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        inset 0 1px 0 rgba(0,0,0,0.08);
     display: flex;
     align-items: center;
     gap: 0.875rem;
@@ -5008,7 +4996,7 @@ summary:focus-visible {
     box-shadow:
         0 12px 40px rgba(0, 0, 0, 0.5),
         0 4px 12px rgba(0, 0, 0, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        inset 0 1px 0 rgba(0,0,0,0.1);
 }
 
 .toast.hiding {
@@ -5024,7 +5012,7 @@ summary:focus-visible {
 
 .toast-content {
     flex: 1;
-    color: #ffffff;
+    color: #111111;
     font-size: 0.925rem;
     line-height: 1.5;
     font-weight: 500;
@@ -5032,8 +5020,8 @@ summary:focus-visible {
 }
 
 .toast-close {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0,0,0,0.04);
+    border: 1px solid rgba(0,0,0,0.08);
     border-radius: 6px;
     color: rgba(255, 255, 255, 0.6);
     cursor: pointer;
@@ -5049,8 +5037,8 @@ summary:focus-visible {
 }
 
 .toast-close:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(0,0,0,0.08);
+    border-color: rgba(0,0,0,0.12);
     color: rgba(255, 255, 255, 0.9);
     transform: scale(1.1);
 }
@@ -5085,15 +5073,15 @@ summary:focus-visible {
 }
 
 .toast.info {
-    --accent-color: #3b82f6;
+    --accent-color: #333333;
 }
 
 .toast.info::before {
-    background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+    background: linear-gradient(180deg, #333333 0%, #333333 100%);
 }
 
 .toast.info .toast-icon {
-    color: #3b82f6;
+    color: #333333;
 }
 
 .toast.warning {
@@ -5215,7 +5203,7 @@ summary:focus-visible {
 
     /* Type-Specific Border Colors */
     #recycle-bin-view .data-table tr.recycle-row-site {
-        border-left: 4px solid #3b82f6 !important;
+        border-left: 4px solid #333333 !important;
         /* Blue */
     }
 
@@ -5240,10 +5228,10 @@ summary:focus-visible {
 
     /* Specific Icon Styles to Match Desktop */
     #recycle-bin-view .data-table .cell-type .icon-type-site {
-        color: #3b82f6;
+        color: #333333;
         font-size: 1.5rem;
         /* Larger mobile icon */
-        filter: drop-shadow(0 2px 4px rgba(59, 130, 246, 0.3));
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.10));
     }
 
     #recycle-bin-view .data-table .cell-type .icon-type-log {
@@ -5310,7 +5298,7 @@ summary:focus-visible {
         grid-row: 2;
         margin-top: 0.75rem;
         padding-top: 0.75rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        border-top: 1px solid rgba(0,0,0,0.08);
         display: flex;
         justify-content: flex-end;
         /* Right Aligned */
@@ -5363,7 +5351,7 @@ summary:focus-visible {
 /* LINE Login Button */
 .btn-line {
     background: #06C755;
-    color: white;
+    color: #111111;
     border: none;
     padding: 0.75rem 1rem;
     border-radius: var(--radius-md);
@@ -5390,7 +5378,7 @@ summary:focus-visible {
 #recycle-bin-view .data-table .item-sub-header {
     margin-top: 0.75rem;
     padding-top: 0.75rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(0,0,0,0.08);
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
@@ -5412,7 +5400,7 @@ summary:focus-visible {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(0,0,0,0.04);
     padding: 1rem;
     border-radius: var(--radius-md);
     border: 1px solid var(--glass-border);
@@ -5462,20 +5450,20 @@ summary:focus-visible {
 }
 
 .btn-link-action:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(0,0,0,0.08);
     transform: translateY(-1px);
 }
 
 /* Sync Button (Blue) */
 #btn-sync-line-photo-new {
-    border-color: #3b82f6;
-    color: #3b82f6;
-    background: rgba(59, 130, 246, 0.05);
+    border-color: #333333;
+    color: #333333;
+    background: rgba(0,0,0,0.03);
 }
 
 #btn-sync-line-photo-new:hover {
-    background: rgba(59, 130, 246, 0.15);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+    background: rgba(0,0,0,0.07);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.10);
 }
 
 .btn-link-action.connect {
@@ -5484,7 +5472,7 @@ summary:focus-visible {
 }
 
 .btn-link-action.connect:hover {
-    background: rgba(56, 189, 248, 0.1);
+    background: rgba(0,0,0,0.08);
 }
 
 .btn-link-action.disconnect {
@@ -5548,10 +5536,10 @@ summary:focus-visible {
     border-radius: 50%;
 
     /* Theme Change: Subtle Glassy Blue instead of Bright Green */
-    background: rgba(56, 189, 248, 0.1);
+    background: rgba(0,0,0,0.08);
     /* Matches primary-color fade */
     color: var(--primary-color);
-    border: 1px solid rgba(56, 189, 248, 0.2);
+    border: 1px solid rgba(0,0,0,0.16);
 
     display: flex;
     align-items: center;
@@ -5571,7 +5559,7 @@ summary:focus-visible {
     /* White icon on hover */
     border-color: var(--primary-color);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.24);
 }
 
 .cal-day:hover .btn-calendar-add {
@@ -5588,7 +5576,7 @@ summary:focus-visible {
         font-size: 0.6rem;
         top: 2px;
         right: 2px;
-        background: rgba(56, 189, 248, 0.15);
+        background: rgba(0,0,0,0.12);
         pointer-events: none;
         /* Prevent accidental clicks when invisible */
     }
@@ -5642,9 +5630,9 @@ summary:focus-visible {
 }
 
 .badge-primary {
-    background: rgba(56, 189, 248, 0.2);
+    background: rgba(0,0,0,0.16);
     color: var(--primary-color);
-    border: 1px solid rgba(56, 189, 248, 0.3);
+    border: 1px solid rgba(0,0,0,0.24);
 }
 
 
@@ -5678,7 +5666,7 @@ summary:focus-visible {
         margin-bottom: 1.25rem;
         border: 1px solid var(--glass-border);
         border-radius: var(--radius-lg);
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(30, 41, 59, 0.4) 100%);
+        background: linear-gradient(135deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 100%);
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         position: relative;
         overflow: hidden;
@@ -5693,7 +5681,7 @@ summary:focus-visible {
         left: 0;
         right: 0;
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.5), transparent);
+        background: linear-gradient(90deg, transparent, rgba(0,0,0,0.40), transparent);
     }
 
     /* Cell Resets */
@@ -5806,18 +5794,18 @@ summary:focus-visible {
 
     .data-table .cell-category .value {
         display: inline-block;
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(0,0,0,0.04);
         padding: 4px 10px;
         border-radius: 6px;
         font-size: 0.8rem;
-        color: #e2e8f0;
+        color: #222222;
         border: 1px solid var(--glass-border);
     }
 
     /* 5. Detail Section */
     .data-table .cell-details {
         grid-area: detail;
-        background: rgba(15, 23, 42, 0.3);
+        background: rgba(0,0,0,0.04);
         padding: 0.85rem;
         border-radius: 8px;
         margin-top: 0.5rem;
@@ -5832,7 +5820,7 @@ summary:focus-visible {
 
     .data-table .cell-details .value {
         line-height: 1.6;
-        color: #cbd5e1;
+        color: #444444;
         font-size: 0.95rem;
         display: block;
     }
@@ -5905,7 +5893,7 @@ summary:focus-visible {
     }
 
     .data-table .btn-icon {
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(0,0,0,0.04);
         width: 40px;
         height: 40px;
         border: 1px solid var(--glass-border);
@@ -5955,7 +5943,7 @@ summary:focus-visible {
         margin-bottom: 0.75rem;
         border: 1px solid var(--glass-border);
         border-radius: var(--radius-md);
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(30, 41, 59, 0.4) 100%);
+        background: linear-gradient(135deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 100%);
         box-shadow: var(--shadow-sm);
         position: relative;
         align-items: center;
@@ -5969,7 +5957,7 @@ summary:focus-visible {
         left: 0;
         right: 0;
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.5), transparent);
+        background: linear-gradient(90deg, transparent, rgba(0,0,0,0.40), transparent);
     }
 
     /* Cell Resets */
@@ -6039,8 +6027,8 @@ summary:focus-visible {
         font-size: 0.75rem;
         display: flex;
         align-items: center;
-        background: rgba(56, 189, 248, 0.2);
-        border: 1px solid rgba(56, 189, 248, 0.3);
+        background: rgba(0,0,0,0.16);
+        border: 1px solid rgba(0,0,0,0.24);
         padding: 2px 8px;
         border-radius: 4px;
     }
@@ -6063,11 +6051,11 @@ summary:focus-visible {
 
     .data-table .cell-category .value {
         display: inline-block;
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(0,0,0,0.04);
         padding: 2px 8px;
         border-radius: 4px;
         font-size: 0.75rem;
-        color: #cbd5e1;
+        color: #444444;
         border: 1px solid var(--glass-border);
     }
 
@@ -6146,7 +6134,7 @@ summary:focus-visible {
     }
 
     .data-table .btn-icon {
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(0,0,0,0.04);
         width: 32px;
         height: 32px;
         border: 1px solid var(--glass-border);
@@ -6282,11 +6270,11 @@ summary:focus-visible {
 
     /* Remove specific colored borders, keep backgrounds subtle */
     .recycle-row-site {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.4) 0%, rgba(14, 165, 233, 0.05) 100%);
+        background: linear-gradient(135deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.03) 100%);
     }
 
     .recycle-row-log {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.4) 0%, rgba(249, 115, 22, 0.05) 100%);
+        background: linear-gradient(135deg, rgba(0,0,0,0.2) 0%, rgba(249, 115, 22, 0.05) 100%);
     }
 }
 
@@ -6296,7 +6284,7 @@ summary:focus-visible {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(15, 23, 42, 0.5);
+    background: rgba(0,0,0,0.07);
     overflow: hidden;
 }
 
@@ -6305,8 +6293,8 @@ summary:focus-visible {
     width: 24px;
     /* Default size */
     height: 24px;
-    border: 3px solid rgba(255, 255, 255, 0.1);
-    border-top-color: #38bdf8;
+    border: 3px solid rgba(0,0,0,0.08);
+    border-top-color: #111111;
     border-radius: 50%;
     animation: inlineSpinner 0.8s linear infinite;
     z-index: 10;
@@ -6342,7 +6330,7 @@ summary:focus-visible {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
-    backdrop-filter: blur(5px);
+    backdrop-filter: none;
 }
 
 .image-viewer-overlay.visible {
@@ -6360,9 +6348,9 @@ summary:focus-visible {
 }
 
 .image-viewer-toolbar button {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
+    background: rgba(0,0,0,0.08);
+    border: 1px solid rgba(0,0,0,0.12);
+    color: #111111;
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -6375,7 +6363,7 @@ summary:focus-visible {
 }
 
 .image-viewer-toolbar button:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(0,0,0,0.15);
     transform: scale(1.1);
 }
 
@@ -6412,16 +6400,16 @@ summary:focus-visible {
 }
 
 .iti__country-list {
-    background-color: var(--surface-bg, #1e293b);
+    background-color: var(--surface-bg, #ffffff);
     color: var(--text-color, #fff);
-    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+    border: 1px solid var(--glass-border, rgba(0,0,0,0.08));
     z-index: 9999 !important;
     white-space: normal;
     /* Fix truncation */
 }
 
 .iti__country {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(0,0,0,0.04);
 }
 
 .iti__country:last-child {
@@ -6429,21 +6417,21 @@ summary:focus-visible {
 }
 
 .iti__country.iti__highlight {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(0,0,0,0.08);
 }
 
 .iti input {
     width: 100%;
     background: rgba(0, 0, 0, 0.2) !important;
     /* Force override lib */
-    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1)) !important;
+    border: 1px solid var(--glass-border, rgba(0,0,0,0.08)) !important;
     border-radius: var(--radius-md, 8px) !important;
     color: var(--text-color, #fff) !important;
 }
 
 .iti input:focus {
     outline: none;
-    border-color: var(--primary-color, #38bdf8) !important;
+    border-color: var(--primary-color, #111111) !important;
     background: rgba(0, 0, 0, 0.4) !important;
     box-shadow: none !important;
 }
@@ -6457,8 +6445,8 @@ summary:focus-visible {
     margin-bottom: 1rem;
     position: relative;
     border-radius: var(--radius-lg, 12px);
-    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
-    background: var(--card-bg, rgba(15, 23, 42, 0.3));
+    border: 1px solid var(--glass-border, rgba(0,0,0,0.08));
+    background: var(--card-bg, rgba(0,0,0,0.04));
 }
 
 /* Sticky Header Support */
@@ -6466,7 +6454,7 @@ summary:focus-visible {
     position: sticky;
     top: 0;
     z-index: 10;
-    background: rgba(30, 41, 59, 1);
+    background: #ffffff;
 }
 
 /* Custom Scrollbar for Table */
@@ -6481,14 +6469,14 @@ summary:focus-visible {
 }
 
 .table-container::-webkit-scrollbar-thumb {
-    background: var(--primary-color, #38bdf8);
+    background: var(--primary-color, #111111);
     border-radius: 4px;
     border: 2px solid transparent;
     background-clip: content-box;
 }
 
 .table-container::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-color, #0ea5e9);
+    background: var(--accent-color, #333333);
 }
 
 #logs-sentinel {
@@ -6497,7 +6485,7 @@ summary:focus-visible {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(56, 189, 248, 0.05);
+    background: rgba(0,0,0,0.04);
     border-top: 1px solid var(--glass-border);
     color: var(--text-muted);
     font-weight: 500;
@@ -6530,7 +6518,7 @@ summary:focus-visible {
     width: 100% !important;
     height: 100% !important;
     background: rgba(0, 0, 0, 0.4) !important;
-    color: white !important;
+    color: #111111 !important;
     border: none !important;
     border-radius: 50%;
     cursor: pointer;
@@ -6596,7 +6584,7 @@ summary:focus-visible {
     /* Ensure flex for centering */
     align-items: center;
     justify-content: center;
-    color: white !important;
+    color: #111111 !important;
     /* Ensure icon color */
     border-radius: 50%;
 }
@@ -6604,7 +6592,7 @@ summary:focus-visible {
 .reset-photo-btn i {
     font-size: 0.8rem !important;
     /* Enforce icon size */
-    color: white !important;
+    color: #111111 !important;
 }
 
 .edit-photo-btn:hover {
@@ -6680,7 +6668,7 @@ summary:focus-visible {
     gap: 0.75rem;
     align-items: center;
     padding: 0 0.25rem 0.5rem 0.25rem;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 2px solid rgba(0,0,0,0.08);
 }
 
 .line-item-header-label {
@@ -6728,7 +6716,7 @@ summary:focus-visible {
 }
 
 .line-item-row:hover {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(0,0,0,0.02);
 }
 
 /* Line Item Fields */
@@ -6764,7 +6752,7 @@ summary:focus-visible {
 .line-item-cost {
     width: 100%;
     background: rgba(255, 255, 255, 0.03);
-    border: 1.5px solid rgba(255, 255, 255, 0.1);
+    border: 1.5px solid rgba(0,0,0,0.08);
     border-radius: 6px;
     padding: 0.5rem 0.75rem;
     color: var(--text-color);
@@ -6786,7 +6774,7 @@ summary:focus-visible {
 
 .line-item-desc:hover,
 .line-item-cost:hover {
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(0,0,0,0.12);
     background: rgba(255, 255, 255, 0.04);
 }
 
@@ -6794,8 +6782,8 @@ summary:focus-visible {
 .line-item-cost:focus {
     outline: none;
     border-color: var(--primary-color);
-    background: rgba(255, 255, 255, 0.05);
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+    background: rgba(0,0,0,0.04);
+    box-shadow: 0 0 0 3px rgba(0,0,0,0.08);
 }
 
 .line-item-cost {
@@ -6903,8 +6891,8 @@ summary:focus-visible {
 
 /* Add Line Item Button */
 #btn-add-line-item {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px dashed rgba(255, 255, 255, 0.2);
+    background: rgba(0,0,0,0.02);
+    border: 1px dashed rgba(0,0,0,0.12);
     color: var(--text-muted);
     border-radius: 8px;
     padding: 0.4rem 0.75rem;
@@ -6921,7 +6909,7 @@ summary:focus-visible {
 #btn-add-line-item:hover {
     border-color: var(--primary-color);
     color: var(--primary-color);
-    background: rgba(56, 189, 248, 0.06);
+    background: rgba(0,0,0,0.05);
 }
 
 .line-items-total-row {
@@ -6974,8 +6962,8 @@ summary:focus-visible {
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: #1e293b;
-    border: 2px solid rgba(255, 255, 255, 0.2);
+    background: #ffffff;
+    border: 2px solid rgba(0,0,0,0.12);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -6986,7 +6974,7 @@ summary:focus-visible {
 
 .status-dot i {
     font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(0,0,0,0.2);
 }
 
 /* Open - Yellow */
@@ -6997,7 +6985,7 @@ summary:focus-visible {
 }
 
 .status-step.active:nth-child(1) .status-dot i {
-    color: white;
+    color: #111111;
 }
 
 .status-step.active:nth-child(1) .status-label {
@@ -7007,17 +6995,17 @@ summary:focus-visible {
 
 /* Planning - Blue */
 .status-step.active:nth-child(2) .status-dot {
-    background: #3b82f6;
-    border-color: #3b82f6;
-    box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+    background: #333333;
+    border-color: #333333;
+    box-shadow: 0 0 8px rgba(0,0,0,0.1);
 }
 
 .status-step.active:nth-child(2) .status-dot i {
-    color: white;
+    color: #111111;
 }
 
 .status-step.active:nth-child(2) .status-label {
-    color: #3b82f6;
+    color: #333333;
     font-weight: 600;
 }
 
@@ -7029,7 +7017,7 @@ summary:focus-visible {
 }
 
 .status-step.active:nth-child(3) .status-dot i {
-    color: white;
+    color: #111111;
 }
 
 .status-step.active:nth-child(3) .status-label {
@@ -7045,7 +7033,7 @@ summary:focus-visible {
 }
 
 .status-step.active:nth-child(4) .status-dot i {
-    color: white;
+    color: #111111;
 }
 
 .status-step.active:nth-child(4) .status-label {
@@ -7061,7 +7049,7 @@ summary:focus-visible {
 }
 
 .status-step.active:nth-child(5) .status-dot i {
-    color: white;
+    color: #111111;
 }
 
 .status-step.active:nth-child(5) .status-label {
@@ -7077,7 +7065,7 @@ summary:focus-visible {
 }
 
 .status-step.active:nth-child(6) .status-dot i {
-    color: white;
+    color: #111111;
 }
 
 .status-step.active:nth-child(6) .status-label {
@@ -7091,7 +7079,7 @@ summary:focus-visible {
 }
 
 .status-step.completed .status-dot i {
-    color: white;
+    color: #111111;
 }
 
 .status-step.cancelled .status-dot {
@@ -7100,7 +7088,7 @@ summary:focus-visible {
 }
 
 .status-step.cancelled .status-dot i {
-    color: white;
+    color: #111111;
 }
 
 .status-step.cancelled .status-label {
@@ -7160,7 +7148,7 @@ summary:focus-visible {
     left: 50%;
     width: 100%;
     height: 2px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(0,0,0,0.08);
     z-index: 0;
 }
 
@@ -7169,9 +7157,192 @@ summary:focus-visible {
 }
 
 .status-step.active .status-line {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(0,0,0,0.12);
 }
 
 .status-step:last-child .status-line {
     display: none;
+}
+
+/* Hospital autocomplete — ensure dropdown escapes stacking context */
+#dropdown-hospital {
+    position: absolute;
+    z-index: 9999;
+}
+
+.form-group.autocomplete-wrapper:focus-within {
+    z-index: 9999;
+    isolation: auto;
+}
+
+/* ============================================
+   LIGHT THEME OVERRIDES
+   ============================================ */
+
+/* Inputs & selects */
+input, textarea, select {
+    background: #ffffff !important;
+    color: #111111 !important;
+    border-color: rgba(0,0,0,0.15) !important;
+}
+
+input::placeholder, textarea::placeholder {
+    color: #999999 !important;
+}
+
+/* Cards */
+.site-card, .log-card, .glass-panel {
+    background: #ffffff !important;
+    border-color: rgba(0,0,0,0.1) !important;
+    color: #111111 !important;
+}
+
+/* Modal */
+.modal {
+    background: #ffffff !important;
+    color: #111111 !important;
+}
+
+.modal-overlay {
+    background: rgba(0,0,0,0.4) !important;
+}
+
+/* Header & nav */
+.app-header, .app-footer {
+    background: #ffffff !important;
+    border-color: rgba(0,0,0,0.1) !important;
+}
+
+.app-footer {
+    box-shadow: 0 -1px 0 rgba(0,0,0,0.08) !important;
+}
+
+/* Nav buttons */
+.nav-btn {
+    color: #555555 !important;
+}
+
+.nav-btn.active {
+    background: #111111 !important;
+    color: #ffffff !important;
+}
+
+.nav-btn:hover:not(.active) {
+    background: rgba(0,0,0,0.06) !important;
+    color: #111111 !important;
+}
+
+/* Buttons */
+.btn-primary {
+    background: #111111 !important;
+    color: #ffffff !important;
+    border-color: #111111 !important;
+}
+
+.btn-primary:hover {
+    background: #333333 !important;
+}
+
+.btn-secondary {
+    background: #ffffff !important;
+    color: #111111 !important;
+    border-color: rgba(0,0,0,0.2) !important;
+}
+
+.btn-secondary:hover {
+    background: #f0f0f0 !important;
+    border-color: rgba(0,0,0,0.3) !important;
+}
+
+/* Section headers */
+.section-header h2, h1, h2, h3, h4 {
+    color: #111111 !important;
+}
+
+/* Text muted */
+.text-muted, [style*="color: var(--text-muted)"] {
+    color: #666666 !important;
+}
+
+/* Autocomplete dropdown */
+.autocomplete-dropdown {
+    background: #ffffff !important;
+    border-color: rgba(0,0,0,0.12) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+}
+
+.autocomplete-item {
+    color: #111111 !important;
+    border-color: rgba(0,0,0,0.06) !important;
+}
+
+.autocomplete-item:hover {
+    background: #f0f0f0 !important;
+    color: #111111 !important;
+}
+
+/* Flatpickr */
+.flatpickr-calendar {
+    background: #ffffff !important;
+    color: #111111 !important;
+    border-color: rgba(0,0,0,0.1) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+}
+
+.flatpickr-day, .flatpickr-weekday, .flatpickr-months,
+.flatpickr-current-month, .flatpickr-monthDropdown-months {
+    color: #111111 !important;
+    background: #ffffff !important;
+}
+
+.flatpickr-day:hover, .flatpickr-day.selected {
+    background: #111111 !important;
+    color: #ffffff !important;
+}
+
+/* Table */
+.data-table th {
+    background: #f5f5f5 !important;
+    color: #111111 !important;
+}
+
+.data-table td {
+    border-color: rgba(0,0,0,0.06) !important;
+    color: #111111 !important;
+}
+
+/* Badges & tags */
+[style*="background: rgba(56"] {
+    background: rgba(0,0,0,0.06) !important;
+    color: #111111 !important;
+    border-color: rgba(0,0,0,0.1) !important;
+}
+
+/* Login card */
+.login-container {
+    background: #f5f5f5 !important;
+}
+
+.login-card {
+    background: #ffffff !important;
+    border-color: rgba(0,0,0,0.1) !important;
+}
+
+/* Profile card */
+.profile-unified-card {
+    background: #ffffff !important;
+    border-color: rgba(0,0,0,0.1) !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar-track {
+    background: #f0f0f0 !important;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cccccc !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #aaaaaa !important;
 }

@@ -7,19 +7,16 @@
 /* Wrapper for the Pill Menu */
 .nav-wrap {
     position: relative;
-    background: rgba(15, 23, 42, 0.8);
-    /* Dark background */
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--glass-border);
+    background: #f5f5f5;
+    backdrop-filter: none;
+    border: 1px solid rgba(0,0,0,0.1);
     border-radius: 500px;
     padding: 6px;
     display: inline-flex;
-    /* Fit content */
-    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+    box-shadow: none;
     margin: 0;
     width: auto;
     z-index: 10;
-    /* Above other elements, but below sticky header */
 }
 
 /* Flex Container for Buttons */
@@ -49,12 +46,9 @@
 .active-bubble,
 .active-bubble-mobile {
     position-anchor: --active-item;
-    /* Default desktop */
-    background: linear-gradient(180deg, rgba(56, 189, 248, 0.15), rgba(56, 189, 248, 0.05));
-    border: 1px solid rgba(56, 189, 248, 0.2);
-    box-shadow:
-        0 4px 15px rgba(56, 189, 248, 0.2),
-        inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    background: #111111;
+    border: 1px solid rgba(0,0,0,0.15);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
     z-index: 5;
 }
 
@@ -63,7 +57,7 @@
 .hover-bubble-mobile {
     position-anchor: --hover-item;
     /* Default desktop */
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(0,0,0,0.04);
     /* Subtle white hover */
     z-index: 4;
     opacity: 0;
@@ -101,8 +95,8 @@
 /* Desktop Anchors */
 .desktop-menu .nav-btn.active {
     anchor-name: --active-item;
-    color: var(--primary-color);
-    text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+    color: #ffffff;
+    text-shadow: none;
 }
 
 .desktop-menu .nav-btn:not(.active):hover {
@@ -139,9 +133,9 @@
 /* Nav Wrap - The Actual Bar */
 .mobile-menu .nav-wrap {
     pointer-events: auto;
-    background: rgba(15, 23, 42, 0.3);
+    background: #ffffff;
     /* User requested opacity 0.3 */
-    backdrop-filter: blur(10px);
+    backdrop-filter: none;
     border-radius: 20px 20px 0 0;
     /* Modern top-rounded sheet look */
     border: none;
@@ -198,7 +192,7 @@
 /* Mobile Anchors */
 .mobile-menu .nav-btn.active {
     anchor-name: --active-item-mobile;
-    color: var(--primary-color);
+    color: #111111;
 }
 
 .mobile-menu .nav-btn:not(.active):active {
@@ -226,8 +220,8 @@
 /* --- VIEW TOGGLES (WES BOS STYLE) --- */
 
 .view-toggles.nav-wrap {
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid var(--glass-border);
+    background: #f0f0f0;
+    border: 1px solid rgba(0,0,0,0.1);
     padding: 4px;
     border-radius: 500px;
 }
@@ -240,14 +234,13 @@
     z-index: 10;
     padding: 0.5rem 1.25rem;
     border-radius: 500px;
-    color: var(--text-muted);
+    color: #666666;
     transition: color 0.2s ease;
 }
 
 .view-toggles .toggle-btn.active {
     anchor-name: --v-active;
-    color: #fff;
-    /* White text on blue background */
+    color: #ffffff;
     font-weight: 600;
 }
 
@@ -259,9 +252,9 @@
 .v-active-bubble {
     position: absolute;
     position-anchor: --v-active;
-    background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+    background: #111111;
     /* Blue Gradient */
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(0,0,0,0.08);
     border-radius: 500px;
     pointer-events: none;
     z-index: 5;
@@ -277,7 +270,7 @@
 .v-hover-bubble {
     position: absolute;
     position-anchor: --v-hover;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(0,0,0,0.08);
     border-radius: 500px;
     pointer-events: none;
     z-index: 4;
@@ -328,15 +321,15 @@
 
     .desktop-menu .nav-btn.active,
     .mobile-menu .nav-btn.active {
-        background: rgba(56, 189, 248, 0.1) !important;
-        border: 1px solid rgba(56, 189, 248, 0.2) !important;
+        background: rgba(0,0,0,0.06) !important;
+        border: 1px solid rgba(0,0,0,0.12) !important;
         border-radius: 12px !important;
         /* Revert to rounded rect for fallback */
     }
 
     /* Restore mobile bar background if anchor not supported */
     .app-footer.mobile-menu {
-        background: rgba(15, 23, 42, 0.9) !important;
+        background: #ffffff !important;
         backdrop-filter: blur(10px) !important;
         pointer-events: auto;
         border-top: 1px solid var(--glass-border) !important;

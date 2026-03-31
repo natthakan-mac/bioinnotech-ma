@@ -12,7 +12,7 @@
 
 .toast {
     background: var(--glass-bg);
-    backdrop-filter: blur(12px);
+    backdrop-filter: none;
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);
     padding: 1rem 1.5rem;
