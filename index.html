@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maintenance System | ระบบจัดการการซ่อมบำรุง</title>
+    <title>CASP Maintenance System | ระบบจัดการการซ่อมบำรุง</title>
 
     <!-- Premium Fonts: Outfit & Prompt (for Thai) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -140,9 +140,9 @@
     <div class="login-card glass-panel">
         <div class="login-header">
             <div class="login-logo">
-                <i class="fa-solid fa-house-flood-water"></i>
+                <i class="fa-solid fa-screwdriver-wrench"></i>
             </div>
-            <h2>Maintenance System</h2>
+            <h2>CASP Maintenance System</h2>
             <p>ระบบบริหารจัดการและซ่อมบำรุง</p>
         </div>
 
@@ -181,7 +181,7 @@
 
     </div>
     <div class="login-footer">
-        © 2026 Maintenance System. All rights reserved.
+        © 2026 CASP Maintenance System. All rights reserved.
     </div>
 </section>
 
@@ -190,10 +190,10 @@
     <header class="app-header">
         <div class="brand">
             <div class="logo-icon">
-                <i class="fa-solid fa-house-flood-water" style="font-size: 2.75rem;"></i>
+                <i class="fa-solid fa-screwdriver-wrench" style="font-size: 2.75rem;"></i>
             </div>
-            <h1 class="desktop-only-text">Maintenance System</h1>
-            <span class="mobile-only-text">Maintenance System</span>
+            <h1 class="desktop-only-text">CASP Maintenance System</h1>
+            <span class="mobile-only-text">CASP Maintenance System</span>
         </div>
 
         <!-- Mobile Search Bar (Mid) -->
@@ -614,6 +614,13 @@
                         </select>
                     </div>
 
+                    <div class="filter-group">
+                        <label>รูปแบบสัญญา</label>
+                        <select id="filter-site-contract">
+                            <option value="all">ทั้งหมด</option>
+                        </select>
+                    </div>
+
                     <div class="filter-group actions-filter">
                         <label>ตัวเลือก</label>
                         <div class="filter-actions-row">
@@ -652,6 +659,13 @@
                 <div class="filter-group">
                     <label>จังหวัด</label>
                     <select id="filter-site-province-mobile">
+                        <option value="all">ทั้งหมด</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>รูปแบบสัญญา</label>
+                    <select id="filter-site-contract-mobile">
                         <option value="all">ทั้งหมด</option>
                     </select>
                 </div>
@@ -920,11 +934,7 @@
         <form id="form-add-site" autocomplete="off">
             <input type="hidden" name="siteId" id="site-id-hidden">
 
-            <!-- Device Name -->
-            <div class="form-group">
-                <label class="required-label"><i class="fa-solid fa-microchip"></i> ชื่ออุปกรณ์</label>
-                <input type="text" name="siteName" id="input-site-name" placeholder="ระบุชื่ออุปกรณ์" required autocomplete="off">
-            </div>
+            <input type="hidden" name="siteName" id="input-site-name">
 
             <!-- Hospital -->
             <div class="form-group autocomplete-wrapper" style="z-index: 20;">
@@ -935,29 +945,32 @@
 
             <!-- Device Info Row -->
             <div class="form-row form-row-3col">
-                <div class="form-group">
-                    <label class="required-label"><i class="fa-solid fa-tag"></i> ประเภทอุปกรณ์</label>
-                    <input type="text" name="deviceType" placeholder="เช่น ปั๊มน้ำ, มอเตอร์, เซ็นเซอร์" autocomplete="off" required>
+                <div class="form-group autocomplete-wrapper">
+                    <label class="required-label"><i class="fa-solid fa-tag"></i> รูปแบบสัญญา</label>
+                    <input type="text" name="deviceType" id="input-deviceType" placeholder="เช่น MA, เช่า, ขาย" autocomplete="off" required>
+                    <div id="dropdown-deviceType" class="autocomplete-dropdown hidden"></div>
                 </div>
-                <div class="form-group">
+                <div class="form-group autocomplete-wrapper">
                     <label><i class="fa-solid fa-industry"></i> ยี่ห้อ (Brand)</label>
-                    <input type="text" name="brand" placeholder="ระบุยี่ห้อ" autocomplete="off">
+                    <input type="text" name="brand" id="input-brand" placeholder="ระบุยี่ห้อ" autocomplete="off">
+                    <div id="dropdown-brand" class="autocomplete-dropdown hidden"></div>
                 </div>
-                <div class="form-group">
+                <div class="form-group autocomplete-wrapper">
                     <label><i class="fa-solid fa-cube"></i> รุ่น (Model)</label>
-                    <input type="text" name="model" placeholder="ระบุรุ่น" autocomplete="off">
+                    <input type="text" name="model" id="input-model" placeholder="ระบุรุ่น" autocomplete="off">
+                    <div id="dropdown-model" class="autocomplete-dropdown hidden"></div>
                 </div>
             </div>
 
             <!-- Serial / Install Location Row -->
             <div class="form-row form-row-2col">
                 <div class="form-group">
-                    <label><i class="fa-solid fa-barcode"></i> Serial Number</label>
+                    <label><i class="fa-solid fa-barcode"></i> หมายเลขเครื่อง (Serial Number)</label>
                     <input type="text" name="serialNumber" placeholder="ระบุ Serial Number" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-location-dot"></i> สถานที่ติดตั้ง</label>
-                    <input type="text" name="villageName" placeholder="ระบุสถานที่ติดตั้ง" autocomplete="off">
+                    <input type="text" name="installLocation" placeholder="ระบุสถานที่ติดตั้ง" autocomplete="off">
                 </div>
             </div>
 
@@ -982,10 +995,10 @@
 
             <!-- Contact Row -->
             <div class="form-row form-row-3col">
-                <div class="form-group">
+                <div class="form-group autocomplete-wrapper">
                     <label><i class="fa-solid fa-user-tie"></i> ชื่อผู้ดูแล (PIC)</label>
-                    <input type="text" name="picName" id="site-pic-name" placeholder="ชื่อผู้รับผิดชอบ" autocomplete="off" list="pic-name-list">
-                    <datalist id="pic-name-list"></datalist>
+                    <input type="text" name="picName" id="input-picName" placeholder="ชื่อผู้รับผิดชอบ" autocomplete="off">
+                    <div id="dropdown-picName" class="autocomplete-dropdown hidden"></div>
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-phone"></i> เบอร์โทรศัพท์</label>
@@ -1039,7 +1052,7 @@
                             </button>
                             <span id="site-attachment-count" style="font-size: 0.9rem; color: var(--text-muted);">ไม่ได้เลือกไฟล์</span>
                         </div>
-                        <div id="site-attachment-preview-container" style="display: flex; gap: 10px; padding: 10px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; height: 120px; background: rgba(255,255,255,0.02); overflow-x: auto; overflow-y: hidden; flex: 1;"></div>
+                        <div id="site-attachment-preview-container" style="display: flex; gap: 10px; padding: 10px; border: 2px dashed rgba(0,0,0,0.15); border-radius: 8px; height: 120px; background: rgba(0,0,0,0.02); overflow-x: auto; overflow-y: hidden; flex: 1;"></div>
                         <input type="hidden" name="existingAttachmentsJSON">
                     </div>
                 </div>
@@ -1119,7 +1132,7 @@
                     </div>
 
                     <div id="description-attachments-preview"
-                        style="display: flex; gap: 10px; padding: 10px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; height: 120px; background: rgba(255,255,255,0.02); overflow-x: auto; overflow-y: hidden;"></div>
+                        style="display: flex; gap: 10px; padding: 10px; border: 2px dashed rgba(0,0,0,0.15); border-radius: 8px; height: 120px; background: rgba(0,0,0,0.02); overflow-x: auto; overflow-y: hidden;"></div>
                 </div>
             </div>
 
@@ -1250,28 +1263,28 @@
                     </div>
                 </div>
 
-                <div style="width: 100%; height: 1px; background: rgba(255,255,255,0.1);"></div>
+                <div style="width: 100%; height: 1px; background: rgba(0,0,0,0.06);"></div>
 
-                <!-- Location -->
+                <!-- Location / Installation -->
                 <div class="detail-section">
                     <h4
                         style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem;">
-                        <i class="fa-solid fa-location-dot"></i> สถานที่ติดตั้ง / ผู้ดูแล
+                        <i class="fa-solid fa-location-dot"></i> สถานที่ติดตั้ง
                     </h4>
-                    <p id="detail-address" style="line-height: 1.6; margin-bottom: 0.5rem;">-</p>
+                    <div id="detail-address" style="line-height: 1.6; margin-bottom: 0.5rem;">-</div>
                 </div>
 
-                <div style="width: 100%; height: 1px; background: rgba(255,255,255,0.1);"></div>
+                <div style="width: 100%; height: 1px; background: rgba(0,0,0,0.06);"></div>
 
-                <!-- Description -->
+                <!-- Contact Information -->
                 <div class="detail-section">
                     <h4
                         style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem;">
-                        <i class="fa-solid fa-circle-info"></i> รายละเอียดเพิ่มเติม
+                        <i class="fa-solid fa-address-book"></i> ข้อมูลผู้ติดต่อ
                     </h4>
-                    <p id="detail-description" style="line-height: 1.6; color: var(--text-color); white-space: pre-wrap; word-break: break-word;">-
-                    </p>
+                    <div id="detail-contact-info" style="line-height: 1.6;">-</div>
                 </div>
+
             </div>
 
             <!-- Right Column -->
@@ -1301,7 +1314,7 @@
                     </div>
                 </div>
 
-                <div style="width: 100%; height: 1px; background: rgba(255,255,255,0.1);"></div>
+                <div style="width: 100%; height: 1px; background: rgba(0,0,0,0.06);"></div>
 
                 <!-- Insurance -->
                 <div class="detail-section">
@@ -1314,7 +1327,18 @@
                     </div>
                 </div>
 
-                <div style="width: 100%; height: 1px; background: rgba(255,255,255,0.1);"></div>
+                <div style="width: 100%; height: 1px; background: rgba(0,0,0,0.06);"></div>
+
+                <!-- Description -->
+                <div class="detail-section">
+                    <h4
+                        style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem;">
+                        <i class="fa-solid fa-circle-info"></i> รายละเอียดเพิ่มเติม
+                    </h4>
+                    <p id="detail-description" style="line-height: 1.6; color: var(--text-color); white-space: pre-wrap; word-break: break-word;">-</p>
+                </div>
+
+                <div style="width: 100%; height: 1px; background: rgba(0,0,0,0.06);"></div>
 
                 <!-- Attachments Display -->
                 <div class="detail-section">

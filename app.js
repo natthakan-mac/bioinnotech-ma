@@ -1687,6 +1687,7 @@ async function init() {
         }
 
         initSiteAutocompletes(); // Init Site & Details Autocompletes
+        updateSiteFieldDataLists();
         initCalendarControls();
         setupAgencySelect(); // Load agency dropdown
         await refreshData();
@@ -2079,6 +2080,7 @@ function setupAutocomplete(
     onSelect,
     placeholder = "ค้นหา...",
     strict = true,
+    minChars = 1,
 ) {
     const input = document.getElementById(inputId);
     const dropdown = document.getElementById(dropdownId);
@@ -2090,9 +2092,17 @@ function setupAutocomplete(
 
     const renderDropdown = (filterText = "") => {
         const items = getItems(); // Should return string array
+        
+        // Require minimum characters before showing dropdown
+        if (filterText.trim().length < minChars) {
+            dropdown.classList.add("hidden");
+            if (wrapper) wrapper.classList.remove("active");
+            return;
+        }
+        
         const matches = items.filter((a) =>
             a.toLowerCase().includes(filterText.toLowerCase()),
-        );
+        ).slice(0, 50);
 
         dropdown.innerHTML = "";
         if (matches.length === 0) {
@@ -2235,18 +2245,27 @@ function initAddressAutocompletes() {
         "dropdown-province",
         getProvinces,
         handleProvinceSelect,
+        "ค้นหา...",
+        true,
+        0,
     );
     setupAutocomplete(
         "input-amphoe",
         "dropdown-amphoe",
         getAmphoes,
         handleAmphoeSelect,
+        "ค้นหา...",
+        true,
+        0,
     );
     setupAutocomplete(
         "input-tambon",
         "dropdown-tambon",
         getTambons,
         handleTambonSelect,
+        "ค้นหา...",
+        true,
+        0,
     );
 
     // Keep zipcode logic?
@@ -2418,7 +2437,7 @@ function resetSiteForm() {
         "insuranceEndDate",
         "contactName",
         "contactPhone",
-        "villageName",
+        "installLocation",
         "locationUrl",
         "maintenanceCycle",
         "firstMaDate",
@@ -2495,24 +2514,31 @@ function resetSiteForm() {
         btnGetLocation.disabled = false;
     }
 
-    // Populate PIC name suggestions from existing sites
-    populatePicNameList();
+    // Populate PIC name suggestions handled by updateSiteFieldDataLists
 }
 
 // --- Site Name Auto-Generation ---
-function populatePicNameList() {
-    const datalist = document.getElementById("pic-name-list");
-    if (!datalist) return;
-    const names = [...new Set(state.sites.map(s => s.picName).filter(Boolean))].sort();
-    datalist.innerHTML = names.map(n => `<option value="${n}">`).join('');
-}
-
 function updateSiteName() {
     // Device name is entered manually — no auto-generation needed
 }
 
 function setupSiteNameAutoGeneration() {
     // No-op for device manager
+}
+
+function updateSiteFieldDataLists() {
+    const fields = ["deviceType", "brand", "model", "picName"];
+    fields.forEach(field => {
+        setupAutocomplete(
+            `input-${field}`,
+            `dropdown-${field}`,
+            () => [...new Set(state.sites.map(s => s[field]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'th')),
+            () => {},
+            "ค้นหา...",
+            false,
+            0
+        );
+    });
 }
 
 function initHospitalAutocomplete() {
@@ -2525,9 +2551,15 @@ function initHospitalAutocomplete() {
 
     function renderHospitalDropdown(query) {
         const q = query.trim().toLowerCase();
-        const matches = q
-            ? hospitals.filter(h => h.toLowerCase().includes(q)).slice(0, 50)
-            : hospitals.slice(0, 50);
+
+        // Require at least 1 character before showing dropdown
+        if (q.length < 1) {
+            dropdown.classList.add("hidden");
+            if (wrapper) wrapper.classList.remove("active");
+            return;
+        }
+
+        const matches = hospitals.filter(h => h.name.toLowerCase().includes(q)).slice(0, 50);
 
         if (matches.length === 0) {
             dropdown.classList.add("hidden");
@@ -2536,7 +2568,7 @@ function initHospitalAutocomplete() {
         }
 
         dropdown.innerHTML = matches.map(h =>
-            `<div class="autocomplete-item" data-value="${h}">${h}</div>`
+            `<div class="autocomplete-item" data-value="${h.name}" data-province="${h.province || ''}">${h.name}${h.province ? ` <span style="color:var(--text-muted);font-size:0.8em;">(${h.province})</span>` : ''}</div>`
         ).join('');
         dropdown.classList.remove("hidden");
         if (wrapper) wrapper.classList.add("active");
@@ -2547,6 +2579,13 @@ function initHospitalAutocomplete() {
                 textInput.value = item.dataset.value;
                 dropdown.classList.add("hidden");
                 if (wrapper) wrapper.classList.remove("active");
+
+                // Auto-fill province if available
+                const province = item.dataset.province;
+                if (province && addressInputs.province) {
+                    addressInputs.province.value = province;
+                    handleProvinceSelect(province);
+                }
             });
         });
     }
@@ -2757,8 +2796,8 @@ async function handleSiteSubmit(e) {
         }
         // -------------------------------------
 
-        const name = formData.get("siteName");
-        const villageName = formData.get("villageName");
+        const name = formData.get("hospital") || formData.get("installLocation") || "ไม่ระบุชื่อ";
+        const installLocation = formData.get("installLocation");
         const moo = formData.get("moo");
         const province = addressInputs.province?.value || "";
         const amphoe = addressInputs.amphoe?.value || "";
@@ -2766,7 +2805,7 @@ async function handleSiteSubmit(e) {
         const zipcode = addressInputs.zipcode?.value || "";
 
         // Combine Address
-        const fullAddress = `${villageName ? villageName + " " : ""}${moo ? "หมู่ " + moo + " " : ""}${tambon ? "ต." + tambon + " " : ""}${amphoe ? "อ." + amphoe + " " : ""}${province ? "จ." + province + " " : ""}${zipcode}`;
+        const fullAddress = `${installLocation ? installLocation + " " : ""}${moo ? "หมู่ " + moo + " " : ""}${tambon ? "ต." + tambon + " " : ""}${amphoe ? "อ." + amphoe + " " : ""}${province ? "จ." + province + " " : ""}${zipcode}`;
 
         const siteData = {
             name: name,
@@ -2781,7 +2820,7 @@ async function handleSiteSubmit(e) {
             hospital: formData.get("hospital") || "",
 
             // Location
-            villageName: villageName,
+            installLocation: installLocation,
             moo: moo,
             subdistrict: tambon,
             district: amphoe,
@@ -3017,7 +3056,7 @@ function editSite(id) {
     setVal("contactPhone", site.contactPhone);
     if (window.itiInstances.site)
         window.itiInstances.site.setNumber(site.contactPhone || "");
-    setVal("villageName", site.villageName);
+    setVal("installLocation", site.installLocation || site.villageName);
     setVal("locationUrl", site.locationUrl);
 
     // Flatpickr inputs
@@ -5512,6 +5551,7 @@ function renderAll() {
     // updateSiteSelects(); // Removed
     initSiteAutocompletes();
     setupSiteNameAutoGeneration();
+    updateSiteFieldDataLists();
 }
 
 function renderCurrentView() {
@@ -6550,8 +6590,10 @@ function setupSiteManagerFilters() {
     const siteFilters = [
         "filter-site-province",
         "filter-site-agency",
+        "filter-site-contract",
         "filter-site-province-mobile",
         "filter-site-agency-mobile",
+        "filter-site-contract-mobile",
         "site-search-input",
         "site-search-mobile",
     ];
@@ -6571,7 +6613,7 @@ function setupSiteManagerFilters() {
                 renderSites();
             });
 
-            // Sync Province and Agency dropdowns between desktop and mobile
+            // Sync dropdowns between desktop and mobile
             if (id === "filter-site-province") {
                 el.addEventListener("change", (e) => {
                     const mobile = document.getElementById("filter-site-province-mobile");
@@ -6596,6 +6638,18 @@ function setupSiteManagerFilters() {
                     if (desktop) desktop.value = e.target.value;
                     renderSites();
                 });
+            } else if (id === "filter-site-contract") {
+                el.addEventListener("change", (e) => {
+                    const mobile = document.getElementById("filter-site-contract-mobile");
+                    if (mobile) mobile.value = e.target.value;
+                    renderSites();
+                });
+            } else if (id === "filter-site-contract-mobile") {
+                el.addEventListener("change", (e) => {
+                    const desktop = document.getElementById("filter-site-contract");
+                    if (desktop) desktop.value = e.target.value;
+                    renderSites();
+                });
             }
         }
     });
@@ -6605,23 +6659,23 @@ function setupSiteManagerFilters() {
         .getElementById("btn-clear-site-filters")
         ?.addEventListener("click", () => {
             const searchInput = document.getElementById("site-search-input");
-            const searchInputMobile = document.getElementById(
-                "site-search-input-mobile",
-            );
+            const searchInputMobile = document.getElementById("site-search-input-mobile");
             if (searchInput) searchInput.value = "";
             if (searchInputMobile) searchInputMobile.value = "";
 
             const provinceDesktop = document.getElementById("filter-site-province");
-            const provinceMobile = document.getElementById(
-                "filter-site-province-mobile",
-            );
+            const provinceMobile = document.getElementById("filter-site-province-mobile");
             const agencyDesktop = document.getElementById("filter-site-agency");
             const agencyMobile = document.getElementById("filter-site-agency-mobile");
+            const contractDesktop = document.getElementById("filter-site-contract");
+            const contractMobile = document.getElementById("filter-site-contract-mobile");
 
             if (provinceDesktop) provinceDesktop.value = "all";
             if (provinceMobile) provinceMobile.value = "all";
             if (agencyDesktop) agencyDesktop.value = "all";
             if (agencyMobile) agencyMobile.value = "all";
+            if (contractDesktop) contractDesktop.value = "all";
+            if (contractMobile) contractMobile.value = "all";
 
             renderSites();
         });
@@ -6631,23 +6685,23 @@ function setupSiteManagerFilters() {
         .getElementById("btn-clear-site-filters-mobile")
         ?.addEventListener("click", () => {
             const searchInput = document.getElementById("site-search-input");
-            const searchInputMobile = document.getElementById(
-                "site-search-input-mobile",
-            );
+            const searchInputMobile = document.getElementById("site-search-input-mobile");
             if (searchInput) searchInput.value = "";
             if (searchInputMobile) searchInputMobile.value = "";
 
             const provinceDesktop = document.getElementById("filter-site-province");
-            const provinceMobile = document.getElementById(
-                "filter-site-province-mobile",
-            );
+            const provinceMobile = document.getElementById("filter-site-province-mobile");
             const agencyDesktop = document.getElementById("filter-site-agency");
             const agencyMobile = document.getElementById("filter-site-agency-mobile");
+            const contractDesktop = document.getElementById("filter-site-contract");
+            const contractMobile = document.getElementById("filter-site-contract-mobile");
 
             if (provinceDesktop) provinceDesktop.value = "all";
             if (provinceMobile) provinceMobile.value = "all";
             if (agencyDesktop) agencyDesktop.value = "all";
             if (agencyMobile) agencyMobile.value = "all";
+            if (contractDesktop) contractDesktop.value = "all";
+            if (contractMobile) contractMobile.value = "all";
 
             renderSites();
         });
@@ -6696,6 +6750,28 @@ function populateSiteFilters() {
         provinceSelect.value = currentProvince;
         if (provinceSelectMobile) provinceSelectMobile.value = currentProvince;
     }
+
+    // Contract type filter
+    const contractSelect = document.getElementById("filter-site-contract");
+    const contractSelectMobile = document.getElementById("filter-site-contract-mobile");
+
+    if (contractSelect) {
+        const contracts = [...new Set(sites.map(s => s.deviceType).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'th'));
+        const currentContract = contractSelect.value;
+
+        contractSelect.innerHTML = '<option value="all">ทั้งหมด</option>';
+        if (contractSelectMobile) contractSelectMobile.innerHTML = '<option value="all">ทั้งหมด</option>';
+
+        contracts.forEach(c => {
+            contractSelect.appendChild(Object.assign(document.createElement("option"), { value: c, textContent: c }));
+            if (contractSelectMobile) contractSelectMobile.appendChild(Object.assign(document.createElement("option"), { value: c, textContent: c }));
+        });
+
+        if (contracts.includes(currentContract)) {
+            contractSelect.value = currentContract;
+            if (contractSelectMobile) contractSelectMobile.value = currentContract;
+        }
+    }
 }
 
 function renderSites() {
@@ -6712,6 +6788,8 @@ function renderSites() {
     const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
     const provinceFilter =
         document.getElementById("filter-site-province")?.value || "all";
+    const contractFilter =
+        document.getElementById("filter-site-contract")?.value || "all";
 
     let sitesToRender = state.sites.filter((site) => {
         const nameMatch = (site.name || "").toLowerCase().includes(searchTerm);
@@ -6726,7 +6804,7 @@ function renderSites() {
             site.district,
             site.subdistrict,
             site.zipcode,
-            site.villageName,
+            site.installLocation || site.villageName,
             site.deviceType,
             site.brand,
             site.model,
@@ -6737,8 +6815,10 @@ function renderSites() {
             nameMatch || provinceMatch || hospitalMatch || addressMatch;
         const isProvinceMatch =
             provinceFilter === "all" || site.province === provinceFilter;
+        const isContractMatch =
+            contractFilter === "all" || site.deviceType === contractFilter;
 
-        return isSearchMatch && isProvinceMatch;
+        return isSearchMatch && isProvinceMatch && isContractMatch;
     });
 
     // Sort logic (optional, keep if exists)
@@ -6770,25 +6850,20 @@ function renderSites() {
             <div class="card-header" style="margin-bottom: 0.5rem; display: flex; align-items: flex-start; justify-content: space-between;">
                 <div style="display: flex; flex-direction: column;">
                     ${site.siteCode ? `<span style="font-size: 0.8rem; color: var(--primary-color); font-weight: 600; letter-spacing: 0.5px; margin-bottom: 2px;">${site.siteCode}</span>` : ""}
-                    <span class="site-name" style="font-size: 1.1rem;">${site.name}${site.attachments && site.attachments.length > 0 ? ' <i class="fa-solid fa-paperclip" style="font-size:0.75rem; opacity:0.6; margin-left:4px;" title="มีไฟล์แนบ ${site.attachments.length} ไฟล์"></i>' : ""}</span>
+                    <span class="site-name" style="font-size: 1.1rem;">${site.name}</span>
                 </div>
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 0.25rem; flex-grow: 1;">
+                <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
                 ${site.deviceType
-                ? `<div style="display: inline-block;">
-                        <span style="background: rgba(56, 189, 248, 0.1); color: var(--primary-color); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; border: 1px solid rgba(56, 189, 248, 0.2);">
+                ? `<span style="background: rgba(56, 189, 248, 0.1); color: var(--primary-color); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; border: 1px solid rgba(56, 189, 248, 0.2);">
                             <i class="fa-solid fa-tag" style="font-size: 0.7rem; margin-right: 4px;"></i>${site.deviceType}
-                        </span>
-                    </div>`
+                        </span>`
                 : ""
             }
-                ${site.hospital
-                ? `<div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
-                        <i class="fa-solid fa-hospital" style="margin-right: 4px; font-size: 0.8rem;"></i>${site.hospital}
-                    </div>`
-                : ""
-            }
+                ${site.attachments && site.attachments.length > 0 ? `<span style="font-size:0.75rem; background:rgba(56, 189, 248, 0.1); color:var(--primary-color); padding:2px 8px; border-radius:4px; border:1px solid rgba(56, 189, 248, 0.2);"><i class="fa-solid fa-paperclip" style="font-size:0.7rem; margin-right:4px;"></i>มีไฟล์แนบ</span>` : ""}
+                </div>
                 ${site.brand || site.model
                 ? `<div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
                         <i class="fa-solid fa-industry" style="margin-right: 4px; font-size: 0.8rem;"></i>
@@ -6802,10 +6877,10 @@ function renderSites() {
                     </div>`
                 : ""
             }
-                ${site.villageName || site.province
+                ${(site.installLocation || site.villageName) || site.province
                 ? `<div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
                         <i class="fa-solid fa-location-dot" style="margin-right: 4px; font-size: 0.8rem;"></i>
-                        ${[site.villageName, site.district, site.province].filter(Boolean).join(", ")}
+                        ${[site.installLocation || site.villageName, site.district, site.province].filter(Boolean).join(", ")}
                     </div>`
                 : ""
             }
@@ -6831,28 +6906,15 @@ function renderSites() {
                         }
                     }
 
-                    const thaiMonthsShort = [
-                        "ม.ค.",
-                        "ก.พ.",
-                        "มี.ค.",
-                        "เม.ย.",
-                        "พ.ค.",
-                        "มิ.ย.",
-                        "ก.ค.",
-                        "ส.ค.",
-                        "ก.ย.",
-                        "ต.ค.",
-                        "พ.ย.",
-                        "ธ.ค.",
-                    ];
-                    const dd = nextMa.getDate().toString().padStart(2, "0");
-                    const mmStr = thaiMonthsShort[nextMa.getMonth()];
-                    const yyyy = nextMa.getFullYear() + 543;
+                    const yy = nextMa.getFullYear();
+                    const mo = String(nextMa.getMonth() + 1).padStart(2, '0');
+                    const da = String(nextMa.getDate()).padStart(2, '0');
+                    const formattedDate = formatThaiDate(`${yy}-${mo}-${da}`, { year: 'numeric', month: 'short', day: 'numeric' });
 
                     return `
                     <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem; display: flex; align-items: center; gap: 6px;">
                         <i class="fa-solid fa-clock-rotate-left" style="color: var(--text-muted); font-size: 0.8rem;"></i>
-                        <span><span style="color: var(--primary-color); font-weight: 500;">${site.maintenanceCycle} วัน</span> (${dd} ${mmStr} ${yyyy})</span>
+                        <span><span style="color: var(--primary-color); font-weight: 500;">${site.maintenanceCycle} วัน</span> (${formattedDate})</span>
                     </div>`;
                 }
                 return "";
@@ -6918,7 +6980,7 @@ function renderSites() {
 function setupCustomNameLogic() {
     const checkCustom = document.getElementById("check-custom-name");
     const inputName = document.getElementById("input-site-name");
-    const inputVillage = document.querySelector('input[name="villageName"]');
+    const inputVillage = document.querySelector('input[name="installLocation"]');
     const inputMoo = document.getElementById("input-moo");
     const inputSubdistrict = document.getElementById("input-tambon");
     const inputDistrict = document.getElementById("input-amphoe");
@@ -6999,17 +7061,15 @@ function viewSiteDetails(id) {
     const phoneEl = document.getElementById("detail-phone");
     phoneEl.textContent = site.serialNumber || "-";
 
-    // Address construction — install location + contact
+    // Address construction — installation section
     const addrEl = document.getElementById("detail-address");
     if (addrEl) {
         const addrFields = [
             { label: "โรงพยาบาล", value: site.hospital },
-            { label: "สถานที่ติดตั้ง", value: site.villageName },
+            { label: "สถานที่ติดตั้ง", value: site.installLocation || site.villageName },
             { label: "ตำบล/แขวง", value: site.subdistrict },
             { label: "อำเภอ/เขต", value: site.district },
             { label: "จังหวัด", value: site.province },
-            { label: "ผู้ดูแล (PIC)", value: site.picName },
-            { label: "เบอร์โทร", value: site.contactPhone },
         ].filter((f) => f.value);
 
         addrEl.style.display = "block";
@@ -7019,11 +7079,34 @@ function viewSiteDetails(id) {
             addrEl.innerHTML = addrFields
                 .map(
                     (f) =>
-                        `<span style="color:var(--text-muted);">${f.label}:</span> <span style="font-weight:500;">${f.value}</span>`,
+                        `<div><span style="color:var(--text-muted);">${f.label}:</span> <span style="font-weight:500;">${f.value}</span></div>`,
                 )
-                .join(" &nbsp;·&nbsp; ");
+                .join("");
         } else {
             addrEl.innerHTML =
+                '<span style="color:var(--text-muted); font-style:italic;">-</span>';
+        }
+    }
+
+    // Contact information section
+    const contactEl = document.getElementById("detail-contact-info");
+    if (contactEl) {
+        const contactFields = [
+            { label: "ผู้ดูแล (PIC)", value: site.picName },
+            { label: "เบอร์โทร", value: site.contactPhone },
+        ].filter((f) => f.value);
+
+        contactEl.style.fontSize = "0.85rem";
+        contactEl.style.lineHeight = "1.7";
+        if (contactFields.length > 0) {
+            contactEl.innerHTML = contactFields
+                .map(
+                    (f) =>
+                        `<div><span style="color:var(--text-muted);">${f.label}:</span> <span style="font-weight:500;">${f.value}</span></div>`,
+                )
+                .join("");
+        } else {
+            contactEl.innerHTML =
                 '<span style="color:var(--text-muted); font-style:italic;">-</span>';
         }
     }
@@ -7070,23 +7153,11 @@ function viewSiteDetails(id) {
                 }
             }
 
-            const thaiMonths = [
-                "มกราคม",
-                "กุมภาพันธ์",
-                "มีนาคม",
-                "เมษายน",
-                "พฤษภาคม",
-                "มิถุนายน",
-                "กรกฎาคม",
-                "สิงหาคม",
-                "กันยายน",
-                "ตุลาคม",
-                "พฤศจิกายน",
-                "ธันวาคม",
-            ];
-            const dd = nextMa.getDate();
-            const mmStr = thaiMonths[nextMa.getMonth()];
-            const yyyy = nextMa.getFullYear() + 543;
+            // Format as YYYY-MM-DD string for formatThaiDate
+            const yyyy = nextMa.getFullYear();
+            const mm = String(nextMa.getMonth() + 1).padStart(2, '0');
+            const dd = String(nextMa.getDate()).padStart(2, '0');
+            const formattedDate = formatThaiDate(`${yyyy}-${mm}-${dd}`, { year: 'numeric', month: 'long', day: 'numeric' });
             const daysDiff = Math.ceil((nextMa - now) / (1000 * 60 * 60 * 24));
             const daysLabel =
                 daysDiff <= 0
@@ -7094,7 +7165,7 @@ function viewSiteDetails(id) {
                     : `อีก ${daysDiff} วัน`;
 
             nextMaEl.style.color = "";
-            nextMaEl.innerHTML = `${dd} ${mmStr} ${yyyy} <span style="color: var(--text-muted); font-size: 0.8rem;">(${daysLabel})</span>`;
+            nextMaEl.innerHTML = `${formattedDate} <span style="color: var(--text-muted); font-size: 0.8rem;">(${daysLabel})</span>`;
         } else {
             nextMaEl.textContent = "-";
             nextMaEl.style.color = "";
@@ -8959,6 +9030,8 @@ async function exportSitesToExcel() {
     const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
     const provinceFilter =
         document.getElementById("filter-site-province")?.value || "all";
+    const contractFilter =
+        document.getElementById("filter-site-contract")?.value || "all";
 
     // 2. Filter Sites (Logic mirrors renderSites)
     const filteredSites = state.sites.filter((site) => {
@@ -8974,7 +9047,7 @@ async function exportSitesToExcel() {
             site.district,
             site.subdistrict,
             site.zipcode,
-            site.villageName,
+            site.installLocation || site.villageName,
             site.deviceType,
             site.brand,
             site.model,
@@ -8985,8 +9058,10 @@ async function exportSitesToExcel() {
             nameMatch || provinceMatch || hospitalMatch || addressMatch;
         const isProvinceMatch =
             provinceFilter === "all" || site.province === provinceFilter;
+        const isContractMatch =
+            contractFilter === "all" || site.deviceType === contractFilter;
 
-        return isSearchMatch && isProvinceMatch;
+        return isSearchMatch && isProvinceMatch && isContractMatch;
     });
 
     if (filteredSites.length === 0) {
@@ -9020,7 +9095,7 @@ async function exportSitesToExcel() {
 
         // Format address
         const address = [
-            site.villageName,
+            site.installLocation || site.villageName,
             site.moo ? `หมู่ที่ ${site.moo}` : "",
             site.subdistrict,
             site.district,
@@ -9033,7 +9108,7 @@ async function exportSitesToExcel() {
         return {
             "รหัสสถานที่": site.siteCode || "-",
             "ชื่อสถานที่": site.name || "-",
-            "หมู่บ้าน": site.villageName || "-",
+            "สถานที่ติดตั้ง": site.installLocation || site.villageName || "-",
             "หมู่ที่": site.moo || "-",
             "ตำบล": site.subdistrict || "-",
             "อำเภอ": site.district || "-",

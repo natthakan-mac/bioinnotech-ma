@@ -36,7 +36,7 @@ async function getNotificationSettings() {
 function buildFullAddress(siteData) {
     const parts = [];
     
-    if (siteData.villageName) parts.push(siteData.villageName);
+    if (siteData.installLocation || siteData.villageName) parts.push(siteData.installLocation || siteData.villageName);
     if (siteData.moo) parts.push(`หมู่ ${siteData.moo}`);
     if (siteData.subdistrict) parts.push(`ต.${siteData.subdistrict}`);
     if (siteData.district) parts.push(`อ.${siteData.district}`);
