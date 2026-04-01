@@ -12,7 +12,7 @@ const EMAIL_SIGNATURE = `
 <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
 <p style="font-family: Arial, sans-serif; font-size: 13px; color: #888; margin-bottom: 8px;">หากพบปัญหาการใช้งาน กรุณาติดต่อทีมสนับสนุน</p>
 <p style="font-family: Arial, sans-serif; font-size: 13px; margin: 0; line-height: 1.8;">
-<b>Water Plant Maintenance System</b><br>
+<b>Maintenance System</b><br>
 <b>Email:</b> <a href="mailto:it@bioinnotech.co.th">it@bioinnotech.co.th</a><br>
 <b>Tel:</b> <a href="tel:0969267701">096-926-7701</a><br>
 <b>LINE:</b> <a href="https://lin.ee/rEf6BGP">ITDS</a>
@@ -63,7 +63,7 @@ function getThaiStatus(status) {
 // Send Telegram notification
 async function sendTelegramNotification(botToken, chatId, siteInfo) {
     try {
-        const appUrl = "https://water-plant-maintenance.web.app";
+        const appUrl = "https://casp-ma.web.app";
         const hasLocation = siteInfo.locationUrl && siteInfo.locationUrl !== "#" && siteInfo.locationUrl.startsWith("http");
 
         let message =
@@ -101,7 +101,7 @@ async function sendTelegramNotification(botToken, chatId, siteInfo) {
 async function sendLineNotification(channelAccessToken, userId, siteInfo) {
     try {
         // Construct URLs
-        const appUrl = "https://water-plant-maintenance.web.app";
+        const appUrl = "https://casp-ma.web.app";
         const viewSiteUrl = `${appUrl}?siteId=${siteInfo.id}`;
         const hasLocation = siteInfo.locationUrl && siteInfo.locationUrl !== "#" && siteInfo.locationUrl.startsWith("http");
         const locationUrl = hasLocation ? siteInfo.locationUrl : viewSiteUrl;
@@ -320,7 +320,7 @@ async function sendEmailNotification(smtpSettings, siteInfo) {
         });
 
         // Build email content
-        const appUrl = "https://water-plant-maintenance.web.app";
+        const appUrl = "https://casp-ma.web.app";
         const viewSiteUrl = `${appUrl}?siteId=${siteInfo.id || ''}`;
         const hasLocation = siteInfo.locationUrl && siteInfo.locationUrl.startsWith("http");
 
@@ -338,7 +338,7 @@ async function sendEmailNotification(smtpSettings, siteInfo) {
             `วันที่ MA ครั้งแรก: ${siteInfo.firstMaDate}\n` +
             `${hasLocation ? `Google Maps: ${siteInfo.locationUrl}\n` : ''}` +
             `\nดูข้อมูลสถานที่: ${viewSiteUrl}\n` +
-            `\nเพิ่มเมื่อ: ${siteInfo.timestamp}\n\n---\nWater Plant Maintenance System`;
+            `\nเพิ่มเมื่อ: ${siteInfo.timestamp}\n\n---\nMaintenance System`;
 
         const htmlBody = `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
 <b>มีการเพิ่มสถานที่ใหม่ในระบบ</b><br><br>
@@ -398,7 +398,7 @@ async function sendEmailMANotification(smtpSettings, maInfo, isNew = true) {
         });
 
         // Build email content
-        const appUrl = "https://water-plant-maintenance.web.app";
+        const appUrl = "https://casp-ma.web.app";
         const viewCaseUrl = `${appUrl}?logId=${maInfo.logId}`;
 
         const subject = isNew
@@ -413,7 +413,7 @@ async function sendEmailMANotification(smtpSettings, maInfo, isNew = true) {
             `วันที่: ${maInfo.date}\n` +
             `${maInfo.objective ? `รายละเอียด: ${maInfo.objective}\n` : ''}` +
             `\nดูรายละเอียดเคส: ${viewCaseUrl}\n` +
-            `\n${isNew ? 'เปิดเคสเมื่อ' : 'อัปเดตเมื่อ'}: ${maInfo.timestamp}\n\n---\nWater Plant Maintenance System`;
+            `\n${isNew ? 'เปิดเคสเมื่อ' : 'อัปเดตเมื่อ'}: ${maInfo.timestamp}\n\n---\nMaintenance System`;
 
         const htmlBody = `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
 <b>${isNew ? 'มีการเปิดเคสใหม่' : 'มีการอัปเดตสถานะเคส'}</b><br><br>
@@ -450,7 +450,7 @@ ${EMAIL_SIGNATURE}
 // Send Telegram notification for MA record
 async function sendTelegramMANotification(botToken, chatId, maInfo, isNew = true) {
     try {
-        const appUrl = "https://water-plant-maintenance.web.app";
+        const appUrl = "https://casp-ma.web.app";
         const viewCaseUrl = `${appUrl}?logId=${maInfo.logId}`;
 
         const message = isNew
@@ -594,7 +594,7 @@ async function sendLineMANotification(channelAccessToken, userId, maInfo, isNew 
                                 action: {
                                     type: "uri",
                                     label: "📋 ดูเคส",
-                                    uri: `https://water-plant-maintenance.web.app?logId=${maInfo.logId}`
+                                    uri: `https://casp-ma.web.app?logId=${maInfo.logId}`
                                 },
                                 style: "primary",
                                 color: headerColor,

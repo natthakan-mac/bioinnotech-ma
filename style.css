@@ -2490,34 +2490,27 @@ span.flatpickr-weekday {
 
 /* Bill/Receipt Style Box for Job Details & Cost */
 .bill-receipt-box {
-    background: #f8fafc;
+    background: #ffffff;
     color: #111111;
-    border-radius: 4px;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    border-radius: 8px;
     padding: 1.25rem 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
     position: relative;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    margin-bottom: 8px;
-    /* Room for zigzag */
+    box-shadow: none;
+    border: 1px solid rgba(0,0,0,0.12);
+    margin-top: 0;
+    margin-bottom: 0;
 }
 
-/* Jagged bottom edge to look like torn receipt paper */
+/* Remove torn edges */
+.bill-receipt-box::before {
+    display: none;
+}
+
 .bill-receipt-box::after {
-    content: "";
-    position: absolute;
-    bottom: -8px;
-    /* Match height */
-    left: 0;
-    right: 0;
-    height: 8px;
-    background-size: 16px 16px;
-    background-repeat: repeat-x;
-    background-image: linear-gradient(135deg, #f8fafc 25%, transparent 25%), linear-gradient(225deg, #f8fafc 25%, transparent 25%);
-    background-position: left top;
+    display: none;
 }
 
 /* The body of the receipt - font styling */
@@ -2673,8 +2666,8 @@ span.flatpickr-weekday {
 
 
 .chat-input-send-btn {
-    background: var(--primary-color);
-    color: #111111;
+    background: #111111;
+    color: #ffffff;
     border: none;
     border-radius: 10px;
     width: 40px;
@@ -2689,7 +2682,7 @@ span.flatpickr-weekday {
 }
 
 .chat-input-send-btn:hover {
-    background: var(--primary-hover);
+    background: #333333;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.32);
 }
@@ -2720,7 +2713,7 @@ span.flatpickr-weekday {
 
 .chat-input-attach-btn:hover {
     background: rgba(0,0,0,0.06);
-    color: var(--primary-color);
+    color: #111111;
     transform: scale(1.1);
 }
 
@@ -2754,51 +2747,55 @@ span.flatpickr-weekday {
     display: flex;
     gap: 0.75rem;
     padding: 1rem;
-    background: rgba(0,0,0,0.06);
-    border-radius: 12px;
-    margin-bottom: 0.75rem;
+    background: #fafafa;
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
     transition: background 0.2s;
     isolation: isolate;
 }
 
 .comment-item:hover {
-    background: rgba(0,0,0,0.10);
+    background: #f5f5f5;
 }
 
 /* System Log Comment Styling */
 .comment-item-system-log {
-    background: rgba(100, 116, 139, 0.15) !important;
+    background: #f0f0f0 !important;
+    border: 1px solid rgba(0,0,0,0.08) !important;
 }
 
 .comment-item-system-log:hover {
-    background: rgba(100, 116, 139, 0.2) !important;
+    background: #eaeaea !important;
 }
 
 .comment-item-system-log .comment-text {
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.85);
+    color: #555555;
     white-space: pre-line;
 }
 
 .comment-item-system-log .comment-avatar {
-    background: linear-gradient(135deg, #666666, #555555);
+    background: #ddd;
+    color: #666;
 }
 
 .comment-avatar {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
-    color: #111111;
+    background: #e0e0e0;
+    color: #555;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 0.85rem;
     flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: none;
     overflow: hidden;
     position: relative;
+    border: 1px solid rgba(0,0,0,0.08);
 }
 
 .comment-avatar img {
@@ -2825,20 +2822,20 @@ span.flatpickr-weekday {
 
 .comment-author {
     font-weight: 600;
-    font-size: 0.9rem;
-    color: var(--text-color);
+    font-size: 0.88rem;
+    color: #111111;
 }
 
 .comment-time {
-    font-size: 0.75rem;
-    color: var(--text-muted);
+    font-size: 0.73rem;
+    color: #999;
 }
 
 .comment-text {
-    margin: 0 0 0.75rem 0;
-    font-size: 0.9rem;
+    margin: 0 0 0.5rem 0;
+    font-size: 0.88rem;
     line-height: 1.6;
-    color: var(--text-color);
+    color: #333333;
     word-wrap: break-word;
 }
 
@@ -5032,7 +5029,7 @@ summary:focus-visible {
     background: rgba(0,0,0,0.04);
     border: 1px solid rgba(0,0,0,0.08);
     border-radius: 6px;
-    color: rgba(255, 255, 255, 0.6);
+    color: #333333;
     cursor: pointer;
     padding: 0.35rem;
     font-size: 1rem;
@@ -5048,7 +5045,7 @@ summary:focus-visible {
 .toast-close:hover {
     background: rgba(0,0,0,0.08);
     border-color: rgba(0,0,0,0.12);
-    color: rgba(255, 255, 255, 0.9);
+    color: #111111;
     transform: scale(1.1);
 }
 
@@ -7191,7 +7188,8 @@ summary:focus-visible {
    ============================================ */
 
 /* Inputs & selects */
-input, textarea, select {
+input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]):not([type="file"]),
+textarea, select {
     background: #ffffff !important;
     color: #111111 !important;
     border-color: rgba(0,0,0,0.15) !important;
@@ -7365,6 +7363,7 @@ input::placeholder, textarea::placeholder {
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid rgba(0,0,0,0.1);
+    min-height: 46px;
 }
 
 .check-pill {
@@ -7373,7 +7372,7 @@ input::placeholder, textarea::placeholder {
     justify-content: center;
     cursor: pointer;
     margin: 0 !important;
-    padding: 0.4rem 0.75rem;
+    padding: 0.65rem 0.85rem;
     font-size: 0.8rem;
     font-weight: 500;
     transition: all 0.2s ease;
@@ -7381,6 +7380,8 @@ input::placeholder, textarea::placeholder {
     color: var(--text-muted);
     user-select: none;
     white-space: nowrap;
+    min-height: 46px;
+    box-sizing: border-box;
 }
 
 .check-pill input[type="radio"] {
@@ -7417,3 +7418,42 @@ input::placeholder, textarea::placeholder {
 .check-pill.fail:has(input:checked) span {
     color: #ffffff;
 }
+
+/* Neutral check-pill (for inspection checklist) */
+.check-pill.neutral:has(input:checked) {
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
+}
+
+.check-pill.neutral:has(input:checked) span {
+    color: #ffffff;
+}
+
+.check-pill.neutral span { color: var(--text-muted); }
+
+/* Inspection pill colors */
+.check-pill.insp-check span { color: var(--text-muted); }
+.check-pill.insp-service span { color: var(--text-muted); }
+.check-pill.insp-replace span { color: var(--text-muted); }
+
+.check-pill.insp-check:has(input:checked) {
+    background: #22c55e;
+    color: #ffffff;
+    border-color: #22c55e;
+}
+.check-pill.insp-check:has(input:checked) span { color: #ffffff; }
+
+.check-pill.insp-service:has(input:checked) {
+    background: #f59e0b;
+    color: #ffffff;
+    border-color: #f59e0b;
+}
+.check-pill.insp-service:has(input:checked) span { color: #ffffff; }
+
+.check-pill.insp-replace:has(input:checked) {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #ef4444;
+}
+.check-pill.insp-replace:has(input:checked) span { color: #ffffff; }

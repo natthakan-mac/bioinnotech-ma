@@ -70,6 +70,12 @@ import {
     linkWithPopup,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+
+// Helper: check if category is a maintenance-type category
+function isMaCategory(cat) {
+    return cat === "บำรุงรักษาตามรอบ" || cat === "ตามสัญญาจ้าง" || cat === "ตามใบสั่งซื้อ" || cat === "Maintenance" || cat === "อื่นๆ";
+}
+
 // --- Firebase Configuration ---
 const firebaseConfig = {
     apiKey: "AIzaSyDIgPA8WHnxP5X_JoRQtwdGDIqGYRdCZOI",
@@ -2297,6 +2303,9 @@ function initSiteAutocompletes() {
                 selects.logSiteHidden.value = site.id;
             }
         },
+        "ค้นหาอุปกรณ์...",
+        true,
+        0,
     );
 
     // 3. Log Maintenance Details Autocomplete (New)
@@ -2983,7 +2992,7 @@ async function handleSiteSubmit(e) {
                 const initialLogData = {
                     siteId: newSiteId,
                     date: siteData.firstMaDate,
-                    category: "Maintenance",
+                    category: "บำรุงรักษาตามรอบ",
                     status: "Open",
                     lineItems: [],
                     details: "-",
@@ -3140,6 +3149,36 @@ function editSite(id) {
             siteMarker.position = newPos;
         }
     }
+}
+
+function buildInspectionSummary(logData) {
+    const lines = [];
+    if (logData.cycleCount) lines.push(`จำนวนรอบ: ${logData.cycleCount}`);
+    // Electrical
+    const hasE = logData.voltageL1 || logData.voltageL2 || logData.voltageL3 || logData.currentL1 || logData.currentL2 || logData.currentL3;
+    if (hasE) {
+        lines.push(`⚡ Electrical — V: R${logData.voltageL1||'-'} S${logData.voltageL2||'-'} T${logData.voltageL3||'-'} | A: R${logData.currentL1||'-'} S${logData.currentL2||'-'} T${logData.currentL3||'-'}`);
+    }
+    // Physical
+    const pf = (v) => !v ? '' : v === 'pass' ? '✅' : '❌';
+    if (logData.avgWorkTemp) lines.push(`อุณหภูมิทำงาน: ${logData.avgWorkTemp}°C ${pf(logData.avgWorkTempCheck)}`);
+    if (logData.avgAreaTemp) lines.push(`อุณหภูมิพื้นที่: ${logData.avgAreaTemp}°C ${pf(logData.avgAreaTempCheck)}`);
+    if (logData.leakPressure || logData.leakCheck) lines.push(`การรั่วไหล: ${logData.leakPressure||'-'} PSI ${pf(logData.leakCheck)}`);
+    if (logData.complyType5) lines.push(`Comply Type 5: ${pf(logData.complyType5)}`);
+    if (logData.ciPcdType5) lines.push(`CI PCD Type 5: ${pf(logData.ciPcdType5)}`);
+    // Inspection checklist
+    const inspLabels = { check: 'Check', service: 'Service', replace: 'Replace' };
+    const inspItems = [
+        ['insp_exteriorCleaning','ความสะอาดภายนอก'],['insp_interiorCleaning','ความสะอาดภายใน'],
+        ['insp_doorSystem','ระบบประตู'],['insp_footSwitch','Foot Switch'],['insp_sensor','Sensor'],
+        ['insp_tempPoints','อุณหภูมิจุดที่ 1-4'],['insp_workingPressure','ความดัน'],['insp_rfGenerator','RF Generator'],
+        ['insp_chemicalAmount','น้ำยาที่ฉีด'],['insp_airChargingValue','Air Charging'],['insp_filter','Filter'],
+        ['insp_decomposer','Decomposer'],['insp_vacuumPumpOil','น้ำมันปั๊มสุญญากาศ'],['insp_connectors','ข้อต่อ'],
+        ['insp_drainTank','ถังเดรนน้ำ'],['insp_gasDoor','แก๊สหน้าประตู'],['insp_gas1m','แก๊สห่าง 1ม.'],['insp_gas2m','แก๊สห่าง 2ม.'],
+    ];
+    const inspResults = inspItems.filter(([k]) => logData[k]).map(([k, label]) => `${label}: ${inspLabels[logData[k]] || logData[k]}`);
+    if (inspResults.length > 0) lines.push(`📋 Inspection — ${inspResults.join(' | ')}`);
+    return lines.length > 0 ? `🔍 ข้อมูลตรวจสอบ\n${lines.join('\n')}` : '';
 }
 
 async function handleLogMaintenance(e) {
@@ -3360,6 +3399,27 @@ async function handleLogMaintenance(e) {
             // Performance
             complyType5: formData.get("complyType5") || "",
             ciPcdType5: formData.get("ciPcdType5") || "",
+            // Cycle Count
+            cycleCount: formData.get("cycleCount") || "",
+            // Inspection Checklist
+            insp_exteriorCleaning: formData.get("insp_exteriorCleaning") || "",
+            insp_interiorCleaning: formData.get("insp_interiorCleaning") || "",
+            insp_doorSystem: formData.get("insp_doorSystem") || "",
+            insp_footSwitch: formData.get("insp_footSwitch") || "",
+            insp_sensor: formData.get("insp_sensor") || "",
+            insp_tempPoints: formData.get("insp_tempPoints") || "",
+            insp_workingPressure: formData.get("insp_workingPressure") || "",
+            insp_rfGenerator: formData.get("insp_rfGenerator") || "",
+            insp_chemicalAmount: formData.get("insp_chemicalAmount") || "",
+            insp_airChargingValue: formData.get("insp_airChargingValue") || "",
+            insp_filter: formData.get("insp_filter") || "",
+            insp_decomposer: formData.get("insp_decomposer") || "",
+            insp_vacuumPumpOil: formData.get("insp_vacuumPumpOil") || "",
+            insp_connectors: formData.get("insp_connectors") || "",
+            insp_drainTank: formData.get("insp_drainTank") || "",
+            insp_gasDoor: formData.get("insp_gasDoor") || "",
+            insp_gas1m: formData.get("insp_gas1m") || "",
+            insp_gas2m: formData.get("insp_gas2m") || "",
         };
 
         // Add case ID for new logs (use pre-generated ID from form)
@@ -3674,8 +3734,8 @@ async function handleLogMaintenance(e) {
             
             // Check if category changed from Maintenance to something else
             if (existingLog && 
-                (existingLog.category === "Maintenance" || existingLog.category === "อื่นๆ") && 
-                logData.category !== "Maintenance" && 
+                (isMaCategory(existingLog.category)) && 
+                !isMaCategory(logData.category) && 
                 logData.category !== "อื่นๆ") {
                 
                 console.log('[Category Change] Maintenance case changed to non-maintenance category');
@@ -3686,7 +3746,7 @@ async function handleLogMaintenance(e) {
                     const hasActiveMaintenance = state.logs.some((l) => 
                         l.siteId === site.id && 
                         l.id !== logId && // Exclude current log
-                        (l.category === "Maintenance" || l.category === "อื่นๆ") &&
+                        (isMaCategory(l.category)) &&
                         l.status !== "Cancel" && 
                         l.status !== "Done" && 
                         l.status !== "Completed" &&
@@ -3700,7 +3760,7 @@ async function handleLogMaintenance(e) {
                         const siteMaLogs = state.logs.filter(
                             (l) => l.siteId === site.id && 
                             l.id !== logId && // Exclude current log being changed
-                            (l.category === "Maintenance" || l.category === "อื่นๆ" || l.objective?.includes("รอบซ่อมบำรุง"))
+                            (isMaCategory(l.category) || l.objective?.includes("รอบซ่อมบำรุง"))
                         ).sort((a, b) => new Date(b.date) - new Date(a.date));
                         
                         // The cycle number should be based on remaining MA cases only
@@ -3731,7 +3791,7 @@ async function handleLogMaintenance(e) {
                                 const nextLogData = {
                                     siteId: site.id,
                                     date: nextDateStr,
-                                    category: "Maintenance",
+                                    category: "บำรุงรักษาตามรอบ",
                                     status: "Open",
                                     lineItems: [],
                                     details: "-",
@@ -3798,31 +3858,31 @@ async function handleLogMaintenance(e) {
                         attachments: []
                     };
 
-                    // Upload description attachments (filter out existing ones, though shouldn't exist for new logs)
                     const newAttachments = descriptionAttachments.filter(att => !att.isExisting);
                     if (newAttachments.length > 0) {
                         const uploadPromises = newAttachments.map(async (file) => {
                             const path = `comments/${newLogId}/${Date.now()}_${file.name}`;
                             const url = await FirestoreService.uploadFile(file, path);
-                            return {
-                                name: file.name,
-                                url: url,
-                                type: file.type,
-                                size: file.size
-                            };
+                            return { name: file.name, url: url, type: file.type, size: file.size };
                         });
                         commentData.attachments = await Promise.all(uploadPromises);
                     }
 
-                    // Update log with initial comment
-                    await FirestoreService.updateLog(newLogId, { comments: [commentData] });
-                    
-                    // Clear description attachments
+                    const comments = [commentData];
+                    const inspSummary = buildInspectionSummary(logData);
+                    if (inspSummary) {
+                        comments.push({ text: inspSummary, author: "System", authorId: "system", photoURL: "", timestamp: new Date().toISOString(), attachments: [], isSystemLog: true });
+                    }
+                    await FirestoreService.updateLog(newLogId, { comments });
                     descriptionAttachments = [];
                     updateDescriptionAttachmentPreview();
                 } catch (commentErr) {
                     console.error("Failed to add initial comment:", commentErr);
-                    // Non-blocking, log is already saved
+                }
+            } else {
+                const inspSummary = buildInspectionSummary(logData);
+                if (inspSummary) {
+                    try { await FirestoreService.updateLog(newLogId, { comments: [{ text: inspSummary, author: "System", authorId: "system", photoURL: "", timestamp: new Date().toISOString(), attachments: [], isSystemLog: true }] }); } catch(e) {}
                 }
             }
             
@@ -3832,7 +3892,7 @@ async function handleLogMaintenance(e) {
         // Auto-create next cycle if Maintenance & newly Case Closed
         if (
             isNewlyCompleted &&
-            (logData.category === "Maintenance" ||
+            (isMaCategory(logData.category) ||
                 logData.category === "อื่นๆ" ||
                 logData.objective?.includes("รอบซ่อมบำรุง"))
         ) {
@@ -3841,7 +3901,7 @@ async function handleLogMaintenance(e) {
                 // Check if there's already an active maintenance case for this site
                 const hasActiveMaintenance = state.logs.some((l) => 
                     l.siteId === site.id && 
-                    (l.category === "Maintenance" || l.category === "อื่นๆ") &&
+                    (isMaCategory(l.category)) &&
                     l.status !== "Cancel" && 
                     l.status !== "Done" && 
                     l.status !== "Completed" &&
@@ -3864,14 +3924,14 @@ async function handleLogMaintenance(e) {
                         }
 
                         const siteMaLogs = state.logs.filter(
-                            (l) => l.siteId === site.id && (l.category === "Maintenance" || l.category === "อื่นๆ" || l.objective?.includes("รอบซ่อมบำรุง"))
+                            (l) => l.siteId === site.id && (isMaCategory(l.category) || l.objective?.includes("รอบซ่อมบำรุง"))
                         );
                         const nextCycleNum = siteMaLogs.length + 1;
 
                         const nextLogData = {
                             siteId: site.id,
                             date: nextDateStr,
-                            category: logData.category || "Maintenance",
+                            category: logData.category || "บำรุงรักษาตามรอบ",
                             status: "Open",
                             lineItems: [],
                             details: "-",
@@ -3909,7 +3969,7 @@ async function handleLogMaintenance(e) {
                 // Check if there's already an active maintenance case for this site
                 const hasActiveMaintenance = state.logs.some((l) => 
                     l.siteId === site.id && 
-                    (l.category === "Maintenance" || l.category === "อื่นๆ") &&
+                    (isMaCategory(l.category)) &&
                     l.status !== "Cancel" && 
                     l.status !== "Done" && 
                     l.status !== "Completed" &&
@@ -3932,14 +3992,14 @@ async function handleLogMaintenance(e) {
                         }
 
                         const siteMaLogs = state.logs.filter(
-                            (l) => l.siteId === site.id && (l.category === "Maintenance" || l.category === "อื่นๆ" || l.objective?.includes("รอบซ่อมบำรุง"))
+                            (l) => l.siteId === site.id && (isMaCategory(l.category) || l.objective?.includes("รอบซ่อมบำรุง"))
                         );
                         const nextCycleNum = siteMaLogs.length + 1;
 
                         const nextLogData = {
                             siteId: site.id,
                             date: nextDateStr,
-                            category: logData.category || "Maintenance",
+                            category: logData.category || "บำรุงรักษาตามรอบ",
                             status: "Open",
                             lineItems: [],
                             details: "-",
@@ -5133,7 +5193,7 @@ async function runBackgroundMaBackfill() {
             const maLogs = state.logs.filter(
                 (l) =>
                     l.siteId === site.id &&
-                    (l.category === "Maintenance" ||
+                    (isMaCategory(l.category) ||
                         l.category === "อื่นๆ" ||
                         (l.objective && l.objective.includes("รอบซ่อมบำรุง"))),
             );
@@ -5142,7 +5202,7 @@ async function runBackgroundMaBackfill() {
                 const initialLogData = {
                     siteId: site.id,
                     date: site.firstMaDate,
-                    category: "Maintenance",
+                    category: "บำรุงรักษาตามรอบ",
                     status: "Open",
                     lineItems: [],
                     details: "-",
@@ -5193,7 +5253,7 @@ async function runBackgroundMaBackfill() {
                             const nextLogData = {
                                 siteId: site.id,
                                 date: nextDateStr,
-                                category: "Maintenance",
+                                category: "บำรุงรักษาตามรอบ",
                                 status: "Open",
                                 lineItems: [],
                                 details: "-",
@@ -5441,7 +5501,7 @@ function editLog(logId) {
 
     // Populate new fields
     const categorySelect = form.querySelector('select[name="category"]');
-    if (categorySelect) categorySelect.value = log.category || "Maintenance";
+    if (categorySelect) categorySelect.value = log.category || "บำรุงรักษาตามรอบ";
 
     const statusSelect = form.querySelector('select[name="status"]');
     if (statusSelect) statusSelect.value = log.status || "Open";
@@ -5489,6 +5549,20 @@ function editLog(logId) {
     checkRadios("leakCheck", log.leakCheck);
     checkRadios("complyType5", log.complyType5);
     checkRadios("ciPcdType5", log.ciPcdType5);
+
+    // Cycle Count
+    setField("cycleCount", log.cycleCount);
+
+    // Inspection Checklist radios
+    const inspKeys = [
+        "insp_exteriorCleaning", "insp_interiorCleaning", "insp_doorSystem",
+        "insp_footSwitch", "insp_sensor", "insp_tempPoints",
+        "insp_workingPressure", "insp_rfGenerator", "insp_chemicalAmount",
+        "insp_airChargingValue", "insp_filter", "insp_decomposer",
+        "insp_vacuumPumpOil", "insp_connectors", "insp_drainTank",
+        "insp_gasDoor", "insp_gas1m", "insp_gas2m",
+    ];
+    inspKeys.forEach(key => checkRadios(key, log[key]));
 
     let legacyAttachments = log.attachments || [];
     if (log.attachmentUrl && legacyAttachments.length === 0) {
@@ -5883,10 +5957,10 @@ function renderCalendar() {
                 // Category Icon
                 let catIcon =
                     '<i class="fa-solid fa-wrench" style="color: var(--text-muted); font-size: 0.6rem;"></i>';
-                if (log.category === "Maintenance")
+                if (isMaCategory(log.category))
                     catIcon =
-                        '<i class="fa-solid fa-screwdriver-wrench" style="color: #3b82f6; font-size: 0.6rem;"></i>';
-                else if (log.category === "Incident")
+                        '<i class="fa-solid fa-screwdriver-wrench" style="color: #111111; font-size: 0.6rem;"></i>';
+                else if (log.category === "ตามใบสั่งซื้อ")
                     catIcon =
                         '<i class="fa-solid fa-triangle-exclamation" style="color: #f97316; font-size: 0.6rem;"></i>';
                 else if (log.category === "Cleaning")
@@ -6042,14 +6116,14 @@ function showDayDetails(dateStr, logs) {
         let catColor = 'var(--text-muted)';
         let catBg = 'rgba(100,116,139,0.15)';
         
-        if (log.category === "Maintenance") {
-            catIcon = '<i class="fa-solid fa-screwdriver-wrench" style="color: #3b82f6; margin-right: 4px;"></i>';
-            catColor = '#3b82f6';
-            catBg = 'rgba(59,130,246,0.15)';
-        } else if (log.category === "Incident") {
-            catIcon = '<i class="fa-solid fa-triangle-exclamation" style="color: #f97316; margin-right: 4px;"></i>';
-            catColor = '#f97316';
-            catBg = 'rgba(249,115,22,0.15)';
+        if (isMaCategory(log.category)) {
+            catIcon = '<i class="fa-solid fa-screwdriver-wrench" style="color: #111111; margin-right: 4px;"></i>';
+            catColor = '#111111';
+            catBg = 'rgba(0,0,0,0.08)';
+        } else if (log.category === "ตามใบสั่งซื้อ") {
+            catIcon = '<i class="fa-solid fa-cart-shopping" style="color: #111111; margin-right: 4px;"></i>';
+            catColor = '#111111';
+            catBg = 'rgba(0,0,0,0.08)';
         } else if (log.category === "Cleaning") {
             catIcon = '<i class="fa-solid fa-broom" style="color: var(--text-muted); margin-right: 4px;"></i>';
         } else if (log.category === "Installation") {
@@ -6930,7 +7004,7 @@ function renderSites() {
 
                     // Base calculation on the latest log if available, otherwise advance firstMaDate
                     const siteLogs = state.logs.filter(
-                        (l) => l.siteId === site.id && l.category === "Maintenance",
+                        (l) => l.siteId === site.id && isMaCategory(l.category),
                     );
                     if (siteLogs.length > 0) {
                         siteLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -7177,7 +7251,7 @@ function viewSiteDetails(id) {
             let nextMa = new Date(site.firstMaDate);
 
             const siteLogs = state.logs.filter(
-                (l) => l.siteId === site.id && l.category === "Maintenance",
+                (l) => l.siteId === site.id && isMaCategory(l.category),
             );
             if (siteLogs.length > 0) {
                 siteLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -7956,6 +8030,13 @@ function initMaFormCommentAttachments() {
 document.addEventListener('DOMContentLoaded', () => {
     initMaFormCommentAttachments();
     initDescriptionAttachments();
+
+    // Enforce numeric-only on electrical fields
+    document.querySelectorAll('input[name^="voltageL"], input[name^="currentL"], input[name="leakPressure"]').forEach(input => {
+        input.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+        });
+    });
 });
 
 // ─── Description Attachment Helpers ──────────────────────────────────────────
@@ -8490,7 +8571,7 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
                 const hasActiveMaintenance = state.logs.some((l) => 
                     l.siteId === site.id && 
                     l.id !== logId && // Exclude current log
-                    (l.category === "Maintenance" || l.category === "อื่นๆ") &&
+                    (isMaCategory(l.category)) &&
                     l.status !== "Cancel" && 
                     l.status !== "Done" && 
                     l.status !== "Completed" &&
@@ -8513,14 +8594,14 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
                         }
 
                         const siteMaLogs = state.logs.filter(
-                            (l) => l.siteId === site.id && (l.category === "Maintenance" || l.category === "อื่นๆ" || l.objective?.includes("รอบซ่อมบำรุง"))
+                            (l) => l.siteId === site.id && (isMaCategory(l.category) || l.objective?.includes("รอบซ่อมบำรุง"))
                         );
                         const nextCycleNum = siteMaLogs.length + 1;
 
                         const nextLogData = {
                             siteId: site.id,
                             date: nextDateStr,
-                            category: log.category || "Maintenance",
+                            category: log.category || "บำรุงรักษาตามรอบ",
                             status: "Open",
                             lineItems: [],
                             details: "-",
@@ -8560,7 +8641,7 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
         if (
             (oldStatus !== 'Case Closed') &&
             (newStatus === 'Case Closed') &&
-            (log.category === "Maintenance" || log.category === "อื่นๆ" || log.objective?.includes("รอบซ่อมบำรุง"))
+            (isMaCategory(log.category))
         ) {
             const site = state.sites.find((s) => s.id === log.siteId);
             if (site && site.maintenanceCycle && site.maintenanceCycle > 0) {
@@ -8568,7 +8649,7 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
                 const hasActiveMaintenance = state.logs.some((l) => 
                     l.siteId === site.id && 
                     l.id !== logId && // Exclude current log
-                    (l.category === "Maintenance" || l.category === "อื่นๆ") &&
+                    (isMaCategory(l.category)) &&
                     l.status !== "Cancel" && 
                     l.status !== "Done" && 
                     l.status !== "Completed" &&
@@ -8591,14 +8672,14 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
                         }
 
                     const siteMaLogs = state.logs.filter(
-                        (l) => l.siteId === site.id && (l.category === "Maintenance" || l.category === "อื่นๆ" || l.objective?.includes("รอบซ่อมบำรุง"))
+                        (l) => l.siteId === site.id && (isMaCategory(l.category) || l.objective?.includes("รอบซ่อมบำรุง"))
                     );
                     const nextCycleNum = siteMaLogs.length + 1;
 
                         const nextLogData = {
                             siteId: site.id,
                             date: nextDateStr,
-                            category: log.category || "Maintenance",
+                            category: log.category || "บำรุงรักษาตามรอบ",
                             status: "Open",
                             lineItems: [],
                             details: "-",
@@ -8678,11 +8759,29 @@ function viewLogDetails(id) {
     if (caseIdEl) {
         caseIdEl.textContent = log.caseId || "-";
     }
+
+    // Header: case ID + site info
+    const headerCaseIdEl = document.getElementById("detail-log-header-case-id");
+    if (headerCaseIdEl) {
+        headerCaseIdEl.textContent = log.caseId || "";
+    }
+    const headerSiteEl = document.getElementById("detail-log-header-site");
+    if (headerSiteEl) {
+        headerSiteEl.textContent = thaiDate;
+    }
     
-    // Title with date only (white color)
+    // Title with site name (clickable to open device detail)
     const dateEl = document.getElementById("detail-log-date");
     if (dateEl) {
-        dateEl.innerHTML = `<span style="color: white;">${thaiDate}</span>`;
+        const siteCode = site.siteCode ? `${site.siteCode} · ` : "";
+        dateEl.textContent = `${siteCode}${site.name}`;
+        dateEl.style.cursor = "pointer";
+        dateEl.style.textDecoration = "underline";
+        dateEl.style.textDecorationColor = "rgba(0,0,0,0.2)";
+        dateEl.style.textUnderlineOffset = "3px";
+        dateEl.onclick = () => {
+            viewSiteDetails(site.id);
+        };
     }
     
     // Date field (if exists)
@@ -8703,12 +8802,32 @@ function viewLogDetails(id) {
         responderEl.textContent = rUser ? (rUser.displayName || rUser.email || '-') : '-';
     }
     
-    // Category with icon
-    const categoryIcon = log.category === "Maintenance" ? "🔧 " : log.category === "Incident" ? "⚠️ " : "";
+    // Category
     const categoryEl = document.getElementById("detail-log-category");
     if (categoryEl) {
-        categoryEl.textContent = categoryIcon + (log.category || "-");
+        categoryEl.textContent = log.category || "-";
     }
+
+    // Device info from site
+    const warrantyEl = document.getElementById("detail-log-warranty");
+    if (warrantyEl) {
+        if (site.insuranceStartDate && site.insuranceEndDate) {
+            warrantyEl.textContent = `${site.insuranceStartDate} ~ ${site.insuranceEndDate}`;
+        } else {
+            warrantyEl.textContent = "-";
+        }
+    }
+    const deviceTypeEl = document.getElementById("detail-log-device-type");
+    if (deviceTypeEl) deviceTypeEl.textContent = site.deviceType || "-";
+
+    const brandModelEl = document.getElementById("detail-log-brand-model");
+    if (brandModelEl) brandModelEl.textContent = [site.brand, site.model].filter(Boolean).join(" / ") || "-";
+
+    const serialEl = document.getElementById("detail-log-serial");
+    if (serialEl) serialEl.textContent = site.serialNumber || "-";
+
+    const installLocEl = document.getElementById("detail-log-install-location");
+    if (installLocEl) installLocEl.textContent = site.villageName || "-";
     
     // Render Status Timeline
     // Initialize status history if it doesn't exist (for old logs)
@@ -8772,39 +8891,86 @@ function viewLogDetails(id) {
     const inspSection = document.getElementById("detail-inspection-section");
     const inspContent = document.getElementById("detail-inspection-content");
     if (inspSection && inspContent) {
-        const hasElectrical = log.voltageL1 || log.voltageL2 || log.voltageL3 || log.currentL1 || log.currentL2 || log.currentL3;
-        const hasPhysical = log.avgWorkTemp || log.avgAreaTemp || log.leakCheck || log.leakPressure || log.avgWorkTempCheck || log.avgAreaTempCheck;
-        const hasPerformance = log.complyType5 || log.ciPcdType5;
-        if (hasElectrical || hasPhysical || hasPerformance) {
-            inspSection.style.display = "block";
-            let html = "";
-            if (hasElectrical) {
-                html += `<div style="margin-bottom:0.5rem;"><strong>แรงดันไฟฟ้า:</strong> L1: ${log.voltageL1 || "-"} V, L2: ${log.voltageL2 || "-"} V, L3: ${log.voltageL3 || "-"} V</div>`;
-                html += `<div style="margin-bottom:0.5rem;"><strong>กระแส:</strong> L1: ${log.currentL1 || "-"} A, L2: ${log.currentL2 || "-"} A, L3: ${log.currentL3 || "-"} A</div>`;
-            }
-            if (hasPhysical) {
-                const checkBadge = (val) => {
-                    if (!val) return "";
-                    const color = val === "pass" ? "#22c55e" : "#ef4444";
-                    const text = val === "pass" ? "ผ่าน" : "ไม่ผ่าน";
-                    return ` <span style="color:${color}; font-weight:600;">[${text}]</span>`;
-                };
-                if (log.avgWorkTemp) html += `<div style="margin-bottom:0.5rem;"><strong>อุณหภูมิเฉลี่ยในการทำงาน:</strong> ${log.avgWorkTemp} °C${checkBadge(log.avgWorkTempCheck)}</div>`;
-                if (log.avgAreaTemp) html += `<div style="margin-bottom:0.5rem;"><strong>อุณหภูมิเฉลี่ยพื้นที่:</strong> ${log.avgAreaTemp} °C${checkBadge(log.avgAreaTempCheck)}</div>`;
-                if (log.leakCheck || log.leakPressure) {
-                    html += `<div><strong>ตรวจสอบการรั่วไหล:</strong> ${log.leakPressure ? log.leakPressure + ' PSI' : '-'}${checkBadge(log.leakCheck)}</div>`;
-                }
-            }
-            if (hasPerformance) {
-                if (hasElectrical || hasPhysical) html += `<div style="border-top:1px solid rgba(0,0,0,0.06); margin:0.5rem 0;"></div>`;
-                html += `<div style="margin-bottom:0.5rem; font-weight:600; color:var(--text-muted); font-size:0.85rem;"><i class="fa-solid fa-gauge-high" style="margin-right:4px;"></i> Performance</div>`;
-                if (log.complyType5) html += `<div style="margin-bottom:0.5rem;"><strong>Comply Type 5:</strong>${checkBadge(log.complyType5)}</div>`;
-                if (log.ciPcdType5) html += `<div><strong>CI PCD Type 5:</strong>${checkBadge(log.ciPcdType5)}</div>`;
-            }
-            inspContent.innerHTML = html;
-        } else {
-            inspSection.style.display = "none";
-        }
+        const inspItems = [
+            ['insp_exteriorCleaning', 'ความสะอาดภายนอก'],
+            ['insp_interiorCleaning', 'ความสะอาดภายใน'],
+            ['insp_doorSystem', 'การทำงานระบบประตู'],
+            ['insp_footSwitch', 'การทำงาน Foot Switch'],
+            ['insp_sensor', 'ระบบ Sensor'],
+            ['insp_tempPoints', 'อุณหภูมิจุดที่ 1-4'],
+            ['insp_workingPressure', 'ความดันขณะทำงาน'],
+            ['insp_rfGenerator', 'RF Generator'],
+            ['insp_chemicalAmount', 'ปริมาณน้ำยาที่ฉีด'],
+            ['insp_airChargingValue', 'Air Charging Value'],
+            ['insp_filter', 'Filter'],
+            ['insp_decomposer', 'Decomposer'],
+            ['insp_vacuumPumpOil', 'น้ำมันปั๊มสุญญากาศ'],
+            ['insp_connectors', 'ระบบข้อต่อต่างๆ'],
+            ['insp_drainTank', 'ถังเดรนน้ำ'],
+            ['insp_gasDoor', 'ปริมาณแก๊สหน้าประตู'],
+            ['insp_gas1m', 'ปริมาณแก๊สห่าง 1 ม.'],
+            ['insp_gas2m', 'ปริมาณแก๊สห่าง 2 ม.'],
+        ];
+
+        inspSection.style.display = "block";
+
+        const row = (label, value) => `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.85rem; color:#333;">${label}</span><span style="font-size:0.85rem; font-weight:500; color:#111;">${value}</span></div>`;
+
+        const pillBadge = (val, passLabel = 'ผ่าน', failLabel = 'ไม่ผ่าน') => {
+            if (!val) return `<span style="color:#ccc;">-</span>`;
+            const isPass = val === 'pass';
+            const bg = isPass ? '#22c55e' : '#ef4444';
+            const text = isPass ? passLabel : failLabel;
+            return `<span style="background:${bg}; color:#fff; padding:2px 10px; border-radius:4px; font-size:0.8rem; font-weight:500;">${text}</span>`;
+        };
+
+        const inspBadge = (val) => {
+            if (!val) return `<span style="color:#ccc;">-</span>`;
+            const config = { check: { label: 'Check', bg: '#22c55e' }, service: { label: 'Service', bg: '#f59e0b' }, replace: { label: 'Replace', bg: '#ef4444' } };
+            const c = config[val] || { label: val, bg: '#111' };
+            return `<span style="background:${c.bg}; color:#fff; padding:2px 10px; border-radius:4px; font-size:0.8rem; font-weight:500;">${c.label}</span>`;
+        };
+
+        let html = '';
+
+        // Cycle Count
+        html += row('จำนวนรอบขณะเช็ค (Cycle Count)', log.cycleCount ? `${log.cycleCount} รอบ` : '-');
+
+        // Electrical section header
+        html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-bolt" style="color:#eab308;"></i> ข้อมูลไฟฟ้า (Electrical)</div>`;
+        html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:0 1.5rem;">`;
+        html += row('แรงดัน R (V)', log.voltageL1 || '-');
+        html += row('แรงดัน S (V)', log.voltageL2 || '-');
+        html += row('แรงดัน T (V)', log.voltageL3 || '-');
+        html += row('กระแส R (A)', log.currentL1 || '-');
+        html += row('กระแส S (A)', log.currentL2 || '-');
+        html += row('กระแส T (A)', log.currentL3 || '-');
+        html += `</div>`;
+
+        // Physical Inspection
+        html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-clipboard-check"></i> ตรวจสอบทางกายภาพ (Physical Inspection)</div>`;
+        html += `<div style="display:flex; flex-direction:column;">`;
+        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.85rem; color:#333; flex:1;">อุณหภูมิเฉลี่ยในการทำงาน</span><span style="font-size:0.85rem; margin-right:0.75rem;">${log.avgWorkTemp ? log.avgWorkTemp + ' °C' : '-'}</span>${pillBadge(log.avgWorkTempCheck)}</div>`;
+        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.85rem; color:#333; flex:1;">อุณหภูมิเฉลี่ยพื้นที่</span><span style="font-size:0.85rem; margin-right:0.75rem;">${log.avgAreaTemp ? log.avgAreaTemp + ' °C' : '-'}</span>${pillBadge(log.avgAreaTempCheck)}</div>`;
+        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.85rem; color:#333; flex:1;">ตรวจสอบการรั่วไหล</span><span style="font-size:0.85rem; margin-right:0.75rem;">${log.leakPressure ? log.leakPressure + ' PSI' : '-'}</span>${pillBadge(log.leakCheck)}</div>`;
+        html += `</div>`;
+
+        // Performance
+        html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-gauge-high"></i> ประสิทธิภาพการทำงาน (Performance)</div>`;
+        html += `<div style="display:flex; flex-direction:column;">`;
+        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.85rem; color:#333;">Comply Type 5</span>${pillBadge(log.complyType5)}</div>`;
+        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.85rem; color:#333;">CI PCD Type 5</span>${pillBadge(log.ciPcdType5)}</div>`;
+        html += `</div>`;
+
+        // Inspection Checklist
+        html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-magnifying-glass-chart"></i> รายการตรวจสอบ (Inspection Checklist)</div>`;
+        html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:0 1.5rem;">`;
+        inspItems.forEach(([key, label]) => {
+            html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.85rem; color:#333;">${label}</span>${inspBadge(log[key])}</div>`;
+        });
+        html += `</div>`;
+
+        inspContent.innerHTML = html;
     }
 
     const postBtn = document.getElementById("btn-post-comment");
@@ -10232,14 +10398,14 @@ function appendLogRows(newLogs, targetTbody = null) {
         let catColor = 'var(--text-muted)';
         let catBg = 'rgba(100,116,139,0.15)';
         
-        if (log.category === "Maintenance") {
-            catIcon = '<i class="fa-solid fa-screwdriver-wrench" style="color: #3b82f6; margin-right: 4px;"></i>';
-            catColor = '#3b82f6';
-            catBg = 'rgba(59,130,246,0.15)';
-        } else if (log.category === "Incident") {
-            catIcon = '<i class="fa-solid fa-triangle-exclamation" style="color: #f97316; margin-right: 4px;"></i>';
-            catColor = '#f97316';
-            catBg = 'rgba(249,115,22,0.15)';
+        if (isMaCategory(log.category)) {
+            catIcon = '<i class="fa-solid fa-screwdriver-wrench" style="color: #111111; margin-right: 4px;"></i>';
+            catColor = '#111111';
+            catBg = 'rgba(0,0,0,0.08)';
+        } else if (log.category === "ตามใบสั่งซื้อ") {
+            catIcon = '<i class="fa-solid fa-cart-shopping" style="color: #111111; margin-right: 4px;"></i>';
+            catColor = '#111111';
+            catBg = 'rgba(0,0,0,0.08)';
         } else if (log.category === "Cleaning") {
             catIcon = '<i class="fa-solid fa-broom" style="color: var(--text-muted); margin-right: 4px;"></i>';
         } else if (log.category === "Installation") {
