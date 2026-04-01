@@ -3343,6 +3343,23 @@ async function handleLogMaintenance(e) {
             attachments: attachments,
             attachmentsBefore: attachmentsBefore,
             attachmentsAfter: attachmentsAfter,
+            // Electrical
+            voltageL1: formData.get("voltageL1") || "",
+            voltageL2: formData.get("voltageL2") || "",
+            voltageL3: formData.get("voltageL3") || "",
+            currentL1: formData.get("currentL1") || "",
+            currentL2: formData.get("currentL2") || "",
+            currentL3: formData.get("currentL3") || "",
+            // Physical Inspection
+            avgWorkTemp: formData.get("avgWorkTemp") || "",
+            avgAreaTemp: formData.get("avgAreaTemp") || "",
+            avgWorkTempCheck: formData.get("avgWorkTempCheck") || "",
+            avgAreaTempCheck: formData.get("avgAreaTempCheck") || "",
+            leakPressure: formData.get("leakPressure") || "",
+            leakCheck: formData.get("leakCheck") || "",
+            // Performance
+            complyType5: formData.get("complyType5") || "",
+            ciPcdType5: formData.get("ciPcdType5") || "",
         };
 
         // Add case ID for new logs (use pre-generated ID from form)
@@ -5453,6 +5470,25 @@ function editLog(logId) {
     // Attachments (Process Before, After, and Legacy)
     const beforeAtts = log.attachmentsBefore || [];
     const afterAtts = log.attachmentsAfter || [];
+
+    // Populate electrical fields
+    const setField = (name, val) => { const el = form.querySelector(`[name="${name}"]`); if (el) el.value = val || ""; };
+    setField("voltageL1", log.voltageL1);
+    setField("voltageL2", log.voltageL2);
+    setField("voltageL3", log.voltageL3);
+    setField("currentL1", log.currentL1);
+    setField("currentL2", log.currentL2);
+    setField("currentL3", log.currentL3);
+    setField("avgWorkTemp", log.avgWorkTemp);
+    setField("avgAreaTemp", log.avgAreaTemp);
+    setField("leakPressure", log.leakPressure);
+    // Radio buttons
+    const checkRadios = (name, val) => { form.querySelectorAll(`input[name="${name}"]`).forEach(r => r.checked = r.value === (val || "")); };
+    checkRadios("avgWorkTempCheck", log.avgWorkTempCheck);
+    checkRadios("avgAreaTempCheck", log.avgAreaTempCheck);
+    checkRadios("leakCheck", log.leakCheck);
+    checkRadios("complyType5", log.complyType5);
+    checkRadios("ciPcdType5", log.ciPcdType5);
 
     let legacyAttachments = log.attachments || [];
     if (log.attachmentUrl && legacyAttachments.length === 0) {
@@ -8731,6 +8767,45 @@ function viewLogDetails(id) {
 
     // Comments
     renderLogComments(log.id, log.comments || []);
+
+    // Electrical & Physical Inspection
+    const inspSection = document.getElementById("detail-inspection-section");
+    const inspContent = document.getElementById("detail-inspection-content");
+    if (inspSection && inspContent) {
+        const hasElectrical = log.voltageL1 || log.voltageL2 || log.voltageL3 || log.currentL1 || log.currentL2 || log.currentL3;
+        const hasPhysical = log.avgWorkTemp || log.avgAreaTemp || log.leakCheck || log.leakPressure || log.avgWorkTempCheck || log.avgAreaTempCheck;
+        const hasPerformance = log.complyType5 || log.ciPcdType5;
+        if (hasElectrical || hasPhysical || hasPerformance) {
+            inspSection.style.display = "block";
+            let html = "";
+            if (hasElectrical) {
+                html += `<div style="margin-bottom:0.5rem;"><strong>แรงดันไฟฟ้า:</strong> L1: ${log.voltageL1 || "-"} V, L2: ${log.voltageL2 || "-"} V, L3: ${log.voltageL3 || "-"} V</div>`;
+                html += `<div style="margin-bottom:0.5rem;"><strong>กระแส:</strong> L1: ${log.currentL1 || "-"} A, L2: ${log.currentL2 || "-"} A, L3: ${log.currentL3 || "-"} A</div>`;
+            }
+            if (hasPhysical) {
+                const checkBadge = (val) => {
+                    if (!val) return "";
+                    const color = val === "pass" ? "#22c55e" : "#ef4444";
+                    const text = val === "pass" ? "ผ่าน" : "ไม่ผ่าน";
+                    return ` <span style="color:${color}; font-weight:600;">[${text}]</span>`;
+                };
+                if (log.avgWorkTemp) html += `<div style="margin-bottom:0.5rem;"><strong>อุณหภูมิเฉลี่ยในการทำงาน:</strong> ${log.avgWorkTemp} °C${checkBadge(log.avgWorkTempCheck)}</div>`;
+                if (log.avgAreaTemp) html += `<div style="margin-bottom:0.5rem;"><strong>อุณหภูมิเฉลี่ยพื้นที่:</strong> ${log.avgAreaTemp} °C${checkBadge(log.avgAreaTempCheck)}</div>`;
+                if (log.leakCheck || log.leakPressure) {
+                    html += `<div><strong>ตรวจสอบการรั่วไหล:</strong> ${log.leakPressure ? log.leakPressure + ' PSI' : '-'}${checkBadge(log.leakCheck)}</div>`;
+                }
+            }
+            if (hasPerformance) {
+                if (hasElectrical || hasPhysical) html += `<div style="border-top:1px solid rgba(0,0,0,0.06); margin:0.5rem 0;"></div>`;
+                html += `<div style="margin-bottom:0.5rem; font-weight:600; color:var(--text-muted); font-size:0.85rem;"><i class="fa-solid fa-gauge-high" style="margin-right:4px;"></i> Performance</div>`;
+                if (log.complyType5) html += `<div style="margin-bottom:0.5rem;"><strong>Comply Type 5:</strong>${checkBadge(log.complyType5)}</div>`;
+                if (log.ciPcdType5) html += `<div><strong>CI PCD Type 5:</strong>${checkBadge(log.ciPcdType5)}</div>`;
+            }
+            inspContent.innerHTML = html;
+        } else {
+            inspSection.style.display = "none";
+        }
+    }
 
     const postBtn = document.getElementById("btn-post-comment");
     const commentInput = document.getElementById("log-comment-input");

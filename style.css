@@ -2491,7 +2491,7 @@ span.flatpickr-weekday {
 /* Bill/Receipt Style Box for Job Details & Cost */
 .bill-receipt-box {
     background: #f8fafc;
-    color: #f5f5f5;
+    color: #111111;
     border-radius: 4px;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
@@ -2500,7 +2500,7 @@ span.flatpickr-weekday {
     flex-direction: column;
     gap: 1rem;
     position: relative;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     margin-bottom: 8px;
     /* Room for zigzag */
 }
@@ -2528,8 +2528,8 @@ span.flatpickr-weekday {
 
 /* Force dark text and light borders for anything rendered inside (like tables from Javascript) */
 .bill-receipt-content * {
-    color: #f5f5f5 !important;
-    border-color: #444444 !important;
+    color: #111111 !important;
+    border-color: #e2e8f0 !important;
 }
 
 /* Header styling if the user didn't use line items */
@@ -2542,7 +2542,7 @@ span.flatpickr-weekday {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-top: 2px dashed #888888;
+    border-top: 2px dashed #cbd5e1;
     padding-top: 1rem;
     margin-top: 0.5rem;
 }
@@ -2556,7 +2556,7 @@ span.flatpickr-weekday {
 
 .bill-receipt-total-value {
     font-size: 1.5rem;
-    color: #f5f5f5;
+    color: #111111;
     font-weight: 800;
 }
 
@@ -6990,13 +6990,13 @@ summary:focus-visible {
 
 /* Open - Yellow */
 .status-step.active:nth-child(1) .status-dot {
-    background: #ca8a04;
-    border-color: #ca8a04;
-    box-shadow: 0 0 12px rgba(202, 138, 4, 0.5);
+    background: #eab308;
+    border-color: #eab308;
+    box-shadow: 0 0 8px rgba(234, 179, 8, 0.3);
 }
 
 .status-step.active:nth-child(1) .status-dot i {
-    color: #111111;
+    color: #ffffff;
 }
 
 .status-step.active:nth-child(1) .status-label {
@@ -7006,17 +7006,17 @@ summary:focus-visible {
 
 /* Planning - Blue */
 .status-step.active:nth-child(2) .status-dot {
-    background: #333333;
-    border-color: #333333;
-    box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    background: #3b82f6;
+    border-color: #3b82f6;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
 }
 
 .status-step.active:nth-child(2) .status-dot i {
-    color: #111111;
+    color: #ffffff;
 }
 
 .status-step.active:nth-child(2) .status-label {
-    color: #333333;
+    color: #3b82f6;
     font-weight: 600;
 }
 
@@ -7024,11 +7024,11 @@ summary:focus-visible {
 .status-step.active:nth-child(3) .status-dot {
     background: #f97316;
     border-color: #f97316;
-    box-shadow: 0 0 12px rgba(249, 115, 22, 0.5);
+    box-shadow: 0 0 8px rgba(249, 115, 22, 0.3);
 }
 
 .status-step.active:nth-child(3) .status-dot i {
-    color: #111111;
+    color: #ffffff;
 }
 
 .status-step.active:nth-child(3) .status-label {
@@ -7040,11 +7040,11 @@ summary:focus-visible {
 .status-step.active:nth-child(4) .status-dot {
     background: #a855f7;
     border-color: #a855f7;
-    box-shadow: 0 0 12px rgba(168, 85, 247, 0.5);
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
 }
 
 .status-step.active:nth-child(4) .status-dot i {
-    color: #111111;
+    color: #ffffff;
 }
 
 .status-step.active:nth-child(4) .status-label {
@@ -7056,11 +7056,11 @@ summary:focus-visible {
 .status-step.active:nth-child(5) .status-dot {
     background: #22c55e;
     border-color: #22c55e;
-    box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
 }
 
 .status-step.active:nth-child(5) .status-dot i {
-    color: #111111;
+    color: #ffffff;
 }
 
 .status-step.active:nth-child(5) .status-label {
@@ -7072,11 +7072,11 @@ summary:focus-visible {
 .status-step.active:nth-child(6) .status-dot {
     background: #ef4444;
     border-color: #ef4444;
-    box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
 
 .status-step.active:nth-child(6) .status-dot i {
-    color: #111111;
+    color: #ffffff;
 }
 
 .status-step.active:nth-child(6) .status-label {
@@ -7090,7 +7090,7 @@ summary:focus-visible {
 }
 
 .status-step.completed .status-dot i {
-    color: #111111;
+    color: #ffffff;
 }
 
 .status-step.cancelled .status-dot {
@@ -7099,7 +7099,7 @@ summary:focus-visible {
 }
 
 .status-step.cancelled .status-dot i {
-    color: #111111;
+    color: #ffffff;
 }
 
 .status-step.cancelled .status-label {
@@ -7112,7 +7112,7 @@ summary:focus-visible {
 }
 
 .status-step.cancelled.active .status-dot {
-    box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
 
 .status-step.cancelled.active .status-label {
@@ -7356,4 +7356,64 @@ input::placeholder, textarea::placeholder {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #aaaaaa !important;
+}
+
+/* Modern Check Pill Radio Buttons */
+.check-pill-group {
+    display: flex;
+    gap: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.check-pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin: 0 !important;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    background: #ffffff;
+    color: var(--text-muted);
+    user-select: none;
+    white-space: nowrap;
+}
+
+.check-pill input[type="radio"] {
+    display: none !important;
+}
+
+.check-pill + .check-pill {
+    border-left: 1px solid rgba(0,0,0,0.1);
+}
+
+.check-pill.pass span { color: var(--text-muted); }
+.check-pill.fail span { color: var(--text-muted); }
+
+.check-pill:hover {
+    background: rgba(0,0,0,0.03);
+}
+
+.check-pill.pass:has(input:checked) {
+    background: #22c55e;
+    color: #ffffff;
+    border-color: #22c55e;
+}
+
+.check-pill.pass:has(input:checked) span {
+    color: #ffffff;
+}
+
+.check-pill.fail:has(input:checked) {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #ef4444;
+}
+
+.check-pill.fail:has(input:checked) span {
+    color: #ffffff;
 }

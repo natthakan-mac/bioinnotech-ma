@@ -1036,7 +1036,7 @@
                             <i class="fa-solid fa-location-crosshairs"></i> ดึงตำแหน่งปัจจุบัน
                         </button>
                     </div>
-                    <div id="map-preview" style="width: 100%; height: 240px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: none; margin-top: 0.5rem; z-index: 1;"></div>
+                    <div id="map-preview" style="width: 100%; height: 240px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); display: none; margin-top: 0.5rem; z-index: 1;"></div>
                 </div>
 
                 <div class="form-group" style="display: flex; flex-direction: column;">
@@ -1088,8 +1088,8 @@
                 <div id="dropdown-log-site" class="autocomplete-dropdown hidden"></div>
             </div>
             
-            <!-- Date and Category -->
-            <div class="form-row">
+            <!-- Date, Category and Responder -->
+            <div class="form-row form-row-3col">
                 <div class="form-group">
                     <label class="required-label"><i class="fa-regular fa-calendar"></i> วันที่</label>
                     <input type="date" name="date" required>
@@ -1101,14 +1101,12 @@
                         <option value="Incident">⚠️ Incident</option>
                     </select>
                 </div>
-            </div>
-
-            <!-- Responder -->
-            <div class="form-group">
-                <label class="required-label"><i class="fa-solid fa-user-gear"></i> ผู้รับผิดชอบ (Case Responder)</label>
-                <select name="responderId" id="log-responder-select" required>
-                    <option value="">-- เลือกผู้รับผิดชอบ --</option>
-                </select>
+                <div class="form-group">
+                    <label class="required-label"><i class="fa-solid fa-user-gear"></i> ผู้รับผิดชอบ</label>
+                    <select name="responderId" id="log-responder-select" required>
+                        <option value="">-- เลือก --</option>
+                    </select>
+                </div>
             </div>
 
             <!-- Description -->
@@ -1138,6 +1136,98 @@
 
             <!-- Line Items -->
             <div class="form-group" id="line-items-form-group">
+
+            <!-- Electrical Section -->
+            <div class="ma-section" style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.06); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+                <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-bolt" style="color: #eab308;"></i> ข้อมูลไฟฟ้า (Electrical)
+                </h4>
+                <label style="font-size: 0.85rem; margin-bottom: 0.4rem;">แรงดันไฟฟ้า (V)</label>
+                <div class="form-row form-row-3col" style="margin-bottom: 0.75rem;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <input type="text" name="voltageL1" placeholder="R 00 V (Load/Unload)" inputmode="decimal" autocomplete="off">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <input type="text" name="voltageL2" placeholder="S 00 V (Load/Unload)" inputmode="decimal" autocomplete="off">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <input type="text" name="voltageL3" placeholder="T 00 V (Load/Unload)" inputmode="decimal" autocomplete="off">
+                    </div>
+                </div>
+                <label style="font-size: 0.85rem; margin-bottom: 0.4rem;">กระแส (A)</label>
+                <div class="form-row form-row-3col">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <input type="text" name="currentL1" placeholder="R 00 A (Load/Unload)" inputmode="decimal" autocomplete="off">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <input type="text" name="currentL2" placeholder="S 00 A (Load/Unload)" inputmode="decimal" autocomplete="off">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <input type="text" name="currentL3" placeholder="T 00 A (Load/Unload)" inputmode="decimal" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Physical Inspection & Performance Row -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+                <!-- Physical Inspection Section -->
+                <div class="ma-section" style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.06); border-radius: 8px; padding: 1rem;">
+                    <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa-solid fa-clipboard-check" style="color: #3b82f6;"></i> ตรวจสอบทางกายภาพ
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label style="margin: 0; font-size: 0.85rem; flex: 1;">อุณหภูมิเฉลี่ยในการทำงาน (°C)</label>
+                            <input type="number" name="avgWorkTemp" placeholder="°C" step="any" autocomplete="off" style="margin: 0; width: 80px; flex: none;">
+                            <div class="check-pill-group">
+                                <label class="check-pill pass"><input type="radio" name="avgWorkTempCheck" value="pass"><span>ผ่าน</span></label>
+                                <label class="check-pill fail"><input type="radio" name="avgWorkTempCheck" value="fail"><span>ไม่ผ่าน</span></label>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label style="margin: 0; font-size: 0.85rem; flex: 1;">อุณหภูมิเฉลี่ยพื้นที่ (°C)</label>
+                            <input type="number" name="avgAreaTemp" placeholder="°C" step="any" autocomplete="off" style="margin: 0; width: 80px; flex: none;">
+                            <div class="check-pill-group">
+                                <label class="check-pill pass"><input type="radio" name="avgAreaTempCheck" value="pass"><span>ผ่าน</span></label>
+                                <label class="check-pill fail"><input type="radio" name="avgAreaTempCheck" value="fail"><span>ไม่ผ่าน</span></label>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label style="margin: 0; font-size: 0.85rem; flex: 1;">ตรวจสอบการรั่วไหล (ความดัน)</label>
+                            <input type="text" name="leakPressure" placeholder="PSI" autocomplete="off" style="margin: 0; width: 80px; flex: none;">
+                            <div class="check-pill-group">
+                                <label class="check-pill pass"><input type="radio" name="leakCheck" value="pass"><span>ผ่าน</span></label>
+                                <label class="check-pill fail"><input type="radio" name="leakCheck" value="fail"><span>ไม่ผ่าน</span></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Section -->
+                <div class="ma-section" style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.06); border-radius: 8px; padding: 1rem;">
+                    <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa-solid fa-gauge-high" style="color: #8b5cf6;"></i> Performance
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <label style="margin: 0; font-size: 0.85rem;">ตรวจสอบด้วย Comply Type 5</label>
+                            <div class="check-pill-group">
+                                <label class="check-pill pass"><input type="radio" name="complyType5" value="pass"><span>ผ่าน</span></label>
+                                <label class="check-pill fail"><input type="radio" name="complyType5" value="fail"><span>ไม่ผ่าน</span></label>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <label style="margin: 0; font-size: 0.85rem;">ตรวจสอบด้วยการทะลุทะลวงด้วย CI PCD Type 5</label>
+                            <div class="check-pill-group">
+                                <label class="check-pill pass"><input type="radio" name="ciPcdType5" value="pass"><span>ผ่าน</span></label>
+                                <label class="check-pill fail"><input type="radio" name="ciPcdType5" value="fail"><span>ไม่ผ่าน</span></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Line Items (Cost) -->
                 <label><i class="fa-solid fa-list"></i> รายการและค่าใช้จ่าย</label>
                 <div id="line-items-container"></div>
                 <div id="line-items-footer-placeholder"></div>
@@ -1154,7 +1244,7 @@
                     <i class="fa-solid fa-cloud-arrow-up" style="color: var(--primary-color); font-size: 1.1rem;"></i>
                     <span style="color: var(--text-color); font-weight: 500; font-size: 0.9rem;">กำลังอัปโหลด...</span>
                 </div>
-                <div style="width: 100%; height: 5px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                <div style="width: 100%; height: 5px; background: rgba(0,0,0,0.06); border-radius: 3px; overflow: hidden;">
                     <div id="upload-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary-color), #0ea5e9); transition: width 0.3s ease;"></div>
                 </div>
                 <div style="margin-top: 0.4rem; font-size: 0.8rem; color: var(--text-muted);">
@@ -1373,7 +1463,7 @@
     <div class="modal glass-panel" style="max-width: 900px;">
         <div class="modal-header">
             <div>
-                <h3 id="detail-log-date" style="color: white; margin: 0;">รายละเอียดการซ่อมบำรุง</h3>
+                <h3 id="detail-log-date" style="color: var(--text-color); margin: 0;">รายละเอียดการซ่อมบำรุง</h3>
                 <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 400;">Maintenance Record Details</p>
             </div>
             <button class="close-modal">&times;</button>
@@ -1418,7 +1508,7 @@
                     </div>
                 </div>
 
-                <div style="width: 100%; height: 1px; background: rgba(255,255,255,0.1);"></div>
+                <div style="width: 100%; height: 1px; background: rgba(0,0,0,0.06);"></div>
 
                 <!-- Details (Bill Style) -->
                 <div class="detail-section" style="margin-top: 5px;">
@@ -1436,6 +1526,17 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Electrical & Physical Inspection Display -->
+                <div class="detail-section" id="detail-inspection-section" style="display: none; margin-top: 1rem;">
+                    <div style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.06); border-radius: 8px; padding: 1rem;">
+                        <h4 style="margin: 0 0 0.75rem 0; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.4rem;">
+                            <i class="fa-solid fa-bolt" style="color: #eab308;"></i> ข้อมูลไฟฟ้า & ตรวจสอบทางกายภาพ
+                        </h4>
+                        <div id="detail-inspection-content" style="font-size: 0.9rem; line-height: 1.8;"></div>
+                    </div>
+                </div>
+
             </div> <!-- End Left Column -->
 
             <!-- Right Column: Comments -->
@@ -1485,7 +1586,7 @@
 
         <!-- Record Info Footer -->
         <div class="modal-record-footer"
-            style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; color: var(--text-muted); font-size: 0.85rem;">
+            style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; color: var(--text-muted); font-size: 0.85rem;">
             <!-- Content will be injected by JavaScript -->
         </div>
 

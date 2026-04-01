@@ -51,7 +51,7 @@
 #modal-log-maintenance input[type="url"],
 #modal-log-maintenance select,
 #modal-log-maintenance textarea {
-    background: rgba(0, 0, 0, 0.2) !important;
+    background: #ffffff !important;
 }
 
 .form-section {
@@ -127,7 +127,7 @@
     border-radius: 8px;
     font-size: 0.95rem;
     transition: all 0.2s ease;
-    background: rgba(255,255,255,0.03);
+    background: #ffffff;
     border: 1px solid rgba(0,0,0,0.08);
 }
 
@@ -136,7 +136,7 @@
 #form-log-maintenance select:focus,
 #form-log-maintenance textarea:focus {
     border-color: var(--primary-color);
-    background: rgba(0,0,0,0.04);
+    background: #ffffff;
     box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
 }
 
@@ -407,7 +407,7 @@
     border-radius: 8px;
     font-size: 0.95rem;
     transition: all 0.2s ease;
-    background: rgba(255,255,255,0.03);
+    background: #ffffff;
     border: 1px solid rgba(0,0,0,0.08);
     color: var(--text-color);
     cursor: pointer;
@@ -429,7 +429,7 @@
 }
 
 .status-quick-select option {
-    background: #1a2332;
+    background: #ffffff;
     color: var(--text-color);
     padding: 0.75rem 1rem;
 }
