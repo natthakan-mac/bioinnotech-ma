@@ -1,23 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
-  <defs>
-    <linearGradient id="bg-grad" x1="0" y1="0" x2="640" y2="640" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#1a1a2e"/>
-      <stop offset="1" stop-color="#0f0f1a"/>
-    </linearGradient>
-  </defs>
-  <!-- Dark background -->
-  <rect width="640" height="640" rx="96" fill="url(#bg-grad)"/>
-  <!-- Wrench -->
-  <g transform="translate(320,320) rotate(-45) translate(-320,-320)">
-    <path d="M200,260 L340,400 L320,420 L180,280 Z" fill="#e2e8f0" stroke="#94a3b8" stroke-width="4"/>
-    <path d="M160,240 C140,200 160,150 200,130 C210,125 220,125 230,128 L200,160 L210,190 L240,200 L272,168 C275,178 275,188 270,200 C250,240 200,260 160,240 Z" fill="#e2e8f0" stroke="#94a3b8" stroke-width="4"/>
-    <rect x="330" y="390" width="40" height="80" rx="6" transform="rotate(-45,350,430)" fill="#e2e8f0" stroke="#94a3b8" stroke-width="4"/>
-  </g>
-  <!-- Screwdriver -->
-  <g transform="translate(320,320) rotate(45) translate(-320,-320)">
-    <rect x="300" y="180" width="40" height="200" rx="4" fill="#60a5fa" stroke="#3b82f6" stroke-width="4"/>
-    <path d="M305,380 L335,380 L340,480 L300,480 Z" fill="#f59e0b" stroke="#d97706" stroke-width="4" rx="4"/>
-    <path d="M310,180 L330,180 L325,120 L315,120 Z" fill="#60a5fa" stroke="#3b82f6" stroke-width="3"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="64" fill="#111111"/>
+  <g transform="translate(256,256) scale(0.55) translate(-256,-256)">
+    <path d="M507.73 109.1c-2.24-9.03-13.54-12.09-20.12-5.51l-74.36 74.36-67.88-11.31-11.31-67.88 74.36-74.36c6.58-6.58 3.52-17.88-5.51-20.12-32.29-8.01-67.55.37-92.83 25.65-30.89 30.89-36.33 77.27-16.33 113.84L41.69 396.02c-22.58 22.58-22.58 59.18 0 81.76s59.18 22.58 81.76 0l252.25-252.06c36.57 20 82.95 14.56 113.84-16.33 25.28-25.28 33.66-60.54 25.65-92.83zM82.56 467.87c-13.25 0-24-10.75-24-24s10.75-24 24-24 24 10.75 24 24-10.75 24-24 24z" fill="#ffffff"/>
   </g>
 </svg>

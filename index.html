@@ -140,7 +140,7 @@
     <div class="login-card glass-panel">
         <div class="login-header">
             <div class="login-logo">
-                <i class="fa-solid fa-screwdriver-wrench"></i>
+                <img src="app-ico.svg" alt="CASP" style="width: 4rem; height: 4rem;">
             </div>
             <h2>CASP Maintenance System</h2>
             <p>ระบบบริหารจัดการและซ่อมบำรุง</p>
@@ -190,7 +190,7 @@
     <header class="app-header">
         <div class="brand">
             <div class="logo-icon">
-                <i class="fa-solid fa-screwdriver-wrench" style="font-size: 2.75rem;"></i>
+                <img src="app-ico.svg" alt="CASP" style="width: 2.75rem; height: 2.75rem;">
             </div>
             <h1 class="desktop-only-text">CASP Maintenance System</h1>
             <span class="mobile-only-text">CASP Maintenance System</span>
@@ -209,9 +209,9 @@
                 <div class="bubble hover-bubble"></div>
                 <div class="nav-items">
                     <button class="nav-btn active" id="nav-sites-desktop" data-view="admin-view"
-                        aria-label="จัดการอุปกรณ์ (Device Manager)">
+                        aria-label="จัดการเครื่อง (Device Manager)">
                         <i class="fa-solid fa-microchip" aria-hidden="true"></i>
-                        <span>จัดการอุปกรณ์</span>
+                        <span>จัดการเครื่อง</span>
                     </button>
 
                     <button class="nav-btn" id="nav-logs-desktop" data-view="engineer-view"
@@ -254,9 +254,9 @@
             <div class="bubble hover-bubble-mobile"></div>
             <div class="nav-items">
                 <button class="nav-btn active" id="nav-sites-mobile" data-view="admin-view"
-                    aria-label="จัดการอุปกรณ์ (Device Manager)">
+                    aria-label="จัดการเครื่อง (Device Manager)">
                     <i class="fa-solid fa-microchip" aria-hidden="true"></i>
-                    <span>จัดการอุปกรณ์</span>
+                    <span>จัดการเครื่อง</span>
                 </button>
 
                 <button class="nav-btn" id="nav-logs-mobile" data-view="engineer-view"
@@ -597,7 +597,7 @@
         <!-- ADMIN VIEW: Manage Sites -->
         <section id="admin-view" class="view-section active">
             <div class="section-header">
-                <h2>รายการอุปกรณ์ <span id="header-sites-count" class="header-counter"></span></h2>
+                <h2>รายการเครื่อง <span id="header-sites-count" class="header-counter"></span></h2>
 
                 <!-- Desktop Filter Bar (Inside section-header) -->
                 <div class="filters-bar desktop-only" style="margin-bottom: 1rem; flex-wrap: wrap; width: 100%;">
@@ -632,9 +632,9 @@
                                 style="flex: 1; min-width: 80px; justify-content: center;">
                                 <i class="fa-solid fa-file-excel"></i> ส่งออก
                             </button>
-                            <button class="btn-success desktop-only" id="btn-add-site" title="เพิ่มอุปกรณ์ใหม่"
-                                style="flex: 2; min-width: 120px; justify-content: center;">
-                                <i class="fa-solid fa-plus"></i> เพิ่มอุปกรณ์ใหม่
+                            <button class="desktop-only" id="btn-add-site" title="เพิ่มเครื่องใหม่"
+                                style="flex: 2; min-width: 120px; justify-content: center; background: #38bdf8; color: #ffffff; border: none; border-radius: 8px; padding: 0.5rem 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
+                                <i class="fa-solid fa-plus"></i> เพิ่มเครื่องใหม่
                             </button>
                         </div>
                     </div>
@@ -681,9 +681,9 @@
                             title="Export as Excel" style="flex: 1; min-width: 80px; justify-content: center;">
                             <i class="fa-solid fa-file-excel"></i> Export
                         </button>
-                        <button class="btn-success mobile-only hidden" id="btn-add-site-mobile" title="เพิ่มอุปกรณ์ใหม่"
-                            style="flex: 2; min-width: 120px; justify-content: center;">
-                                <i class="fa-solid fa-plus"></i> <span class="btn-text">เพิ่มอุปกรณ์</span>
+                        <button class="mobile-only hidden" id="btn-add-site-mobile" title="เพิ่มเครื่องใหม่"
+                            style="flex: 2; min-width: 120px; justify-content: center; background: #38bdf8; color: #ffffff; border: none; border-radius: 8px; padding: 0.5rem 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
+                                <i class="fa-solid fa-plus"></i> <span class="btn-text">เพิ่มเครื่อง</span>
                         </button>
                     </div>
                 </div>
@@ -696,7 +696,7 @@
             <div id="sites-grid" class="cards-grid">
                 <!-- Device Cards Injected Here -->
                 <div class="empty-state">
-                    <p>ยังไม่มีข้อมูลอุปกรณ์ในระบบ</p>
+                    <p>ยังไม่มีข้อมูลเครื่องในระบบ</p>
                 </div>
             </div>
         </section>
@@ -911,8 +911,8 @@
 
     <!-- FABs (Floating Action Buttons) - Root Level -->
     <!-- FABs (Floating Action Buttons) - Root Level -->
-    <button class="btn-success mobile-only fab-btn hidden" id="btn-add-site-fab" aria-label="เพิ่มอุปกรณ์ใหม่"
-        title="เพิ่มอุปกรณ์ใหม่">
+    <button class="mobile-only fab-btn hidden" id="btn-add-site-fab" aria-label="เพิ่มเครื่องใหม่"
+        title="เพิ่มเครื่องใหม่" style="background: #38bdf8 !important;">
         <i class="fa-solid fa-plus" aria-hidden="true"></i>
     </button>
     <button class="btn-success mobile-only fab-btn hidden" id="btn-log-maintenance-fab" aria-label="บันทึกงานซ่อมบำรุง"
@@ -926,7 +926,7 @@
     <div class="modal glass-panel">
         <div class="modal-header">
             <div>
-                <h3 id="modal-site-title">เพิ่มอุปกรณ์</h3>
+                <h3 id="modal-site-title">เพิ่มเครื่อง</h3>
                 <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 400;">Add Device</p>
             </div>
             <button class="close-modal">&times;</button>
@@ -1041,7 +1041,7 @@
 
                 <div class="form-group" style="display: flex; flex-direction: column;">
                     <label><i class="fa-solid fa-align-left"></i> รายละเอียดเพิ่มเติม</label>
-                    <textarea name="description" placeholder="ข้อมูลเบื้องต้นของอุปกรณ์..." rows="2" style="min-height: 60px;"></textarea>
+                    <textarea name="description" placeholder="ข้อมูลเบื้องต้นของเครื่อง..." rows="2" style="min-height: 60px;"></textarea>
 
                     <label style="margin-top: 1rem;">แนบไฟล์/รูปภาพ <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">(รองรับรูปภาพและไฟล์เอกสาร : สูงสุด 25MB ต่อไฟล์)</span></label>
                     <div style="display: flex; flex-direction: column; gap: 10px; flex: 1;">
@@ -1233,7 +1233,7 @@
     <div class="modal glass-panel" style="max-width: 1000px;">
         <div class="modal-header">
             <div>
-                <h3 id="detail-site-name" style="color: var(--primary-color); margin: 0;">รายละเอียดอุปกรณ์</h3>
+                <h3 id="detail-site-name" style="color: var(--primary-color); margin: 0;">รายละเอียดเครื่อง</h3>
                 <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 400;">Device Details</p>
             </div>
             <button class="close-modal">&times;</button>
@@ -1245,7 +1245,7 @@
                 <div class="detail-section">
                     <h4
                         style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem;">
-                        <i class="fa-solid fa-microchip"></i> ข้อมูลอุปกรณ์
+                        <i class="fa-solid fa-microchip"></i> ข้อมูลเครื่อง
                     </h4>
                     <div style="display: grid; gap: 0.75rem;">
                         <div class="detail-row">

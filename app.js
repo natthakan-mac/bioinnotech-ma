@@ -2416,7 +2416,7 @@ function resetSiteForm() {
     document.getElementById("site-id-hidden").value = "";
 
     document.getElementById("modal-site-title").textContent =
-        "เพิ่มอุปกรณ์";
+        "เพิ่มเครื่อง";
     document.getElementById("btn-submit-site").textContent = "บันทึกข้อมูล";
 
     if (addressInputs.province) addressInputs.province.value = "";
@@ -2957,7 +2957,7 @@ async function handleSiteSubmit(e) {
                 }
             }
 
-            showToast("อัปเดตข้อมูลอุปกรณ์สำเร็จ", "success");
+            showToast("อัปเดตข้อมูลเครื่องสำเร็จ", "success");
         } else {
             // --- Auto-generate Site Code ---
             const regionPrefix = await getRdpbRegionCode(siteData.province || "");
@@ -2976,7 +2976,7 @@ async function handleSiteSubmit(e) {
             siteData.siteCode = `${regionPrefix}${String(nextNumber).padStart(3, "0")}`;
 
             const newSiteId = await FirestoreService.addSite(siteData);
-            showToast("เพิ่มอุปกรณ์ใหม่สำเร็จ", "success");
+            showToast("เพิ่มเครื่องใหม่สำเร็จ", "success");
 
             // Auto-create initial MA log if applicable
             if (siteData.maintenanceCycle && siteData.firstMaDate) {
@@ -3066,7 +3066,7 @@ function editSite(id) {
     setVal("firstMaDate", site.firstMaDate);
 
     const titleEl = document.getElementById("modal-site-title");
-    if (titleEl) titleEl.textContent = "แก้ไขข้อมูลอุปกรณ์";
+    if (titleEl) titleEl.textContent = "แก้ไขข้อมูลเครื่อง";
 
     const btnEl = document.getElementById("btn-submit-site");
     if (btnEl) btnEl.textContent = "อัปเดตข้อมูล";
@@ -9131,7 +9131,7 @@ async function exportSitesToExcel() {
     const worksheet = XLSX.utils.json_to_sheet(dataForSheet, { origin: "A2" });
 
     // Title Row
-    let titleLabel = "รายชื่ออุปกรณ์";
+    let titleLabel = "รายชื่อเครื่อง";
     if (provinceFilter !== "all") titleLabel += ` (จังหวัด ${provinceFilter})`;
 
     // Search query info
@@ -11645,7 +11645,7 @@ window.generateMockLogs = async function (count = 50) {
             date.setDate(date.getDate() - Math.floor(Math.random() * 90));
             const dateStr = date.toISOString().split("T")[0];
 
-            const categories = ["บุคลากร", "อุปกรณ์", "อื่นๆ"];
+            const categories = ["บุคลากร", "เครื่อง", "อื่นๆ"];
             const randomCategory =
                 categories[Math.floor(Math.random() * categories.length)];
 
