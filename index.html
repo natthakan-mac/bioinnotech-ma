@@ -969,9 +969,10 @@
                     <label><i class="fa-solid fa-barcode"></i> หมายเลขเครื่อง (Serial Number)</label>
                     <input type="text" name="serialNumber" placeholder="ระบุ Serial Number" autocomplete="off">
                 </div>
-                <div class="form-group">
-                    <label><i class="fa-solid fa-location-dot"></i> สถานที่ติดตั้ง (Install Location)</label>
-                    <input type="text" name="installLocation" placeholder="ระบุสถานที่ติดตั้ง" autocomplete="off">
+                <div class="form-group autocomplete-wrapper">
+                    <label><i class="fa-solid fa-building"></i> หน่วยงาน (Department)</label>
+                    <input type="text" name="installLocation" id="input-installLocation" placeholder="ระบุหน่วยงาน" autocomplete="off">
+                    <div id="dropdown-installLocation" class="autocomplete-dropdown hidden"></div>
                 </div>
             </div>
 
@@ -1006,7 +1007,7 @@
                     <input type="tel" name="contactPhone" id="site-contact-phone" placeholder="0xx-xxx-xxxx" maxlength="12" inputmode="numeric" autocomplete="off">
                 </div>
                 <div class="form-group">
-                    <label><i class="fa-solid fa-rotate"></i> รอบ MA (MA Cycle - Days)</label>
+                    <label><i class="fa-solid fa-rotate"></i> รอบการซ่อมบำรุง (วัน)</label>
                     <input type="number" name="maintenanceCycle" step="1" placeholder="ระบุจำนวนวัน (เช่น 30, 90)" autocomplete="off">
                 </div>
             </div>
@@ -1152,29 +1153,17 @@
                 <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
                     <i class="fa-solid fa-bolt" style="color: #eab308;"></i> ข้อมูลไฟฟ้า (Electrical)
                 </h4>
-                <label style="font-size: 0.85rem; margin-bottom: 0.4rem;">แรงดันไฟฟ้า (Voltage - V)</label>
+                <label style="font-size: 0.85rem; margin-bottom: 0.4rem;">แรงดันไฟฟ้า (V)</label>
                 <div class="form-row form-row-3col" style="margin-bottom: 0.75rem;">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" name="voltageL1" placeholder="R 00 V (Load/Unload)" pattern="[0-9]*\.?[0-9]*" inputmode="decimal" autocomplete="off">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" name="voltageL2" placeholder="S 00 V (Load/Unload)" pattern="[0-9]*\.?[0-9]*" inputmode="decimal" autocomplete="off">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" name="voltageL3" placeholder="T 00 V (Load/Unload)" pattern="[0-9]*\.?[0-9]*" inputmode="decimal" autocomplete="off">
-                    </div>
+                    <div class="form-group" style="margin-bottom: 0;"><input type="text" name="voltageL1" placeholder="R 00 V (Load/Unload)" inputmode="decimal" autocomplete="off"></div>
+                    <div class="form-group" style="margin-bottom: 0;"><input type="text" name="voltageL2" placeholder="S 00 V (Load/Unload)" inputmode="decimal" autocomplete="off"></div>
+                    <div class="form-group" style="margin-bottom: 0;"><input type="text" name="voltageL3" placeholder="T 00 V (Load/Unload)" inputmode="decimal" autocomplete="off"></div>
                 </div>
-                <label style="font-size: 0.85rem; margin-bottom: 0.4rem;">กระแส (Current - A)</label>
+                <label style="font-size: 0.85rem; margin-bottom: 0.4rem;">กระแส (A)</label>
                 <div class="form-row form-row-3col">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" name="currentL1" placeholder="R 00 A (Load/Unload)" pattern="[0-9]*\.?[0-9]*" inputmode="decimal" autocomplete="off">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" name="currentL2" placeholder="S 00 A (Load/Unload)" pattern="[0-9]*\.?[0-9]*" inputmode="decimal" autocomplete="off">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" name="currentL3" placeholder="T 00 A (Load/Unload)" pattern="[0-9]*\.?[0-9]*" inputmode="decimal" autocomplete="off">
-                    </div>
+                    <div class="form-group" style="margin-bottom: 0;"><input type="text" name="currentL1" placeholder="R 00 A (Load/Unload)" inputmode="decimal" autocomplete="off"></div>
+                    <div class="form-group" style="margin-bottom: 0;"><input type="text" name="currentL2" placeholder="S 00 A (Load/Unload)" inputmode="decimal" autocomplete="off"></div>
+                    <div class="form-group" style="margin-bottom: 0;"><input type="text" name="currentL3" placeholder="T 00 A (Load/Unload)" inputmode="decimal" autocomplete="off"></div>
                 </div>
             </div>
 
@@ -1233,6 +1222,40 @@
                                 <label class="check-pill fail"><input type="radio" name="ciPcdType5" value="fail"><span>ไม่ผ่าน</span></label>
                             </div>
                         </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gas Detection Section (full width) -->
+            <div class="ma-section" style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.06); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+                <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-wind" style="color: #111111;"></i> ตรวจสอบปริมาณแก๊ส (Gas Detection)
+                </h4>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div>
+                        <label style="margin: 0 0 0.5rem 0; font-size: 0.85rem; display: block; font-weight: 500;">บริเวณหน้าประตู</label>
+                        <div class="form-row form-row-3col">
+                            <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gasDoor1" placeholder="ครั้งที่ 1 (PPM)" inputmode="decimal" autocomplete="off"></div>
+                            <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gasDoor2" placeholder="ครั้งที่ 2 (PPM)" inputmode="decimal" autocomplete="off"></div>
+                            <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gasDoor3" placeholder="ครั้งที่ 3 (PPM)" inputmode="decimal" autocomplete="off"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="margin: 0 0 0.5rem 0; font-size: 0.85rem; display: block; font-weight: 500;">ระยะห่างจากหน้าประตู 1 เมตร</label>
+                        <div class="form-row form-row-3col">
+                            <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gas1m1" placeholder="ครั้งที่ 1 (PPM)" inputmode="decimal" autocomplete="off"></div>
+                            <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gas1m2" placeholder="ครั้งที่ 2 (PPM)" inputmode="decimal" autocomplete="off"></div>
+                            <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gas1m3" placeholder="ครั้งที่ 3 (PPM)" inputmode="decimal" autocomplete="off"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="margin: 0 0 0.5rem 0; font-size: 0.85rem; display: block; font-weight: 500;">ระยะห่างจากหน้าประตู 2 เมตร</label>
+                        <div class="form-row form-row-3col">
+                            <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gas2m1" placeholder="ครั้งที่ 1 (PPM)" inputmode="decimal" autocomplete="off"></div>
+                            <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gas2m2" placeholder="ครั้งที่ 2 (PPM)" inputmode="decimal" autocomplete="off"></div>
+                            <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gas2m3" placeholder="ครั้งที่ 3 (PPM)" inputmode="decimal" autocomplete="off"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1255,15 +1278,15 @@
                         <div class="insp-row"><span class="insp-label">9. ปริมาณน้ำยาที่ฉีด</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_chemicalAmount" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_chemicalAmount" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_chemicalAmount" value="replace"><span>Replace</span></label></div></div>
                     </div>
                     <div class="insp-col">
-                        <div class="insp-row"><span class="insp-label">10. Air Charging Value</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_airChargingValue" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_airChargingValue" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_airChargingValue" value="replace"><span>Replace</span></label></div></div>
+                        <div class="insp-row"><span class="insp-label">10. Air Charging Valve</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_airChargingValue" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_airChargingValue" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_airChargingValue" value="replace"><span>Replace</span></label></div></div>
                         <div class="insp-row"><span class="insp-label">11. Filter</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_filter" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_filter" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_filter" value="replace"><span>Replace</span></label></div></div>
-                        <div class="insp-row"><span class="insp-label">12. Decomposer</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_decomposer" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_decomposer" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_decomposer" value="replace"><span>Replace</span></label></div></div>
-                        <div class="insp-row"><span class="insp-label">13. น้ำมันปั๊มสุญญากาศ</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_vacuumPumpOil" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_vacuumPumpOil" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_vacuumPumpOil" value="replace"><span>Replace</span></label></div></div>
+                        <div class="insp-row"><span class="insp-label">12. Decomposor</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_decomposer" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_decomposer" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_decomposer" value="replace"><span>Replace</span></label></div></div>
+                        <div class="insp-row"><span class="insp-label">13. น้ำมันปั้มสุญากาศ</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_vacuumPumpOil" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_vacuumPumpOil" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_vacuumPumpOil" value="replace"><span>Replace</span></label></div></div>
                         <div class="insp-row"><span class="insp-label">14. ระบบข้อต่อต่างๆ</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_connectors" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_connectors" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_connectors" value="replace"><span>Replace</span></label></div></div>
                         <div class="insp-row"><span class="insp-label">15. ถังเดรนน้ำ</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_drainTank" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_drainTank" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_drainTank" value="replace"><span>Replace</span></label></div></div>
-                        <div class="insp-row"><span class="insp-label">16. ปริมาณแก๊สหน้าประตู</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_gasDoor" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_gasDoor" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_gasDoor" value="replace"><span>Replace</span></label></div></div>
-                        <div class="insp-row"><span class="insp-label">17. ปริมาณแก๊สห่าง 1 ม.</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_gas1m" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_gas1m" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_gas1m" value="replace"><span>Replace</span></label></div></div>
-                        <div class="insp-row"><span class="insp-label">18. ปริมาณแก๊สห่าง 2 ม.</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_gas2m" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_gas2m" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_gas2m" value="replace"><span>Replace</span></label></div></div>
+                        <div class="insp-row"><span class="insp-label">16. สายส่งน้ำยา</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_chemicalLine" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_chemicalLine" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_chemicalLine" value="replace"><span>Replace</span></label></div></div>
+                        <div class="insp-row"><span class="insp-label">17. รีเลย์ควบคุมลำดับเฟส</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_phaseRelay" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_phaseRelay" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_phaseRelay" value="replace"><span>Replace</span></label></div></div>
+                        <div class="insp-row"><span class="insp-label">18. รีเลย์ควบคุมระบบต่างๆ</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_systemRelay" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_systemRelay" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_systemRelay" value="replace"><span>Replace</span></label></div></div>
                     </div>
                 </div>
             </div>
@@ -1400,7 +1423,7 @@
                 <div class="detail-section">
                     <h4
                         style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem;">
-                        <i class="fa-solid fa-location-dot"></i> สถานที่ติดตั้ง (Location / Contact)
+                        <i class="fa-solid fa-building"></i> หน่วยงาน (Department)
                     </h4>
                     <div id="detail-address" style="line-height: 1.6; margin-bottom: 0.5rem;">-</div>
                 </div>
@@ -1509,19 +1532,27 @@
                 <h3 id="detail-log-date" style="color: #111; margin: 0; font-size: 1.15rem;">รายละเอียดการซ่อมบำรุง</h3>
                 <p id="detail-log-header-site" style="font-size: 0.8rem; color: #888; margin: 0.2rem 0 0 0;">Maintenance Record Details</p>
             </div>
-            <button class="close-modal">&times;</button>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <div id="log-detail-modal-actions" style="display: none; gap: 0.5rem;"></div>
+                <button class="close-modal">&times;</button>
+            </div>
         </div>
 
         <!-- Case Info -->
         <span id="detail-log-case-id" style="display:none;"></span>
         <span id="detail-log-site" style="display:none;"></span>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem 1.5rem; margin-bottom: 1.25rem; font-size: 0.85rem;">
-            <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">หมวดหมู่:</span><span id="detail-log-category" style="font-weight:500;">-</span></div>
-            <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">ผู้รับผิดชอบ:</span><span id="detail-log-responder" style="font-weight:500;">-</span></div>
-            <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">ประกัน:</span><span id="detail-log-warranty" style="font-weight:500;">-</span></div>
-            <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">ประเภท:</span><span id="detail-log-device-type" style="font-weight:500;">-</span></div>
-            <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">ยี่ห้อ / รุ่น:</span><span id="detail-log-brand-model" style="font-weight:500;">-</span></div>
-            <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">Serial No.:</span><span id="detail-log-serial" style="font-weight:500;">-</span></div>
+        <div class="case-detail-section" style="margin-bottom: 1.25rem;">
+            <div class="case-detail-section-header">
+                <i class="fa-solid fa-file-lines"></i> ข้อมูลงาน (Job Information)
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem 1.5rem; font-size: 0.85rem; padding: 0.75rem 0;">
+                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">หมวดหมู่:</span><span id="detail-log-category" style="font-weight:500;">-</span></div>
+                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">ผู้รับผิดชอบ:</span><span id="detail-log-responder" style="font-weight:500;">-</span></div>
+                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">ประกัน:</span><span id="detail-log-warranty" style="font-weight:500;">-</span></div>
+                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">รูปแบบสัญญา:</span><span id="detail-log-device-type" style="font-weight:500;">-</span></div>
+                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">ยี่ห้อ / รุ่น:</span><span id="detail-log-brand-model" style="font-weight:500;">-</span></div>
+                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">Serial No.:</span><span id="detail-log-serial" style="font-weight:500;">-</span></div>
+            </div>
         </div>
 
         <!-- Status Timeline -->
@@ -1584,7 +1615,6 @@
 
         <!-- Footer -->
         <div class="modal-record-footer" style="margin-top: 1.25rem; padding-top: 0.75rem; border-top: 1px solid rgba(0,0,0,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; color: #999; font-size: 0.8rem;"></div>
-        <div class="modal-actions" id="log-detail-modal-actions" style="display: none;"></div>
     </div>
 </div>
 

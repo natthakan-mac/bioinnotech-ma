@@ -9682,13 +9682,38 @@ ${statusTimelineHtml ? `
 
 </body></html>`;
 
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(html);
-    printWindow.document.close();
-    // Wait for fonts and images to load
-    printWindow.onload = () => {
-        setTimeout(() => { printWindow.print(); }, 500);
-    };
+    // Show PDF preview as lightbox
+    let pdfModal = document.getElementById('pdf-preview-modal');
+    if (!pdfModal) {
+        pdfModal = document.createElement('div');
+        pdfModal.id = 'pdf-preview-modal';
+        pdfModal.style.cssText = 'display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; padding:16px;';
+        pdfModal.innerHTML = '<div id="pdf-preview-inner" style="position:relative; width:100%; max-width:900px; height:90vh; background:#fff; border-radius:12px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.3);">'
+            + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
+            + '<span id="pdf-preview-title" style="font-weight:700; font-size:14px; color:#333;">PDF Preview</span>'
+            + '<div style="display:flex; gap:8px;">'
+            + '<button id="pdf-btn-print" title="พิมพ์" style="background:#8bc53f; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-print"></i> พิมพ์</button>'
+            + '<button id="pdf-btn-close" title="ปิด" style="background:#ef4444; color:#fff; border:none; border-radius:6px; width:34px; height:34px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-xmark"></i></button>'
+            + '</div></div>'
+            + '<iframe id="pdf-preview-iframe" style="flex:1; border:none; width:100%; background:#fff;"></iframe>'
+            + '</div>';
+        document.body.appendChild(pdfModal);
+
+        document.getElementById('pdf-btn-close').onclick = function() { pdfModal.style.display = 'none'; };
+        pdfModal.onclick = function(e) { if (e.target === pdfModal) pdfModal.style.display = 'none'; };
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && pdfModal.style.display === 'flex') pdfModal.style.display = 'none';
+        });
+        document.getElementById('pdf-btn-print').onclick = function() {
+            var fr = document.getElementById('pdf-preview-iframe');
+            if (fr && fr.contentWindow) fr.contentWindow.print();
+        };
+    }
+
+    var iframe = document.getElementById('pdf-preview-iframe');
+    document.getElementById('pdf-preview-title').textContent = log.caseId || 'PDF Preview';
+    iframe.srcdoc = html;
+    pdfModal.style.display = 'flex';
 }
 
 window.exportCasePDF = exportCasePDF;
