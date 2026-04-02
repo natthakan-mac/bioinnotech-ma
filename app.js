@@ -8921,14 +8921,14 @@ function viewLogDetails(id) {
             const isPass = val === 'pass';
             const bg = isPass ? '#22c55e' : '#ef4444';
             const text = isPass ? passLabel : failLabel;
-            return `<span style="background:${bg}; color:#fff; padding:2px 10px; border-radius:4px; font-size:0.8rem; font-weight:500;">${text}</span>`;
+            return `<span style="background:${bg}; color:#fff; padding:2px 10px; border-radius:4px; font-size:0.8rem; font-weight:500; display:inline-block; min-width:60px; text-align:center;">${text}</span>`;
         };
 
         const inspBadge = (val) => {
             if (!val) return `<span style="color:#ccc;">-</span>`;
             const config = { check: { label: 'Check', bg: '#22c55e' }, service: { label: 'Service', bg: '#f59e0b' }, replace: { label: 'Replace', bg: '#ef4444' } };
             const c = config[val] || { label: val, bg: '#111' };
-            return `<span style="background:${c.bg}; color:#fff; padding:2px 10px; border-radius:4px; font-size:0.8rem; font-weight:500;">${c.label}</span>`;
+            return `<span style="background:${c.bg}; color:#fff; padding:2px 10px; border-radius:4px; font-size:0.8rem; font-weight:500; display:inline-block; min-width:60px; text-align:center;">${c.label}</span>`;
         };
 
         let html = '';
@@ -9020,10 +9020,18 @@ function viewLogDetails(id) {
         timestampEl.textContent = timestampStr;
     }
 
-    // Inject Action Buttons - Move to record footer
+    // Inject Action Buttons to header (top-right)
     const actionsContainer = document.getElementById("log-detail-modal-actions");
     if (actionsContainer) {
-        actionsContainer.innerHTML = ``;
+        actionsContainer.style.display = "flex";
+        actionsContainer.innerHTML = `
+            <button class="btn-icon" onclick="exportCasePDF('${log.id}')" title="ส่งออก PDF" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 0.4rem 0.75rem; font-size: 0.85rem; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 6px; cursor: pointer;">
+                <i class="fa-solid fa-file-pdf"></i> <span>PDF</span>
+            </button>
+            <button class="btn-icon" onclick="checkEditPermission('${log.id}', '${log.status}')" title="แก้ไข" style="background: rgba(56, 189, 248, 0.1); color: var(--primary-color); padding: 0.4rem 0.75rem; font-size: 0.85rem; border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 6px; cursor: pointer;">
+                <i class="fa-solid fa-pen"></i> <span>แก้ไข</span>
+            </button>
+        `;
     }
     
     // Check if user can edit (admin can always edit, regular users can't edit closed cases)
@@ -9034,27 +9042,17 @@ function viewLogDetails(id) {
         // For closed cases, check if user is admin
         FirestoreService.getUser(user.uid).then(userDoc => {
             const isAdmin = userDoc?.role === 'admin';
-            if (!isAdmin) {
-                // Hide edit button for non-admin users
-                const editBtn = document.querySelector('.modal-record-footer .btn-icon[title="แก้ไข"]');
+            if (!isAdmin && actionsContainer) {
+                const editBtn = actionsContainer.querySelector('[title="แก้ไข"]');
                 if (editBtn) editBtn.style.display = 'none';
             }
         });
     }
     
-    // Add action buttons to the record footer
+    // Record footer - metadata only
     const recordFooter = document.querySelector('.modal-record-footer');
     if (recordFooter) {
-        // Update the footer to include action buttons on the left
         recordFooter.innerHTML = `
-            <div style="display: flex; gap: 0.5rem;">
-                <button class="btn-icon" onclick="exportCasePDF('${log.id}')" title="ส่งออก PDF" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 0.4rem 0.75rem; font-size: 0.85rem;">
-                    <i class="fa-solid fa-file-pdf"></i> <span>PDF</span>
-                </button>
-                <button class="btn-icon" onclick="checkEditPermission('${log.id}', '${log.status}')" title="แก้ไข" style="background: rgba(56, 189, 248, 0.1); color: var(--primary-color); padding: 0.4rem 0.75rem; font-size: 0.85rem;">
-                    <i class="fa-solid fa-pen"></i> <span>แก้ไข</span>
-                </button>
-            </div>
             <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                 <div>
                     <i class="fa-solid fa-user-pen" style="margin-right: 4px;"></i> แก้ไขล่าสุด: <span style="color: var(--text-color); font-weight: 500;">${recorderName}</span>
@@ -9530,30 +9528,30 @@ async function exportCasePDF(logId) {
 
             return `<div style="flex:1; text-align:center; padding:10px 6px; background:${bgColor}; border:1.5px solid ${borderColor}; border-radius:8px;">
                 <div style="width:10px; height:10px; border-radius:50%; background:${isActive || isCompleted || isCancelledStep ? '#333' : '#ddd'}; margin:0 auto 6px;"></div>
-                <div style="font-size:11px; font-weight:${isActive ? '700' : '500'}; color:${textColor};">${s.label}</div>
-                <div style="font-size:9px; color:${hasTimestamp ? '#333' : '#ccc'}; margin-top:3px;">${ts}</div>
+                <div style="font-size:9px; font-weight:${isActive ? '700' : '500'}; color:${textColor};">${s.label}</div>
+                <div style="font-size:7px; color:${hasTimestamp ? '#333' : '#ccc'}; margin-top:2px;">${ts}</div>
             </div>`;
         }).join('');
     }
 
     // Build 3-column signature section
     const sigBoxStyle = 'flex:1; text-align:center; padding:12px 8px; min-width:0;';
-    const sigImgStyle = 'max-width:180px; height:60px; object-fit:contain;';
-    const sigLineStyle = 'border-top:1px solid #333; width:80%; margin:8px auto 4px;';
-    const sigNameStyle = 'font-size:11px; font-weight:600;';
-    const sigRoleStyle = 'font-size:10px; color:#333;';
+    const sigImgStyle = 'max-width:150px; height:50px; object-fit:contain;';
+    const sigLineStyle = 'border-top:1px solid #333; width:80%; margin:6px auto 3px;';
+    const sigNameStyle = 'font-size:9px; font-weight:600;';
+    const sigRoleStyle = 'font-size:8px; color:#333;';
 
     const buildSigBox = (signature, thaiLabel, engLabel, name = '') => {
         const imgHtml = signature
             ? `<img src="${signature}" style="${sigImgStyle}">`
             : `<div style="height:60px;"></div>`;
-        const nameHtml = name ? `<div style="font-size:10px; color:#333; margin-top:2px;">${name}</div>` : '';
+        const nameHtml = name ? `<div style="font-size:8px; color:#333; margin-top:2px;">${name}</div>` : '';
         return `<div style="${sigBoxStyle}">
             ${imgHtml}
             <div style="${sigLineStyle}"></div>
             ${nameHtml}
-            <div style="font-size:12px; font-weight:700; margin-top:4px;">${thaiLabel}</div>
-            <div style="font-size:9px; color:#333;">${engLabel}</div>
+            <div style="font-size:10px; font-weight:700; margin-top:3px;">${thaiLabel}</div>
+            <div style="font-size:8px; color:#333;">${engLabel}</div>
         </div>`;
     };
 
@@ -9575,40 +9573,125 @@ async function exportCasePDF(logId) {
         });
     }
 
+    // --- Build inspection data for PDF ---
+    const pdfBadge = (val) => {
+        if (!val) return '-';
+        const bg = val === 'pass' ? '#22c55e' : '#ef4444';
+        const text = val === 'pass' ? 'ผ่าน' : 'ไม่ผ่าน';
+        return '<span style="background:' + bg + '; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:45px; text-align:center;">' + text + '</span>';
+    };
+    const pdfInspBadge = (val) => {
+        if (!val) return '-';
+        const cfg = { check: { l: 'Check', b: '#22c55e' }, service: { l: 'Service', b: '#f59e0b' }, replace: { l: 'Replace', b: '#ef4444' } };
+        const c = cfg[val] || { l: val, b: '#111' };
+        return '<span style="background:' + c.b + '; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:45px; text-align:center;">' + c.l + '</span>';
+    };
+
+    const hasElec = log.voltageL1 || log.voltageL2 || log.voltageL3 || log.currentL1 || log.currentL2 || log.currentL3;
+    const hasPhys = log.avgWorkTemp || log.avgAreaTemp || log.leakCheck || log.leakPressure;
+    const hasPerf = log.complyType5 || log.ciPcdType5;
+    const hasGas = log.gasDoor1||log.gasDoor2||log.gasDoor3||log.gas1m1||log.gas1m2||log.gas1m3||log.gas2m1||log.gas2m2||log.gas2m3;
+    const pdfInspItems = [
+        ['insp_exteriorCleaning','ความสะอาดภายนอก'],['insp_interiorCleaning','ความสะอาดภายใน'],
+        ['insp_doorSystem','การทำงานระบบประตู'],['insp_footSwitch','การทำงาน Foot Switch'],['insp_sensor','ระบบ Sensor'],
+        ['insp_tempPoints','อุณหภูมิจุดที่ 1-4'],['insp_workingPressure','ความดันขณะทำงาน'],['insp_rfGenerator','RF Generator'],
+        ['insp_chemicalAmount','ปริมาณน้ำยาที่ฉีด'],['insp_airChargingValue','Air Charging Valve'],['insp_filter','Filter'],
+        ['insp_decomposer','Decomposer'],['insp_vacuumPumpOil','น้ำมันปั๊มสุญญากาศ'],['insp_connectors','ระบบข้อต่อต่างๆ'],
+        ['insp_drainTank','ถังเดรนน้ำ'],['insp_chemicalLine','สายส่งน้ำยา'],['insp_phaseRelay','รีเลย์ควบคุมลำดับเฟส'],['insp_systemRelay','รีเลย์ควบคุมระบบต่างๆ'],
+    ];
+    const hasInspChecklist = pdfInspItems.some(function(item) { return log[item[0]]; });
+
+    var inspHtml = '';
+
+    if (hasElec) {
+        inspHtml += '<h2>ข้อมูลไฟฟ้า (Electrical)</h2>'
+            + '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px;">'
+            + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;"><b>แรงดันไฟฟ้า</b></td>'
+            + '<td style="text-align:center; padding:4px 8px;">R <b>' + (log.voltageL1||'___') + '</b> V (Load/Unload)</td>'
+            + '<td style="text-align:center; padding:4px 8px;">S <b>' + (log.voltageL2||'___') + '</b> V (Load/Unload)</td>'
+            + '<td style="text-align:center; padding:4px 8px;">T <b>' + (log.voltageL3||'___') + '</b> V (Load/Unload)</td></tr>'
+            + '<tr><td style="padding:4px 8px;"><b>กระแส</b></td>'
+            + '<td style="text-align:center; padding:4px 8px;">R <b>' + (log.currentL1||'___') + '</b> A (Load/Unload)</td>'
+            + '<td style="text-align:center; padding:4px 8px;">S <b>' + (log.currentL2||'___') + '</b> A (Load/Unload)</td>'
+            + '<td style="text-align:center; padding:4px 8px;">T <b>' + (log.currentL3||'___') + '</b> A (Load/Unload)</td></tr>'
+            + '</table>';
+    }
+
+    if (hasPhys || hasPerf) {
+        inspHtml += '<h2>ตรวจสอบทางกายภาพ & ประสิทธิภาพ</h2>'
+            + '<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">';
+        if (hasPhys) {
+            inspHtml += '<div style="border:1px solid #ddd; border-radius:6px; padding:8px; font-size:10px;">'
+                + '<div style="font-weight:700; margin-bottom:4px;">Physical Inspection</div>'
+                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">อุณหภูมิเฉลี่ยทำงาน <span>' + (log.avgWorkTemp ? log.avgWorkTemp + ' °C ' : '') + pdfBadge(log.avgWorkTempCheck) + '</span></div>'
+                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">อุณหภูมิเฉลี่ยพื้นที่ <span>' + (log.avgAreaTemp ? log.avgAreaTemp + ' °C ' : '') + pdfBadge(log.avgAreaTempCheck) + '</span></div>'
+                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">ตรวจสอบการรั่วไหล <span>' + (log.leakPressure ? log.leakPressure + ' PSI ' : '') + pdfBadge(log.leakCheck) + '</span></div>'
+                + '</div>';
+        }
+        if (hasPerf) {
+            inspHtml += '<div style="border:1px solid #ddd; border-radius:6px; padding:8px; font-size:10px;">'
+                + '<div style="font-weight:700; margin-bottom:4px;">Performance</div>'
+                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">Comply Type 5 ' + pdfBadge(log.complyType5) + '</div>'
+                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">CI PCD Type 5 ' + pdfBadge(log.ciPcdType5) + '</div>'
+                + '</div>';
+        }
+        inspHtml += '</div>';
+    }
+
+    if (hasGas) {
+        inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:6px;">'
+            + '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px;">ตรวจสอบปริมาณแก๊ส (Gas Detection)</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 1</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 2</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 3</th></tr></thead>'
+            + '<tbody>'
+            + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;">บริเวณหน้าประตู</td><td style="text-align:center;">' + (log.gasDoor1||'-') + ' PPM</td><td style="text-align:center;">' + (log.gasDoor2||'-') + ' PPM</td><td style="text-align:center;">' + (log.gasDoor3||'-') + ' PPM</td></tr>'
+            + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;">ระยะห่าง 1 เมตร</td><td style="text-align:center;">' + (log.gas1m1||'-') + ' PPM</td><td style="text-align:center;">' + (log.gas1m2||'-') + ' PPM</td><td style="text-align:center;">' + (log.gas1m3||'-') + ' PPM</td></tr>'
+            + '<tr><td style="padding:4px 8px;">ระยะห่าง 2 เมตร</td><td style="text-align:center;">' + (log.gas2m1||'-') + ' PPM</td><td style="text-align:center;">' + (log.gas2m2||'-') + ' PPM</td><td style="text-align:center;">' + (log.gas2m3||'-') + ' PPM</td></tr>'
+            + '</tbody></table>';
+    }
+
+    if (hasInspChecklist) {
+        inspHtml += '<h2>รายการตรวจสอบ (Inspection Checklist)</h2>'
+            + '<div style="display:grid; grid-template-columns:1fr 1fr; gap:0 20px; border:1px solid #ddd; border-radius:6px; padding:8px;">';
+        pdfInspItems.forEach(function(item) {
+            inspHtml += '<div style="display:flex; justify-content:space-between; align-items:center; padding:3px 0; border-bottom:1px solid #f0f0f0; font-size:10px;"><span>' + item[1] + '</span>' + pdfInspBadge(log[item[0]]) + '</div>';
+        });
+        inspHtml += '</div>';
+    }
+
     const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <title>${log.caseId || 'MA Case'}</title>
 <style>
     @page { size: A4 portrait; margin: 0; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 13px; color: #333; margin: 0; padding: 10mm 12mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
+    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 11px; color: #333; margin: 0; padding: 8mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
     .page-content { flex: 1; }
-    .page-header { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; }
-    .page-header img { height: 70px; width: auto; }
-    .page-header .company-info { flex: 1; text-align: right; font-size: 11px; color: #333; line-height: 1.6; }
-    .header-line { margin-bottom: 16px; position: relative; height: 2px; background: #ddd !important; }
+    .page-header { display: flex; align-items: center; gap: 12px; padding-bottom: 10px; }
+    .page-header img { height: 55px; width: auto; }
+    .page-header .company-info { flex: 1; text-align: right; font-size: 9px; color: #333; line-height: 1.6; }
+    .header-line { margin-bottom: 12px; position: relative; height: 2px; background: #ddd !important; }
     .header-line::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
     .header-dots { text-align: right; margin-top: -2px; margin-bottom: 4px; }
-    .header-dots span { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-left: 4px; }
-    h2 { font-size: 14px; color: #333; margin: 20px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
-    .info-grid { display: grid; grid-template-columns: 120px 1fr 120px 1fr; gap: 4px 12px; margin-bottom: 12px; }
+    .header-dots span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 3px; }
+    h2 { font-size: 11px; color: #333; margin: 6px 0 3px; padding-bottom: 0; border-bottom: none; }
+    .info-grid { display: grid; grid-template-columns: 100px 1fr 100px 1fr; gap: 2px 8px; margin-bottom: 8px; font-size: 10px; }
     .label { color: #333; font-weight: bold; }
     table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; padding: 6px 8px; background: #f5f5f5 !important; border-bottom: 2px solid #ddd; font-size: 12px; }
+    th { text-align: left; padding: 4px 6px; background: #f5f5f5 !important; border-bottom: 2px solid #ddd; font-size: 10px; }
+    td { font-size: 10px; }
     .page-footer { margin-top: auto; padding-top: 0; }
     .page-footer .footer-line { position: relative; height: 2px; background: #ddd !important; }
     .page-footer .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
-    .page-footer .footer-text { text-align: center; font-size: 10px; color: #333; padding: 6px 0; }
+    .page-footer .footer-text { text-align: center; font-size: 8px; color: #333; padding: 4px 0; }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
 </head><body>
 
 <div class="page-header">
-    <img src="/bioinnotechgreenworld.svg" alt="Logo">
+    <img src="/bioinnotech.svg" alt="Logo">
     <div class="company-info">
-        <b>บริษัท ไบโอ อินโน เทค กรีน เวิลด์ จำกัด</b><br>
-        36/6 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>
-        โทรศัพท์ 02-148-7366 เลขประจำตัวผู้เสียภาษี 0135563005631
+        <b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>
+        36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>
+        โทรศัพท์ 02-152-5405 เลขประจำตัวผู้เสียภาษี 0105557108369
         <div class="header-dots">
             <span style="background: #c5e1a5;"></span>
             <span style="background: #81c784;"></span>
@@ -9619,40 +9702,20 @@ async function exportCasePDF(logId) {
 <div class="header-line"></div>
 
 <div class="page-content">
-<h1 style="text-align:center; font-size:18px; margin:0 0 4px; color:#333;">ใบรายงานการซ่อมบำรุง</h1>
+<h1 style="text-align:center; font-size:15px; margin:0 0 4px; color:#333;">ใบตรวจเช็คการบำรุงรักษาเครื่อง</h1>
 
-<h2 style="margin-top:8px;">ข้อมูลทั่วไป</h2>
-<div class="info-grid">
-    <span class="label">รหัสเคส:</span><span>${log.caseId || '-'}</span>
-    <span class="label">สถานที่:</span><span>${site.name}</span>
-    <span class="label">วันที่:</span><span>${thaiDate}</span>
-    <span class="label">หมวดหมู่:</span><span>${log.category || '-'}</span>
-    <span class="label">สถานะ:</span><span>${statusText}</span>
-    <span class="label">ค่าใช้จ่ายรวม:</span><span style="font-weight:bold;">${fmtCost(totalCost)} บาท</span>
-    <span class="label">ผู้รับผิดชอบ:</span><span>${responderName}</span>
-    <span class="label">แก้ไขล่าสุด:</span><span>${recorderName}</span>
-    <span class="label">บันทึกเมื่อ:</span><span>${timestampStr}</span>
-    <span class="label">ระยะเวลาประกัน:</span><span>${site.insuranceStartDate || '-'} ถึง ${site.insuranceEndDate || '-'}</span>
-    <span class="label">รอบซ่อมบำรุง (วัน):</span><span>${site.maintenanceCycle || '-'}</span>
+<h2 style="margin-top:8px;">ข้อมูลงาน (Job Information)</h2>
+<div style="font-size:10px; line-height:1.8; padding:4px 0;">
+    <span class="label">รหัสเคส:</span> ${log.caseId || '-'} &nbsp;&nbsp; <span class="label">วันที่:</span> ${thaiDate} &nbsp;&nbsp; <span class="label">รูปแบบสัญญา:</span> ${site.deviceType || '-'} &nbsp;&nbsp; <span class="label">ยี่ห้อ/รุ่น:</span> ${[site.brand, site.model].filter(Boolean).join(' / ') || '-'} &nbsp;&nbsp; <span class="label">S/N:</span> ${site.serialNumber || '-'} &nbsp;&nbsp; <span class="label">ผู้รับผิดชอบ:</span> ${responderName} &nbsp;&nbsp; <span class="label">สถานะ:</span> ${statusText}<br>
+    <span class="label">สถานที่:</span> ${site.name} &nbsp;&nbsp; <span class="label">หน่วยงาน:</span> ${site.installLocation || site.villageName || '-'} &nbsp;&nbsp; <span class="label">จังหวัด:</span> ${site.province || '-'} &nbsp;&nbsp; <span class="label">ประเภท:</span> ${site.deviceType || '-'} &nbsp;&nbsp; <span class="label">หมวดหมู่:</span> ${log.category || '-'}<br>
+    <span class="label">รอบซ่อมบำรุง:</span> ${site.maintenanceCycle ? site.maintenanceCycle + ' วัน' : '-'} &nbsp;&nbsp; <span class="label">ระยะเวลาประกัน:</span> ${site.insuranceStartDate || '-'} ถึง ${site.insuranceEndDate || '-'} &nbsp;&nbsp; <span class="label">จำนวนรอบขณะเช็ค:</span> ${log.cycleCount ? Number(log.cycleCount).toLocaleString() + ' รอบ' : '-'}
 </div>
 
 <h2>รายละเอียดเริ่มต้น</h2>
-<div style="padding:10px; background:#f9f9f9; border-radius:6px; white-space:pre-wrap;">${initialDetail}</div>
-${initialAttachmentsHtml ? `<div style="margin-top:8px;">${initialAttachmentsHtml}</div>` : ''}
+<div style="padding:8px; background:#f9f9f9; border-radius:6px; white-space:pre-wrap; font-size:10px;">${initialDetail}</div>
+${initialAttachmentsHtml ? '<div style="margin-top:8px;">' + initialAttachmentsHtml + '</div>' : ''}
 
-${lineItemsHtml ? `
-<h2>รายการค่าใช้จ่าย</h2>
-<table>
-    <thead><tr><th style="width:40px;">#</th><th>รายการ</th><th style="text-align:right; width:120px;">ราคา (บาท)</th></tr></thead>
-    <tbody>${lineItemsHtml}
-        <tr style="font-weight:bold; border-top:2px solid #333;">
-            <td colspan="2" style="padding:8px; text-align:right;">รวมทั้งหมด</td>
-            <td style="padding:8px; text-align:right;">${fmtCost(totalCost)}</td>
-        </tr>
-    </tbody>
-</table>` : `
-<h2>รายการค่าใช้จ่าย</h2>
-<div style="padding:10px; color:#333;">ไม่มีรายการค่าใช้จ่าย</div>`}
+${inspHtml}
 
 ${statusTimelineHtml ? `
 <h2>ประวัติการเปลี่ยนสถานะ</h2>
@@ -9664,6 +9727,11 @@ ${statusTimelineHtml ? `
     <span class="label">เบอร์โทร:</span><span>${customerTel}</span>
 </div>
 
+<div style="margin-top:10px; font-size:9px; color:#666; display:flex; gap:16px;">
+    <span>แก้ไขล่าสุด: ${recorderName}</span>
+    <span>บันทึกเมื่อ: ${timestampStr}</span>
+</div>
+
 </div>
 
 <div class="page-footer">
@@ -9672,12 +9740,12 @@ ${statusTimelineHtml ? `
     <div style="display:flex; align-items:center; gap:10px; margin-top:16px; margin-bottom:10px;">
         <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`https://water-plant-maintenance.web.app?logId=${log.id}`)}" alt="QR Code" style="width:50px; height:50px;">
         <div>
-            <div style="font-size:11px; font-weight:700; color:#333;">สแกนเพื่อดูรายละเอียดเคสฉบับเต็ม</div>
-            <div style="font-size:9px; color:#333;">Scan to view full case detail — For staff only</div>
+            <div style="font-size:9px; font-weight:700; color:#333;">สแกนเพื่อดูรายละเอียดเคสฉบับเต็ม</div>
+            <div style="font-size:7px; color:#333;">Scan to view full case detail — For staff only</div>
         </div>
     </div>
     <div class="footer-line"></div>
-    <div class="footer-text">บริษัท ไบโอ อินโน เทค กรีน เวิลด์ จำกัด</div>
+    <div class="footer-text">บริษัท ไบโอ อินโน เทค จำกัด</div>
 </div>
 
 </body></html>`;
