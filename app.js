@@ -3151,6 +3151,59 @@ function editSite(id) {
     }
 }
 
+// --- Customer Signature Pad ---
+let customerSignaturePad = null;
+
+function initCustomerSignaturePad() {
+    const canvas = document.getElementById("customer-signature-canvas");
+    if (!canvas || customerSignaturePad) return;
+    customerSignaturePad = new SignaturePad(canvas, {
+        minWidth: 0.5,
+        maxWidth: 2.5,
+        penColor: "#111111",
+    });
+    function resizeCustomerCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = rect.width * ratio;
+        canvas.height = rect.height * ratio;
+        canvas.getContext("2d").scale(ratio, ratio);
+        customerSignaturePad.clear();
+    }
+    resizeCustomerCanvas();
+    // Re-init on modal open
+    const observer = new MutationObserver(() => {
+        const modal = document.getElementById("modal-log-maintenance");
+        if (modal && !modal.classList.contains("hidden")) {
+            setTimeout(resizeCustomerCanvas, 100);
+        }
+    });
+    const modal = document.getElementById("modal-log-maintenance");
+    if (modal) observer.observe(modal, { attributes: true, attributeFilter: ["class"] });
+}
+
+function clearCustomerSignature() {
+    if (customerSignaturePad) customerSignaturePad.clear();
+    const hidden = document.getElementById("customer-signature-data");
+    if (hidden) hidden.value = "";
+}
+
+function getCustomerSignatureDataUrl() {
+    if (!customerSignaturePad || customerSignaturePad.isEmpty()) return "";
+    const canvas = document.getElementById("customer-signature-canvas");
+    if (!canvas) return "";
+    const tmpCanvas = document.createElement("canvas");
+    tmpCanvas.width = canvas.width;
+    tmpCanvas.height = canvas.height;
+    const ctx = tmpCanvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, tmpCanvas.width, tmpCanvas.height);
+    ctx.drawImage(canvas, 0, 0);
+    return tmpCanvas.toDataURL("image/jpeg", 0.8);
+}
+
+window.clearCustomerSignature = clearCustomerSignature;
+
 function buildInspectionSummary(logData) {
     const lines = [];
     if (logData.cycleCount) lines.push(`จำนวนรอบ: ${logData.cycleCount}`);
@@ -3401,6 +3454,11 @@ async function handleLogMaintenance(e) {
             ciPcdType5: formData.get("ciPcdType5") || "",
             // Cycle Count
             cycleCount: formData.get("cycleCount") || "",
+            // Customer Information
+            customerName: formData.get("customerName") || "",
+            customerPhone: formData.get("customerPhone") || "",
+            customerPosition: formData.get("customerPosition") || "",
+            customerSignature: getCustomerSignatureDataUrl() || formData.get("customerSignatureData") || "",
             // Inspection Checklist
             insp_exteriorCleaning: formData.get("insp_exteriorCleaning") || "",
             insp_interiorCleaning: formData.get("insp_interiorCleaning") || "",
@@ -3490,7 +3548,7 @@ async function handleLogMaintenance(e) {
                 category: 'หมวดหมู่',
                 objective: 'คำอธิบายงาน',
                 status: 'สถานะ',
-                responderId: 'ผู้รับผิดชอบ',
+                responderId: 'เจ้าหน้าที่ช่างบริการ',
                 cost: 'ค่าใช้จ่าย'
             };
             
@@ -3594,18 +3652,50 @@ async function handleLogMaintenance(e) {
                     changes.push(`${fieldLabels.cost}: ${fmt(oldCost)} บาท → ${fmt(newCost)} บาท`);
                 }
                 
-                // Check line items changes (show detailed changes)
+                // Check line items changes (only if actual content changed)
                 const oldItems = existingLog.lineItems || [];
                 const newItems = logData.lineItems || [];
-                if (JSON.stringify(oldItems) !== JSON.stringify(newItems)) {
-                    // Show count change if different
-                    if (oldItems.length !== newItems.length) {
-                        changes.push(`จำนวนรายการ: ${oldItems.length} รายการ → ${newItems.length} รายการ`);
-                    } else if (oldCost === newCost) {
-                        // Items changed but cost same - show that items were modified
+                const normalizeItems = (items) => items.map(i => ({ item: (i.item || '').trim(), cost: i.cost || 0 })).filter(i => i.item || i.cost);
+                const oldNorm = normalizeItems(oldItems);
+                const newNorm = normalizeItems(newItems);
+                if (JSON.stringify(oldNorm) !== JSON.stringify(newNorm)) {
+                    if (oldNorm.length !== newNorm.length) {
+                        changes.push(`จำนวนรายการ: ${oldNorm.length} รายการ → ${newNorm.length} รายการ`);
+                    } else {
                         changes.push(`รายการค่าใช้จ่าย: แก้ไขรายการ`);
                     }
                 }
+
+                // Check electrical fields
+                const elecFields = ['voltageL1','voltageL2','voltageL3','currentL1','currentL2','currentL3'];
+                const elecLabels = { voltageL1:'แรงดัน R', voltageL2:'แรงดัน S', voltageL3:'แรงดัน T', currentL1:'กระแส R', currentL2:'กระแส S', currentL3:'กระแส T' };
+                elecFields.forEach(f => {
+                    if ((existingLog[f] || '') !== (logData[f] || '')) changes.push(`${elecLabels[f]}: ${existingLog[f] || '-'} → ${logData[f] || '-'}`);
+                });
+
+                // Check physical inspection
+                const physFields = ['avgWorkTemp','avgAreaTemp','leakPressure','avgWorkTempCheck','avgAreaTempCheck','leakCheck'];
+                const physLabels = { avgWorkTemp:'อุณหภูมิทำงาน', avgAreaTemp:'อุณหภูมิพื้นที่', leakPressure:'ความดันรั่วไหล', avgWorkTempCheck:'ผลอุณหภูมิทำงาน', avgAreaTempCheck:'ผลอุณหภูมิพื้นที่', leakCheck:'ผลการรั่วไหล' };
+                physFields.forEach(f => {
+                    if ((existingLog[f] || '') !== (logData[f] || '')) changes.push(`${physLabels[f]}: ${existingLog[f] || '-'} → ${logData[f] || '-'}`);
+                });
+
+                // Check performance
+                if ((existingLog.complyType5 || '') !== (logData.complyType5 || '')) changes.push(`Comply Type 5: ${existingLog.complyType5 || '-'} → ${logData.complyType5 || '-'}`);
+                if ((existingLog.ciPcdType5 || '') !== (logData.ciPcdType5 || '')) changes.push(`CI PCD Type 5: ${existingLog.ciPcdType5 || '-'} → ${logData.ciPcdType5 || '-'}`);
+
+                // Check cycle count
+                if ((existingLog.cycleCount || '') !== (logData.cycleCount || '')) changes.push(`จำนวนรอบ: ${existingLog.cycleCount || '-'} → ${logData.cycleCount || '-'}`);
+
+                // Check inspection checklist
+                const inspKeys = ['insp_exteriorCleaning','insp_interiorCleaning','insp_doorSystem','insp_footSwitch','insp_sensor','insp_tempPoints','insp_workingPressure','insp_rfGenerator','insp_chemicalAmount','insp_airChargingValue','insp_filter','insp_decomposer','insp_vacuumPumpOil','insp_connectors','insp_drainTank','insp_gasDoor','insp_gas1m','insp_gas2m'];
+                const inspLabelMap = { check:'Check', service:'Service', replace:'Replace' };
+                inspKeys.forEach(k => {
+                    if ((existingLog[k] || '') !== (logData[k] || '')) {
+                        const label = k.replace('insp_','').replace(/([A-Z])/g,' $1').trim();
+                        changes.push(`${label}: ${inspLabelMap[existingLog[k]] || existingLog[k] || '-'} → ${inspLabelMap[logData[k]] || logData[k] || '-'}`);
+                    }
+                });
             }
             
             await FirestoreService.updateLog(logId, logData);
@@ -5329,6 +5419,9 @@ function resetLogForm() {
     if (typeof pendingUploadsAfter !== "undefined") pendingUploadsAfter = [];
     if (typeof pendingDeletions !== "undefined") pendingDeletions = [];
 
+    // Clear customer fields
+    clearCustomerSignature();
+
     const containerBefore = document.getElementById(
         "attachment-before-preview-container",
     );
@@ -5382,7 +5475,7 @@ function openLogModalForDate(dateStr) {
 function populateResponderDropdown(selectedId = "") {
     const select = document.getElementById("log-responder-select");
     if (!select || !state.users) return;
-    select.innerHTML = '<option value="">-- เลือกผู้รับผิดชอบ --</option>';
+    select.innerHTML = '<option value="">-- เลือกเจ้าหน้าที่ช่างบริการ --</option>';
     Object.entries(state.users).forEach(([uid, u]) => {
         const name = u.displayName || u.email || uid;
         select.innerHTML += `<option value="${uid}" ${uid === selectedId ? 'selected' : ''}>${name}</option>`;
@@ -5563,6 +5656,19 @@ function editLog(logId) {
         "insp_gasDoor", "insp_gas1m", "insp_gas2m",
     ];
     inspKeys.forEach(key => checkRadios(key, log[key]));
+
+    // Customer fields
+    setField("customerName", log.customerName);
+    setField("customerPhone", log.customerPhone);
+    setField("customerPosition", log.customerPosition);
+    // Load existing customer signature
+    const custSigHidden = document.getElementById("customer-signature-data");
+    if (custSigHidden) custSigHidden.value = log.customerSignature || "";
+    if (log.customerSignature && customerSignaturePad) {
+        setTimeout(() => {
+            try { customerSignaturePad.fromDataURL(log.customerSignature); } catch(e) {}
+        }, 200);
+    }
 
     let legacyAttachments = log.attachments || [];
     if (log.attachmentUrl && legacyAttachments.length === 0) {
@@ -6139,28 +6245,28 @@ function showDayDetails(dateStr, logs) {
 
         // Render Status Badge
         const statusColors = {
-            Open: { bg: "rgba(234,179,8,0.15)", color: "#ca8a04", label: "🟡 เปิดงาน" },
+            Open: { bg: "rgba(234,179,8,0.15)", color: "#ca8a04", label: "เปิดงาน" },
             Planning: {
                 bg: "rgba(59,130,246,0.15)",
                 color: "#3b82f6",
-                label: "🔵 วางแผน",
+                label: "วางแผน",
             },
             "On Process": {
                 bg: "rgba(249,115,22,0.15)",
                 color: "#f97316",
-                label: "🟠 กำลังดำเนินการ",
+                label: "กำลังดำเนินการ",
             },
             Cancel: {
                 bg: "rgba(239,68,68,0.15)",
                 color: "#ef4444",
-                label: "🔴 ยกเลิก",
+                label: "ยกเลิก",
             },
-            Done: { bg: "rgba(168,85,247,0.15)", color: "#a855f7", label: "🟣 เสร็จสิ้น" },
-            "Case Closed": { bg: "rgba(34,197,94,0.15)", color: "#22c55e", label: "🟢 ปิดเคส" },
+            Done: { bg: "rgba(168,85,247,0.15)", color: "#a855f7", label: "เสร็จสิ้น" },
+            "Case Closed": { bg: "rgba(34,197,94,0.15)", color: "#22c55e", label: "ปิดเคส" },
             Completed: {
                 bg: "rgba(168,85,247,0.15)",
                 color: "#a855f7",
-                label: "🟣 เสร็จสิ้น",
+                label: "เสร็จสิ้น",
             },
         };
         const s = statusColors[log.status] || {
@@ -6210,7 +6316,7 @@ function showDayDetails(dateStr, logs) {
                 <div class="mc-detail">
                     <div><span class="mc-label">วันที่:</span> ${thaiDate}${logTime ? ` ${logTime}` : ''}</div>
                     <div><span class="mc-label">รายละเอียด:</span> ${calInitialDetail}</div>
-                    <div><span class="mc-label">ผู้รับผิดชอบ:</span> ${calResponder}</div>
+                    <div><span class="mc-label">เจ้าหน้าที่ช่างบริการ:</span> ${calResponder}</div>
                 </div>
                 <div class="mc-footer">
                     <span class="mc-status-big">${mobileStatusBadge}</span>
@@ -8030,6 +8136,7 @@ function initMaFormCommentAttachments() {
 document.addEventListener('DOMContentLoaded', () => {
     initMaFormCommentAttachments();
     initDescriptionAttachments();
+    initCustomerSignaturePad();
 
     // Enforce numeric-only on electrical fields
     document.querySelectorAll('input[name^="voltageL"], input[name^="currentL"], input[name="leakPressure"]').forEach(input => {
@@ -8826,8 +8933,26 @@ function viewLogDetails(id) {
     const serialEl = document.getElementById("detail-log-serial");
     if (serialEl) serialEl.textContent = site.serialNumber || "-";
 
-    const installLocEl = document.getElementById("detail-log-install-location");
-    if (installLocEl) installLocEl.textContent = site.villageName || "-";
+    const installLocEl = document.getElementById("detail-log-install-loc");
+    if (installLocEl) installLocEl.textContent = site.installLocation || site.villageName || "-";
+
+    const provinceEl = document.getElementById("detail-log-province");
+    if (provinceEl) provinceEl.textContent = site.province || "-";
+
+    const maCycleEl = document.getElementById("detail-log-ma-cycle");
+    if (maCycleEl) maCycleEl.textContent = site.maintenanceCycle ? `${site.maintenanceCycle} วัน` : "-";
+
+    const cycleCountEl = document.getElementById("detail-log-cycle-count");
+    if (cycleCountEl) cycleCountEl.textContent = log.cycleCount ? `${Number(log.cycleCount).toLocaleString()} รอบ` : "-";
+
+    const dateFieldEl2 = document.getElementById("detail-log-date-field");
+    if (dateFieldEl2) dateFieldEl2.textContent = thaiDate;
+
+    const statusTextEl = document.getElementById("detail-log-status-text");
+    if (statusTextEl) {
+        const statusLabels = { 'Open': 'เปิด', 'On Process': 'ดำเนินการ', 'Done': 'เสร็จสิ้น', 'Case Closed': 'ปิดเคส', 'Cancel': 'ยกเลิก' };
+        statusTextEl.textContent = statusLabels[log.status] || log.status || "-";
+    }
     
     // Render Status Timeline
     // Initialize status history if it doesn't exist (for old logs)
@@ -8914,7 +9039,7 @@ function viewLogDetails(id) {
 
         inspSection.style.display = "block";
 
-        const row = (label, value) => `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.85rem; color:#333;">${label}</span><span style="font-size:0.85rem; font-weight:500; color:#111;">${value}</span></div>`;
+        const row = (label, value) => `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333;">${label}</span><span style="font-size:0.88rem; font-weight:500; color:#111;">${value}</span></div>`;
 
         const pillBadge = (val, passLabel = 'ผ่าน', failLabel = 'ไม่ผ่าน') => {
             if (!val) return `<span style="color:#ccc;">-</span>`;
@@ -8933,40 +9058,33 @@ function viewLogDetails(id) {
 
         let html = '';
 
-        // Cycle Count
-        html += row('จำนวนรอบขณะเช็ค (Cycle Count)', log.cycleCount ? `${log.cycleCount} รอบ` : '-');
-
         // Electrical section header
-        html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-bolt" style="color:#eab308;"></i> ข้อมูลไฟฟ้า (Electrical)</div>`;
-        html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:0 1.5rem;">`;
-        html += row('แรงดัน R (V)', log.voltageL1 || '-');
-        html += row('แรงดัน S (V)', log.voltageL2 || '-');
-        html += row('แรงดัน T (V)', log.voltageL3 || '-');
-        html += row('กระแส R (A)', log.currentL1 || '-');
-        html += row('กระแส S (A)', log.currentL2 || '-');
-        html += row('กระแส T (A)', log.currentL3 || '-');
-        html += `</div>`;
+        html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-bolt" style="color:#111111;"></i> ข้อมูลไฟฟ้า (Electrical)</div>`;
+        html += `<table style="width:100%; border-collapse:collapse; border:1px solid rgba(0,0,0,0.08); border-radius:6px; overflow:hidden;">`;
+        html += `<tr style="border-bottom:1px solid rgba(0,0,0,0.06);"><td style="padding:0.5rem 0.75rem; font-weight:500; font-size:0.88rem;">แรงดันไฟฟ้า</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">R ${log.voltageL1 || '___'} V (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">S ${log.voltageL2 || '___'} V (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">T ${log.voltageL3 || '___'} V (Load/Unload)</td></tr>`;
+        html += `<tr><td style="padding:0.5rem 0.75rem; font-weight:500; font-size:0.88rem;">กระแส</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">R ${log.currentL1 || '___'} A (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">S ${log.currentL2 || '___'} A (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">T ${log.currentL3 || '___'} A (Load/Unload)</td></tr>`;
+        html += `</table>`;
 
         // Physical Inspection
         html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-clipboard-check"></i> ตรวจสอบทางกายภาพ (Physical Inspection)</div>`;
         html += `<div style="display:flex; flex-direction:column;">`;
-        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.85rem; color:#333; flex:1;">อุณหภูมิเฉลี่ยในการทำงาน</span><span style="font-size:0.85rem; margin-right:0.75rem;">${log.avgWorkTemp ? log.avgWorkTemp + ' °C' : '-'}</span>${pillBadge(log.avgWorkTempCheck)}</div>`;
-        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.85rem; color:#333; flex:1;">อุณหภูมิเฉลี่ยพื้นที่</span><span style="font-size:0.85rem; margin-right:0.75rem;">${log.avgAreaTemp ? log.avgAreaTemp + ' °C' : '-'}</span>${pillBadge(log.avgAreaTempCheck)}</div>`;
-        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.85rem; color:#333; flex:1;">ตรวจสอบการรั่วไหล</span><span style="font-size:0.85rem; margin-right:0.75rem;">${log.leakPressure ? log.leakPressure + ' PSI' : '-'}</span>${pillBadge(log.leakCheck)}</div>`;
+        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333; flex:1;">อุณหภูมิเฉลี่ยในการทำงาน</span><span style="font-size:0.88rem; margin-right:0.75rem;">${log.avgWorkTemp ? log.avgWorkTemp + ' °C' : '-'}</span>${pillBadge(log.avgWorkTempCheck)}</div>`;
+        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333; flex:1;">อุณหภูมิเฉลี่ยพื้นที่</span><span style="font-size:0.88rem; margin-right:0.75rem;">${log.avgAreaTemp ? log.avgAreaTemp + ' °C' : '-'}</span>${pillBadge(log.avgAreaTempCheck)}</div>`;
+        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333; flex:1;">ตรวจสอบการรั่วไหล</span><span style="font-size:0.88rem; margin-right:0.75rem;">${log.leakPressure ? log.leakPressure + ' PSI' : '-'}</span>${pillBadge(log.leakCheck)}</div>`;
         html += `</div>`;
 
         // Performance
         html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-gauge-high"></i> ประสิทธิภาพการทำงาน (Performance)</div>`;
         html += `<div style="display:flex; flex-direction:column;">`;
-        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.85rem; color:#333;">Comply Type 5</span>${pillBadge(log.complyType5)}</div>`;
-        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.85rem; color:#333;">CI PCD Type 5</span>${pillBadge(log.ciPcdType5)}</div>`;
+        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333;">ตรวจสอบด้วย Comply Type 5</span>${pillBadge(log.complyType5)}</div>`;
+        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333;">ตรวจสอบการทะลุทะลวงด้วย CI PCD Type 5</span>${pillBadge(log.ciPcdType5)}</div>`;
         html += `</div>`;
 
         // Inspection Checklist
         html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-magnifying-glass-chart"></i> รายการตรวจสอบ (Inspection Checklist)</div>`;
         html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:0 1.5rem;">`;
         inspItems.forEach(([key, label]) => {
-            html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.85rem; color:#333;">${label}</span>${inspBadge(log[key])}</div>`;
+            html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333;">${label}</span>${inspBadge(log[key])}</div>`;
         });
         html += `</div>`;
 
@@ -9556,7 +9674,7 @@ async function exportCasePDF(logId) {
     };
 
     const signatureHtml = `<div style="display:flex; gap:16px; margin-top:8px;">
-        ${buildSigBox(responderSignature, 'ผู้รับผิดชอบ', 'Case Responder')}
+        ${buildSigBox(responderSignature, 'เจ้าหน้าที่ช่างบริการ', 'Case Responder')}
         ${buildSigBox(doneSignature, 'ลูกค้า', 'Customer Authorized PIC')}
         ${buildSigBox(closerSignature, 'ผู้ปิดเคส', 'Case Closer')}
     </div>`;
@@ -9604,8 +9722,8 @@ async function exportCasePDF(logId) {
     var inspHtml = '';
 
     if (hasElec) {
-        inspHtml += '<h2>ข้อมูลไฟฟ้า (Electrical)</h2>'
-            + '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px;">'
+        inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:10px;">'
+            + '<tr style="border-bottom:1px solid #eee;"><td colspan="4" style="padding:6px 8px; font-weight:700; font-size:11px;">ข้อมูลไฟฟ้า (Electrical)</td></tr>'
             + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;"><b>แรงดันไฟฟ้า</b></td>'
             + '<td style="text-align:center; padding:4px 8px;">R <b>' + (log.voltageL1||'___') + '</b> V (Load/Unload)</td>'
             + '<td style="text-align:center; padding:4px 8px;">S <b>' + (log.voltageL2||'___') + '</b> V (Load/Unload)</td>'
@@ -9618,28 +9736,27 @@ async function exportCasePDF(logId) {
     }
 
     if (hasPhys || hasPerf) {
-        inspHtml += '<h2>ตรวจสอบทางกายภาพ & ประสิทธิภาพ</h2>'
-            + '<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">';
+        inspHtml += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px;">';
         if (hasPhys) {
             inspHtml += '<div style="border:1px solid #ddd; border-radius:6px; padding:8px; font-size:10px;">'
-                + '<div style="font-weight:700; margin-bottom:4px;">Physical Inspection</div>'
-                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">อุณหภูมิเฉลี่ยทำงาน <span>' + (log.avgWorkTemp ? log.avgWorkTemp + ' °C ' : '') + pdfBadge(log.avgWorkTempCheck) + '</span></div>'
-                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">อุณหภูมิเฉลี่ยพื้นที่ <span>' + (log.avgAreaTemp ? log.avgAreaTemp + ' °C ' : '') + pdfBadge(log.avgAreaTempCheck) + '</span></div>'
-                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">ตรวจสอบการรั่วไหล <span>' + (log.leakPressure ? log.leakPressure + ' PSI ' : '') + pdfBadge(log.leakCheck) + '</span></div>'
+                + '<div style="font-weight:700; margin-bottom:4px; font-size:11px;">ตรวจสอบทางกายภาพ (Physical Inspection)</div>'
+                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">อุณหภูมิเฉลี่ยทำงาน <span style="display:flex; align-items:center; gap:6px;">' + (log.avgWorkTemp ? log.avgWorkTemp + ' °C' : '-') + ' ' + pdfBadge(log.avgWorkTempCheck) + '</span></div>'
+                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">อุณหภูมิเฉลี่ยพื้นที่ <span style="display:flex; align-items:center; gap:6px;">' + (log.avgAreaTemp ? log.avgAreaTemp + ' °C' : '-') + ' ' + pdfBadge(log.avgAreaTempCheck) + '</span></div>'
+                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">ตรวจสอบการรั่วไหล <span style="display:flex; align-items:center; gap:6px;">' + (log.leakPressure ? log.leakPressure + ' PSI' : '-') + ' ' + pdfBadge(log.leakCheck) + '</span></div>'
                 + '</div>';
         }
         if (hasPerf) {
             inspHtml += '<div style="border:1px solid #ddd; border-radius:6px; padding:8px; font-size:10px;">'
-                + '<div style="font-weight:700; margin-bottom:4px;">Performance</div>'
-                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">Comply Type 5 ' + pdfBadge(log.complyType5) + '</div>'
-                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">CI PCD Type 5 ' + pdfBadge(log.ciPcdType5) + '</div>'
+                + '<div style="font-weight:700; margin-bottom:4px; font-size:11px;">ประสิทธิภาพการทำงาน (Performance)</div>'
+                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">ตรวจสอบด้วย Comply Type 5 ' + pdfBadge(log.complyType5) + '</div>'
+                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">ตรวจสอบการทะลุทะลวงด้วย CI PCD Type 5 ' + pdfBadge(log.ciPcdType5) + '</div>'
                 + '</div>';
         }
         inspHtml += '</div>';
     }
 
     if (hasGas) {
-        inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:6px;">'
+        inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:10px;">'
             + '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px;">ตรวจสอบปริมาณแก๊ส (Gas Detection)</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 1</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 2</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 3</th></tr></thead>'
             + '<tbody>'
             + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;">บริเวณหน้าประตู</td><td style="text-align:center;">' + (log.gasDoor1||'-') + ' PPM</td><td style="text-align:center;">' + (log.gasDoor2||'-') + ' PPM</td><td style="text-align:center;">' + (log.gasDoor3||'-') + ' PPM</td></tr>'
@@ -9649,8 +9766,8 @@ async function exportCasePDF(logId) {
     }
 
     if (hasInspChecklist) {
-        inspHtml += '<h2>รายการตรวจสอบ (Inspection Checklist)</h2>'
-            + '<div style="display:grid; grid-template-columns:1fr 1fr; gap:0 20px; border:1px solid #ddd; border-radius:6px; padding:8px;">';
+        inspHtml += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:0 20px; border:1px solid #ddd; border-radius:6px; padding:8px; margin-top:10px;">'
+            + '<div style="grid-column: span 2; font-weight:700; font-size:11px; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid #eee;">รายการตรวจสอบ (Inspection Checklist)</div>';
         pdfInspItems.forEach(function(item) {
             inspHtml += '<div style="display:flex; justify-content:space-between; align-items:center; padding:3px 0; border-bottom:1px solid #f0f0f0; font-size:10px;"><span>' + item[1] + '</span>' + pdfInspBadge(log[item[0]]) + '</div>';
         });
@@ -9672,7 +9789,7 @@ async function exportCasePDF(logId) {
     .header-line::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
     .header-dots { text-align: right; margin-top: -2px; margin-bottom: 4px; }
     .header-dots span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 3px; }
-    h2 { font-size: 11px; color: #333; margin: 6px 0 3px; padding-bottom: 0; border-bottom: none; }
+    h2 { font-size: 11px; color: #333; margin: 10px 0 4px; padding-bottom: 0; border-bottom: none; }
     .info-grid { display: grid; grid-template-columns: 100px 1fr 100px 1fr; gap: 2px 8px; margin-bottom: 8px; font-size: 10px; }
     .label { color: #333; font-weight: bold; }
     table { width: 100%; border-collapse: collapse; }
@@ -9706,36 +9823,24 @@ async function exportCasePDF(logId) {
 
 <h2 style="margin-top:8px;">ข้อมูลงาน (Job Information)</h2>
 <div style="font-size:10px; line-height:1.8; padding:4px 0;">
-    <span class="label">รหัสเคส:</span> ${log.caseId || '-'} &nbsp;&nbsp; <span class="label">วันที่:</span> ${thaiDate} &nbsp;&nbsp; <span class="label">รูปแบบสัญญา:</span> ${site.deviceType || '-'} &nbsp;&nbsp; <span class="label">ยี่ห้อ/รุ่น:</span> ${[site.brand, site.model].filter(Boolean).join(' / ') || '-'} &nbsp;&nbsp; <span class="label">S/N:</span> ${site.serialNumber || '-'} &nbsp;&nbsp; <span class="label">ผู้รับผิดชอบ:</span> ${responderName} &nbsp;&nbsp; <span class="label">สถานะ:</span> ${statusText}<br>
+    <span class="label">รหัสเคส:</span> ${log.caseId || '-'} &nbsp;&nbsp; <span class="label">วันที่:</span> ${thaiDate} &nbsp;&nbsp; <span class="label">รูปแบบสัญญา:</span> ${site.deviceType || '-'} &nbsp;&nbsp; <span class="label">ยี่ห้อ/รุ่น:</span> ${[site.brand, site.model].filter(Boolean).join(' / ') || '-'} &nbsp;&nbsp; <span class="label">S/N:</span> ${site.serialNumber || '-'} &nbsp;&nbsp; <span class="label">เจ้าหน้าที่ช่างบริการ:</span> ${responderName} &nbsp;&nbsp; <span class="label">สถานะ:</span> ${statusText}<br>
     <span class="label">สถานที่:</span> ${site.name} &nbsp;&nbsp; <span class="label">หน่วยงาน:</span> ${site.installLocation || site.villageName || '-'} &nbsp;&nbsp; <span class="label">จังหวัด:</span> ${site.province || '-'} &nbsp;&nbsp; <span class="label">ประเภท:</span> ${site.deviceType || '-'} &nbsp;&nbsp; <span class="label">หมวดหมู่:</span> ${log.category || '-'}<br>
     <span class="label">รอบซ่อมบำรุง:</span> ${site.maintenanceCycle ? site.maintenanceCycle + ' วัน' : '-'} &nbsp;&nbsp; <span class="label">ระยะเวลาประกัน:</span> ${site.insuranceStartDate || '-'} ถึง ${site.insuranceEndDate || '-'} &nbsp;&nbsp; <span class="label">จำนวนรอบขณะเช็ค:</span> ${log.cycleCount ? Number(log.cycleCount).toLocaleString() + ' รอบ' : '-'}
 </div>
 
-<h2>รายละเอียดเริ่มต้น</h2>
-<div style="padding:8px; background:#f9f9f9; border-radius:6px; white-space:pre-wrap; font-size:10px;">${initialDetail}</div>
-${initialAttachmentsHtml ? '<div style="margin-top:8px;">' + initialAttachmentsHtml + '</div>' : ''}
-
 ${inspHtml}
 
-${statusTimelineHtml ? `
-<h2>ประวัติการเปลี่ยนสถานะ</h2>
-<div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:6px; padding:12px 0;">${statusTimelineHtml}</div>` : ''}
+<h2>รายละเอียดเริ่มต้น (Initial Detail)</h2>
+<div style="padding:6px 8px; background:#f9f9f9; border:1px solid #ddd; border-radius:6px; white-space:pre-wrap; font-size:10px; margin-top:4px;">${initialDetail}</div>
 
 <h2>ข้อมูลลูกค้า</h2>
-<div style="display:grid; grid-template-columns:120px 1fr; gap:4px 12px;">
-    <span class="label">ชื่อผู้รับมอบงาน:</span><span>${doneName}</span>
-    <span class="label">เบอร์โทร:</span><span>${customerTel}</span>
-</div>
-
-<div style="margin-top:10px; font-size:9px; color:#666; display:flex; gap:16px;">
-    <span>แก้ไขล่าสุด: ${recorderName}</span>
-    <span>บันทึกเมื่อ: ${timestampStr}</span>
+<div style="font-size:10px; line-height:1.8;">
+    <span class="label">ชื่อผู้รับมอบงาน:</span> ${doneName} &nbsp;&nbsp;&nbsp; <span class="label">เบอร์โทร:</span> ${customerTel}
 </div>
 
 </div>
 
 <div class="page-footer">
-    <h2 style="margin-top:0;">ลายเซ็น</h2>
     ${signatureHtml}
     <div style="display:flex; align-items:center; gap:10px; margin-top:16px; margin-bottom:10px;">
         <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`https://water-plant-maintenance.web.app?logId=${log.id}`)}" alt="QR Code" style="width:50px; height:50px;">
@@ -9745,7 +9850,10 @@ ${statusTimelineHtml ? `
         </div>
     </div>
     <div class="footer-line"></div>
-    <div class="footer-text">บริษัท ไบโอ อินโน เทค จำกัด</div>
+    <div class="footer-text" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
+        <span>FM-SER-05/REV00/01JAN2019</span>
+    </div>
 </div>
 
 </body></html>`;
@@ -10514,28 +10622,28 @@ function appendLogRows(newLogs, targetTbody = null) {
 
         // Render Status Badge
         const statusColors = {
-            Open: { bg: "rgba(234,179,8,0.15)", color: "#ca8a04", label: "🟡 เปิดงาน" },
+            Open: { bg: "rgba(234,179,8,0.15)", color: "#ca8a04", label: "เปิดงาน" },
             Planning: {
                 bg: "rgba(59,130,246,0.15)",
                 color: "#3b82f6",
-                label: "🔵 วางแผน",
+                label: "วางแผน",
             },
             "On Process": {
                 bg: "rgba(249,115,22,0.15)",
                 color: "#f97316",
-                label: "🟠 กำลังดำเนินการ",
+                label: "กำลังดำเนินการ",
             },
             Cancel: {
                 bg: "rgba(239,68,68,0.15)",
                 color: "#ef4444",
-                label: "🔴 ยกเลิก",
+                label: "ยกเลิก",
             },
-            Done: { bg: "rgba(168,85,247,0.15)", color: "#a855f7", label: "🟣 เสร็จสิ้น" },
-            "Case Closed": { bg: "rgba(34,197,94,0.15)", color: "#22c55e", label: "🟢 ปิดเคส" },
+            Done: { bg: "rgba(168,85,247,0.15)", color: "#a855f7", label: "เสร็จสิ้น" },
+            "Case Closed": { bg: "rgba(34,197,94,0.15)", color: "#22c55e", label: "ปิดเคส" },
             Completed: {
                 bg: "rgba(168,85,247,0.15)",
                 color: "#a855f7",
-                label: "🟣 เสร็จสิ้น",
+                label: "เสร็จสิ้น",
             },
         };
         const s = statusColors[log.status] || {
@@ -10585,7 +10693,7 @@ function appendLogRows(newLogs, targetTbody = null) {
                 <div class="mc-detail">
                     <div><span class="mc-label">วันที่:</span> ${thaiDate}${logTime ? ` ${logTime}` : ''}</div>
                     <div><span class="mc-label">รายละเอียด:</span> ${log.comments && log.comments.length > 0 && log.comments[0].text ? (log.comments[0].text.length > 60 ? log.comments[0].text.substring(0, 60) + '...' : log.comments[0].text) : (log.objective || '-')}</div>
-                    <div><span class="mc-label">ผู้รับผิดชอบ:</span> ${log.responderId && state.users && state.users[log.responderId] ? (state.users[log.responderId].displayName || state.users[log.responderId].email) : '-'}</div>
+                    <div><span class="mc-label">เจ้าหน้าที่ช่างบริการ:</span> ${log.responderId && state.users && state.users[log.responderId] ? (state.users[log.responderId].displayName || state.users[log.responderId].email) : '-'}</div>
                 </div>
                 <div class="mc-footer">
                     <span class="mc-status-big">${mobileStatusBadge}</span>
@@ -12631,7 +12739,7 @@ async function renderActionLogs() {
                         category: 'หมวดหมู่',
                         objective: 'คำอธิบายงาน',
                         status: 'สถานะ',
-                        responderId: 'ผู้รับผิดชอบ (ID)',
+                        responderId: 'เจ้าหน้าที่ช่างบริการ (ID)',
                         caseId: 'รหัสเคส',
                         responsibleAgency: 'หน่วยงาน',
                         picName: 'ผู้ดูแล (PIC)',

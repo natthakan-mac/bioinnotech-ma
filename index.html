@@ -757,13 +757,13 @@
                 <div class="filter-group">
                     <label>สถานะ</label>
                     <select id="filter-status">
-                        <option value="all">📋 ทั้งหมด</option>
-                        <option value="Open">🟡 เปิดงาน</option>
-                        <option value="Planning">🔵 วางแผน</option>
-                        <option value="On Process">🟠 กำลังดำเนินการ</option>
-                        <option value="Done">🟣 เสร็จสิ้น</option>
-                        <option value="Case Closed">🟢 ปิดเคส</option>
-                        <option value="Cancel">🔴 ยกเลิก</option>
+                        <option value="all">ทั้งหมด</option>
+                        <option value="Open">เปิดงาน</option>
+                        <option value="Planning">วางแผน</option>
+                        <option value="On Process">กำลังดำเนินการ</option>
+                        <option value="Done">เสร็จสิ้น</option>
+                        <option value="Case Closed">ปิดเคส</option>
+                        <option value="Cancel">ยกเลิก</option>
                     </select>
                 </div>
 
@@ -999,7 +999,7 @@
             <div class="form-row form-row-3col">
                 <div class="form-group autocomplete-wrapper">
                     <label><i class="fa-solid fa-user-tie"></i> ชื่อผู้ดูแล (PIC)</label>
-                    <input type="text" name="picName" id="input-picName" placeholder="ชื่อผู้รับผิดชอบ" autocomplete="off">
+                    <input type="text" name="picName" id="input-picName" placeholder="ชื่อเจ้าหน้าที่ช่างบริการ" autocomplete="off">
                     <div id="dropdown-picName" class="autocomplete-dropdown hidden"></div>
                 </div>
                 <div class="form-group">
@@ -1109,7 +1109,7 @@
             <!-- Responder & Cycle Count -->
             <div class="form-row form-row-2col">
                 <div class="form-group">
-                    <label class="required-label"><i class="fa-solid fa-user-gear"></i> ผู้รับผิดชอบ (Responder)</label>
+                    <label class="required-label"><i class="fa-solid fa-user-gear"></i> เจ้าหน้าที่ช่างบริการ (Responder)</label>
                     <select name="responderId" id="log-responder-select" required>
                         <option value="">-- เลือก --</option>
                     </select>
@@ -1151,7 +1151,7 @@
             <!-- Electrical Section -->
             <div class="ma-section" style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.06); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
                 <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fa-solid fa-bolt" style="color: #eab308;"></i> ข้อมูลไฟฟ้า (Electrical)
+                    <i class="fa-solid fa-bolt" style="color: #111111;"></i> ข้อมูลไฟฟ้า (Electrical)
                 </h4>
                 <label style="font-size: 0.85rem; margin-bottom: 0.4rem;">แรงดันไฟฟ้า (V)</label>
                 <div class="form-row form-row-3col" style="margin-bottom: 0.75rem;">
@@ -1302,14 +1302,45 @@
 
             <datalist id="log-details-list"></datalist>
 
+            <!-- Customer Information -->
+            <div class="ma-section" style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.06); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+                <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-user-check" style="color: #111111;"></i> ข้อมูลลูกค้า (Customer Information)
+                </h4>
+                <div class="form-row form-row-3col">
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-user"></i> ชื่อลูกค้า (Customer Name)</label>
+                        <input type="text" name="customerName" placeholder="ชื่อ-นามสกุล" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-phone"></i> เบอร์โทรลูกค้า (Phone)</label>
+                        <input type="tel" name="customerPhone" id="customer-phone-input" placeholder="0xx-xxx-xxxx" maxlength="12" inputmode="numeric" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-briefcase"></i> ตำแหน่ง (Position)</label>
+                        <input type="text" name="customerPosition" placeholder="ตำแหน่งงาน" autocomplete="off">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 0.5rem;">
+                    <label><i class="fa-solid fa-signature"></i> ลายเซ็นลูกค้า (Customer Signature)</label>
+                    <div style="position: relative;">
+                        <canvas id="customer-signature-canvas" style="width: 100%; height: 150px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; background: #fff; cursor: crosshair;"></canvas>
+                        <button type="button" onclick="clearCustomerSignature()" style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.06); border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; color: #666;">
+                            <i class="fa-solid fa-eraser"></i> ล้าง
+                        </button>
+                    </div>
+                    <input type="hidden" name="customerSignatureData" id="customer-signature-data">
+                </div>
+            </div>
+
             <!-- Upload Progress -->
-            <div id="upload-progress-container" style="display: none; margin-top: 1rem; padding: 0.75rem; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px;">
+            <div id="upload-progress-container" style="display: none; margin-top: 1rem; padding: 0.75rem; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
                 <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-                    <i class="fa-solid fa-cloud-arrow-up" style="color: var(--primary-color); font-size: 1.1rem;"></i>
+                    <i class="fa-solid fa-cloud-arrow-up" style="color: #111111; font-size: 1.1rem;"></i>
                     <span style="color: var(--text-color); font-weight: 500; font-size: 0.9rem;">กำลังอัปโหลด...</span>
                 </div>
                 <div style="width: 100%; height: 5px; background: rgba(0,0,0,0.06); border-radius: 3px; overflow: hidden;">
-                    <div id="upload-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary-color), #0ea5e9); transition: width 0.3s ease;"></div>
+                    <div id="upload-progress-bar" style="width: 0%; height: 100%; background: #111111; transition: width 0.3s ease;"></div>
                 </div>
                 <div style="margin-top: 0.4rem; font-size: 0.8rem; color: var(--text-muted);">
                     <span id="upload-progress-text">0%</span>
@@ -1545,13 +1576,19 @@
             <div class="case-detail-section-header">
                 <i class="fa-solid fa-file-lines"></i> ข้อมูลงาน (Job Information)
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem 1.5rem; font-size: 0.85rem; padding: 0.75rem 0;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem 1.5rem; font-size: 0.88rem; padding: 0.75rem 0;">
+                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">วันที่:</span><span id="detail-log-date-field" style="font-weight:500;">-</span></div>
                 <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">หมวดหมู่:</span><span id="detail-log-category" style="font-weight:500;">-</span></div>
-                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">ผู้รับผิดชอบ:</span><span id="detail-log-responder" style="font-weight:500;">-</span></div>
-                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">ประกัน:</span><span id="detail-log-warranty" style="font-weight:500;">-</span></div>
+                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">สถานะ:</span><span id="detail-log-status-text" style="font-weight:500;">-</span></div>
                 <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">รูปแบบสัญญา:</span><span id="detail-log-device-type" style="font-weight:500;">-</span></div>
                 <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">ยี่ห้อ / รุ่น:</span><span id="detail-log-brand-model" style="font-weight:500;">-</span></div>
                 <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">Serial No.:</span><span id="detail-log-serial" style="font-weight:500;">-</span></div>
+                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">เจ้าหน้าที่ช่างบริการ:</span><span id="detail-log-responder" style="font-weight:500;">-</span></div>
+                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">หน่วยงาน:</span><span id="detail-log-install-loc" style="font-weight:500;">-</span></div>
+                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">จังหวัด:</span><span id="detail-log-province" style="font-weight:500;">-</span></div>
+                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">รอบซ่อมบำรุง:</span><span id="detail-log-ma-cycle" style="font-weight:500;">-</span></div>
+                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">ประกัน:</span><span id="detail-log-warranty" style="font-weight:500;">-</span></div>
+                <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">จำนวนรอบขณะเช็ค:</span><span id="detail-log-cycle-count" style="font-weight:500;">-</span></div>
             </div>
         </div>
 

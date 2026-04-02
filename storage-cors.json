@@ -16,6 +16,7 @@
             "Content-Length",
             "User-Agent",
             "x-goog-resumable"
+            "x-goog-resumable"
         ]
     }
 ]
