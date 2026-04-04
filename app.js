@@ -2662,6 +2662,21 @@ function formatDateDDMMYYYY(dateInput) {
     return `${day}/${month}/${year}`;
 }
 
+function formatDateTimeDDMMYYYY(dateInput) {
+    if (!dateInput) return "-";
+    const d = new Date(dateInput);
+    if (isNaN(d)) return "-";
+    
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    
+    if (hours === '00' && minutes === '00') return `${day}/${month}/${year}`;
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
+
 // --- Global State for Site Uploads ---
 let pendingSiteUploads = [];
 let pendingSiteDeletions = [];
@@ -5563,7 +5578,11 @@ function editLog(logId) {
     if (selects.logSiteHidden) selects.logSiteHidden.value = log.siteId;
     const site = state.sites.find((s) => s.id === log.siteId);
     if (selects.logSiteInput) selects.logSiteInput.value = site ? site.name : "";
-    form.querySelector('input[name="date"]').value = log.date;
+    const dateInput = form.querySelector('input[name="date"]');
+    if (dateInput) {
+        // datetime-local expects YYYY-MM-DDTHH:MM, old records may have just YYYY-MM-DD
+        dateInput.value = log.date && log.date.length === 10 ? log.date + 'T00:00' : log.date;
+    }
     const objectiveEl = form.querySelector('textarea[name="objective"]');
     if (objectiveEl) objectiveEl.value = log.objective || "";
 
@@ -6197,7 +6216,7 @@ function showDayDetails(dateStr, logs) {
                 : log.recordedBy || "-");
 
         const thaiDate = formatDateDDMMYYYY(log.date);
-        const logTime = log.timestamp ? new Date(log.timestamp).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '';
+        const logTime = log.date && log.date.includes('T') && log.date.split('T')[1].substring(0,5) !== '00:00' ? log.date.split('T')[1].substring(0, 5) : '';
 
         const formattedCost = new Intl.NumberFormat('th-TH', {
             style: "currency",
@@ -6240,7 +6259,7 @@ function showDayDetails(dateStr, logs) {
             catIcon = '<i class="fa-solid fa-wrench" style="color: var(--text-muted); margin-right: 4px;"></i>';
         }
         
-        catBadge = `<span style="background:${catBg}; color:${catColor}; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;">${catIcon}${log.category || "-"}</span>`;
+        catBadge = `<span style="background:${catBg}; color:${catColor}; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; white-space:nowrap; ">${log.category || "-"}</span>`;
         const catBadgeMobile = `<span style="background:${catBg}; color:${catColor}; padding:0.2rem 0.6rem; border-radius:6px; font-size:0.75rem; font-weight:700; white-space:nowrap;">${log.category || "-"}</span>`;
 
         // Render Status Badge
@@ -6309,17 +6328,17 @@ function showDayDetails(dateStr, logs) {
             <td class="cell-cost" data-label="ค่าใช้จ่าย"><span class="value">${formattedCost}</span></td>
             <td class="cell-mobile-card mobile-only" data-label="">
                 <div class="mc-top">
-                    <span><span class="mc-caseid">${log.caseId || '-'}</span> <span class="mc-siteid">${site.siteCode || '-'}</span> <span class="mc-catbadge" style="color:${catColor}; background:${catBg};">${log.category || '-'}</span></span>
+                    <span style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;"><span class="mc-caseid">${log.caseId ? log.caseId.replace('CASE-','') : '-'}</span> <span class="mc-siteid">${site.siteCode || '-'}</span></span>
                     <span class="mc-cost">${formattedCost}</span>
                 </div>
                 <div class="mc-site">${site.name}</div>
                 <div class="mc-detail">
-                    <div><span class="mc-label">วันที่:</span> ${thaiDate}${logTime ? ` ${logTime}` : ''}</div>
-                    <div><span class="mc-label">รายละเอียด:</span> ${calInitialDetail}</div>
-                    <div><span class="mc-label">เจ้าหน้าที่ช่างบริการ:</span> ${calResponder}</div>
+                    <div><span class="mc-label">วันที่:</span> ${thaiDate}${logTime ? ' ' + logTime : ''}</div>
+                    <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><span class="mc-label">รายละเอียด:</span> ${calInitialDetail}</div>
+                    <div><span class="mc-label">ช่าง:</span> ${calResponder}</div>
                 </div>
                 <div class="mc-footer">
-                    <span class="mc-status-big">${mobileStatusBadge}</span>
+                    <span style="display:flex; gap:6px; align-items:center;"><span class="mc-status-big">${mobileStatusBadge}</span><span class="mc-catbadge" style="color:${catColor}; background:${catBg};">${log.category || '-'}</span></span>
                     <span class="mc-footer-actions">
                         <button class="mc-btn" onclick="event.stopPropagation(); viewLogDetails('${log.id}')" title="ดู">
                             <i class="fa-solid fa-eye"></i>
@@ -7707,7 +7726,7 @@ function renderLogComments(logId, comments) {
             const initialBadge = isInitialComment ? `<span class="comment-badge-initial"><i class="fa-solid fa-file-lines"></i> รายละเอียดเริ่มต้น</span>` : '';
             
             // Add badge for system log
-            const systemLogBadge = c.isSystemLog ? `<span class="comment-badge-initial" style="background: rgba(100, 116, 139, 0.2); color: #94a3b8;"><i class="fa-solid fa-robot"></i> ระบบ</span>` : '';
+            const systemLogBadge = c.isSystemLog ? `<span class="comment-badge-system"><i class="fa-solid fa-robot"></i> ระบบ</span>` : '';
             
             // Determine ID for scrolling
             let commentId = '';
@@ -8492,9 +8511,11 @@ async function confirmSignature() {
     // Validate contact fields for status change mode
     let signerName = '';
     let signerTel = '';
+    let signerPosition = '';
     if (!isProfileMode) {
         signerName = (document.getElementById("signature-name")?.value || '').trim();
         signerTel = (document.getElementById("signature-tel")?.value || '').trim();
+        signerPosition = (document.getElementById("signature-position")?.value || '').trim();
         if (!signerName || !signerTel) {
             showToast("กรุณากรอกชื่อและเบอร์โทรให้ครบ", "error");
             return;
@@ -8509,7 +8530,7 @@ async function confirmSignature() {
     }
 
     if (!pending) return;
-    await executeStatusUpdate(pending.logId, pending.newStatus, signatureData, signerName, signerTel);
+    await executeStatusUpdate(pending.logId, pending.newStatus, signatureData, signerName, signerTel, signerPosition);
 }
 
 window.openSignatureModal = openSignatureModal;
@@ -8526,7 +8547,7 @@ async function updateLogStatus(logId, newStatus) {
     }
 }
 
-async function executeStatusUpdate(logId, newStatus, signatureData, signerName = '', signerTel = '') {
+async function executeStatusUpdate(logId, newStatus, signatureData, signerName = '', signerTel = '', signerPosition = '') {
     try {
         const log = state.logs.find(l => l.id === logId);
         if (!log) return;
@@ -8598,7 +8619,8 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
                 timestamp: timestamp,
                 signedBy: auth.currentUser?.displayName || auth.currentUser?.email || "Unknown",
                 signerName: signerName,
-                signerTel: signerTel
+                signerTel: signerTel,
+                signerPosition: signerPosition
             };
         }
 
@@ -8855,7 +8877,7 @@ function viewLogDetails(id) {
             log.recordedBy
             : log.recordedBy || "-");
 
-    const thaiDate = formatDateDDMMYYYY(log.date);
+    const thaiDate = formatDateTimeDDMMYYYY(log.date);
 
     const timestampStr = log.timestamp
         ? new Date(log.timestamp).toLocaleString(undefined)
@@ -9017,24 +9039,24 @@ function viewLogDetails(id) {
     const inspContent = document.getElementById("detail-inspection-content");
     if (inspSection && inspContent) {
         const inspItems = [
-            ['insp_exteriorCleaning', 'ความสะอาดภายนอก'],
-            ['insp_interiorCleaning', 'ความสะอาดภายใน'],
-            ['insp_doorSystem', 'การทำงานระบบประตู'],
-            ['insp_footSwitch', 'การทำงาน Foot Switch'],
-            ['insp_sensor', 'ระบบ Sensor'],
-            ['insp_tempPoints', 'อุณหภูมิจุดที่ 1-4'],
-            ['insp_workingPressure', 'ความดันขณะทำงาน'],
-            ['insp_rfGenerator', 'RF Generator'],
-            ['insp_chemicalAmount', 'ปริมาณน้ำยาที่ฉีด'],
-            ['insp_airChargingValue', 'Air Charging Value'],
-            ['insp_filter', 'Filter'],
-            ['insp_decomposer', 'Decomposer'],
-            ['insp_vacuumPumpOil', 'น้ำมันปั๊มสุญญากาศ'],
-            ['insp_connectors', 'ระบบข้อต่อต่างๆ'],
-            ['insp_drainTank', 'ถังเดรนน้ำ'],
-            ['insp_gasDoor', 'ปริมาณแก๊สหน้าประตู'],
-            ['insp_gas1m', 'ปริมาณแก๊สห่าง 1 ม.'],
-            ['insp_gas2m', 'ปริมาณแก๊สห่าง 2 ม.'],
+            ['insp_exteriorCleaning', '1. ความสะอาดภายนอก'],
+            ['insp_interiorCleaning', '2. ความสะอาดภายใน'],
+            ['insp_doorSystem', '3. การทำงานระบบประตู'],
+            ['insp_footSwitch', '4. การทำงาน Foot Switch'],
+            ['insp_sensor', '5. ระบบ Sensor'],
+            ['insp_tempPoints', '6. อุณหภูมิจุดที่ 1-4'],
+            ['insp_workingPressure', '7. ความดันขณะทำงาน'],
+            ['insp_rfGenerator', '8. RF Generator'],
+            ['insp_chemicalAmount', '9. ปริมาณน้ำยาที่ฉีด'],
+            ['insp_airChargingValue', '10. Air Charging Valve'],
+            ['insp_filter', '11. Filter'],
+            ['insp_decomposer', '12. Decomposor'],
+            ['insp_vacuumPumpOil', '13. น้ำมันปั้มสุญากาศ'],
+            ['insp_connectors', '14. ระบบข้อต่อต่างๆ'],
+            ['insp_drainTank', '15. ถังเดรนน้ำ'],
+            ['insp_chemicalLine', '16. สายส่งน้ำยา'],
+            ['insp_phaseRelay', '17. รีเลย์ควบคุมลำดับเฟส'],
+            ['insp_systemRelay', '18. รีเลย์ควบคุมระบบต่างๆ'],
         ];
 
         inspSection.style.display = "block";
@@ -9046,14 +9068,14 @@ function viewLogDetails(id) {
             const isPass = val === 'pass';
             const bg = isPass ? '#22c55e' : '#ef4444';
             const text = isPass ? passLabel : failLabel;
-            return `<span style="background:${bg}; color:#fff; padding:2px 10px; border-radius:4px; font-size:0.8rem; font-weight:500; display:inline-block; min-width:60px; text-align:center;">${text}</span>`;
+            return `<span class="detail-pill" style="background:${bg};">${text}</span>`;
         };
 
         const inspBadge = (val) => {
             if (!val) return `<span style="color:#ccc;">-</span>`;
-            const config = { check: { label: 'Check', bg: '#22c55e' }, service: { label: 'Service', bg: '#f59e0b' }, replace: { label: 'Replace', bg: '#ef4444' } };
-            const c = config[val] || { label: val, bg: '#111' };
-            return `<span style="background:${c.bg}; color:#fff; padding:2px 10px; border-radius:4px; font-size:0.8rem; font-weight:500; display:inline-block; min-width:60px; text-align:center;">${c.label}</span>`;
+            const config = { check: { full: 'Check', short: 'C', bg: '#22c55e' }, service: { full: 'Service', short: 'S', bg: '#f59e0b' }, replace: { full: 'Replace', short: 'R', bg: '#ef4444' } };
+            const c = config[val] || { full: val, short: val.charAt(0), bg: '#111' };
+            return `<span class="detail-pill" style="background:${c.bg};"><span class="insp-full">${c.full}</span><span class="insp-short">${c.short}</span></span>`;
         };
 
         let html = '';
@@ -9082,13 +9104,38 @@ function viewLogDetails(id) {
 
         // Inspection Checklist
         html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-magnifying-glass-chart"></i> รายการตรวจสอบ (Inspection Checklist)</div>`;
-        html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:0 1.5rem;">`;
+        html += `<div class="insp-checklist-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0 1.5rem;">`;
         inspItems.forEach(([key, label]) => {
-            html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333;">${label}</span>${inspBadge(log[key])}</div>`;
+            html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333; flex:1;">${label}</span><span style="flex-shrink:0;">${inspBadge(log[key])}</span></div>`;
         });
         html += `</div>`;
 
         inspContent.innerHTML = html;
+    }
+
+    // Customer Information Section
+    const custSection = document.getElementById("detail-customer-section");
+    const custContent = document.getElementById("detail-customer-content");
+    if (custSection && custContent) {
+        const custName = log.customerName || '';
+        const custPhone = log.customerPhone || '';
+        const custPos = log.customerPosition || '';
+        const custSig = log.customerSignature || '';
+        if (custName || custPhone || custPos || custSig) {
+            custSection.style.display = "block";
+            let custHtml = '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem 1.5rem;">';
+            const custRow = (label, value) => `<div style="display:flex; flex-direction:column; padding:0.4rem 0;"><span style="font-size:0.8rem; color:#888;">${label}</span><span style="font-size:0.9rem; font-weight:500; color:#111;">${value || '-'}</span></div>`;
+            custHtml += custRow('ชื่อลูกค้า', custName);
+            custHtml += custRow('เบอร์โทร', custPhone);
+            custHtml += custRow('ตำแหน่ง', custPos);
+            custHtml += '</div>';
+            if (custSig) {
+                custHtml += `<div style="margin-top:0.75rem;"><span style="font-size:0.8rem; color:#888;">ลายเซ็นลูกค้า</span><div style="margin-top:0.25rem; border:1px solid rgba(0,0,0,0.08); border-radius:8px; padding:0.5rem; background:#fafafa; display:inline-block;"><img src="${custSig}" style="max-height:80px; object-fit:contain;" alt="Customer Signature"></div></div>`;
+            }
+            custContent.innerHTML = custHtml;
+        } else {
+            custSection.style.display = "none";
+        }
     }
 
     const postBtn = document.getElementById("btn-post-comment");
@@ -9576,11 +9623,13 @@ async function exportCasePDF(logId) {
     let doneSignature = '';
     let doneName = '-';
     let customerTel = '-';
+    let customerPosition = '-';
     if (log.statusSignatures && log.statusSignatures['Done']) {
         const sig = log.statusSignatures['Done'];
         doneSignature = sig.data || '';
         doneName = sig.signerName || sig.signedBy || '-';
         customerTel = sig.signerTel || '-';
+        customerPosition = sig.signerPosition || '-';
     }
 
     // Get Case Closed closer info (from user profile)
@@ -9674,9 +9723,9 @@ async function exportCasePDF(logId) {
     };
 
     const signatureHtml = `<div style="display:flex; gap:16px; margin-top:8px;">
-        ${buildSigBox(responderSignature, 'เจ้าหน้าที่ช่างบริการ', 'Case Responder')}
+        ${buildSigBox(responderSignature, 'เจ้าหน้าที่ช่างบริการ', 'Service Engineer')}
         ${buildSigBox(doneSignature, 'ลูกค้า', 'Customer Authorized PIC')}
-        ${buildSigBox(closerSignature, 'ผู้ปิดเคส', 'Case Closer')}
+        ${buildSigBox(closerSignature, 'ผู้จัดการฝ่ายช่างบริการ', 'Service Manager')}
     </div>`;
 
     // Get initial case detail from first comment
@@ -9702,7 +9751,7 @@ async function exportCasePDF(logId) {
         if (!val) return '-';
         const cfg = { check: { l: 'Check', b: '#22c55e' }, service: { l: 'Service', b: '#f59e0b' }, replace: { l: 'Replace', b: '#ef4444' } };
         const c = cfg[val] || { l: val, b: '#111' };
-        return '<span style="background:' + c.b + '; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:45px; text-align:center;">' + c.l + '</span>';
+        return '<span style="background:' + c.b + '; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:700; display:inline-block; width:42px; text-align:center;">' + c.l + '</span>';
     };
 
     const hasElec = log.voltageL1 || log.voltageL2 || log.voltageL3 || log.currentL1 || log.currentL2 || log.currentL3;
@@ -9710,12 +9759,12 @@ async function exportCasePDF(logId) {
     const hasPerf = log.complyType5 || log.ciPcdType5;
     const hasGas = log.gasDoor1||log.gasDoor2||log.gasDoor3||log.gas1m1||log.gas1m2||log.gas1m3||log.gas2m1||log.gas2m2||log.gas2m3;
     const pdfInspItems = [
-        ['insp_exteriorCleaning','ความสะอาดภายนอก'],['insp_interiorCleaning','ความสะอาดภายใน'],
-        ['insp_doorSystem','การทำงานระบบประตู'],['insp_footSwitch','การทำงาน Foot Switch'],['insp_sensor','ระบบ Sensor'],
-        ['insp_tempPoints','อุณหภูมิจุดที่ 1-4'],['insp_workingPressure','ความดันขณะทำงาน'],['insp_rfGenerator','RF Generator'],
-        ['insp_chemicalAmount','ปริมาณน้ำยาที่ฉีด'],['insp_airChargingValue','Air Charging Valve'],['insp_filter','Filter'],
-        ['insp_decomposer','Decomposer'],['insp_vacuumPumpOil','น้ำมันปั๊มสุญญากาศ'],['insp_connectors','ระบบข้อต่อต่างๆ'],
-        ['insp_drainTank','ถังเดรนน้ำ'],['insp_chemicalLine','สายส่งน้ำยา'],['insp_phaseRelay','รีเลย์ควบคุมลำดับเฟส'],['insp_systemRelay','รีเลย์ควบคุมระบบต่างๆ'],
+        ['insp_exteriorCleaning','1. ความสะอาดภายนอก'],['insp_interiorCleaning','2. ความสะอาดภายใน'],
+        ['insp_doorSystem','3. การทำงานระบบประตู'],['insp_footSwitch','4. การทำงาน Foot Switch'],['insp_sensor','5. ระบบ Sensor'],
+        ['insp_tempPoints','6. อุณหภูมิจุดที่ 1-4'],['insp_workingPressure','7. ความดันขณะทำงาน'],['insp_rfGenerator','8. RF Generator'],
+        ['insp_chemicalAmount','9. ปริมาณน้ำยาที่ฉีด'],['insp_airChargingValue','10. Air Charging Valve'],['insp_filter','11. Filter'],
+        ['insp_decomposer','12. Decomposor'],['insp_vacuumPumpOil','13. น้ำมันปั้มสุญากาศ'],['insp_connectors','14. ระบบข้อต่อต่างๆ'],
+        ['insp_drainTank','15. ถังเดรนน้ำ'],['insp_chemicalLine','16. สายส่งน้ำยา'],['insp_phaseRelay','17. รีเลย์ควบคุมลำดับเฟส'],['insp_systemRelay','18. รีเลย์ควบคุมระบบต่างๆ'],
     ];
     const hasInspChecklist = pdfInspItems.some(function(item) { return log[item[0]]; });
 
@@ -9823,9 +9872,9 @@ async function exportCasePDF(logId) {
 
 <h2 style="margin-top:8px;">ข้อมูลงาน (Job Information)</h2>
 <div style="font-size:10px; line-height:1.8; padding:4px 0;">
-    <span class="label">รหัสเคส:</span> ${log.caseId || '-'} &nbsp;&nbsp; <span class="label">วันที่:</span> ${thaiDate} &nbsp;&nbsp; <span class="label">รูปแบบสัญญา:</span> ${site.deviceType || '-'} &nbsp;&nbsp; <span class="label">ยี่ห้อ/รุ่น:</span> ${[site.brand, site.model].filter(Boolean).join(' / ') || '-'} &nbsp;&nbsp; <span class="label">S/N:</span> ${site.serialNumber || '-'} &nbsp;&nbsp; <span class="label">เจ้าหน้าที่ช่างบริการ:</span> ${responderName} &nbsp;&nbsp; <span class="label">สถานะ:</span> ${statusText}<br>
+    <span class="label">รหัสเคส:</span> ${log.caseId || '-'} &nbsp;&nbsp; <span class="label">วันที่:</span> ${thaiDate} &nbsp;&nbsp; <span class="label">รูปแบบสัญญา:</span> ${site.deviceType || '-'} &nbsp;&nbsp; <span class="label">ยี่ห้อ/รุ่น:</span> ${[site.brand, site.model].filter(Boolean).join(' / ') || '-'} &nbsp;&nbsp; <span class="label">S/N:</span> ${site.serialNumber || '-'} &nbsp;&nbsp; <span class="label">เจ้าหน้าที่ช่างบริการ:</span> ${responderName}<br>
     <span class="label">สถานที่:</span> ${site.name} &nbsp;&nbsp; <span class="label">หน่วยงาน:</span> ${site.installLocation || site.villageName || '-'} &nbsp;&nbsp; <span class="label">จังหวัด:</span> ${site.province || '-'} &nbsp;&nbsp; <span class="label">ประเภท:</span> ${site.deviceType || '-'} &nbsp;&nbsp; <span class="label">หมวดหมู่:</span> ${log.category || '-'}<br>
-    <span class="label">รอบซ่อมบำรุง:</span> ${site.maintenanceCycle ? site.maintenanceCycle + ' วัน' : '-'} &nbsp;&nbsp; <span class="label">ระยะเวลาประกัน:</span> ${site.insuranceStartDate || '-'} ถึง ${site.insuranceEndDate || '-'} &nbsp;&nbsp; <span class="label">จำนวนรอบขณะเช็ค:</span> ${log.cycleCount ? Number(log.cycleCount).toLocaleString() + ' รอบ' : '-'}
+    <span class="label">สถานะ:</span> ${statusText} &nbsp;&nbsp; <span class="label">รอบซ่อมบำรุง:</span> ${site.maintenanceCycle ? site.maintenanceCycle + ' วัน' : '-'} &nbsp;&nbsp; <span class="label">ระยะเวลาประกัน:</span> ${site.insuranceStartDate || '-'} ถึง ${site.insuranceEndDate || '-'} &nbsp;&nbsp; <span class="label">จำนวนรอบขณะเช็ค:</span> ${log.cycleCount ? Number(log.cycleCount).toLocaleString() + ' รอบ' : '-'}
 </div>
 
 ${inspHtml}
@@ -9834,9 +9883,18 @@ ${inspHtml}
 <div style="padding:6px 8px; background:#f9f9f9; border:1px solid #ddd; border-radius:6px; white-space:pre-wrap; font-size:10px; margin-top:4px;">${initialDetail}</div>
 
 <h2>ข้อมูลลูกค้า</h2>
-<div style="font-size:10px; line-height:1.8;">
-    <span class="label">ชื่อผู้รับมอบงาน:</span> ${doneName} &nbsp;&nbsp;&nbsp; <span class="label">เบอร์โทร:</span> ${customerTel}
-</div>
+<table style="font-size:10px; border:1px solid #ddd; border-radius:6px;">
+    <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:4px 8px; font-weight:700; width:33%;">ชื่อผู้รับมอบงาน</td>
+        <td style="padding:4px 8px; font-weight:700; width:33%;">เบอร์โทร</td>
+        <td style="padding:4px 8px; font-weight:700; width:34%;">ตำแหน่ง</td>
+    </tr>
+    <tr>
+        <td style="padding:4px 8px;">${doneName}</td>
+        <td style="padding:4px 8px;">${customerTel}</td>
+        <td style="padding:4px 8px;">${customerPosition}</td>
+    </tr>
+</table>
 
 </div>
 
@@ -10578,7 +10636,7 @@ function appendLogRows(newLogs, targetTbody = null) {
                 log.recordedBy
                 : log.recordedBy || "-");
         const thaiDate = formatDateDDMMYYYY(log.date);
-        const logTime = log.timestamp ? new Date(log.timestamp).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '';
+        const logTime = log.date && log.date.includes('T') && log.date.split('T')[1].substring(0,5) !== '00:00' ? log.date.split('T')[1].substring(0, 5) : '';
         const formattedCost = new Intl.NumberFormat('th-TH', {
             style: "currency",
             currency: "THB",
@@ -10617,7 +10675,7 @@ function appendLogRows(newLogs, targetTbody = null) {
             catIcon = '<i class="fa-solid fa-wrench" style="color: var(--text-muted); margin-right: 4px;"></i>';
         }
         
-        catBadge = `<span style="background:${catBg}; color:${catColor}; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;">${catIcon}${log.category || "-"}</span>`;
+        catBadge = `<span style="background:${catBg}; color:${catColor}; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; white-space:nowrap; ">${log.category || "-"}</span>`;
         const catBadgeMobile = `<span style="background:${catBg}; color:${catColor}; padding:0.2rem 0.6rem; border-radius:6px; font-size:0.75rem; font-weight:700; white-space:nowrap;">${log.category || "-"}</span>`;
 
         // Render Status Badge
@@ -10686,17 +10744,17 @@ function appendLogRows(newLogs, targetTbody = null) {
             <td class="cell-cost" data-label="ค่าใช้จ่าย"><span class="value">${formattedCost}</span></td>
             <td class="cell-mobile-card mobile-only" data-label="">
                 <div class="mc-top">
-                    <span><span class="mc-caseid">${log.caseId || '-'}</span> <span class="mc-siteid">${site.siteCode || '-'}</span> <span class="mc-catbadge" style="color:${catColor}; background:${catBg};">${log.category || '-'}</span></span>
+                    <span style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;"><span class="mc-caseid">${log.caseId ? log.caseId.replace('CASE-','') : '-'}</span> <span class="mc-siteid">${site.siteCode || '-'}</span></span>
                     <span class="mc-cost">${formattedCost}</span>
                 </div>
                 <div class="mc-site">${site.name}</div>
                 <div class="mc-detail">
-                    <div><span class="mc-label">วันที่:</span> ${thaiDate}${logTime ? ` ${logTime}` : ''}</div>
-                    <div><span class="mc-label">รายละเอียด:</span> ${log.comments && log.comments.length > 0 && log.comments[0].text ? (log.comments[0].text.length > 60 ? log.comments[0].text.substring(0, 60) + '...' : log.comments[0].text) : (log.objective || '-')}</div>
-                    <div><span class="mc-label">เจ้าหน้าที่ช่างบริการ:</span> ${log.responderId && state.users && state.users[log.responderId] ? (state.users[log.responderId].displayName || state.users[log.responderId].email) : '-'}</div>
+                    <div><span class="mc-label">วันที่:</span> ${thaiDate}${logTime ? ' ' + logTime : ''}</div>
+                    <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><span class="mc-label">รายละเอียด:</span> ${log.comments && log.comments.length > 0 && log.comments[0].text ? (log.comments[0].text.length > 60 ? log.comments[0].text.substring(0, 60) + '...' : log.comments[0].text) : (log.objective || '-')}</div>
+                    <div><span class="mc-label">ช่าง:</span> ${log.responderId && state.users && state.users[log.responderId] ? (state.users[log.responderId].displayName || state.users[log.responderId].email) : '-'}</div>
                 </div>
                 <div class="mc-footer">
-                    <span class="mc-status-big">${mobileStatusBadge}</span>
+                    <span style="display:flex; gap:6px; align-items:center;"><span class="mc-status-big">${mobileStatusBadge}</span><span class="mc-catbadge" style="color:${catColor}; background:${catBg};">${log.category || '-'}</span></span>
                     <span class="mc-footer-actions">
                         <button class="mc-btn" onclick="event.stopPropagation(); viewLogDetails('${log.id}')" title="ดู">
                             <i class="fa-solid fa-eye"></i>

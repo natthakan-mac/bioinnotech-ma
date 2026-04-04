@@ -361,17 +361,37 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    padding: 0.25rem 0.65rem;
-    background: rgba(0,0,0,0.09);
-    border-radius: 12px;
+    padding: 0.2rem 0.6rem;
+    background: #e0f2fe;
+    border-radius: 6px;
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--primary-color);
+    color: #0369a1;
     margin-top: 0.25rem;
     margin-bottom: 0.25rem;
+    border: 1px solid #bae6fd;
 }
 
 .comment-badge-initial i {
+    font-size: 0.7rem;
+}
+
+.comment-badge-system {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.6rem;
+    background: #f1f5f9;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+    border: 1px solid #e2e8f0;
+}
+
+.comment-badge-system i {
     font-size: 0.7rem;
 }
 
@@ -489,9 +509,10 @@
 }
 
 .insp-pills .check-pill {
-    min-height: 34px !important;
-    padding: 0.3rem 0.65rem !important;
-    font-size: 0.78rem;
+    min-height: 30px !important;
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.72rem;
+    min-width: 58px;
     border: none !important;
 }
 
