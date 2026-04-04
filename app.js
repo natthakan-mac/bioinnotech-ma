@@ -1511,6 +1511,7 @@ const FirestoreService = {
 const views = {
     admin: document.getElementById("admin-view"),
     engineer: document.getElementById("engineer-view"),
+    plan: document.getElementById("plan-view"),
     login: document.getElementById("login-view"),
     profile: document.getElementById("profile-view"),
     recycleBin: document.getElementById("recycle-bin-view"),
@@ -1668,6 +1669,7 @@ async function init() {
         const allowedViews = [
             "admin-view",
             "engineer-view",
+            "plan-view",
             "profile-view",
             "recycle-bin-view",
         ];
@@ -2376,6 +2378,10 @@ function switchView(viewName) {
     }
     if (views.recycleBin && viewName === "recycle-bin-view")
         views.recycleBin.classList.add("active");
+    if (views.plan && viewName === "plan-view") {
+        views.plan.classList.add("active");
+        renderMaintenancePlan();
+    }
     if (views.login && viewName === "login-view")
         views.login.classList.add("active"); // Typically handled separately but good for safety
 
@@ -5796,6 +5802,11 @@ function renderCurrentView() {
         renderCalendar();
     } else {
         renderLogs();
+    }
+    // Re-render plan if active
+    const planView = document.getElementById("plan-view");
+    if (planView && planView.classList.contains("active")) {
+        renderMaintenancePlan();
     }
 }
 
@@ -12539,6 +12550,116 @@ async function handleEmptyRecycleBin() {
     }
 }
 
+// --- Maintenance Plan Timeline ---
+function renderMaintenancePlan() {
+    const yearSelect = document.getElementById('plan-year-select');
+    const headerRow = document.getElementById('plan-timeline-header');
+    const tbody = document.getElementById('plan-timeline-body');
+    const emptyState = document.getElementById('plan-empty-state');
+    if (!yearSelect || !headerRow || !tbody) return;
+
+    const currentYear = new Date().getFullYear();
+    const currentBE = currentYear + 543;
+    if (yearSelect.options.length === 0) {
+        const userLocale = navigator.language || 'th-TH';
+        const usesBE = userLocale.startsWith('th');
+        for (let y = currentBE + 1; y >= currentBE - 5; y--) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = usesBE ? `พ.ศ. ${y}` : `${y - 543}`;
+            if (y === currentBE) opt.selected = true;
+            yearSelect.appendChild(opt);
+        }
+        yearSelect.addEventListener('change', renderMaintenancePlan);
+    }
+
+    const selectedBE = String(yearSelect.value);
+    const now = new Date();
+    const currentMonth = (currentYear + 543) == parseInt(selectedBE) ? now.getMonth() : -1;
+
+    // Use browser locale for month names
+    const userLocale = navigator.language || 'th-TH';
+    const monthNames = Array.from({length: 12}, (_, i) => {
+        const d = new Date(2024, i, 1);
+        return d.toLocaleString(userLocale, { month: 'short' });
+    });
+
+    // Header
+    headerRow.innerHTML = `<th style="text-align:left; padding:0.6rem 0.75rem; border:1px solid rgba(0,0,0,0.08); min-width:220px; position:sticky; left:0; background:#f5f5f5; z-index:3;">อุปกรณ์</th>`;
+    for (let m = 0; m < 12; m++) {
+        const isCurrent = m === currentMonth;
+        headerRow.innerHTML += `<th style="text-align:center; padding:0.5rem 0.4rem; border:1px solid rgba(0,0,0,0.08); min-width:70px; font-size:0.8rem; ${isCurrent ? 'background:#111; color:#fff;' : ''}">${monthNames[m]}</th>`;
+    }
+
+    if (state.sites.length === 0) {
+        tbody.innerHTML = '';
+        if (emptyState) emptyState.style.display = 'block';
+        return;
+    }
+    if (emptyState) emptyState.style.display = 'none';
+
+    tbody.innerHTML = state.sites.map((site, siteIndex) => {
+        const plans = (site.maintenancePlans && site.maintenancePlans[selectedBE]) || [];
+        const siteColor = getSiteColor(site.name);
+
+        const siteCode = site.siteCode ? `<span style="font-size:0.75rem; color:#888; display:block;">${site.siteCode}</span>` : '';
+        const deviceCell = `<td class="plan-device-cell" onclick="viewSiteDetails('${site.id}')">
+            <div class="plan-device-inner">
+                <span class="plan-color-dot" style="background:${siteColor};"></span>
+                <div class="plan-device-info">
+                    <div class="plan-device-badges">
+                        ${site.siteCode ? `<span class="plan-badge">${site.siteCode}</span>` : ''}
+                        ${site.brand || site.model ? `<span class="plan-badge">${[site.brand, site.model].filter(Boolean).join(' ')}</span>` : ''}
+                        ${site.deviceType ? `<span class="plan-badge">${site.deviceType}</span>` : ''}
+                    </div>
+                    <span class="plan-device-name">${site.name}</span>
+                </div>
+            </div>
+        </td>`;
+
+        const monthCells = Array.from({length: 12}, (_, m) => {
+            const monthNum = m + 1;
+            const isPlanned = plans.includes(monthNum);
+            const isCurrent = m === currentMonth;
+            const bg = isPlanned ? siteColor : (isCurrent ? 'rgba(0,0,0,0.02)' : '');
+            const content = isPlanned ? `<i class="fa-solid fa-wrench" style="color:#fff; font-size:0.75rem;"></i>` : '';
+
+            return `<td class="plan-month-cell" style="background:${bg};" onclick="togglePlanMonth('${site.id}','${selectedBE}',${monthNum})" title="คลิกเพื่อ${isPlanned ? 'ยกเลิก' : 'เพิ่ม'}แผน">${content}</td>`;
+        }).join('');
+
+        return `<tr>${deviceCell}${monthCells}</tr>`;
+    }).join('');
+}
+
+async function togglePlanMonth(siteId, year, month) {
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site) return;
+
+    if (!site.maintenancePlans) site.maintenancePlans = {};
+    if (!site.maintenancePlans[year]) site.maintenancePlans[year] = [];
+
+    const arr = site.maintenancePlans[year];
+    const idx = arr.indexOf(month);
+    if (idx >= 0) {
+        arr.splice(idx, 1);
+    } else {
+        arr.push(month);
+        arr.sort((a, b) => a - b);
+    }
+
+    // Remove empty year
+    if (arr.length === 0) delete site.maintenancePlans[year];
+
+    try {
+        await FirestoreService.updateSite(siteId, { maintenancePlans: site.maintenancePlans || {} });
+        renderMaintenancePlan();
+    } catch (e) {
+        console.error('Failed to update plan:', e);
+        showToast('บันทึกแผนไม่สำเร็จ', 'error');
+    }
+}
+
+window.togglePlanMonth = togglePlanMonth;
 // --- Global Event Listeners (Must be outside init() for Login) ---
 document.addEventListener("DOMContentLoaded", () => {
     console.log("Global Listeners Attached");

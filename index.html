@@ -220,6 +220,12 @@
                         <span>บันทึก</span>
                     </button>
 
+                    <button class="nav-btn" id="nav-plan-desktop" data-view="plan-view"
+                        aria-label="แผนซ่อมบำรุงประจำปี (Annual Maintenance Plan)">
+                        <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
+                        <span>แผนประจำปี</span>
+                    </button>
+
                     <button class="nav-btn" id="nav-recycle-desktop" data-view="recycle-bin-view"
                         aria-label="ถังขยะ (Recycle Bin)">
                         <i class="fa-solid fa-trash-arrow-up" aria-hidden="true"></i>
@@ -263,6 +269,12 @@
                     aria-label="บันทึกการทำงาน (Work Logs)">
                     <i class="fa-solid fa-list-check" aria-hidden="true"></i>
                     <span>บันทึก</span>
+                </button>
+
+                <button class="nav-btn" id="nav-plan-mobile" data-view="plan-view"
+                    aria-label="แผนซ่อมบำรุงประจำปี (Annual Maintenance Plan)">
+                    <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
+                    <span>แผนประจำปี</span>
                 </button>
 
                 <button class="nav-btn" id="nav-recycle-mobile" data-view="recycle-bin-view"
@@ -832,6 +844,31 @@
                     <h4>กิจกรรมในวันที่ <span id="cal-selected-date"></span></h4>
                     <div id="cal-selected-logs" class="cal-logs-list"></div>
                 </div>
+            </div>
+        </section>
+
+        <!-- MAINTENANCE PLAN VIEW -->
+        <section id="plan-view" class="view-section">
+            <div class="section-header">
+                <h2>แผนซ่อมบำรุงประจำปี (Annual Maintenance Plan)</h2>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <select id="plan-year-select" class="plan-year-dropdown"></select>
+                </div>
+            </div>
+
+            <div id="plan-timeline-container" style="overflow-x: auto; margin-top: 1rem;">
+                <table id="plan-timeline-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 900px;">
+                    <thead>
+                        <tr id="plan-timeline-header" style="background: #f5f5f5; position: sticky; top: 0; z-index: 2;">
+                            <th style="text-align: left; padding: 0.6rem 0.75rem; border: 1px solid rgba(0,0,0,0.08); min-width: 200px; position: sticky; left: 0; background: #f5f5f5; z-index: 3;">อุปกรณ์ (Device)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="plan-timeline-body"></tbody>
+                </table>
+            </div>
+
+            <div id="plan-empty-state" class="empty-state" style="display: none;">
+                <p>ยังไม่มีข้อมูลอุปกรณ์ในระบบ</p>
             </div>
         </section>
 
