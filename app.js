@@ -12550,6 +12550,134 @@ async function handleEmptyRecycleBin() {
     }
 }
 
+// --- Annual Plan PDF Export ---
+function exportAnnualPlanPDF() {
+    const yearSelect = document.getElementById('plan-year-select');
+    const selectedBE = yearSelect ? yearSelect.value : String(new Date().getFullYear() + 543);
+    const userLocale = navigator.language || 'th-TH';
+    const usesBE = userLocale.startsWith('th');
+    const displayYear = usesBE ? `พ.ศ. ${selectedBE}` : `${parseInt(selectedBE) - 543}`;
+
+    const monthNames = Array.from({length: 12}, (_, i) => {
+        const d = new Date(2024, i, 1);
+        return d.toLocaleString(userLocale, { month: 'short' });
+    });
+
+    // Build table rows
+    let rowsHtml = state.sites.map(site => {
+        const plans = (site.maintenancePlans && site.maintenancePlans[selectedBE]) || [];
+        const siteColor = getSiteColor(site.name);
+        const cells = Array.from({length: 12}, (_, m) => {
+            const isPlanned = plans.includes(m + 1);
+            return `<td style="text-align:center; padding:4px 2px; border:1px solid #ddd; background:${isPlanned ? siteColor : '#fff'};">${isPlanned ? '<span style="color:#fff; font-size:8px;">✓</span>' : ''}</td>`;
+        }).join('');
+        const info = `<td style="padding:5px 8px; border:1px solid #ddd; font-size:9px;">
+            <div style="display:flex; align-items:center; gap:4px;">
+                <span style="width:8px; height:8px; border-radius:50%; background:${siteColor}; display:inline-block;"></span>
+                <div>
+                    ${site.siteCode ? `<span style="font-size:7px; color:#888;">${site.siteCode}</span> ` : ''}
+                    <b>${site.name}</b>
+                    ${site.brand || site.model ? `<br><span style="font-size:7px; color:#666;">${[site.brand, site.model].filter(Boolean).join(' ')}</span>` : ''}
+                </div>
+            </div>
+        </td>`;
+        return `<tr>${info}${cells}</tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Annual Maintenance Plan ${displayYear}</title>
+<style>
+    @page { size: A4 landscape; margin: 0; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 8mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
+    .page-content { flex: 1; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f5f5f5 !important; font-size: 9px; padding: 5px 3px; border: 1px solid #ddd; }
+    .page-footer { margin-top: auto; }
+    .footer-line { position: relative; height: 2px; background: #ddd !important; }
+    .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
+    .footer-text { display: flex; justify-content: space-between; font-size: 8px; color: #333; padding: 4px 0; }
+    .header-line { margin-bottom: 10px; position: relative; height: 2px; background: #ddd !important; }
+    .header-line::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+</head><body>
+
+<div style="display:flex; align-items:center; gap:12px; padding-bottom:10px;">
+    <img src="/bioinnotech.svg" alt="Logo" style="height:55px; width:auto;">
+    <div style="flex:1; text-align:right; font-size:9px; color:#333; line-height:1.6;">
+        <b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>
+        36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>
+        โทรศัพท์ 02-152-5405 เลขประจำตัวผู้เสียภาษี 0105557108369
+    </div>
+</div>
+<div class="header-line"></div>
+
+<div class="page-content">
+<h1 style="text-align:center; font-size:14px; margin:0 0 8px;">แผนซ่อมบำรุงประจำปี ${displayYear}</h1>
+<p style="text-align:center; font-size:9px; color:#666; margin:0 0 10px;">Annual Maintenance Plan — จำนวนอุปกรณ์ ${state.sites.length} เครื่อง</p>
+
+<table>
+    <thead>
+        <tr>
+            <th style="text-align:left; min-width:160px;">อุปกรณ์ (Device)</th>
+            ${monthNames.map(m => `<th>${m}</th>`).join('')}
+        </tr>
+    </thead>
+    <tbody>
+        ${rowsHtml}
+    </tbody>
+</table>
+</div>
+
+<div class="page-footer">
+    <div class="footer-line"></div>
+    <div class="footer-text">
+        <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
+        <span>FM-SER-05/REV00/01JAN2019</span>
+    </div>
+</div>
+
+</body></html>`;
+
+    // Reuse or create the PDF preview modal
+    let pdfModal = document.getElementById('pdf-preview-modal');
+    if (!pdfModal) {
+        pdfModal = document.createElement('div');
+        pdfModal.id = 'pdf-preview-modal';
+        pdfModal.style.cssText = 'display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; padding:16px;';
+        pdfModal.innerHTML = '<div id="pdf-preview-inner" style="position:relative; width:100%; max-width:1100px; height:90vh; background:#fff; border-radius:12px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.3);">'
+            + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
+            + '<span id="pdf-preview-title" style="font-weight:700; font-size:14px; color:#333;">PDF Preview</span>'
+            + '<div style="display:flex; gap:8px;">'
+            + '<button id="pdf-btn-print" style="background:#111; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600;"><i class="fa-solid fa-print"></i> พิมพ์</button>'
+            + '<button id="pdf-btn-close" style="background:#ef4444; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600;"><i class="fa-solid fa-times"></i> ปิด</button>'
+            + '</div></div>'
+            + '<iframe style="flex:1; border:none; width:100%;"></iframe>'
+            + '</div>';
+        document.body.appendChild(pdfModal);
+        document.getElementById('pdf-btn-close').onclick = () => { pdfModal.style.display = 'none'; };
+    }
+
+    const iframe = pdfModal.querySelector('iframe');
+    const title = document.getElementById('pdf-preview-title');
+    if (title) title.textContent = `แผนซ่อมบำรุงประจำปี ${displayYear}`;
+    if (iframe) iframe.srcdoc = html;
+    pdfModal.style.display = 'flex';
+
+    // Wire print button
+    const printBtn = document.getElementById('pdf-btn-print');
+    if (printBtn) {
+        const newPrint = printBtn.cloneNode(true);
+        printBtn.parentNode.replaceChild(newPrint, printBtn);
+        newPrint.id = 'pdf-btn-print';
+        newPrint.onclick = () => { iframe.contentWindow.print(); };
+    }
+}
+
+window.exportAnnualPlanPDF = exportAnnualPlanPDF;
+
 // --- Maintenance Plan Timeline ---
 function renderMaintenancePlan() {
     const yearSelect = document.getElementById('plan-year-select');
