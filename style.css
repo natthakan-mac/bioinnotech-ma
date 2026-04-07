@@ -7633,10 +7633,12 @@ input::placeholder, textarea::placeholder {
 
 @media (max-width: 768px) {
     #plan-timeline-container {
-        margin: 0 -1rem;
-        border-radius: 0;
-        border-left: none;
-        border-right: none;
+        margin: 0;
+        border-radius: 8px;
+        border: 1px solid rgba(0,0,0,0.08);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 0;
     }
 
     #plan-timeline-table {
@@ -7644,8 +7646,8 @@ input::placeholder, textarea::placeholder {
     }
 
     .plan-device-cell {
-        min-width: 130px;
-        max-width: 150px;
+        min-width: 120px;
+        max-width: 140px;
         padding: 0.4rem 0.5rem;
     }
 
@@ -7654,7 +7656,7 @@ input::placeholder, textarea::placeholder {
     }
 
     .plan-device-name {
-        font-size: 0.8rem;
+        font-size: 0.78rem;
     }
 
     .plan-color-dot {
@@ -7664,17 +7666,17 @@ input::placeholder, textarea::placeholder {
     }
 
     .plan-month-cell {
-        min-width: 42px;
-        padding: 0.3rem;
+        min-width: 40px;
+        padding: 0.3rem 0.15rem;
     }
 
     .plan-month-cell i {
-        font-size: 0.65rem !important;
+        font-size: 0.6rem !important;
     }
 
     #plan-timeline-header th {
-        font-size: 0.72rem !important;
-        padding: 0.4rem 0.2rem !important;
+        font-size: 0.7rem !important;
+        padding: 0.4rem 0.15rem !important;
     }
 
     #plan-view .section-header {

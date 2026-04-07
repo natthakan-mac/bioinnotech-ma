@@ -2692,6 +2692,79 @@ function renderPendingSitePreviews() {
     refreshSiteAttachmentPreviews();
 }
 
+// --- MA Round Sections Toggle ---
+function toggleMaRoundSections(category) {
+    const roundSection = document.getElementById('ma-round-sections');
+    const installSection = document.getElementById('ma-install-sections');
+    if (roundSection) {
+        roundSection.style.display = category === 'บำรุงรักษาตามรอบ' ? 'block' : 'none';
+    }
+    if (installSection) {
+        installSection.style.display = (category === 'ติดตั้ง' || category === 'รื้อถอน') ? 'block' : 'none';
+        // Auto-select install type pill
+        if (category === 'ติดตั้ง' || category === 'รื้อถอน') {
+            const r = document.querySelector('input[name="installType"][value="' + category + '"]');
+            if (r) r.checked = true;
+        }
+    }
+}
+window.toggleMaRoundSections = toggleMaRoundSections;
+
+document.addEventListener('change', function(e) {
+    if (e.target.name === 'category') {
+        toggleMaRoundSections(e.target.value);
+    }
+    // Toggle ramp width field
+    if (e.target.name === 'useRamp') {
+        const field = document.getElementById('ramp-width-field');
+        if (field) field.style.display = e.target.value === 'yes' ? 'flex' : 'none';
+    }
+    // Toggle elevator detail fields
+    if (e.target.name === 'useElevator') {
+        const field = document.getElementById('elevator-detail-fields');
+        if (field) field.style.display = e.target.value === 'yes' ? 'flex' : 'none';
+    }
+});
+
+// Dynamic door size fields
+function renderDoorSizeFields(count) {
+    const container = document.getElementById('install-door-sizes');
+    if (!container) return;
+    count = parseInt(count) || 0;
+    container.style.display = count > 0 ? 'flex' : 'none';
+    container.innerHTML = '';
+    for (let i = 1; i <= count; i++) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;';
+        row.innerHTML = '<label style="margin:0; font-size:0.85rem; font-weight:600; min-width:100px;">ขนาดประตูที่ ' + i + '</label>'
+            + '<div style="display:flex; align-items:center; gap:0.3rem;"><label style="margin:0; font-size:0.82rem;">กว้าง:</label><input type="number" name="doorWidth_' + i + '" placeholder="0" min="0" step="any" inputmode="decimal" autocomplete="off" style="width:60px; height:30px; padding:0.25rem 0.4rem; font-size:0.82rem; border-radius:6px;"><span style="font-size:0.82rem; color:#888;">ม.</span></div>'
+            + '<div style="display:flex; align-items:center; gap:0.3rem;"><label style="margin:0; font-size:0.82rem;">สูง:</label><input type="number" name="doorHeight_' + i + '" placeholder="0" min="0" step="any" inputmode="decimal" autocomplete="off" style="width:60px; height:30px; padding:0.25rem 0.4rem; font-size:0.82rem; border-radius:6px;"><span style="font-size:0.82rem; color:#888;">ม.</span></div>';
+        container.appendChild(row);
+    }
+}
+
+document.addEventListener('input', function(e) {
+    if (e.target.name === 'doorCount') {
+        renderDoorSizeFields(e.target.value);
+    }
+});
+
+// Door count plus/minus buttons
+function updateDoorCount(delta) {
+    const input = document.getElementById('install-door-count');
+    const display = document.getElementById('install-door-count-display');
+    if (!input) return;
+    let count = Math.max(0, Math.min(10, (parseInt(input.value) || 0) + delta));
+    input.value = count;
+    if (display) display.textContent = count;
+    renderDoorSizeFields(count);
+}
+
+document.addEventListener('click', function(e) {
+    if (e.target.closest('#btn-door-plus')) updateDoorCount(1);
+    if (e.target.closest('#btn-door-minus')) updateDoorCount(-1);
+});
+
 // Site Attachment Input Listener
 const siteAttachmentInput = document.getElementById("site-attachment-input");
 const btnSiteAttachment = document.getElementById("btn-site-attachment");
@@ -3442,6 +3515,8 @@ async function handleLogMaintenance(e) {
         const logData = {
             siteId: formData.get("siteId"),
             date: sanitizeDate(formData.get("date")),
+            timeStart: formData.get("timeStart") || "",
+            timeEnd: formData.get("timeEnd") || "",
             category: formData.get("category") || "อื่นๆ",
             status: formData.get("status") || (logId ? (state.logs.find(l => l.id === logId)?.status || "Open") : "Open"),
             responderId: formData.get("responderId") || "",
@@ -3480,6 +3555,32 @@ async function handleLogMaintenance(e) {
             customerPhone: formData.get("customerPhone") || "",
             customerPosition: formData.get("customerPosition") || "",
             customerSignature: getCustomerSignatureDataUrl() || formData.get("customerSignatureData") || "",
+            // Install/Uninstall fields
+            useRamp: formData.get("useRamp") || "",
+            rampWidth: formData.get("rampWidth") || "",
+            useElevator: formData.get("useElevator") || "",
+            elevatorCapacity: formData.get("elevatorCapacity") || "",
+            elevatorDoorWidth: formData.get("elevatorDoorWidth") || "",
+            elevatorDoorHeight: formData.get("elevatorDoorHeight") || "",
+            walkwayWidth: formData.get("walkwayWidth") || "",
+            walkwayHeight: formData.get("walkwayHeight") || "",
+            doorCount: formData.get("doorCount") ? Number(formData.get("doorCount")) : 0,
+            doorSizes: (() => {
+                const count = Number(formData.get("doorCount")) || 0;
+                const doors = [];
+                for (let i = 1; i <= count; i++) {
+                    doors.push({ width: formData.get("doorWidth_" + i) || "", height: formData.get("doorHeight_" + i) || "" });
+                }
+                return doors;
+            })(),
+            needWiring: formData.get("needWiring") || "",
+            needPowerPlug: formData.get("needPowerPlug") || "",
+            wireDistance: formData.get("wireDistance") || "",
+            needDrillWall: formData.get("needDrillWall") || "",
+            wireThroughCeiling: formData.get("wireThroughCeiling") || "",
+            hospitalTechName: formData.get("hospitalTechName") || "",
+            hospitalTechPhone: formData.get("hospitalTechPhone") || "",
+            installType: formData.get("installType") || "",
             // Inspection Checklist
             insp_exteriorCleaning: formData.get("insp_exteriorCleaning") || "",
             insp_interiorCleaning: formData.get("insp_interiorCleaning") || "",
@@ -5589,6 +5690,8 @@ function editLog(logId) {
         // datetime-local expects YYYY-MM-DDTHH:MM, old records may have just YYYY-MM-DD
         dateInput.value = log.date && log.date.length === 10 ? log.date + 'T00:00' : log.date;
     }
+    setField("timeStart", log.timeStart);
+    setField("timeEnd", log.timeEnd);
     const objectiveEl = form.querySelector('textarea[name="objective"]');
     if (objectiveEl) objectiveEl.value = log.objective || "";
 
@@ -5620,6 +5723,9 @@ function editLog(logId) {
     // Populate new fields
     const categorySelect = form.querySelector('select[name="category"]');
     if (categorySelect) categorySelect.value = log.category || "บำรุงรักษาตามรอบ";
+
+    // Toggle MA round sections visibility based on category
+    toggleMaRoundSections(categorySelect ? categorySelect.value : 'บำรุงรักษาตามรอบ');
 
     const statusSelect = form.querySelector('select[name="status"]');
     if (statusSelect) statusSelect.value = log.status || "Open";
@@ -5686,6 +5792,57 @@ function editLog(logId) {
     setField("customerName", log.customerName);
     setField("customerPhone", log.customerPhone);
     setField("customerPosition", log.customerPosition);
+
+    // Install/Uninstall fields
+    if (log.useRamp) {
+        const rampRadio = form.querySelector(`input[name="useRamp"][value="${log.useRamp}"]`);
+        if (rampRadio) rampRadio.checked = true;
+        if (log.useRamp === 'yes') {
+            const rampField = document.getElementById('ramp-width-field');
+            if (rampField) rampField.style.display = 'flex';
+        }
+    }
+    setField("rampWidth", log.rampWidth);
+    if (log.useElevator) {
+        const elevRadio = form.querySelector(`input[name="useElevator"][value="${log.useElevator}"]`);
+        if (elevRadio) elevRadio.checked = true;
+        if (log.useElevator === 'yes') {
+            const elevField = document.getElementById('elevator-detail-fields');
+            if (elevField) elevField.style.display = 'flex';
+        }
+    }
+    setField("elevatorCapacity", log.elevatorCapacity);
+    setField("elevatorDoorWidth", log.elevatorDoorWidth);
+    setField("elevatorDoorHeight", log.elevatorDoorHeight);
+    setField("walkwayWidth", log.walkwayWidth);
+    setField("walkwayHeight", log.walkwayHeight);
+    setField("doorCount", log.doorCount);
+    const doorDisplay = document.getElementById('install-door-count-display');
+    if (doorDisplay) doorDisplay.textContent = log.doorCount || 0;
+    if (log.doorCount) {
+        renderDoorSizeFields(log.doorCount);
+        if (log.doorSizes && log.doorSizes.length > 0) {
+            log.doorSizes.forEach(function(door, i) {
+                setField("doorWidth_" + (i + 1), door.width);
+                setField("doorHeight_" + (i + 1), door.height);
+            });
+        }
+    }
+    // Electrical install fields
+    if (log.needWiring) { const r = form.querySelector('input[name="needWiring"][value="' + log.needWiring + '"]'); if (r) r.checked = true; }
+    if (log.needPowerPlug) { const r = form.querySelector('input[name="needPowerPlug"][value="' + log.needPowerPlug + '"]'); if (r) r.checked = true; }
+    setField("wireDistance", log.wireDistance);
+    if (log.needDrillWall) { const r = form.querySelector('input[name="needDrillWall"][value="' + log.needDrillWall + '"]'); if (r) r.checked = true; }
+    if (log.wireThroughCeiling) { const r = form.querySelector('input[name="wireThroughCeiling"][value="' + log.wireThroughCeiling + '"]'); if (r) r.checked = true; }
+    setField("hospitalTechName", log.hospitalTechName);
+    setField("hospitalTechPhone", log.hospitalTechPhone);
+    // Install type pill
+    const installTypeVal = log.installType || log.category;
+    if (installTypeVal) {
+        const r = form.querySelector('input[name="installType"][value="' + installTypeVal + '"]');
+        if (r) r.checked = true;
+    }
+
     // Load existing customer signature
     const custSigHidden = document.getElementById("customer-signature-data");
     if (custSigHidden) custSigHidden.value = log.customerSignature || "";
@@ -6249,25 +6406,27 @@ function showDayDetails(dateStr, logs) {
         // Get icon for category with colors
         let catIcon = '';
         let catBadge = '';
-        let catColor = 'var(--text-muted)';
-        let catBg = 'rgba(100,116,139,0.15)';
+        let catColor = '#64748b';
+        let catBg = 'rgba(100,116,139,0.12)';
         
         if (isMaCategory(log.category)) {
-            catIcon = '<i class="fa-solid fa-screwdriver-wrench" style="color: #111111; margin-right: 4px;"></i>';
-            catColor = '#111111';
-            catBg = 'rgba(0,0,0,0.08)';
+            catColor = '#0369a1';
+            catBg = '#e0f2fe';
+        } else if (log.category === "ติดตั้ง") {
+            catColor = '#15803d';
+            catBg = '#dcfce7';
+        } else if (log.category === "รื้อถอน") {
+            catColor = '#b45309';
+            catBg = '#fef3c7';
+        } else if (log.category === "ซ่อม") {
+            catColor = '#dc2626';
+            catBg = '#fee2e2';
+        } else if (log.category === "ตามสัญญาจ้าง") {
+            catColor = '#7c3aed';
+            catBg = '#ede9fe';
         } else if (log.category === "ตามใบสั่งซื้อ") {
-            catIcon = '<i class="fa-solid fa-cart-shopping" style="color: #111111; margin-right: 4px;"></i>';
-            catColor = '#111111';
-            catBg = 'rgba(0,0,0,0.08)';
-        } else if (log.category === "Cleaning") {
-            catIcon = '<i class="fa-solid fa-broom" style="color: var(--text-muted); margin-right: 4px;"></i>';
-        } else if (log.category === "Installation") {
-            catIcon = '<i class="fa-solid fa-plus-square" style="color: var(--text-muted); margin-right: 4px;"></i>';
-        } else if (log.category === "Repair") {
-            catIcon = '<i class="fa-solid fa-hammer" style="color: var(--text-muted); margin-right: 4px;"></i>';
-        } else {
-            catIcon = '<i class="fa-solid fa-wrench" style="color: var(--text-muted); margin-right: 4px;"></i>';
+            catColor = '#0891b2';
+            catBg = '#cffafe';
         }
         
         catBadge = `<span style="background:${catBg}; color:${catColor}; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; white-space:nowrap; ">${log.category || "-"}</span>`;
@@ -9045,10 +9204,14 @@ function viewLogDetails(id) {
     // Comments
     renderLogComments(log.id, log.comments || []);
 
-    // Electrical & Physical Inspection
+    // Electrical & Physical Inspection - only for บำรุงรักษาตามรอบ
     const inspSection = document.getElementById("detail-inspection-section");
     const inspContent = document.getElementById("detail-inspection-content");
-    if (inspSection && inspContent) {
+    const isMaLog = isMaCategory(log.category);
+    const isInstallLog = log.category === 'ติดตั้ง' || log.category === 'รื้อถอน';
+
+    if (inspSection) inspSection.style.display = isMaLog ? "block" : "none";
+    if (inspSection && inspContent && isMaLog) {
         const inspItems = [
             ['insp_exteriorCleaning', '1. ความสะอาดภายนอก'],
             ['insp_interiorCleaning', '2. ความสะอาดภายใน'],
@@ -9069,8 +9232,6 @@ function viewLogDetails(id) {
             ['insp_phaseRelay', '17. รีเลย์ควบคุมลำดับเฟส'],
             ['insp_systemRelay', '18. รีเลย์ควบคุมระบบต่างๆ'],
         ];
-
-        inspSection.style.display = "block";
 
         const row = (label, value) => `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333;">${label}</span><span style="font-size:0.88rem; font-weight:500; color:#111;">${value}</span></div>`;
 
@@ -9122,6 +9283,45 @@ function viewLogDetails(id) {
         html += `</div>`;
 
         inspContent.innerHTML = html;
+    }
+
+    // Install/Uninstall Section - only for ติดตั้ง/รื้อถอน
+    const installSection = document.getElementById("detail-install-section");
+    const installContent = document.getElementById("detail-install-content");
+    if (installSection) installSection.style.display = isInstallLog ? "block" : "none";
+    if (installSection && installContent && isInstallLog) {
+        const yesNo = (val) => {
+            if (!val) return '<span style="color:#ccc;">-</span>';
+            const isYes = val === 'yes';
+            return `<span class="detail-pill" style="background:${isYes ? '#22c55e' : '#ef4444'};">${isYes ? 'ใช่' : 'ไม่ใช่'}</span>`;
+        };
+        const gridRow = (label, pill, extra) => `<div style="display:grid; grid-template-columns:200px 80px 1fr; align-items:center; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05); gap:0.5rem;"><span style="font-size:0.88rem; color:#333;">${label}</span><span>${pill}</span><span style="font-size:0.85rem; color:#666;">${extra || ''}</span></div>`;
+        const valRow = (label, value) => `<div style="display:grid; grid-template-columns:200px 1fr; align-items:center; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05); gap:0.5rem;"><span style="font-size:0.88rem; color:#333;">${label}</span><span style="font-size:0.88rem; font-weight:500; color:#111;">${value}</span></div>`;
+
+        let iHtml = '';
+        if (log.installType) iHtml += valRow('ประเภทงาน', `<span class="detail-pill" style="background:${log.installType === 'ติดตั้ง' ? '#22c55e' : '#f59e0b'};">${log.installType}</span>`);
+        iHtml += gridRow('มีทางลาดหรือไม่', yesNo(log.useRamp), log.useRamp === 'yes' && log.rampWidth ? 'กว้าง ' + log.rampWidth + ' ม.' : '');
+        iHtml += gridRow('มีลิฟต์หรือไม่', yesNo(log.useElevator), log.useElevator === 'yes' ? [log.elevatorCapacity ? log.elevatorCapacity + ' kg' : '', log.elevatorDoorWidth && log.elevatorDoorHeight ? 'ประตู ' + log.elevatorDoorWidth + '×' + log.elevatorDoorHeight + ' ม.' : ''].filter(Boolean).join(' / ') : '');
+        iHtml += valRow('ช่องทางเดิน (ที่แคบที่สุด)', `${log.walkwayWidth ? 'กว้าง ' + log.walkwayWidth + ' ม.' : '-'} / ${log.walkwayHeight ? 'สูง ' + log.walkwayHeight + ' ม.' : '-'}`);
+        iHtml += valRow('จำนวนประตูที่ต้องผ่าน', log.doorCount ? log.doorCount + ' ประตู' : '-');
+        if (log.doorSizes && log.doorSizes.length > 0) {
+            log.doorSizes.forEach(function(door, i) {
+                iHtml += valRow('ขนาดประตูที่ ' + (i + 1), (door.width ? 'กว้าง ' + door.width + ' ม.' : '-') + ' / ' + (door.height ? 'สูง ' + door.height + ' ม.' : '-'));
+            });
+        }
+        iHtml += gridRow('ต้องเดินสายไฟ', yesNo(log.needWiring), '');
+        iHtml += gridRow('ต้องเดิน Power Plug', yesNo(log.needPowerPlug), '');
+        iHtml += valRow('ระยะจากตู้ไฟไปยังเครื่อง', log.wireDistance ? log.wireDistance + ' ม.' : '-');
+        iHtml += gridRow('เจาะกำแพง', yesNo(log.needDrillWall), '');
+        iHtml += gridRow('สายไฟเดินลอดฝ้า', yesNo(log.wireThroughCeiling), '');
+        if (log.hospitalTechName || log.hospitalTechPhone) {
+            iHtml += `<div style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid rgba(0,0,0,0.08);">`;
+            iHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.25rem;">กรณีใช้ช่างโรงพยาบาล</div>`;
+            iHtml += valRow('ชื่อ-สกุล', log.hospitalTechName || '-');
+            iHtml += valRow('เบอร์โทร', log.hospitalTechPhone || '-');
+            iHtml += `</div>`;
+        }
+        installContent.innerHTML = iHtml;
     }
 
     // Customer Information Section
@@ -9780,6 +9980,10 @@ async function exportCasePDF(logId) {
     const hasInspChecklist = pdfInspItems.some(function(item) { return log[item[0]]; });
 
     var inspHtml = '';
+    var isMaPdf = isMaCategory(log.category);
+    var isInstallPdf = log.category === 'ติดตั้ง' || log.category === 'รื้อถอน';
+
+    if (isMaPdf) {
 
     if (hasElec) {
         inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:10px;">'
@@ -9834,6 +10038,48 @@ async function exportCasePDF(logId) {
         inspHtml += '</div>';
     }
 
+    } // end isMaPdf
+
+    // Install/Uninstall section for PDF
+    if (isInstallPdf) {
+        var pdfYesNo = function(val) {
+            if (!val) return '-';
+            var isYes = val === 'yes';
+            return '<span style="background:' + (isYes ? '#22c55e' : '#ef4444') + '; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:35px; text-align:center; margin-right:6px;">' + (isYes ? 'ใช่' : 'ไม่ใช่') + '</span>';
+        };
+        inspHtml += '<h2>ข้อมูลสถานที่การติดตั้ง/รื้อถอน</h2>';
+        var pdfCell = function(label, value) {
+            return '<div style="display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee; font-size:10px; min-height:22px;"><span style="font-weight:600; color:#555; white-space:nowrap;">' + label + '</span><span style="text-align:right;">' + value + '</span></div>';
+        };
+        inspHtml += '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px 16px; border:1px solid #ddd; border-radius:6px; padding:8px;">';
+        if (log.installType) inspHtml += pdfCell('ประเภทงาน', log.installType);
+        inspHtml += pdfCell('มีทางลาด', pdfYesNo(log.useRamp) + (log.useRamp === 'yes' && log.rampWidth ? ' <span style="font-weight:600; color:#555;">กว้าง:</span> ' + log.rampWidth + ' ม.' : ''));
+        inspHtml += pdfCell('มีลิฟต์', pdfYesNo(log.useElevator) + (log.useElevator === 'yes' ? ' <span style="font-weight:600; color:#555;">น้ำหนัก:</span> ' + (log.elevatorCapacity ? log.elevatorCapacity + ' kg' : '-') + ' <span style="font-weight:600; color:#555;">ประตู:</span> ' + (log.elevatorDoorWidth && log.elevatorDoorHeight ? log.elevatorDoorWidth + '×' + log.elevatorDoorHeight + ' ม.' : '-') : ''));
+        inspHtml += pdfCell('ช่องทางเดิน (แคบสุด)', (log.walkwayWidth ? 'กว้าง ' + log.walkwayWidth + ' ม.' : '-') + ' / ' + (log.walkwayHeight ? 'สูง ' + log.walkwayHeight + ' ม.' : '-'));
+        inspHtml += pdfCell('ต้องเดินสายไฟ', pdfYesNo(log.needWiring));
+        inspHtml += pdfCell('ต้องเดิน Power Plug', pdfYesNo(log.needPowerPlug));
+        inspHtml += pdfCell('ระยะจากตู้ไฟไปยังเครื่อง', log.wireDistance ? log.wireDistance + ' ม.' : '-');
+        inspHtml += pdfCell('เจาะกำแพง', pdfYesNo(log.needDrillWall));
+        inspHtml += pdfCell('สายไฟเดินลอดฝ้า', pdfYesNo(log.wireThroughCeiling));
+        if (log.hospitalTechName || log.hospitalTechPhone) {
+            inspHtml += pdfCell('ช่างโรงพยาบาล', (log.hospitalTechName || '-') + ' / ' + (log.hospitalTechPhone || '-'));
+        }
+        inspHtml += '</div>';
+        // Door section - full width
+        if (log.doorCount) {
+            inspHtml += '<div style="border:1px solid #ddd; border-radius:6px; padding:8px; margin-top:6px; font-size:10px;">';
+            inspHtml += '<div style="font-weight:600; margin-bottom:4px;">ประตูที่ต้องผ่าน: ' + log.doorCount + ' ประตู</div>';
+            if (log.doorSizes && log.doorSizes.length > 0) {
+                inspHtml += '<div style="display:grid; grid-template-columns:repeat(' + Math.min(log.doorSizes.length, 4) + ', 1fr); gap:6px;">';
+                log.doorSizes.forEach(function(door, i) {
+                    inspHtml += '<div style="background:#f9f9f9; border:1px solid #eee; border-radius:4px; padding:4px 8px; text-align:center;"><div style="font-weight:600; font-size:9px; color:#555;">ประตูที่ ' + (i+1) + '</div><div>กว้าง ' + (door.width || '-') + ' × สูง ' + (door.height || '-') + ' ม.</div></div>';
+                });
+                inspHtml += '</div>';
+            }
+            inspHtml += '</div>';
+        }
+    }
+
     const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <title>${log.caseId || 'MA Case'}</title>
@@ -9879,14 +10125,17 @@ async function exportCasePDF(logId) {
 <div class="header-line"></div>
 
 <div class="page-content">
-<h1 style="text-align:center; font-size:15px; margin:0 0 4px; color:#333;">ใบตรวจเช็คการบำรุงรักษาเครื่อง</h1>
+<h1 style="text-align:center; font-size:15px; margin:0 0 4px; color:#333;">${isInstallPdf ? 'ใบบันทึกการเข้าประเมินสถานที่ก่อนติดตั้ง-รื้อถอน' : 'ใบตรวจเช็คการบำรุงรักษาเครื่อง'}</h1>
 
 <h2 style="margin-top:8px;">ข้อมูลงาน (Job Information)</h2>
-<div style="font-size:10px; line-height:1.8; padding:4px 0;">
-    <span class="label">รหัสเคส:</span> ${log.caseId || '-'} &nbsp;&nbsp; <span class="label">วันที่:</span> ${thaiDate} &nbsp;&nbsp; <span class="label">รูปแบบสัญญา:</span> ${site.deviceType || '-'} &nbsp;&nbsp; <span class="label">ยี่ห้อ/รุ่น:</span> ${[site.brand, site.model].filter(Boolean).join(' / ') || '-'} &nbsp;&nbsp; <span class="label">S/N:</span> ${site.serialNumber || '-'} &nbsp;&nbsp; <span class="label">เจ้าหน้าที่ช่างบริการ:</span> ${responderName}<br>
-    <span class="label">สถานที่:</span> ${site.name} &nbsp;&nbsp; <span class="label">หน่วยงาน:</span> ${site.installLocation || site.villageName || '-'} &nbsp;&nbsp; <span class="label">จังหวัด:</span> ${site.province || '-'} &nbsp;&nbsp; <span class="label">ประเภท:</span> ${site.deviceType || '-'} &nbsp;&nbsp; <span class="label">หมวดหมู่:</span> ${log.category || '-'}<br>
-    <span class="label">สถานะ:</span> ${statusText} &nbsp;&nbsp; <span class="label">รอบซ่อมบำรุง:</span> ${site.maintenanceCycle ? site.maintenanceCycle + ' วัน' : '-'} &nbsp;&nbsp; <span class="label">ระยะเวลาประกัน:</span> ${site.insuranceStartDate || '-'} ถึง ${site.insuranceEndDate || '-'} &nbsp;&nbsp; <span class="label">จำนวนรอบขณะเช็ค:</span> ${log.cycleCount ? Number(log.cycleCount).toLocaleString() + ' รอบ' : '-'}
-</div>
+${isInstallPdf ? `<div style="font-size:10px; line-height:1.8; padding:4px 0;">
+    <span class="label">รหัสเคส:</span> ${log.caseId || '-'} &nbsp;&nbsp; <span class="label">โรงพยาบาล:</span> ${site.name} &nbsp;&nbsp; <span class="label">หน่วยงาน:</span> ${site.installLocation || site.villageName || '-'} &nbsp;&nbsp; <span class="label">S/N:</span> ${site.serialNumber || '-'} &nbsp;&nbsp; <span class="label">ยี่ห้อ:</span> ${site.brand || '-'} &nbsp;&nbsp; <span class="label">รุ่น:</span> ${site.model || '-'}<br>
+    <span class="label">วันที่:</span> ${thaiDate} &nbsp;&nbsp; <span class="label">รูปแบบสัญญา:</span> ${site.deviceType || '-'} &nbsp;&nbsp; <span class="label">เจ้าหน้าที่ช่างบริการ:</span> ${responderName} &nbsp;&nbsp; <span class="label">หมวดหมู่:</span> ${log.category || '-'} &nbsp;&nbsp; <span class="label">จังหวัด:</span> ${site.province || '-'}
+</div>` : `<div style="font-size:10px; line-height:1.8; padding:4px 0;">
+    <span class="label">โรงพยาบาล:</span> ${site.name} &nbsp;&nbsp; <span class="label">หน่วยงาน:</span> ${site.installLocation || site.villageName || '-'} &nbsp;&nbsp; <span class="label">S/N:</span> ${site.serialNumber || '-'} &nbsp;&nbsp; <span class="label">ยี่ห้อ:</span> ${site.brand || '-'} &nbsp;&nbsp; <span class="label">รุ่น:</span> ${site.model || '-'}<br>
+    <span class="label">รหัสเคส:</span> ${log.caseId || '-'} &nbsp;&nbsp; <span class="label">วันที่:</span> ${thaiDate} &nbsp;&nbsp; <span class="label">รูปแบบสัญญา:</span> ${site.deviceType || '-'} &nbsp;&nbsp; <span class="label">เจ้าหน้าที่ช่างบริการ:</span> ${responderName} &nbsp;&nbsp; <span class="label">หมวดหมู่:</span> ${log.category || '-'}<br>
+    <span class="label">จังหวัด:</span> ${site.province || '-'} &nbsp;&nbsp; <span class="label">สถานะ:</span> ${statusText} &nbsp;&nbsp; <span class="label">รอบซ่อมบำรุง:</span> ${site.maintenanceCycle ? site.maintenanceCycle + ' วัน' : '-'} &nbsp;&nbsp; <span class="label">ระยะเวลาประกัน:</span> ${site.insuranceStartDate || '-'} ถึง ${site.insuranceEndDate || '-'} &nbsp;&nbsp; <span class="label">จำนวนรอบขณะเช็ค:</span> ${log.cycleCount ? Number(log.cycleCount).toLocaleString() + ' รอบ' : '-'}
+</div>`}
 
 ${inspHtml}
 
@@ -10665,25 +10914,27 @@ function appendLogRows(newLogs, targetTbody = null) {
         // Get icon for category with colors
         let catIcon = '';
         let catBadge = '';
-        let catColor = 'var(--text-muted)';
-        let catBg = 'rgba(100,116,139,0.15)';
+        let catColor = '#64748b';
+        let catBg = 'rgba(100,116,139,0.12)';
         
         if (isMaCategory(log.category)) {
-            catIcon = '<i class="fa-solid fa-screwdriver-wrench" style="color: #111111; margin-right: 4px;"></i>';
-            catColor = '#111111';
-            catBg = 'rgba(0,0,0,0.08)';
+            catColor = '#0369a1';
+            catBg = '#e0f2fe';
+        } else if (log.category === "ติดตั้ง") {
+            catColor = '#15803d';
+            catBg = '#dcfce7';
+        } else if (log.category === "รื้อถอน") {
+            catColor = '#b45309';
+            catBg = '#fef3c7';
+        } else if (log.category === "ซ่อม") {
+            catColor = '#dc2626';
+            catBg = '#fee2e2';
+        } else if (log.category === "ตามสัญญาจ้าง") {
+            catColor = '#7c3aed';
+            catBg = '#ede9fe';
         } else if (log.category === "ตามใบสั่งซื้อ") {
-            catIcon = '<i class="fa-solid fa-cart-shopping" style="color: #111111; margin-right: 4px;"></i>';
-            catColor = '#111111';
-            catBg = 'rgba(0,0,0,0.08)';
-        } else if (log.category === "Cleaning") {
-            catIcon = '<i class="fa-solid fa-broom" style="color: var(--text-muted); margin-right: 4px;"></i>';
-        } else if (log.category === "Installation") {
-            catIcon = '<i class="fa-solid fa-plus-square" style="color: var(--text-muted); margin-right: 4px;"></i>';
-        } else if (log.category === "Repair") {
-            catIcon = '<i class="fa-solid fa-hammer" style="color: var(--text-muted); margin-right: 4px;"></i>';
-        } else {
-            catIcon = '<i class="fa-solid fa-wrench" style="color: var(--text-muted); margin-right: 4px;"></i>';
+            catColor = '#0891b2';
+            catBg = '#cffafe';
         }
         
         catBadge = `<span style="background:${catBg}; color:${catColor}; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; white-space:nowrap; ">${log.category || "-"}</span>`;
@@ -12564,24 +12815,29 @@ function exportAnnualPlanPDF() {
     });
 
     // Build table rows
-    let rowsHtml = state.sites.map(site => {
+    let rowsHtml = state.sites.map((site, idx) => {
         const plans = (site.maintenancePlans && site.maintenancePlans[selectedBE]) || [];
         const siteColor = getSiteColor(site.name);
         const cells = Array.from({length: 12}, (_, m) => {
             const isPlanned = plans.includes(m + 1);
             return `<td style="text-align:center; padding:4px 2px; border:1px solid #ddd; background:${isPlanned ? siteColor : '#fff'};">${isPlanned ? '<span style="color:#fff; font-size:8px;">✓</span>' : ''}</td>`;
         }).join('');
-        const info = `<td style="padding:5px 8px; border:1px solid #ddd; font-size:9px;">
-            <div style="display:flex; align-items:center; gap:4px;">
-                <span style="width:8px; height:8px; border-radius:50%; background:${siteColor}; display:inline-block;"></span>
-                <div>
-                    ${site.siteCode ? `<span style="font-size:7px; color:#888;">${site.siteCode}</span> ` : ''}
-                    <b>${site.name}</b>
-                    ${site.brand || site.model ? `<br><span style="font-size:7px; color:#666;">${[site.brand, site.model].filter(Boolean).join(' ')}</span>` : ''}
-                </div>
+        const noCell = `<td style="text-align:center; padding:5px 4px; border:1px solid #ddd; font-size:9px; font-weight:600;">${idx + 1}</td>`;
+        const warranty = site.insuranceStartDate && site.insuranceEndDate ? `${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : '-';
+        const subtleInfo = [
+            site.brand || site.model ? '<span style="font-weight:600;">รุ่น:</span> ' + [site.brand, site.model].filter(Boolean).join(' ') : '',
+            site.serialNumber ? '<span style="font-weight:600;">S/N:</span> ' + site.serialNumber : '',
+            '<span style="font-weight:600;">ประกัน:</span> ' + warranty,
+            site.province ? '<span style="font-weight:600;">จ.</span>' + site.province : ''
+        ].filter(Boolean).join(' | ');
+        const siteIdCell = `<td style="text-align:center; padding:5px 4px; border:1px solid #ddd; font-size:8px; white-space:nowrap;">${site.siteCode || '-'}</td>`;
+        const info = `<td style="padding:5px 8px; border:1px solid #ddd; border-left:4px solid ${siteColor}; font-size:9px;">
+            <div>
+                <b>${site.name}</b>
+                <div style="font-size:7px; color:#999; margin-top:1px;">${subtleInfo}</div>
             </div>
         </td>`;
-        return `<tr>${info}${cells}</tr>`;
+        return `<tr>${noCell}${siteIdCell}${info}${cells}</tr>`;
     }).join('');
 
     const html = `<!DOCTYPE html>
@@ -12621,6 +12877,8 @@ function exportAnnualPlanPDF() {
 <table>
     <thead>
         <tr>
+            <th style="text-align:center; width:30px;">No.</th>
+            <th style="text-align:center; width:50px;">รหัส</th>
             <th style="text-align:left; min-width:160px;">อุปกรณ์ (Device)</th>
             ${monthNames.map(m => `<th>${m}</th>`).join('')}
         </tr>
@@ -12713,7 +12971,7 @@ function renderMaintenancePlan() {
     });
 
     // Header
-    headerRow.innerHTML = `<th style="text-align:left; padding:0.6rem 0.75rem; border:1px solid rgba(0,0,0,0.08); min-width:220px; position:sticky; left:0; background:#f5f5f5; z-index:3;">อุปกรณ์</th>`;
+    headerRow.innerHTML = `<th style="text-align:center; padding:0.6rem 0.4rem; border:1px solid rgba(0,0,0,0.08); width:30px; background:#f5f5f5;">No.</th><th style="text-align:center; padding:0.6rem 0.4rem; border:1px solid rgba(0,0,0,0.08); width:50px; background:#f5f5f5;">รหัส</th><th style="text-align:left; padding:0.6rem 0.75rem; border:1px solid rgba(0,0,0,0.08); min-width:180px; position:sticky; left:0; background:#f5f5f5; z-index:3;">อุปกรณ์</th>`;
     for (let m = 0; m < 12; m++) {
         const isCurrent = m === currentMonth;
         headerRow.innerHTML += `<th style="text-align:center; padding:0.5rem 0.4rem; border:1px solid rgba(0,0,0,0.08); min-width:70px; font-size:0.8rem; ${isCurrent ? 'background:#111; color:#fff;' : ''}">${monthNames[m]}</th>`;
@@ -12730,18 +12988,19 @@ function renderMaintenancePlan() {
         const plans = (site.maintenancePlans && site.maintenancePlans[selectedBE]) || [];
         const siteColor = getSiteColor(site.name);
 
-        const siteCode = site.siteCode ? `<span style="font-size:0.75rem; color:#888; display:block;">${site.siteCode}</span>` : '';
-        const deviceCell = `<td class="plan-device-cell" onclick="viewSiteDetails('${site.id}')">
-            <div class="plan-device-inner">
-                <span class="plan-color-dot" style="background:${siteColor};"></span>
-                <div class="plan-device-info">
-                    <div class="plan-device-badges">
-                        ${site.siteCode ? `<span class="plan-badge">${site.siteCode}</span>` : ''}
-                        ${site.brand || site.model ? `<span class="plan-badge">${[site.brand, site.model].filter(Boolean).join(' ')}</span>` : ''}
-                        ${site.deviceType ? `<span class="plan-badge">${site.deviceType}</span>` : ''}
-                    </div>
-                    <span class="plan-device-name">${site.name}</span>
-                </div>
+        const noCell = `<td style="text-align:center; padding:0.4rem; border:1px solid rgba(0,0,0,0.06); font-size:0.82rem; font-weight:600;">${siteIndex + 1}</td>`;
+        const siteIdCell = `<td style="text-align:center; padding:0.4rem; border:1px solid rgba(0,0,0,0.06); font-size:0.78rem; white-space:nowrap;">${site.siteCode || '-'}</td>`;
+        const warranty = site.insuranceStartDate && site.insuranceEndDate ? `${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : '-';
+        const deviceSubtle = [
+            site.brand || site.model ? `<span style="font-weight:600;">รุ่น:</span> ${[site.brand, site.model].filter(Boolean).join(' ')}` : '',
+            site.serialNumber ? `<span style="font-weight:600;">S/N:</span> ${site.serialNumber}` : '',
+            `<span style="font-weight:600;">ประกัน:</span> ${warranty}`,
+            site.province ? `<span style="font-weight:600;">จ.</span>${site.province}` : ''
+        ].filter(Boolean).join(' | ');
+        const deviceCell = `<td class="plan-device-cell" onclick="viewSiteDetails('${site.id}')" style="border-left:4px solid ${siteColor};">
+            <div class="plan-device-info">
+                <span class="plan-device-name">${site.name}</span>
+                <div style="font-size:0.7rem; color:#999; margin-top:2px;">${deviceSubtle}</div>
             </div>
         </td>`;
 
@@ -12755,7 +13014,7 @@ function renderMaintenancePlan() {
             return `<td class="plan-month-cell" style="background:${bg};" onclick="togglePlanMonth('${site.id}','${selectedBE}',${monthNum})" title="คลิกเพื่อ${isPlanned ? 'ยกเลิก' : 'เพิ่ม'}แผน">${content}</td>`;
         }).join('');
 
-        return `<tr>${deviceCell}${monthCells}</tr>`;
+        return `<tr>${noCell}${siteIdCell}${deviceCell}${monthCells}</tr>`;
     }).join('');
 }
 

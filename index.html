@@ -853,7 +853,7 @@
                 <h2>แผนซ่อมบำรุงประจำปี (Annual Maintenance Plan)</h2>
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <select id="plan-year-select" class="plan-year-dropdown"></select>
-                    <button onclick="exportAnnualPlanPDF()" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem;">
+                    <button onclick="exportAnnualPlanPDF()" class="btn-secondary" style="padding: 0.5rem 0.75rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem; border-radius: 8px; height: 38px; box-sizing: border-box;">
                         <i class="fa-solid fa-file-pdf"></i> PDF
                     </button>
                 </div>
@@ -953,7 +953,7 @@
     <!-- FABs (Floating Action Buttons) - Root Level -->
     <!-- FABs (Floating Action Buttons) - Root Level -->
     <button class="mobile-only fab-btn hidden" id="btn-add-site-fab" aria-label="เพิ่มเครื่องใหม่"
-        title="เพิ่มเครื่องใหม่" style="background: #38bdf8 !important;">
+        title="เพิ่มเครื่องใหม่" style="background: #38bdf8 !important; color: #fff !important;">
         <i class="fa-solid fa-plus" aria-hidden="true"></i>
     </button>
     <button class="mobile-only fab-btn hidden" id="btn-log-maintenance-fab" aria-label="บันทึกงานซ่อมบำรุง"
@@ -1139,10 +1139,23 @@
                 <div class="form-group">
                     <label class="required-label"><i class="fa-solid fa-tag"></i> หมวดหมู่ (Category)</label>
                     <select name="category" id="log-category-select" required>
-                        <option value="ตามสัญญาจ้าง" selected>ตามสัญญาจ้าง</option>
-                        <option value="บำรุงรักษาตามรอบ">บำรุงรักษาตามรอบ</option>
-                        <option value="ตามใบสั่งซื้อ">ตามใบสั่งซื้อ</option>
+                        <option value="บำรุงรักษาตามรอบ" selected>บำรุงรักษาตามรอบ</option>
+                        <option value="ติดตั้ง">ติดตั้ง</option>
+                        <option value="รื้อถอน">รื้อถอน</option>
+                        <option value="ซ่อม">ซ่อม</option>
                     </select>
+                </div>
+            </div>
+
+            <!-- Start & End DateTime -->
+            <div class="form-row form-row-2col">
+                <div class="form-group">
+                    <label><i class="fa-regular fa-clock"></i> วันเวลาเริ่ม (Start)</label>
+                    <input type="datetime-local" name="timeStart">
+                </div>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-clock"></i> วันเวลาสิ้นสุด (End)</label>
+                    <input type="datetime-local" name="timeEnd">
                 </div>
             </div>
 
@@ -1187,6 +1200,12 @@
 
             <!-- Line Items -->
             <div class="form-group" id="line-items-form-group">
+
+            <!-- สำหรับการบำรุงรักษาตามรอบ -->
+            <div id="ma-round-sections" style="border: 2px solid rgba(0,0,0,0.08); border-radius: 12px; padding: 1rem; margin-bottom: 1.25rem;">
+                <h4 style="margin: 0 0 1rem 0; font-size: 0.95rem; color: #111; display: flex; align-items: center; gap: 0.5rem; font-weight: 700;">
+                    <i class="fa-solid fa-screwdriver-wrench" style="color: #38bdf8;"></i> สำหรับการบำรุงรักษาตามรอบ
+                </h4>
 
             <!-- Electrical Section -->
             <div class="ma-section" style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.06); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
@@ -1328,6 +1347,145 @@
                         <div class="insp-row"><span class="insp-label">16. สายส่งน้ำยา</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_chemicalLine" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_chemicalLine" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_chemicalLine" value="replace"><span>Replace</span></label></div></div>
                         <div class="insp-row"><span class="insp-label">17. รีเลย์ควบคุมลำดับเฟส</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_phaseRelay" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_phaseRelay" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_phaseRelay" value="replace"><span>Replace</span></label></div></div>
                         <div class="insp-row"><span class="insp-label">18. รีเลย์ควบคุมระบบต่างๆ</span><div class="check-pill-group insp-pills"><label class="check-pill insp-check"><input type="radio" name="insp_systemRelay" value="check"><span>Check</span></label><label class="check-pill insp-service"><input type="radio" name="insp_systemRelay" value="service"><span>Service</span></label><label class="check-pill insp-replace"><input type="radio" name="insp_systemRelay" value="replace"><span>Replace</span></label></div></div>
+                    </div>
+                </div>
+            </div>
+
+            </div><!-- end ma-round-sections -->
+
+            <!-- สำหรับการติดตั้ง/รื้อถอน -->
+            <div id="ma-install-sections" style="border: 2px solid rgba(0,0,0,0.08); border-radius: 12px; padding: 1rem; margin-bottom: 1.25rem; display: none;">
+                <h4 style="margin: 0 0 0.75rem 0; font-size: 0.95rem; color: #111; display: flex; align-items: center; gap: 0.5rem; font-weight: 700;">
+                    <i class="fa-solid fa-truck-ramp-box" style="color: #38bdf8;"></i> สำหรับการติดตั้ง/รื้อถอน
+                </h4>
+
+                <!-- ประเภทงาน pill switch -->
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                    <label style="margin: 0; font-size: 0.85rem; font-weight: 600; min-width: 160px;">ประเภทงาน</label>
+                    <div class="check-pill-group">
+                        <label class="check-pill pass"><input type="radio" name="installType" value="ติดตั้ง"><span>ติดตั้ง</span></label>
+                        <label class="check-pill fail"><input type="radio" name="installType" value="รื้อถอน"><span>รื้อถอน</span></label>
+                    </div>
+                </div>
+
+                <!-- มีทางลาดหรือไม่ -->
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <label style="margin: 0; font-size: 0.85rem; font-weight: 600; min-width: 160px;">มีทางลาดหรือไม่</label>
+                        <div class="check-pill-group">
+                            <label class="check-pill pass"><input type="radio" name="useRamp" value="yes"><span>ใช่</span></label>
+                            <label class="check-pill fail"><input type="radio" name="useRamp" value="no"><span>ไม่ใช่</span></label>
+                        </div>
+                        <div id="ramp-width-field" style="display: none; align-items: center; gap: 0.4rem; border: 1.5px dashed rgba(0,0,0,0.15); border-radius: 8px; padding: 0.4rem 0.75rem;">
+                            <label style="margin: 0; font-size: 0.85rem;">ความกว้าง:</label>
+                            <input type="number" name="rampWidth" placeholder="0" min="0" step="any" inputmode="decimal" autocomplete="off" style="width: 80px; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.82rem; border-radius: 6px;">
+                            <span style="font-size: 0.82rem; color: #888;">ม.</span>
+                        </div>
+                    </div>
+
+                    <!-- มีลิฟต์หรือไม่ -->
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <label style="margin: 0; font-size: 0.85rem; font-weight: 600; min-width: 160px;">มีลิฟต์หรือไม่</label>
+                        <div class="check-pill-group">
+                            <label class="check-pill pass"><input type="radio" name="useElevator" value="yes"><span>ใช่</span></label>
+                            <label class="check-pill fail"><input type="radio" name="useElevator" value="no"><span>ไม่ใช่</span></label>
+                        </div>
+                        <div id="elevator-detail-fields" style="display: none; align-items: center; gap: 0.5rem; flex-wrap: wrap; border: 1.5px dashed rgba(0,0,0,0.15); border-radius: 8px; padding: 0.4rem 0.75rem;">
+                            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                <label style="margin: 0; font-size: 0.85rem;">น้ำหนักรับได้:</label>
+                                <input type="number" name="elevatorCapacity" placeholder="0" min="0" step="any" inputmode="decimal" autocomplete="off" style="width: 80px; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.82rem; border-radius: 6px;">
+                                <span style="font-size: 0.82rem; color: #888;">kg</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                <label style="margin: 0; font-size: 0.85rem;">ขนาดประตู:</label>
+                                <input type="number" name="elevatorDoorWidth" placeholder="กว้าง" min="0" step="any" inputmode="decimal" autocomplete="off" style="width: 65px; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.82rem; border-radius: 6px;">
+                                <span style="font-size: 0.82rem; color: #888;">×</span>
+                                <input type="number" name="elevatorDoorHeight" placeholder="สูง" min="0" step="any" inputmode="decimal" autocomplete="off" style="width: 65px; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.82rem; border-radius: 6px;">
+                                <span style="font-size: 0.82rem; color: #888;">ม.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ช่องทางเดิน -->
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <label style="margin: 0; font-size: 0.85rem; font-weight: 600; min-width: 160px;">ช่องทางเดิน (ที่แคบที่สุด)</label>
+                        <div style="display: flex; align-items: center; gap: 0.4rem;">
+                            <label style="margin: 0; font-size: 0.85rem;">ความกว้าง:</label>
+                            <input type="number" name="walkwayWidth" placeholder="0" min="0" step="any" inputmode="decimal" autocomplete="off" style="width: 70px; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.82rem; border-radius: 6px;">
+                            <span style="font-size: 0.82rem; color: #888;">ม.</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.4rem;">
+                            <label style="margin: 0; font-size: 0.85rem;">ความสูง:</label>
+                            <input type="number" name="walkwayHeight" placeholder="0" min="0" step="any" inputmode="decimal" autocomplete="off" style="width: 70px; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.82rem; border-radius: 6px;">
+                            <span style="font-size: 0.82rem; color: #888;">ม.</span>
+                        </div>
+                    </div>
+
+                    <!-- ประตูที่ต้องผ่าน -->
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <label style="margin: 0; font-size: 0.85rem; font-weight: 600; min-width: 160px;">มีประตูที่ต้องผ่านกี่ประตู</label>
+                        <div style="display: flex; align-items: center; gap: 0.4rem;">
+                            <button type="button" id="btn-door-minus" style="width:28px; height:28px; border-radius:50%; border:none; background:#ef4444; color:#fff; cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-minus" style="font-size:0.7rem;"></i></button>
+                            <span id="install-door-count-display" style="font-size:0.9rem; font-weight:600; min-width:24px; text-align:center;">0</span>
+                            <button type="button" id="btn-door-plus" style="width:28px; height:28px; border-radius:50%; border:none; background:#22c55e; color:#fff; cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-plus" style="font-size:0.7rem;"></i></button>
+                        </div>
+                        <input type="hidden" name="doorCount" id="install-door-count" value="0">
+                        <span style="font-size: 0.82rem; color: #888;">ประตู</span>
+                    </div>
+                    <div id="install-door-sizes" style="display: flex; flex-direction: column; gap: 0.4rem; border: 1.5px dashed rgba(0,0,0,0.15); border-radius: 8px; padding: 0.5rem 0.75rem;"></div>
+
+                    <!-- ระบบไฟฟ้า -->
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <label style="margin: 0; font-size: 0.85rem; font-weight: 600; min-width: 160px;">ต้องเดินสายไฟหรือไม่</label>
+                        <div class="check-pill-group">
+                            <label class="check-pill pass"><input type="radio" name="needWiring" value="yes"><span>ใช่</span></label>
+                            <label class="check-pill fail"><input type="radio" name="needWiring" value="no"><span>ไม่ใช่</span></label>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <label style="margin: 0; font-size: 0.85rem; font-weight: 600; min-width: 160px;">ต้องเดิน Power Plug หรือไม่</label>
+                        <div class="check-pill-group">
+                            <label class="check-pill pass"><input type="radio" name="needPowerPlug" value="yes"><span>ใช่</span></label>
+                            <label class="check-pill fail"><input type="radio" name="needPowerPlug" value="no"><span>ไม่ใช่</span></label>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <label style="margin: 0; font-size: 0.85rem; font-weight: 600; min-width: 160px;">จากตำแหน่งตู้ไฟไปยังเครื่อง</label>
+                        <input type="number" name="wireDistance" placeholder="0" min="0" step="any" inputmode="decimal" autocomplete="off" style="width: 80px; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.82rem; border-radius: 6px;">
+                        <span style="font-size: 0.82rem; color: #888;">ม.</span>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <label style="margin: 0; font-size: 0.85rem; font-weight: 600; min-width: 160px;">เจาะกำแพงหรือไม่</label>
+                        <div class="check-pill-group">
+                            <label class="check-pill pass"><input type="radio" name="needDrillWall" value="yes"><span>ใช่</span></label>
+                            <label class="check-pill fail"><input type="radio" name="needDrillWall" value="no"><span>ไม่ใช่</span></label>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <label style="margin: 0; font-size: 0.85rem; font-weight: 600; min-width: 160px;">สายไฟเดินลอดฝ้าหรือไม่</label>
+                        <div class="check-pill-group">
+                            <label class="check-pill pass"><input type="radio" name="wireThroughCeiling" value="yes"><span>ใช่</span></label>
+                            <label class="check-pill fail"><input type="radio" name="wireThroughCeiling" value="no"><span>ไม่ใช่</span></label>
+                        </div>
+                    </div>
+
+                    <!-- กรณีใช้ช่างโรงพยาบาล -->
+                    <div style="margin-top: 0.5rem; padding-top: 0.75rem; border-top: 1px solid rgba(0,0,0,0.06);">
+                        <label style="margin: 0 0 0.5rem 0; font-size: 0.85rem; font-weight: 600; display: block;">กรณีใช้ช่างโรงพยาบาล</label>
+                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 180px;">
+                                <label style="margin: 0; font-size: 0.85rem; white-space: nowrap;">ชื่อ-สกุล:</label>
+                                <input type="text" name="hospitalTechName" placeholder="ชื่อ-สกุล" autocomplete="off" style="flex: 1; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.82rem; border-radius: 6px;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.4rem; min-width: 160px;">
+                                <label style="margin: 0; font-size: 0.85rem; white-space: nowrap;">เบอร์โทร:</label>
+                                <input type="tel" name="hospitalTechPhone" placeholder="0xx-xxx-xxxx" maxlength="12" inputmode="numeric" autocomplete="off" style="width: 130px; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.82rem; border-radius: 6px;">
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1649,6 +1807,14 @@
                 <i class="fa-solid fa-clipboard-check"></i> ข้อมูลตรวจสอบ (Inspection Data)
             </div>
             <div id="detail-inspection-content" style="font-size: 0.88rem; line-height: 1.7; padding: 0.75rem 0;"></div>
+        </div>
+
+        <!-- Install/Uninstall Section -->
+        <div class="case-detail-section" id="detail-install-section" style="display: none; margin-bottom: 1.25rem;">
+            <div class="case-detail-section-header">
+                <i class="fa-solid fa-truck-ramp-box"></i> ข้อมูลสถานที่การติดตั้ง/รื้อถอน
+            </div>
+            <div id="detail-install-content" style="font-size: 0.88rem; line-height: 1.7; padding: 0.75rem 0;"></div>
         </div>
 
         <!-- Customer Section -->
