@@ -7489,11 +7489,11 @@ input::placeholder, textarea::placeholder {
     color: #ffffff;
 }
 
-/* Neutral check-pill (for inspection checklist) */
+/* Neutral check-pill (for pending/waiting) */
 .check-pill.neutral:has(input:checked) {
-    background: #111111;
+    background: #f59e0b;
     color: #ffffff;
-    border-color: #111111;
+    border-color: #f59e0b;
 }
 
 .check-pill.neutral:has(input:checked) span {

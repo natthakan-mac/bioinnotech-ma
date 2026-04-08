@@ -1188,25 +1188,6 @@
             <div class="form-group" style="display: flex; flex-direction: column;">
                 <label><i class="fa-solid fa-align-left"></i> คำอธิบายงาน (Description)</label>
                 <textarea name="objective" id="log-description" placeholder="รายละเอียดงาน..." rows="2" style="min-height: 60px;" required></textarea>
-                
-                <label style="margin-top: 1rem;">แนบไฟล์/รูปภาพ <span
-                        style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">(รองรับรูปภาพและไฟล์เอกสาร
-                        : สูงสุด 10MB ต่อไฟล์)</span></label>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <div style="display: flex; align-items: center; gap: 10px; width: fit-content;">
-                        <input type="file" id="description-attachment-input" multiple
-                            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt" style="display: none;">
-                        <button type="button" class="btn-secondary" id="btn-attach-description"
-                            style="cursor: pointer; display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.8rem; width: fit-content;">
-                            <i class="fa-solid fa-paperclip"></i> <span>เลือกไฟล์</span>
-                        </button>
-                        <span id="description-attachment-count"
-                            style="font-size: 0.9rem; color: var(--text-muted);">ไม่ได้เลือกไฟล์</span>
-                    </div>
-
-                    <div id="description-attachments-preview"
-                        style="display: flex; gap: 10px; padding: 10px; border: 2px dashed rgba(0,0,0,0.15); border-radius: 8px; height: 120px; background: rgba(0,0,0,0.02); overflow-x: auto; overflow-y: hidden;"></div>
-                </div>
             </div>
 
             <!-- Line Items -->
@@ -1498,10 +1479,182 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- แนวทางการดำเนินงาน -->
+                    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(0,0,0,0.06);">
+                        <label style="margin: 0 0 0.4rem 0; font-size: 0.85rem; font-weight: 600; display: block;">
+                            <i class="fa-solid fa-route"></i> แนวทางการดำเนินงาน
+                        </label>
+                        <textarea name="actionPlan" placeholder="ระบุแนวทางการดำเนินงาน..." rows="3" style="width: 100%; min-height: 60px; padding: 0.4rem; font-size: 0.82rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; resize: vertical;"></textarea>
+                    </div>
+
+                    <!-- ตรวจสอบรายละเอียดก่อนส่งมอบ -->
+                    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(0,0,0,0.06);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                            <label style="margin: 0; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
+                                <i class="fa-solid fa-clipboard-check"></i> ตรวจสอบรายละเอียดก่อนส่งมอบ
+                            </label>
+                            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                <label style="margin: 0; font-size: 0.82rem; color: #666; white-space: nowrap;">วันที่ตรวจ:</label>
+                                <input type="datetime-local" name="precheckDate" style="height: 30px; padding: 0.25rem 0.4rem; font-size: 0.82rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; min-width: 220px; flex-shrink: 0;">1. ระบบไฟฟ้าภายในเครื่อง</span>
+                                <div class="check-pill-group" style="flex-shrink: 0;">
+                                    <label class="check-pill pass"><input type="radio" name="precheck_electrical" value="pass"><span>ผ่าน</span></label>
+                                    <label class="check-pill neutral"><input type="radio" name="precheck_electrical" value="pending" checked><span>รอตรวจ</span></label>
+                                    <label class="check-pill fail"><input type="radio" name="precheck_electrical" value="fail"><span>ไม่ผ่าน</span></label>
+                                </div>
+                                <input type="text" name="precheck_electrical_note" placeholder="หมายเหตุ" autocomplete="off" style="flex: 1; min-width: 100px; height: 28px; padding: 0.2rem 0.4rem; font-size: 0.78rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; min-width: 220px; flex-shrink: 0;">2. ระบบการเดินสายไฟ</span>
+                                <div class="check-pill-group" style="flex-shrink: 0;">
+                                    <label class="check-pill pass"><input type="radio" name="precheck_wiring" value="pass"><span>ผ่าน</span></label>
+                                    <label class="check-pill neutral"><input type="radio" name="precheck_wiring" value="pending" checked><span>รอตรวจ</span></label>
+                                    <label class="check-pill fail"><input type="radio" name="precheck_wiring" value="fail"><span>ไม่ผ่าน</span></label>
+                                </div>
+                                <input type="text" name="precheck_wiring_note" placeholder="หมายเหตุ" autocomplete="off" style="flex: 1; min-width: 100px; height: 28px; padding: 0.2rem 0.4rem; font-size: 0.78rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; min-width: 220px; flex-shrink: 0;">3. ระบบสายดิน</span>
+                                <div class="check-pill-group" style="flex-shrink: 0;">
+                                    <label class="check-pill pass"><input type="radio" name="precheck_grounding" value="pass"><span>ผ่าน</span></label>
+                                    <label class="check-pill neutral"><input type="radio" name="precheck_grounding" value="pending" checked><span>รอตรวจ</span></label>
+                                    <label class="check-pill fail"><input type="radio" name="precheck_grounding" value="fail"><span>ไม่ผ่าน</span></label>
+                                </div>
+                                <input type="text" name="precheck_grounding_note" placeholder="หมายเหตุ" autocomplete="off" style="flex: 1; min-width: 100px; height: 28px; padding: 0.2rem 0.4rem; font-size: 0.78rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; min-width: 220px; flex-shrink: 0;">4. ระบบประตู, มอเตอร์</span>
+                                <div class="check-pill-group" style="flex-shrink: 0;">
+                                    <label class="check-pill pass"><input type="radio" name="precheck_doorMotor" value="pass"><span>ผ่าน</span></label>
+                                    <label class="check-pill neutral"><input type="radio" name="precheck_doorMotor" value="pending" checked><span>รอตรวจ</span></label>
+                                    <label class="check-pill fail"><input type="radio" name="precheck_doorMotor" value="fail"><span>ไม่ผ่าน</span></label>
+                                </div>
+                                <input type="text" name="precheck_doorMotor_note" placeholder="หมายเหตุ" autocomplete="off" style="flex: 1; min-width: 100px; height: 28px; padding: 0.2rem 0.4rem; font-size: 0.78rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; min-width: 220px; flex-shrink: 0;">5. ระบบข้อต่อ</span>
+                                <div class="check-pill-group" style="flex-shrink: 0;">
+                                    <label class="check-pill pass"><input type="radio" name="precheck_connectors" value="pass"><span>ผ่าน</span></label>
+                                    <label class="check-pill neutral"><input type="radio" name="precheck_connectors" value="pending" checked><span>รอตรวจ</span></label>
+                                    <label class="check-pill fail"><input type="radio" name="precheck_connectors" value="fail"><span>ไม่ผ่าน</span></label>
+                                </div>
+                                <input type="text" name="precheck_connectors_note" placeholder="หมายเหตุ" autocomplete="off" style="flex: 1; min-width: 100px; height: 28px; padding: 0.2rem 0.4rem; font-size: 0.78rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; min-width: 220px; flex-shrink: 0;">6. ระบบปั้มสุญญากาศ</span>
+                                <div class="check-pill-group" style="flex-shrink: 0;">
+                                    <label class="check-pill pass"><input type="radio" name="precheck_vacuumPump" value="pass"><span>ผ่าน</span></label>
+                                    <label class="check-pill neutral"><input type="radio" name="precheck_vacuumPump" value="pending" checked><span>รอตรวจ</span></label>
+                                    <label class="check-pill fail"><input type="radio" name="precheck_vacuumPump" value="fail"><span>ไม่ผ่าน</span></label>
+                                </div>
+                                <input type="text" name="precheck_vacuumPump_note" placeholder="หมายเหตุ" autocomplete="off" style="flex: 1; min-width: 100px; height: 28px; padding: 0.2rem 0.4rem; font-size: 0.78rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; min-width: 220px; flex-shrink: 0;">7. การตรวจการรั่วไหล</span>
+                                <div class="check-pill-group" style="flex-shrink: 0;">
+                                    <label class="check-pill pass"><input type="radio" name="precheck_leakTest" value="pass"><span>ผ่าน</span></label>
+                                    <label class="check-pill neutral"><input type="radio" name="precheck_leakTest" value="pending" checked><span>รอตรวจ</span></label>
+                                    <label class="check-pill fail"><input type="radio" name="precheck_leakTest" value="fail"><span>ไม่ผ่าน</span></label>
+                                </div>
+                                <input type="text" name="precheck_leakTest_note" placeholder="หมายเหตุ" autocomplete="off" style="flex: 1; min-width: 100px; height: 28px; padding: 0.2rem 0.4rem; font-size: 0.78rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; min-width: 220px; flex-shrink: 0;">8. การตรวจปริมาณน้ำยาที่ฉีด</span>
+                                <div class="check-pill-group" style="flex-shrink: 0;">
+                                    <label class="check-pill pass"><input type="radio" name="precheck_chemical" value="pass"><span>ผ่าน</span></label>
+                                    <label class="check-pill neutral"><input type="radio" name="precheck_chemical" value="pending" checked><span>รอตรวจ</span></label>
+                                    <label class="check-pill fail"><input type="radio" name="precheck_chemical" value="fail"><span>ไม่ผ่าน</span></label>
+                                </div>
+                                <input type="text" name="precheck_chemical_note" placeholder="หมายเหตุ" autocomplete="off" style="flex: 1; min-width: 100px; height: 28px; padding: 0.2rem 0.4rem; font-size: 0.78rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; min-width: 220px; flex-shrink: 0;">9. ระบบ Sensor ต่างๆ</span>
+                                <div class="check-pill-group" style="flex-shrink: 0;">
+                                    <label class="check-pill pass"><input type="radio" name="precheck_sensors" value="pass"><span>ผ่าน</span></label>
+                                    <label class="check-pill neutral"><input type="radio" name="precheck_sensors" value="pending" checked><span>รอตรวจ</span></label>
+                                    <label class="check-pill fail"><input type="radio" name="precheck_sensors" value="fail"><span>ไม่ผ่าน</span></label>
+                                </div>
+                                <input type="text" name="precheck_sensors_note" placeholder="หมายเหตุ" autocomplete="off" style="flex: 1; min-width: 100px; height: 28px; padding: 0.2rem 0.4rem; font-size: 0.78rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; min-width: 220px; flex-shrink: 0;">10. การตรวจ Sterilize ด้วย CI, CI PCD</span>
+                                <div class="check-pill-group" style="flex-shrink: 0;">
+                                    <label class="check-pill pass"><input type="radio" name="precheck_sterilize" value="pass"><span>ผ่าน</span></label>
+                                    <label class="check-pill neutral"><input type="radio" name="precheck_sterilize" value="pending" checked><span>รอตรวจ</span></label>
+                                    <label class="check-pill fail"><input type="radio" name="precheck_sterilize" value="fail"><span>ไม่ผ่าน</span></label>
+                                </div>
+                                <input type="text" name="precheck_sterilize_note" placeholder="หมายเหตุ" autocomplete="off" style="flex: 1; min-width: 100px; height: 28px; padding: 0.2rem 0.4rem; font-size: 0.78rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; min-width: 220px; flex-shrink: 0;">11. การตรวจปริมาณแก๊สตกค้าง</span>
+                                <div class="check-pill-group" style="flex-shrink: 0;">
+                                    <label class="check-pill pass"><input type="radio" name="precheck_gasResidual" value="pass"><span>ผ่าน</span></label>
+                                    <label class="check-pill neutral"><input type="radio" name="precheck_gasResidual" value="pending" checked><span>รอตรวจ</span></label>
+                                    <label class="check-pill fail"><input type="radio" name="precheck_gasResidual" value="fail"><span>ไม่ผ่าน</span></label>
+                                </div>
+                                <input type="text" name="precheck_gasResidual_note" placeholder="หมายเหตุ" autocomplete="off" style="flex: 1; min-width: 100px; height: 28px; padding: 0.2rem 0.4rem; font-size: 0.78rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; min-width: 220px; flex-shrink: 0;">12. การตรวจความเรียบร้อยภายในเครื่อง</span>
+                                <div class="check-pill-group" style="flex-shrink: 0;">
+                                    <label class="check-pill pass"><input type="radio" name="precheck_interior" value="pass"><span>ผ่าน</span></label>
+                                    <label class="check-pill neutral"><input type="radio" name="precheck_interior" value="pending" checked><span>รอตรวจ</span></label>
+                                    <label class="check-pill fail"><input type="radio" name="precheck_interior" value="fail"><span>ไม่ผ่าน</span></label>
+                                </div>
+                                <input type="text" name="precheck_interior_note" placeholder="หมายเหตุ" autocomplete="off" style="flex: 1; min-width: 100px; height: 28px; padding: 0.2rem 0.4rem; font-size: 0.78rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; min-width: 220px; flex-shrink: 0;">13. การตรวจความเรียบร้อยภายนอกเครื่อง</span>
+                                <div class="check-pill-group" style="flex-shrink: 0;">
+                                    <label class="check-pill pass"><input type="radio" name="precheck_exterior" value="pass"><span>ผ่าน</span></label>
+                                    <label class="check-pill neutral"><input type="radio" name="precheck_exterior" value="pending" checked><span>รอตรวจ</span></label>
+                                    <label class="check-pill fail"><input type="radio" name="precheck_exterior" value="fail"><span>ไม่ผ่าน</span></label>
+                                </div>
+                                <input type="text" name="precheck_exterior_note" placeholder="หมายเหตุ" autocomplete="off" style="flex: 1; min-width: 100px; height: 28px; padding: 0.2rem 0.4rem; font-size: 0.78rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- รูปถ่ายก่อนติดตั้ง/รื้อถอน -->
+                    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(0,0,0,0.06);">
+                        <label style="margin: 0 0 0.5rem 0; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
+                            <i class="fa-solid fa-camera-retro"></i> รูปถ่ายก่อนติดตั้ง/รื้อถอน (Pre-installation/removal Photos)
+                        </label>
+                        <p style="font-size: 0.78rem; color: #888; margin: 0 0 0.5rem;">สภาพพื้นที่ก่อนดำเนินการ, ทางเข้า, จุดติดตั้ง, ระบบไฟฟ้าเดิม อาคาร, จุดเอาเครื่องลง, ทางลาด, ลิฟท์, ทางเดิน, ประตู, จุดวางเครื่อง, ตู้ไฟ, ทางเดินสายไฟ, พัดลมระบายอากาศ ฯลฯ</p>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.5rem;">
+                            <input type="file" id="pre-install-photo-input" multiple accept="image/*" style="display: none;">
+                            <button type="button" id="btn-pre-install-photo" style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.8rem; background: #f59e0b; color: #fff; border: none; border-radius: 6px; font-size: 0.82rem; font-weight: 500;">
+                                <i class="fa-solid fa-plus"></i> เพิ่มรูปภาพ
+                            </button>
+                            <span id="pre-install-photo-count" style="font-size: 0.82rem; color: #888;">ไม่ได้เลือกไฟล์</span>
+                        </div>
+                        <div id="pre-install-photo-preview" style="display: flex; gap: 8px; flex-wrap: wrap; min-height: 60px; padding: 8px; border: 2px dashed rgba(0,0,0,0.1); border-radius: 8px; background: rgba(0,0,0,0.01);"></div>
+                        <input type="hidden" name="preInstallPhotosJSON" id="pre-install-photos-json">
+                    </div>
+
+                    <!-- รูปถ่ายหลังติดตั้ง/รื้อถอน -->
+                    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(0,0,0,0.06);">
+                        <label style="margin: 0 0 0.5rem 0; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
+                            <i class="fa-solid fa-camera"></i> รูปถ่ายประกอบการติดตั้ง/รื้อถอน (Post-installation/removal Photos)
+                        </label>
+                        <p style="font-size: 0.78rem; color: #888; margin: 0 0 0.5rem;">รูปภาพหลังดำเนินการเสร็จสิ้น</p>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.5rem;">
+                            <input type="file" id="install-photo-input" multiple accept="image/*" style="display: none;">
+                            <button type="button" id="btn-install-photo" style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.8rem; background: #38bdf8; color: #fff; border: none; border-radius: 6px; font-size: 0.82rem; font-weight: 500;">
+                                <i class="fa-solid fa-plus"></i> เพิ่มรูปภาพ
+                            </button>
+                            <span id="install-photo-count" style="font-size: 0.82rem; color: #888;">ไม่ได้เลือกไฟล์</span>
+                        </div>
+                        <div id="install-photo-preview" style="display: flex; gap: 8px; flex-wrap: wrap; min-height: 60px; padding: 8px; border: 2px dashed rgba(0,0,0,0.1); border-radius: 8px; background: rgba(0,0,0,0.01);"></div>
+                        <input type="hidden" name="installPhotosJSON" id="install-photos-json">
+                    </div>
                 </div>
             </div>
-
-            <!-- Line Items (Cost) -->
                 <label><i class="fa-solid fa-list"></i> รายการและค่าใช้จ่าย (Items & Cost)</label>
                 <div id="line-items-container"></div>
                 <div id="line-items-footer-placeholder"></div>

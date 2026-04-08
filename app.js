@@ -2765,6 +2765,111 @@ document.addEventListener('click', function(e) {
     if (e.target.closest('#btn-door-minus')) updateDoorCount(-1);
 });
 
+// --- Install Photo Upload Logic ---
+let installPhotoPending = [];
+let preInstallPhotoPending = [];
+
+// Pre-install photos
+const btnPreInstallPhoto = document.getElementById('btn-pre-install-photo');
+const preInstallPhotoInput = document.getElementById('pre-install-photo-input');
+if (btnPreInstallPhoto && preInstallPhotoInput) {
+    btnPreInstallPhoto.addEventListener('click', function() { preInstallPhotoInput.click(); });
+    preInstallPhotoInput.addEventListener('change', function(e) {
+        const files = Array.from(e.target.files);
+        preInstallPhotoPending.push(...files);
+        renderPreInstallPhotoPreview();
+        e.target.value = '';
+    });
+}
+
+function renderPreInstallPhotoPreview() {
+    const container = document.getElementById('pre-install-photo-preview');
+    const countEl = document.getElementById('pre-install-photo-count');
+    if (!container) return;
+    container.innerHTML = '';
+    if (countEl) countEl.textContent = preInstallPhotoPending.length > 0 ? preInstallPhotoPending.length + ' ไฟล์' : 'ไม่ได้เลือกไฟล์';
+    preInstallPhotoPending.forEach(function(file, idx) {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:relative; width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1);';
+        const img = document.createElement('img');
+        img.style.cssText = 'width:100%; height:100%; object-fit:cover;';
+        if (file instanceof File) { img.src = URL.createObjectURL(file); } else if (file.url) { img.src = file.url; }
+        wrapper.appendChild(img);
+        const removeBtn = document.createElement('div');
+        removeBtn.innerHTML = '&times;';
+        removeBtn.style.cssText = 'position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;';
+        removeBtn.onclick = function() { preInstallPhotoPending.splice(idx, 1); renderPreInstallPhotoPreview(); };
+        wrapper.appendChild(removeBtn);
+        container.appendChild(wrapper);
+    });
+}
+
+window.preInstallPhotoPending = preInstallPhotoPending;
+window.renderPreInstallPhotoPreview = renderPreInstallPhotoPreview;
+
+// Helper to upload photo arrays
+async function uploadPhotoArray(photos, logId, prefix) {
+    var urls = [];
+    for (var i = 0; i < photos.length; i++) {
+        var pFile = photos[i];
+        if (pFile instanceof File) {
+            var pRef = ref(storage, 'logs/' + prefix + '_' + logId + '_' + Date.now() + '_' + pFile.name);
+            var pSnap = await uploadBytes(pRef, pFile);
+            var pUrl = await getDownloadURL(pSnap.ref);
+            urls.push({ url: pUrl, name: pFile.name, type: pFile.type });
+        } else if (pFile.url) {
+            urls.push(pFile);
+        }
+    }
+    return urls;
+}
+
+// Post-install photos
+
+const btnInstallPhoto = document.getElementById('btn-install-photo');
+const installPhotoInput = document.getElementById('install-photo-input');
+if (btnInstallPhoto && installPhotoInput) {
+    btnInstallPhoto.addEventListener('click', function() { installPhotoInput.click(); });
+    installPhotoInput.addEventListener('change', function(e) {
+        const files = Array.from(e.target.files);
+        installPhotoPending.push(...files);
+        renderInstallPhotoPreview();
+        e.target.value = '';
+    });
+}
+
+function renderInstallPhotoPreview() {
+    const container = document.getElementById('install-photo-preview');
+    const countEl = document.getElementById('install-photo-count');
+    if (!container) return;
+    container.innerHTML = '';
+    if (countEl) countEl.textContent = installPhotoPending.length > 0 ? installPhotoPending.length + ' ไฟล์' : 'ไม่ได้เลือกไฟล์';
+    installPhotoPending.forEach(function(file, idx) {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:relative; width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1);';
+        const img = document.createElement('img');
+        img.style.cssText = 'width:100%; height:100%; object-fit:cover;';
+        if (file instanceof File) {
+            img.src = URL.createObjectURL(file);
+        } else if (file.url) {
+            img.src = file.url;
+        }
+        wrapper.appendChild(img);
+        const removeBtn = document.createElement('div');
+        removeBtn.innerHTML = '&times;';
+        removeBtn.style.cssText = 'position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;';
+        removeBtn.onclick = function() {
+            installPhotoPending.splice(idx, 1);
+            renderInstallPhotoPreview();
+        };
+        wrapper.appendChild(removeBtn);
+        container.appendChild(wrapper);
+    });
+}
+
+window.installPhotoPending = installPhotoPending;
+window.renderInstallPhotoPreview = renderInstallPhotoPreview;
+
 // Site Attachment Input Listener
 const siteAttachmentInput = document.getElementById("site-attachment-input");
 const btnSiteAttachment = document.getElementById("btn-site-attachment");
@@ -3583,6 +3688,35 @@ async function handleLogMaintenance(e) {
             hospitalTechName: formData.get("hospitalTechName") || "",
             hospitalTechPhone: formData.get("hospitalTechPhone") || "",
             installType: formData.get("installType") || "",
+            // Pre-delivery checklist
+            precheck_electrical: formData.get("precheck_electrical") || "",
+            precheck_electrical_note: formData.get("precheck_electrical_note") || "",
+            precheck_wiring: formData.get("precheck_wiring") || "",
+            precheck_wiring_note: formData.get("precheck_wiring_note") || "",
+            precheck_grounding: formData.get("precheck_grounding") || "",
+            precheck_grounding_note: formData.get("precheck_grounding_note") || "",
+            precheck_doorMotor: formData.get("precheck_doorMotor") || "",
+            precheck_doorMotor_note: formData.get("precheck_doorMotor_note") || "",
+            precheck_connectors: formData.get("precheck_connectors") || "",
+            precheck_connectors_note: formData.get("precheck_connectors_note") || "",
+            precheck_vacuumPump: formData.get("precheck_vacuumPump") || "",
+            precheck_vacuumPump_note: formData.get("precheck_vacuumPump_note") || "",
+            precheck_leakTest: formData.get("precheck_leakTest") || "",
+            precheck_leakTest_note: formData.get("precheck_leakTest_note") || "",
+            precheck_chemical: formData.get("precheck_chemical") || "",
+            precheck_chemical_note: formData.get("precheck_chemical_note") || "",
+            precheck_sensors: formData.get("precheck_sensors") || "",
+            precheck_sensors_note: formData.get("precheck_sensors_note") || "",
+            precheck_sterilize: formData.get("precheck_sterilize") || "",
+            precheck_sterilize_note: formData.get("precheck_sterilize_note") || "",
+            precheck_gasResidual: formData.get("precheck_gasResidual") || "",
+            precheck_gasResidual_note: formData.get("precheck_gasResidual_note") || "",
+            precheck_interior: formData.get("precheck_interior") || "",
+            precheck_interior_note: formData.get("precheck_interior_note") || "",
+            precheck_exterior: formData.get("precheck_exterior") || "",
+            precheck_exterior_note: formData.get("precheck_exterior_note") || "",
+            precheckDate: formData.get("precheckDate") || "",
+            actionPlan: formData.get("actionPlan") || "",
             // Inspection Checklist
             insp_exteriorCleaning: formData.get("insp_exteriorCleaning") || "",
             insp_interiorCleaning: formData.get("insp_interiorCleaning") || "",
@@ -3823,6 +3957,22 @@ async function handleLogMaintenance(e) {
             }
             
             await FirestoreService.updateLog(logId, logData);
+
+            // Upload install photos if any
+            if (installPhotoPending.length > 0 || preInstallPhotoPending.length > 0) {
+                try {
+                    var photoUpdate = {};
+                    if (installPhotoPending.length > 0) {
+                        photoUpdate.installPhotos = await uploadPhotoArray(installPhotoPending, logId, 'install');
+                        installPhotoPending = []; window.installPhotoPending = installPhotoPending;
+                    }
+                    if (preInstallPhotoPending.length > 0) {
+                        photoUpdate.preInstallPhotos = await uploadPhotoArray(preInstallPhotoPending, logId, 'preinstall');
+                        preInstallPhotoPending = []; window.preInstallPhotoPending = preInstallPhotoPending;
+                    }
+                    await FirestoreService.updateLog(logId, photoUpdate);
+                } catch(photoErr) { console.error('Photo upload failed:', photoErr); }
+            }
             
             console.log('[Change Detection] Changes detected:', changes.length, changes);
             
@@ -4101,6 +4251,22 @@ async function handleLogMaintenance(e) {
             }
             
             showToast("บันทึกการบำรุงรักษาสำเร็จ", "success");
+
+            // Upload install photos if any
+            if (installPhotoPending.length > 0 || preInstallPhotoPending.length > 0) {
+                try {
+                    var photoUpdate = {};
+                    if (installPhotoPending.length > 0) {
+                        photoUpdate.installPhotos = await uploadPhotoArray(installPhotoPending, newLogId, 'install');
+                        installPhotoPending = []; window.installPhotoPending = installPhotoPending;
+                    }
+                    if (preInstallPhotoPending.length > 0) {
+                        photoUpdate.preInstallPhotos = await uploadPhotoArray(preInstallPhotoPending, newLogId, 'preinstall');
+                        preInstallPhotoPending = []; window.preInstallPhotoPending = preInstallPhotoPending;
+                    }
+                    await FirestoreService.updateLog(newLogId, photoUpdate);
+                } catch(photoErr) { console.error('Photo upload failed:', photoErr); }
+            }
         }
 
         // Auto-create next cycle if Maintenance & newly Case Closed
@@ -4462,9 +4628,10 @@ function refreshAttachmentBeforePreviews() {
     // Parse Existing
     let existing = [];
     try {
-        const json = form.querySelector(
+        const jsonEl = form ? form.querySelector(
             'input[name="existingAttachmentsBeforeJSON"]',
-        ).value;
+        ) : null;
+        const json = jsonEl ? jsonEl.value : '';
         if (json) existing = JSON.parse(json);
     } catch (e) {
         console.error(e);
@@ -4529,9 +4696,10 @@ function refreshAttachmentAfterPreviews() {
     // Parse Existing
     let existing = [];
     try {
-        const json = form.querySelector(
+        const jsonEl = form ? form.querySelector(
             'input[name="existingAttachmentsAfterJSON"]',
-        ).value;
+        ) : null;
+        const json = jsonEl ? jsonEl.value : '';
         if (json) existing = JSON.parse(json);
     } catch (e) {
         console.error(e);
@@ -4540,11 +4708,11 @@ function refreshAttachmentAfterPreviews() {
     const allAttachments = [
         ...existing.map((i) => ({ ...i, _source: "existing" })),
         ...pendingUploadsAfter.map((file, idx) => ({
-            originalFile: file, // Keep reference for createObjectURL
+            originalFile: file,
             name: file.name,
             type: file.type,
             _source: "pending",
-            pendingIndex: idx, // Store original index for progress mapping
+            pendingIndex: idx,
         })),
     ];
 
@@ -5568,12 +5736,14 @@ function resetLogForm() {
     // Reset date inputs if needed, though form.reset() should handle basics
     const dateInput = form.querySelector('input[name="date"]');
     if (dateInput) {
-        // Set today's date as default
+        // Set today's date+time as default for datetime-local
         const today = new Date();
         const year = today.getFullYear();
         const month = String(today.getMonth() + 1).padStart(2, '0');
         const day = String(today.getDate()).padStart(2, '0');
-        dateInput.value = `${year}-${month}-${day}`;
+        const hours = String(today.getHours()).padStart(2, '0');
+        const mins = String(today.getMinutes()).padStart(2, '0');
+        dateInput.value = `${year}-${month}-${day}T${hours}:${mins}`;
     }
 
     // Reset line items — clear and add one blank row
@@ -5847,6 +6017,23 @@ function editLog(logId) {
         const r = form.querySelector('input[name="installType"][value="' + installTypeVal + '"]');
         if (r) r.checked = true;
     }
+    // Pre-delivery checklist
+    ['precheck_electrical','precheck_wiring','precheck_grounding','precheck_doorMotor','precheck_connectors','precheck_vacuumPump','precheck_leakTest','precheck_chemical','precheck_sensors','precheck_sterilize','precheck_gasResidual','precheck_interior','precheck_exterior'].forEach(function(key) {
+        if (log[key]) { const r = form.querySelector('input[name="' + key + '"][value="' + log[key] + '"]'); if (r) r.checked = true; }
+        if (log[key + '_note']) { const n = form.querySelector('input[name="' + key + '_note"]'); if (n) n.value = log[key + '_note']; }
+    });
+    // Precheck date
+    const precheckDateEl = form.querySelector('input[name="precheckDate"]');
+    if (precheckDateEl && log.precheckDate) precheckDateEl.value = log.precheckDate;
+    const actionPlanEl = form.querySelector('textarea[name="actionPlan"]');
+    if (actionPlanEl) actionPlanEl.value = log.actionPlan || '';
+    // Load existing install photos
+    installPhotoPending = (log.installPhotos || []).slice();
+    window.installPhotoPending = installPhotoPending;
+    renderInstallPhotoPreview();
+    preInstallPhotoPending = (log.preInstallPhotos || []).slice();
+    window.preInstallPhotoPending = preInstallPhotoPending;
+    renderPreInstallPhotoPreview();
 
     // Load existing customer signature
     const custSigHidden = document.getElementById("customer-signature-data");
@@ -9847,6 +10034,19 @@ async function exportCasePDF(logId) {
         customerTel = sig.signerTel || '-';
         customerPosition = sig.signerPosition || '-';
     }
+    // Fallback to customer signature from form if no Done status signature
+    if (!doneSignature && log.customerSignature) {
+        doneSignature = log.customerSignature;
+    }
+    if (doneName === '-' && log.customerName) {
+        doneName = log.customerName;
+    }
+    if (customerTel === '-' && log.customerPhone) {
+        customerTel = log.customerPhone;
+    }
+    if (customerPosition === '-' && log.customerPosition) {
+        customerPosition = log.customerPosition;
+    }
 
     // Get Case Closed closer info (from user profile)
     let closerName = '-';
@@ -9991,7 +10191,7 @@ async function exportCasePDF(logId) {
     if (isMaPdf) {
 
     if (hasElec) {
-        inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:10px;">'
+        inspHtml += '<div class="section-block"><table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:10px;">'
             + '<tr style="border-bottom:1px solid #eee;"><td colspan="4" style="padding:6px 8px; font-weight:700; font-size:11px;">ข้อมูลไฟฟ้า (Electrical)</td></tr>'
             + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;"><b>แรงดันไฟฟ้า</b></td>'
             + '<td style="text-align:center; padding:4px 8px;">R <b>' + (log.voltageL1||'___') + '</b> V (Load/Unload)</td>'
@@ -10001,11 +10201,11 @@ async function exportCasePDF(logId) {
             + '<td style="text-align:center; padding:4px 8px;">R <b>' + (log.currentL1||'___') + '</b> A (Load/Unload)</td>'
             + '<td style="text-align:center; padding:4px 8px;">S <b>' + (log.currentL2||'___') + '</b> A (Load/Unload)</td>'
             + '<td style="text-align:center; padding:4px 8px;">T <b>' + (log.currentL3||'___') + '</b> A (Load/Unload)</td></tr>'
-            + '</table>';
+            + '</table></div>';
     }
 
     if (hasPhys || hasPerf) {
-        inspHtml += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px;">';
+        inspHtml += '<div class="section-block"><div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px;">';
         if (hasPhys) {
             inspHtml += '<div style="border:1px solid #ddd; border-radius:6px; padding:8px; font-size:10px;">'
                 + '<div style="font-weight:700; margin-bottom:4px; font-size:11px;">ตรวจสอบทางกายภาพ (Physical Inspection)</div>'
@@ -10021,11 +10221,11 @@ async function exportCasePDF(logId) {
                 + '<div style="display:flex; justify-content:space-between; padding:3px 0;">ตรวจสอบการทะลุทะลวงด้วย CI PCD Type 5 ' + pdfBadge(log.ciPcdType5) + '</div>'
                 + '</div>';
         }
-        inspHtml += '</div>';
+        inspHtml += '</div></div>';
     }
 
     if (hasGas) {
-        inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:10px;">'
+        inspHtml += '<div class="section-block"><table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:10px;">'
             + '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px;">ตรวจสอบปริมาณแก๊ส (Gas Detection)</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 1</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 2</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 3</th></tr></thead>'
             + '<tbody>'
             + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;">บริเวณหน้าประตู</td><td style="text-align:center;">' + (log.gasDoor1||'-') + ' PPM</td><td style="text-align:center;">' + (log.gasDoor2||'-') + ' PPM</td><td style="text-align:center;">' + (log.gasDoor3||'-') + ' PPM</td></tr>'
@@ -10035,12 +10235,12 @@ async function exportCasePDF(logId) {
     }
 
     if (hasInspChecklist) {
-        inspHtml += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:0 20px; border:1px solid #ddd; border-radius:6px; padding:8px; margin-top:10px;">'
+        inspHtml += '<div class="section-block"><div style="display:grid; grid-template-columns:1fr 1fr; gap:0 20px; border:1px solid #ddd; border-radius:6px; padding:8px; margin-top:10px;">'
             + '<div style="grid-column: span 2; font-weight:700; font-size:11px; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid #eee;">รายการตรวจสอบ (Inspection Checklist)</div>';
         pdfInspItems.forEach(function(item) {
             inspHtml += '<div style="display:flex; justify-content:space-between; align-items:center; padding:3px 0; border-bottom:1px solid #f0f0f0; font-size:10px;"><span>' + item[1] + '</span>' + pdfInspBadge(log[item[0]]) + '</div>';
         });
-        inspHtml += '</div>';
+        inspHtml += '</div></div>';
     }
 
     } // end isMaPdf
@@ -10052,12 +10252,12 @@ async function exportCasePDF(logId) {
             var isYes = val === 'yes';
             return '<span style="background:' + (isYes ? '#22c55e' : '#ef4444') + '; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:35px; text-align:center; margin-right:6px;">' + (isYes ? 'ใช่' : 'ไม่ใช่') + '</span>';
         };
-        inspHtml += '<h2>ข้อมูลสถานที่การติดตั้ง/รื้อถอน</h2>';
+        inspHtml += '<div class="section-block"><h2>ข้อมูลสถานที่การติดตั้ง/รื้อถอน</h2>';
         var pdfCell = function(label, value) {
             return '<div style="display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee; font-size:10px; min-height:22px;"><span style="font-weight:600; color:#555; white-space:nowrap;">' + label + '</span><span style="text-align:right;">' + value + '</span></div>';
         };
         inspHtml += '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px 16px; border:1px solid #ddd; border-radius:6px; padding:8px;">';
-        if (log.installType) inspHtml += pdfCell('ประเภทงาน', log.installType);
+        if (log.installType) inspHtml += '<div style="display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee; font-size:10px; min-height:22px;"><span style="font-weight:700; color:#333;">ประเภทงาน</span><span style="font-weight:700; color:#333;">' + log.installType + '</span></div>';
         inspHtml += pdfCell('มีทางลาด', pdfYesNo(log.useRamp) + (log.useRamp === 'yes' && log.rampWidth ? ' <span style="font-weight:600; color:#555;">กว้าง:</span> ' + log.rampWidth + ' ม.' : ''));
         inspHtml += pdfCell('มีลิฟต์', pdfYesNo(log.useElevator) + (log.useElevator === 'yes' ? ' <span style="font-weight:600; color:#555;">น้ำหนัก:</span> ' + (log.elevatorCapacity ? log.elevatorCapacity + ' kg' : '-') + ' <span style="font-weight:600; color:#555;">ประตู:</span> ' + (log.elevatorDoorWidth && log.elevatorDoorHeight ? log.elevatorDoorWidth + '×' + log.elevatorDoorHeight + ' ม.' : '-') : ''));
         inspHtml += pdfCell('ช่องทางเดิน (แคบสุด)', (log.walkwayWidth ? 'กว้าง ' + log.walkwayWidth + ' ม.' : '-') + ' / ' + (log.walkwayHeight ? 'สูง ' + log.walkwayHeight + ' ม.' : '-'));
@@ -10083,31 +10283,70 @@ async function exportCasePDF(logId) {
             }
             inspHtml += '</div>';
         }
-        // Photo checklist section
-        inspHtml += '<h2>กรณีย้ายเครื่องเดิม เดินพัดลมระบายอากาศ ฯลฯ</h2>';
-        inspHtml += '<div style="font-size:10px;">';
-        inspHtml += '<div style="margin-bottom:6px;">ให้ถ่ายรูปประกอบดังนี้ : อาคาร, จุดเอาเครื่องลง (จุดจอดรถ), ทางลาด, ลิฟท์ ประตูลิฟท์, ทางเดินนอกอาคาร, ทางเดินในอาคาร, ประตูทั้งหมด, จุดวางเครื่อง, ตู้ไฟ (เปิดตู้), ทางเดินสายไฟ, จุดติดพัดลมระบายอากาศ (ถ้ามี), จุดอื่นๆ ที่สำคัญ</div>';
-        // Display attached images in 2 columns
-        var installImages = [];
-        if (log.comments && log.comments.length > 0) {
-            log.comments.forEach(function(c) {
-                if (c.attachments && c.attachments.length > 0) {
-                    c.attachments.forEach(function(att) {
-                        if (att.type && att.type.startsWith('image/') && att.url) {
-                            installImages.push(att);
-                        }
-                    });
-                }
-            });
+        // ผลการปฎิบัติงาน section
+        inspHtml += '<div class="section-block">';
+        inspHtml += '<h2>ผลการปฎิบัติงาน</h2>';
+        inspHtml += '<div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:4px 16px; border:1px solid #ddd; border-radius:6px; padding:8px; font-size:10px;">';
+        var startDate = log.timeStart ? formatDateTimeDDMMYYYY(log.timeStart) : (log.date ? formatDateDDMMYYYY(log.date) : '-');
+        var endDate = log.timeEnd ? formatDateTimeDDMMYYYY(log.timeEnd) : '-';
+        var totalTime = '-';
+        if (log.timeStart && log.timeEnd) {
+            var msStart = new Date(log.timeStart).getTime();
+            var msEnd = new Date(log.timeEnd).getTime();
+            if (msEnd > msStart) {
+                var diff = msEnd - msStart;
+                var days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                var hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                var mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                totalTime = (days > 0 ? days + ' วัน ' : '') + hours + ' ชั่วโมง ' + mins + ' นาที';
+            }
         }
-        if (installImages.length > 0) {
-            inspHtml += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;">';
-            installImages.forEach(function(img) {
-                inspHtml += '<div style="border:1px solid #eee; border-radius:4px; overflow:hidden; aspect-ratio:4/3;"><img src="' + img.url + '" style="width:100%; height:100%; display:block; object-fit:cover;"></div>';
-            });
-            inspHtml += '</div>';
+        var resultCell = function(label, value) {
+            return '<div style="display:flex; flex-direction:column; padding:4px 0;"><span style="font-weight:600; color:#555; font-size:9px;">' + label + '</span><span style="font-size:10px;">' + value + '</span></div>';
+        };
+        inspHtml += resultCell('วันเวลาเริ่ม', startDate);
+        inspHtml += resultCell('วันเวลาสิ้นสุด', endDate);
+        inspHtml += resultCell('สถานะ', statusText);
+        inspHtml += resultCell('ระยะเวลารวม', totalTime);
+        inspHtml += '</div>';
+        if (log.actionPlan) {
+            inspHtml += '<div style="margin-top:6px; font-size:10px;"><span style="font-weight:600; color:#555;">แนวทางการดำเนินงาน:</span><div style="padding:4px 8px; border:1px solid #ddd; border-radius:4px; margin-top:2px; white-space:pre-wrap;">' + log.actionPlan + '</div></div>';
         }
         inspHtml += '</div>';
+
+        // ตรวจสอบรายละเอียดก่อนส่งมอบ section
+        var precheckItems = [
+            ['precheck_electrical', 'ระบบไฟฟ้าภายในเครื่อง'],
+            ['precheck_wiring', 'ระบบการเดินสายไฟ'],
+            ['precheck_grounding', 'ระบบสายดิน'],
+            ['precheck_doorMotor', 'ระบบประตู, มอเตอร์'],
+            ['precheck_connectors', 'ระบบข้อต่อ'],
+            ['precheck_vacuumPump', 'ระบบปั้มสุญญากาศ'],
+            ['precheck_leakTest', 'การตรวจการรั่วไหล'],
+            ['precheck_chemical', 'การตรวจปริมาณน้ำยาที่ฉีด'],
+            ['precheck_sensors', 'ระบบ Sensor ต่างๆ'],
+            ['precheck_sterilize', 'การตรวจ Sterilize ด้วย CI, CI PCD'],
+            ['precheck_gasResidual', 'การตรวจปริมาณแก๊สตกค้าง'],
+            ['precheck_interior', 'การตรวจความเรียบร้อยภายในเครื่อง'],
+            ['precheck_exterior', 'การตรวจความเรียบร้อยภายนอกเครื่อง']
+        ];
+        var precheckBadge = function(val) {
+            if (!val || val === 'pending') return '<span style="background:#f59e0b; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">รอตรวจ</span>';
+            if (val === 'pass') return '<span style="background:#22c55e; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ผ่าน</span>';
+            return '<span style="background:#ef4444; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ไม่ผ่าน</span>';
+        };
+        var precheckDateStr = log.precheckDate ? formatDateTimeDDMMYYYY(log.precheckDate) : '-';
+        inspHtml += '<div class="section-block"><h2>ตรวจสอบรายละเอียดก่อนส่งมอบ <span style="font-weight:400; font-size:9px; color:#666; margin-left:8px;">วันที่ตรวจ: ' + precheckDateStr + '</span></h2>';
+        inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; width:100%;">';
+        inspHtml += '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px; width:25px;">ลำดับ</th><th style="padding:4px 8px; width:180px;">รายการตรวจสอบ</th><th style="padding:4px 8px; width:55px; text-align:center;">ผลตรวจ</th><th style="padding:4px 8px;">หมายเหตุ</th></tr></thead>';
+        inspHtml += '<tbody>';
+        precheckItems.forEach(function(item, idx) {
+            var val = log[item[0]] || 'pending';
+            var note = log[item[0] + '_note'] || '-';
+            inspHtml += '<tr style="border-bottom:1px solid #eee;"><td style="padding:3px 8px; text-align:center;">' + (idx + 1) + '</td><td style="padding:3px 8px;">' + item[1] + '</td><td style="padding:3px 8px; text-align:center;">' + precheckBadge(val) + '</td><td style="padding:3px 8px; color:#666;">' + note + '</td></tr>';
+        });
+        inspHtml += '</tbody></table></div>';
+
     }
 
     const html = `<!DOCTYPE html>
@@ -10116,38 +10355,45 @@ async function exportCasePDF(logId) {
 <style>
     @page { size: A4 portrait; margin: 0; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-    html { height: 100%; }
-    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 11px; color: #333; margin: 0; padding: 28mm 10mm 26mm 10mm; box-sizing: border-box; }
-    .fixed-header { position: fixed; top: 0; left: 0; right: 0; padding: 5mm 10mm 2mm; background: #fff; z-index: 10; }
-    .fixed-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 1mm 10mm 4mm; background: #fff; z-index: 10; }
-    .page-header { display: flex; align-items: center; gap: 12px; padding-bottom: 6px; }
+    html, body { margin: 0; padding: 0; }
+    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 11px; color: #333; box-sizing: border-box; }
+    .wrap-table { width: 100%; border-collapse: collapse; }
+    .wrap-table > thead > tr > td, .wrap-table > tfoot > tr > td, .wrap-table > tbody > tr > td { padding: 0; vertical-align: top; }
+    .wrap-table > thead > tr > td { padding: 0 10mm; }
+    .wrap-table > tfoot > tr > td { padding: 0 10mm; visibility: hidden; height: 24mm; }
+    .wrap-table > tbody > tr > td { padding: 0 10mm; }
+    .fixed-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 0 10mm 3mm; background: #fff; }
+    .hdr-space, .ftr-space { height: 0; }
+    .page-header { display: flex; align-items: center; gap: 12px; padding: 5mm 0 4px; }
     .page-header img { height: 45px; width: auto; }
     .page-header .company-info { flex: 1; text-align: right; font-size: 9px; color: #333; line-height: 1.6; }
-    .header-line { position: relative; height: 2px; background: #ddd !important; }
+    .header-line { position: relative; height: 2px; background: #ddd !important; margin-bottom: 6mm; }
     .header-line::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
     .header-dots { text-align: right; margin-top: -2px; margin-bottom: 4px; }
     .header-dots span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 3px; }
     h2 { font-size: 11px; color: #333; margin: 10px 0 4px; padding-bottom: 0; border-bottom: none; }
     .label { color: #333; font-weight: bold; }
-    table { width: 100%; border-collapse: collapse; }
+    table:not(.wrap-table) { width: 100%; border-collapse: collapse; }
     th { text-align: left; padding: 4px 6px; background: #f5f5f5 !important; border-bottom: 2px solid #ddd; font-size: 10px; }
     td { font-size: 10px; }
     .footer-line { position: relative; height: 2px; background: #ddd !important; }
     .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
-    .footer-text { font-size: 8px; color: #333; padding: 3px 0 0; display: flex; justify-content: space-between; }
+    .footer-text { font-size: 8px; color: #333; padding: 3px 0 4mm; display: flex; justify-content: space-between; }
     img { page-break-inside: avoid; }
     .no-break { page-break-inside: avoid; }
+    .section-block { }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
 </head><body>
 
-<div class="fixed-header">
-<div class="page-header">
-    <img src="/bioinnotech.svg" alt="Logo">
-    <div class="company-info">
-        <b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>
-        36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>
-        โทรศัพท์ 02-152-5405 เลขประจำตัวผู้เสียภาษี 0105557108369
+<table class="wrap-table">
+<thead><tr><td>
+    <div class="page-header">
+        <img src="/bioinnotech.svg" alt="Logo">
+        <div class="company-info">
+            <b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>
+            36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>
+            โทรศัพท์ 02-152-5405 เลขประจำตัวผู้เสียภาษี 0105557108369
         <div class="header-dots">
             <span style="background: #c5e1a5;"></span>
             <span style="background: #81c784;"></span>
@@ -10156,28 +10402,30 @@ async function exportCasePDF(logId) {
     </div>
 </div>
 <div class="header-line"></div>
-</div>
+</td></tr></thead>
 
-<div class="fixed-footer">
-<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
-    <div style="display:flex; align-items:center; gap:8px;">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`https://water-plant-maintenance.web.app?logId=${log.id}`)}" alt="QR" style="width:45px; height:45px;">
-        <div>
-            <div style="font-size:8px; font-weight:700; color:#333;">สแกนเพื่อดูรายละเอียดเคสฉบับเต็ม</div>
-            <div style="font-size:7px; color:#888;">Scan to view full case detail</div>
+<tfoot><tr><td>
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px; margin-top:4px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`https://water-plant-maintenance.web.app?logId=${log.id}`)}" alt="QR" style="width:45px; height:45px;">
+            <div>
+                <div style="font-size:8px; font-weight:700; color:#333;">สแกนเพื่อดูรายละเอียดเคสฉบับเต็ม</div>
+                <div style="font-size:7px; color:#888;">Scan to view full case detail</div>
+            </div>
         </div>
+        <span id="page-info" style="font-size:8px; color:#333;"></span>
     </div>
-    <span id="page-info" style="font-size:8px; color:#333;"></span>
-</div>
-<div class="footer-line"></div>
-<div class="footer-text">
-    <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
-    <span>${isInstallPdf ? 'FM-SER-01 Rev.00 Effective date : 02-02-2026' : 'FM-SER-06 Rev.00 Effective date : 02-02-2026'}</span>
-</div>
-</div>
+    <div class="footer-line"></div>
+    <div class="footer-text">
+        <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
+        <span>${isInstallPdf ? 'FM-SER-01 Rev.00 Effective date : 02-02-2026' : 'FM-SER-06 Rev.00 Effective date : 02-02-2026'}</span>
+    </div>
+</td></tr></tfoot>
 
-<h1 style="text-align:center; font-size:15px; margin:0 0 4px; color:#333;">${isInstallPdf ? 'ใบบันทึกการเข้าประเมินสถานที่ก่อนติดตั้ง-รื้อถอน' : 'ใบตรวจเช็คการบำรุงรักษาเครื่อง'}</h1>
+<tbody><tr><td>
+<h1 style="text-align:center; font-size:15px; margin:0 0 4px; color:#333;">${isInstallPdf ? 'ใบบันทึกการติดตั้ง-รื้อถอน' : 'ใบตรวจเช็คการบำรุงรักษาเครื่อง'}</h1>
 
+<div class="section-block">
 <h2 style="margin-top:8px;">ข้อมูลงาน (Job Information)</h2>
 ${isInstallPdf ? `<div style="font-size:10px; line-height:1.8; padding:4px 0;">
     <span class="label">รหัสเคส:</span> ${log.caseId || '-'} &nbsp;&nbsp; <span class="label">โรงพยาบาล:</span> ${site.name} &nbsp;&nbsp; <span class="label">หน่วยงาน:</span> ${site.installLocation || site.villageName || '-'} &nbsp;&nbsp; <span class="label">S/N:</span> ${site.serialNumber || '-'} &nbsp;&nbsp; <span class="label">ยี่ห้อ:</span> ${site.brand || '-'} &nbsp;&nbsp; <span class="label">รุ่น:</span> ${site.model || '-'}<br>
@@ -10187,12 +10435,12 @@ ${isInstallPdf ? `<div style="font-size:10px; line-height:1.8; padding:4px 0;">
     <span class="label">รหัสเคส:</span> ${log.caseId || '-'} &nbsp;&nbsp; <span class="label">วันที่:</span> ${thaiDate} &nbsp;&nbsp; <span class="label">รูปแบบสัญญา:</span> ${site.deviceType || '-'} &nbsp;&nbsp; <span class="label">เจ้าหน้าที่ช่างบริการ:</span> ${responderName} &nbsp;&nbsp; <span class="label">หมวดหมู่:</span> ${log.category || '-'}<br>
     <span class="label">จังหวัด:</span> ${site.province || '-'} &nbsp;&nbsp; <span class="label">สถานะ:</span> ${statusText} &nbsp;&nbsp; <span class="label">รอบซ่อมบำรุง:</span> ${site.maintenanceCycle ? site.maintenanceCycle + ' วัน' : '-'} &nbsp;&nbsp; <span class="label">ระยะเวลาประกัน:</span> ${site.insuranceStartDate || '-'} ถึง ${site.insuranceEndDate || '-'} &nbsp;&nbsp; <span class="label">จำนวนรอบขณะเช็ค:</span> ${log.cycleCount ? Number(log.cycleCount).toLocaleString() + ' รอบ' : '-'}
 </div>`}
+</div>
 
 ${inspHtml}
 
-<h2>รายละเอียดเริ่มต้น (Initial Detail)</h2>
-<div style="padding:6px 8px; background:#f9f9f9; border:1px solid #ddd; border-radius:6px; white-space:pre-wrap; font-size:10px; margin-top:4px;">${initialDetail}</div>
 
+<div class="section-block">
 <h2>ข้อมูลลูกค้า</h2>
 <table style="font-size:10px; border:1px solid #ddd; border-radius:6px;">
     <tr style="border-bottom:1px solid #eee;">
@@ -10206,8 +10454,47 @@ ${inspHtml}
         <td style="padding:4px 8px;">${customerPosition}</td>
     </tr>
 </table>
+</div>
 
+${isInstallPdf && (log.preInstallPhotos && log.preInstallPhotos.length > 0) ? `
+<div style="page-break-before: always;">
+<h2>รูปถ่ายก่อนติดตั้ง/รื้อถอน (Pre-installation/removal Photos)</h2>
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+${log.preInstallPhotos.map(function(img) { return '<div style="border:1px solid #eee; border-radius:4px; overflow:hidden; aspect-ratio:4/3;"><img src="' + img.url + '" style="width:100%; height:100%; display:block; object-fit:contain;"></div>'; }).join('')}
+</div>
+</div>` : ''}
+
+${isInstallPdf && (log.installPhotos && log.installPhotos.length > 0) ? `
+<h2>รูปถ่ายหลังติดตั้ง/รื้อถอน (Post-installation/removal Photos)</h2>
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+${log.installPhotos.map(function(img) { return '<div style="border:1px solid #eee; border-radius:4px; overflow:hidden; aspect-ratio:4/3;"><img src="' + img.url + '" style="width:100%; height:100%; display:block; object-fit:contain;"></div>'; }).join('')}
+</div>` : ''}
+
+<div style="page-break-inside: avoid;">
+<h2>ลายเซ็น (Signatures)</h2>
 ${signatureHtml}
+</div>
+
+</td></tr></tbody>
+</table>
+
+<div class="fixed-footer">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`https://water-plant-maintenance.web.app?logId=${log.id}`)}" alt="QR" style="width:45px; height:45px;">
+            <div>
+                <div style="font-size:8px; font-weight:700; color:#333;">สแกนเพื่อดูรายละเอียดเคสฉบับเต็ม</div>
+                <div style="font-size:7px; color:#888;">Scan to view full case detail</div>
+            </div>
+        </div>
+        <span id="page-info2" style="font-size:8px; color:#333;"></span>
+    </div>
+    <div class="footer-line"></div>
+    <div class="footer-text">
+        <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
+        <span>${isInstallPdf ? 'FM-SER-01 Rev.00 Effective date : 02-02-2026' : 'FM-SER-06 Rev.00 Effective date : 02-02-2026'}</span>
+    </div>
+</div>
 
 <script>
 window.onload = function() {
@@ -10215,7 +10502,22 @@ window.onload = function() {
     var pageHeight = 297 * 3.78;
     var totalPages = Math.max(1, Math.ceil(contentHeight / pageHeight));
     var el = document.getElementById('page-info');
-    if (el) el.textContent = 'หน้า 1 จาก ' + totalPages;
+    if (el) el.textContent = '';
+    var el2 = document.getElementById('page-info2');
+    if (el2) el2.textContent = '';
+
+    // Create page number overlays for each page
+    var pageNumStyle = 'position:absolute; right:10mm; font-size:8px; color:#333; z-index:100; background:#fff; padding:0 4px;';
+    var pagePx = 297 * 3.78;
+    var footerOffset = 22 * 3.78;
+    
+    for (var p = 1; p <= totalPages; p++) {
+        var marker = document.createElement('div');
+        marker.style.cssText = pageNumStyle;
+        marker.style.top = (p * pagePx - footerOffset) + 'px';
+        marker.textContent = 'หน้า ' + p + ' จาก ' + totalPages;
+        document.body.appendChild(marker);
+    }
 };
 </script>
 
@@ -12998,7 +13300,7 @@ function exportDevicesPDF() {
         return '<tr>'
             + '<td style="text-align:center; padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (idx + 1) + '</td>'
             + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.siteCode || '-') + '</td>'
-            + '<td style="padding:4px 6px; border:1px solid #ddd; border-left:3px solid ' + siteColor + '; font-size:9px;"><b>' + site.name + '</b>' + (site.installLocation || site.villageName ? '<div style="font-size:8px; color:#999;"><span style="font-weight:600;">หน่วยงาน:</span> ' + (site.installLocation || site.villageName) + '</div>' : '') + (address !== '-' ? '<div style="font-size:8px; color:#999;"><span style="font-weight:600;">ที่อยู่:</span> ' + address + '</div>' : '') + (site.description ? '<div style="font-size:8px; color:#999;"><span style="font-weight:600;">รายละเอียด:</span> ' + site.description + '</div>' : '') + '</td>'
+            + '<td style="padding:4px 6px; border:1px solid #ddd; border-left:3px solid ' + siteColor + '; font-size:9px;"><b>' + site.name + '</b>' + (site.installLocation || site.villageName ? '<div style="font-size:8px; color:#333;"><span style="font-weight:600;">หน่วยงาน:</span> ' + (site.installLocation || site.villageName) + '</div>' : '') + (address !== '-' ? '<div style="font-size:8px; color:#333;"><span style="font-weight:600;">ที่อยู่:</span> ' + address + '</div>' : '') + (site.description ? '<div style="font-size:8px; color:#333;"><span style="font-weight:600;">รายละเอียด:</span> ' + site.description + '</div>' : '') + '</td>'
             + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.picName || '-') + '</td>'
             + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.contactPhone || '-') + '</td>'
             + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.deviceType || '-') + '</td>'
@@ -13038,7 +13340,7 @@ function exportDevicesPDF() {
         + '</div></div>'
         + '<div class="header-line"></div>'
         + '<div class="page-content">'
-        + '<h1 style="text-align:center; font-size:14px; margin:0 0 8px;">รายการเครื่อง (Devices)</h1>'
+        + '<h1 style="text-align:center; font-size:14px; margin:0 0 8px;">ทะเบียนเครื่องมือ</h1>'
         + '<p style="text-align:center; font-size:9px; color:#666; margin:0 0 10px;">จำนวนทั้งหมด ' + state.sites.length + ' เครื่อง</p>'
         + '<table><thead><tr>'
         + '<th style="width:25px; text-align:center;">No.</th>'
@@ -13059,8 +13361,27 @@ function exportDevicesPDF() {
         + '<div class="footer-line"></div>'
         + '<div class="footer-text">'
         + '<span>บริษัท ไบโอ อินโน เทค จำกัด</span>'
-        + '<span>FM-SER-05 Rev.00 Effective date : 02-02-2026</span>'
+        + '<span id="dev-page-info" style="font-size:8px; color:#333;"></span>'
+        + '<span>FM-SER-03 Rev.00 Effective date : 02-02-2026</span>'
         + '</div></div>'
+        + '<script>'
+        + 'window.onload = function() {'
+        + '  var contentHeight = document.body.scrollHeight;'
+        + '  var pageHeight = 210 * 3.78;'
+        + '  var totalPages = Math.max(1, Math.ceil(contentHeight / pageHeight));'
+        + '  var el = document.getElementById("dev-page-info");'
+        + '  if (el) el.textContent = "";'
+        + '  var pageNumStyle = "position:absolute; right:10mm; font-size:8px; color:#333; z-index:100; background:#fff; padding:0 4px;";'
+        + '  var footerOffset = 18 * 3.78;'
+        + '  for (var p = 1; p <= totalPages; p++) {'
+        + '    var marker = document.createElement("div");'
+        + '    marker.style.cssText = pageNumStyle;'
+        + '    marker.style.top = (p * pageHeight - footerOffset) + "px";'
+        + '    marker.textContent = "หน้า " + p + " จาก " + totalPages;'
+        + '    document.body.appendChild(marker);'
+        + '  }'
+        + '};'
+        + '</script>'
         + '</body></html>';
 
     // Reuse PDF preview modal
@@ -13086,7 +13407,7 @@ function exportDevicesPDF() {
     }
 
     var iframe = document.getElementById('pdf-preview-iframe');
-    document.getElementById('pdf-preview-title').textContent = 'รายการเครื่อง (Devices)';
+    document.getElementById('pdf-preview-title').textContent = 'ทะเบียนเครื่องมือ';
     iframe.srcdoc = html;
     pdfModal.style.display = 'flex';
 }
