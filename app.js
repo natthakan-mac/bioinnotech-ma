@@ -2707,6 +2707,11 @@ function toggleMaRoundSections(category) {
             if (r) r.checked = true;
         }
     }
+    // Hide precheck section for รื้อถอน
+    const precheckSection = document.getElementById('precheck-section');
+    if (precheckSection) {
+        precheckSection.style.display = category === 'รื้อถอน' ? 'none' : '';
+    }
 }
 window.toggleMaRoundSections = toggleMaRoundSections;
 
@@ -10314,7 +10319,8 @@ async function exportCasePDF(logId) {
         }
         inspHtml += '</div>';
 
-        // ตรวจสอบรายละเอียดก่อนส่งมอบ section
+        // ตรวจสอบรายละเอียดก่อนส่งมอบ section (skip for รื้อถอน)
+        if (log.category !== 'รื้อถอน') {
         var precheckItems = [
             ['precheck_electrical', 'ระบบไฟฟ้าภายในเครื่อง'],
             ['precheck_wiring', 'ระบบการเดินสายไฟ'],
@@ -10346,6 +10352,7 @@ async function exportCasePDF(logId) {
             inspHtml += '<tr style="border-bottom:1px solid #eee;"><td style="padding:3px 8px; text-align:center;">' + (idx + 1) + '</td><td style="padding:3px 8px;">' + item[1] + '</td><td style="padding:3px 8px; text-align:center;">' + precheckBadge(val) + '</td><td style="padding:3px 8px; color:#666;">' + note + '</td></tr>';
         });
         inspHtml += '</tbody></table></div>';
+        } // end precheck skip for รื้อถอน
 
     }
 
@@ -13435,6 +13442,11 @@ function renderMaintenancePlan() {
             yearSelect.appendChild(opt);
         }
         yearSelect.addEventListener('change', renderMaintenancePlan);
+
+        // Mode toggle listener
+        document.querySelectorAll('input[name="planMode"]').forEach(r => {
+            r.addEventListener('change', renderMaintenancePlan);
+        });
     }
 
     const selectedBE = String(yearSelect.value);
@@ -13470,15 +13482,15 @@ function renderMaintenancePlan() {
         const siteIdCell = `<td style="text-align:center; padding:0.4rem; border:1px solid rgba(0,0,0,0.06); font-size:0.78rem; white-space:nowrap;">${site.siteCode || '-'}</td>`;
         const warranty = site.insuranceStartDate && site.insuranceEndDate ? `${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : '-';
         const deviceSubtle = [
-            site.brand || site.model ? `<span style="font-weight:600;">รุ่น:</span> ${[site.brand, site.model].filter(Boolean).join(' ')}` : '',
-            site.serialNumber ? `<span style="font-weight:600;">S/N:</span> ${site.serialNumber}` : '',
-            `<span style="font-weight:600;">ประกัน:</span> ${warranty}`,
-            site.province ? `<span style="font-weight:600;">จ.</span>${site.province}` : ''
-        ].filter(Boolean).join(' | ');
+            site.brand || site.model ? [site.brand, site.model].filter(Boolean).join(' ') : '',
+            site.serialNumber ? `S/N: ${site.serialNumber}` : '',
+            site.province ? `จ.${site.province}` : '',
+            site.insuranceStartDate && site.insuranceEndDate ? `ประกัน: ${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : ''
+        ].filter(Boolean).map(t => `<span style="display:inline-block; background:rgba(0,0,0,0.05); padding:1px 6px; border-radius:3px; font-size:0.7rem; color:#555; white-space:nowrap;">${t}</span>`).join(' ');
         const deviceCell = `<td class="plan-device-cell" onclick="viewSiteDetails('${site.id}')" style="border-left:4px solid ${siteColor};">
             <div class="plan-device-info">
                 <span class="plan-device-name">${site.name}</span>
-                <div style="font-size:0.7rem; color:#999; margin-top:2px;">${deviceSubtle}</div>
+                ${deviceSubtle ? `<div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:3px;">${deviceSubtle}</div>` : ''}
             </div>
         </td>`;
 
@@ -13489,7 +13501,12 @@ function renderMaintenancePlan() {
             const bg = isPlanned ? siteColor : (isCurrent ? 'rgba(0,0,0,0.02)' : '');
             const content = isPlanned ? `<i class="fa-solid fa-wrench" style="color:#fff; font-size:0.75rem;"></i>` : '';
 
-            return `<td class="plan-month-cell" style="background:${bg};" onclick="togglePlanMonth('${site.id}','${selectedBE}',${monthNum})" title="คลิกเพื่อ${isPlanned ? 'ยกเลิก' : 'เพิ่ม'}แผน">${content}</td>`;
+            const isEditMode = document.querySelector('input[name="planMode"]:checked')?.value === 'edit';
+            const clickAttr = isEditMode ? `onclick="togglePlanMonth('${site.id}','${selectedBE}',${monthNum})"` : '';
+            const cursorStyle = isEditMode ? 'cursor:pointer;' : 'cursor:default;';
+            const title = isEditMode ? `title="คลิกเพื่อ${isPlanned ? 'ยกเลิก' : 'เพิ่ม'}แผน"` : '';
+
+            return `<td class="plan-month-cell" style="background:${bg}; ${cursorStyle}" ${clickAttr} ${title}>${content}</td>`;
         }).join('');
 
         return `<tr>${noCell}${siteIdCell}${deviceCell}${monthCells}</tr>`;

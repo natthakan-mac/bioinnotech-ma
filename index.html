@@ -609,7 +609,7 @@
         <!-- ADMIN VIEW: Manage Sites -->
         <section id="admin-view" class="view-section active">
             <div class="section-header">
-                <h2>รายการเครื่อง (Devices) <span id="header-sites-count" class="header-counter"></span></h2>
+                <h2>รายการเครื่อง <span style="font-size: 0.75em; font-weight: 400; color: #888;">(Devices)</span> <span id="header-sites-count" class="header-counter"></span></h2>
 
                 <!-- Desktop Filter Bar (Inside section-header) -->
                 <div class="filters-bar desktop-only" style="margin-bottom: 1rem; flex-wrap: wrap; width: 100%;">
@@ -723,7 +723,7 @@
         <!-- ENGINEER VIEW: Maintenance Logs -->
         <section id="engineer-view" class="view-section">
             <div class="section-header">
-                <h2>ประวัติการซ่อมบำรุง (Maintenance Logs) <span id="header-logs-count" class="header-counter"></span></h2>
+                <h2>ประวัติการซ่อมบำรุง <span style="font-size: 0.75em; font-weight: 400; color: #888;">(Maintenance Logs)</span> <span id="header-logs-count" class="header-counter"></span></h2>
 
                 <div class="view-toggles nav-wrap">
                     <div class="v-active-bubble"></div>
@@ -854,9 +854,19 @@
         <!-- MAINTENANCE PLAN VIEW -->
         <section id="plan-view" class="view-section">
             <div class="section-header">
-                <h2>แผนซ่อมบำรุงประจำปี (Annual Maintenance Plan)</h2>
+                <h2>แผนซ่อมบำรุงประจำปี <span style="font-size: 0.75em; font-weight: 400; color: #888;">(Annual Maintenance Plan)</span></h2>
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <select id="plan-year-select" class="plan-year-dropdown"></select>
+                    <div class="check-pill-group" id="plan-mode-toggle" style="min-height:38px; border-radius:8px;">
+                        <label class="check-pill neutral" style="min-height:38px; padding:0 0.75rem; font-size:0.9rem; border-radius:8px 0 0 8px;">
+                            <input type="radio" name="planMode" value="view" checked>
+                            <span><i class="fa-solid fa-eye" style="margin-right:4px;"></i>ดู</span>
+                        </label>
+                        <label class="check-pill neutral" style="min-height:38px; padding:0 0.75rem; font-size:0.9rem; border-radius:0 8px 8px 0;">
+                            <input type="radio" name="planMode" value="edit">
+                            <span><i class="fa-solid fa-pen" style="margin-right:4px;"></i>แก้ไข</span>
+                        </label>
+                    </div>
                     <button onclick="exportAnnualPlanPDF()" class="btn-secondary" style="padding: 0.5rem 0.75rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem; border-radius: 8px; height: 38px; box-sizing: border-box;">
                         <i class="fa-solid fa-file-pdf"></i> PDF
                     </button>
@@ -1489,7 +1499,7 @@
                     </div>
 
                     <!-- ตรวจสอบรายละเอียดก่อนส่งมอบ -->
-                    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(0,0,0,0.06);">
+                    <div id="precheck-section" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(0,0,0,0.06);">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
                             <label style="margin: 0; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
                                 <i class="fa-solid fa-clipboard-check"></i> ตรวจสอบรายละเอียดก่อนส่งมอบ

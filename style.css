@@ -3808,7 +3808,7 @@ span.flatpickr-weekday {
 
 .btn-line {
     background: #06c755;
-    color: #111111;
+    color: #ffffff;
 }
 
 .btn-line:hover {
@@ -5427,7 +5427,7 @@ summary:focus-visible {
 /* LINE Login Button */
 .btn-line {
     background: #06C755;
-    color: #111111;
+    color: #ffffff;
     border: none;
     padding: 0.75rem 1rem;
     border-radius: var(--radius-md);
@@ -7489,15 +7489,19 @@ input::placeholder, textarea::placeholder {
     color: #ffffff;
 }
 
-/* Neutral check-pill (for pending/waiting) */
+/* Neutral check-pill (for inspection checklist) */
 .check-pill.neutral:has(input:checked) {
-    background: #f59e0b;
+    background: #111111;
     color: #ffffff;
-    border-color: #f59e0b;
+    border-color: #111111;
 }
 
 .check-pill.neutral:has(input:checked) span {
     color: #ffffff;
+}
+
+.check-pill.neutral:has(input:checked) i {
+    color: #ffffff !important;
 }
 
 .check-pill.neutral span { color: var(--text-muted); }
@@ -7704,4 +7708,20 @@ input::placeholder, textarea::placeholder {
     cursor: pointer;
     -webkit-appearance: none !important;
     appearance: none !important;
+}
+
+/* Plan mode toggle */
+.plan-mode-btn {
+    background: #fff;
+    color: #666;
+    font-weight: 500;
+}
+
+.plan-mode-btn.active {
+    background: #111 !important;
+    color: #fff !important;
+}
+
+.plan-mode-btn:hover:not(.active) {
+    background: #f5f5f5;
 }
