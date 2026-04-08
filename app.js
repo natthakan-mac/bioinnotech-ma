@@ -2938,6 +2938,7 @@ async function handleSiteSubmit(e) {
 
             insuranceStartDate: sanitizeDate(formData.get("insuranceStartDate")),
             insuranceEndDate: sanitizeDate(formData.get("insuranceEndDate")),
+            warrantyNumber: formData.get("warrantyNumber") || "",
 
             maintenanceCycle: formData.get("maintenanceCycle")
                 ? Number(formData.get("maintenanceCycle"))
@@ -3165,6 +3166,7 @@ function editSite(id) {
     // Flatpickr inputs
     setVal("insuranceStartDate", site.insuranceStartDate);
     setVal("insuranceEndDate", site.insuranceEndDate);
+    setVal("warrantyNumber", site.warrantyNumber);
     setVal("maintenanceCycle", site.maintenanceCycle);
     setVal("firstMaDate", site.firstMaDate);
 
@@ -5690,8 +5692,11 @@ function editLog(logId) {
         // datetime-local expects YYYY-MM-DDTHH:MM, old records may have just YYYY-MM-DD
         dateInput.value = log.date && log.date.length === 10 ? log.date + 'T00:00' : log.date;
     }
-    setField("timeStart", log.timeStart);
-    setField("timeEnd", log.timeEnd);
+    // Set time fields manually (setField not yet available)
+    const timeStartEl = form.querySelector('input[name="timeStart"]');
+    if (timeStartEl) timeStartEl.value = log.timeStart || '';
+    const timeEndEl = form.querySelector('input[name="timeEnd"]');
+    if (timeEndEl) timeEndEl.value = log.timeEnd || '';
     const objectiveEl = form.querySelector('textarea[name="objective"]');
     if (objectiveEl) objectiveEl.value = log.objective || "";
 
@@ -10078,6 +10083,31 @@ async function exportCasePDF(logId) {
             }
             inspHtml += '</div>';
         }
+        // Photo checklist section
+        inspHtml += '<h2>กรณีย้ายเครื่องเดิม เดินพัดลมระบายอากาศ ฯลฯ</h2>';
+        inspHtml += '<div style="font-size:10px;">';
+        inspHtml += '<div style="margin-bottom:6px;">ให้ถ่ายรูปประกอบดังนี้ : อาคาร, จุดเอาเครื่องลง (จุดจอดรถ), ทางลาด, ลิฟท์ ประตูลิฟท์, ทางเดินนอกอาคาร, ทางเดินในอาคาร, ประตูทั้งหมด, จุดวางเครื่อง, ตู้ไฟ (เปิดตู้), ทางเดินสายไฟ, จุดติดพัดลมระบายอากาศ (ถ้ามี), จุดอื่นๆ ที่สำคัญ</div>';
+        // Display attached images in 2 columns
+        var installImages = [];
+        if (log.comments && log.comments.length > 0) {
+            log.comments.forEach(function(c) {
+                if (c.attachments && c.attachments.length > 0) {
+                    c.attachments.forEach(function(att) {
+                        if (att.type && att.type.startsWith('image/') && att.url) {
+                            installImages.push(att);
+                        }
+                    });
+                }
+            });
+        }
+        if (installImages.length > 0) {
+            inspHtml += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;">';
+            installImages.forEach(function(img) {
+                inspHtml += '<div style="border:1px solid #eee; border-radius:4px; overflow:hidden; aspect-ratio:4/3;"><img src="' + img.url + '" style="width:100%; height:100%; display:block; object-fit:cover;"></div>';
+            });
+            inspHtml += '</div>';
+        }
+        inspHtml += '</div>';
     }
 
     const html = `<!DOCTYPE html>
@@ -10086,29 +10116,32 @@ async function exportCasePDF(logId) {
 <style>
     @page { size: A4 portrait; margin: 0; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 11px; color: #333; margin: 0; padding: 8mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
-    .page-content { flex: 1; }
-    .page-header { display: flex; align-items: center; gap: 12px; padding-bottom: 10px; }
-    .page-header img { height: 55px; width: auto; }
+    html { height: 100%; }
+    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 11px; color: #333; margin: 0; padding: 28mm 10mm 26mm 10mm; box-sizing: border-box; }
+    .fixed-header { position: fixed; top: 0; left: 0; right: 0; padding: 5mm 10mm 2mm; background: #fff; z-index: 10; }
+    .fixed-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 1mm 10mm 4mm; background: #fff; z-index: 10; }
+    .page-header { display: flex; align-items: center; gap: 12px; padding-bottom: 6px; }
+    .page-header img { height: 45px; width: auto; }
     .page-header .company-info { flex: 1; text-align: right; font-size: 9px; color: #333; line-height: 1.6; }
-    .header-line { margin-bottom: 12px; position: relative; height: 2px; background: #ddd !important; }
+    .header-line { position: relative; height: 2px; background: #ddd !important; }
     .header-line::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
     .header-dots { text-align: right; margin-top: -2px; margin-bottom: 4px; }
     .header-dots span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 3px; }
     h2 { font-size: 11px; color: #333; margin: 10px 0 4px; padding-bottom: 0; border-bottom: none; }
-    .info-grid { display: grid; grid-template-columns: 100px 1fr 100px 1fr; gap: 2px 8px; margin-bottom: 8px; font-size: 10px; }
     .label { color: #333; font-weight: bold; }
     table { width: 100%; border-collapse: collapse; }
     th { text-align: left; padding: 4px 6px; background: #f5f5f5 !important; border-bottom: 2px solid #ddd; font-size: 10px; }
     td { font-size: 10px; }
-    .page-footer { margin-top: auto; padding-top: 0; }
-    .page-footer .footer-line { position: relative; height: 2px; background: #ddd !important; }
-    .page-footer .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
-    .page-footer .footer-text { text-align: center; font-size: 8px; color: #333; padding: 4px 0; }
+    .footer-line { position: relative; height: 2px; background: #ddd !important; }
+    .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
+    .footer-text { font-size: 8px; color: #333; padding: 3px 0 0; display: flex; justify-content: space-between; }
+    img { page-break-inside: avoid; }
+    .no-break { page-break-inside: avoid; }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
 </head><body>
 
+<div class="fixed-header">
 <div class="page-header">
     <img src="/bioinnotech.svg" alt="Logo">
     <div class="company-info">
@@ -10123,8 +10156,26 @@ async function exportCasePDF(logId) {
     </div>
 </div>
 <div class="header-line"></div>
+</div>
 
-<div class="page-content">
+<div class="fixed-footer">
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
+    <div style="display:flex; align-items:center; gap:8px;">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`https://water-plant-maintenance.web.app?logId=${log.id}`)}" alt="QR" style="width:45px; height:45px;">
+        <div>
+            <div style="font-size:8px; font-weight:700; color:#333;">สแกนเพื่อดูรายละเอียดเคสฉบับเต็ม</div>
+            <div style="font-size:7px; color:#888;">Scan to view full case detail</div>
+        </div>
+    </div>
+    <span id="page-info" style="font-size:8px; color:#333;"></span>
+</div>
+<div class="footer-line"></div>
+<div class="footer-text">
+    <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
+    <span>${isInstallPdf ? 'FM-SER-01 Rev.00 Effective date : 02-02-2026' : 'FM-SER-06 Rev.00 Effective date : 02-02-2026'}</span>
+</div>
+</div>
+
 <h1 style="text-align:center; font-size:15px; margin:0 0 4px; color:#333;">${isInstallPdf ? 'ใบบันทึกการเข้าประเมินสถานที่ก่อนติดตั้ง-รื้อถอน' : 'ใบตรวจเช็คการบำรุงรักษาเครื่อง'}</h1>
 
 <h2 style="margin-top:8px;">ข้อมูลงาน (Job Information)</h2>
@@ -10156,23 +10207,17 @@ ${inspHtml}
     </tr>
 </table>
 
-</div>
+${signatureHtml}
 
-<div class="page-footer">
-    ${signatureHtml}
-    <div style="display:flex; align-items:center; gap:10px; margin-top:16px; margin-bottom:10px;">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`https://water-plant-maintenance.web.app?logId=${log.id}`)}" alt="QR Code" style="width:50px; height:50px;">
-        <div>
-            <div style="font-size:9px; font-weight:700; color:#333;">สแกนเพื่อดูรายละเอียดเคสฉบับเต็ม</div>
-            <div style="font-size:7px; color:#333;">Scan to view full case detail — For staff only</div>
-        </div>
-    </div>
-    <div class="footer-line"></div>
-    <div class="footer-text" style="display:flex; justify-content:space-between; align-items:center;">
-        <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
-        <span>FM-SER-05/REV00/01JAN2019</span>
-    </div>
-</div>
+<script>
+window.onload = function() {
+    var contentHeight = document.body.scrollHeight;
+    var pageHeight = 297 * 3.78;
+    var totalPages = Math.max(1, Math.ceil(contentHeight / pageHeight));
+    var el = document.getElementById('page-info');
+    if (el) el.textContent = 'หน้า 1 จาก ' + totalPages;
+};
+</script>
 
 </body></html>`;
 
@@ -12893,7 +12938,7 @@ function exportAnnualPlanPDF() {
     <div class="footer-line"></div>
     <div class="footer-text">
         <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
-        <span>FM-SER-05/REV00/01JAN2019</span>
+        <span>FM-SER-06 Rev.00 Effective date : 02-02-2026</span>
     </div>
 </div>
 
@@ -12935,6 +12980,118 @@ function exportAnnualPlanPDF() {
 }
 
 window.exportAnnualPlanPDF = exportAnnualPlanPDF;
+
+// --- Devices List PDF Export ---
+function exportDevicesPDF() {
+    if (!state.sites || state.sites.length === 0) {
+        showToast('ไม่มีข้อมูลเครื่อง', 'error');
+        return;
+    }
+
+    const rowsHtml = state.sites.map(function(site, idx) {
+        const siteColor = getSiteColor(site.name);
+        const warranty = site.insuranceStartDate && site.insuranceEndDate ? site.insuranceStartDate + ' ~ ' + site.insuranceEndDate : '-';
+        const address = [site.subdistrict, site.district, site.province].filter(Boolean).join(', ') || '-';
+        // Find installation date from logs
+        const installLog = state.logs.find(function(l) { return l.siteId === site.id && l.category === 'ติดตั้ง'; });
+        const installDate = installLog ? formatDateDDMMYYYY(installLog.date) : '-';
+        return '<tr>'
+            + '<td style="text-align:center; padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (idx + 1) + '</td>'
+            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.siteCode || '-') + '</td>'
+            + '<td style="padding:4px 6px; border:1px solid #ddd; border-left:3px solid ' + siteColor + '; font-size:9px;"><b>' + site.name + '</b>' + (site.installLocation || site.villageName ? '<div style="font-size:8px; color:#999;"><span style="font-weight:600;">หน่วยงาน:</span> ' + (site.installLocation || site.villageName) + '</div>' : '') + (address !== '-' ? '<div style="font-size:8px; color:#999;"><span style="font-weight:600;">ที่อยู่:</span> ' + address + '</div>' : '') + (site.description ? '<div style="font-size:8px; color:#999;"><span style="font-weight:600;">รายละเอียด:</span> ' + site.description + '</div>' : '') + '</td>'
+            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.picName || '-') + '</td>'
+            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.contactPhone || '-') + '</td>'
+            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.deviceType || '-') + '</td>'
+            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + [site.brand, site.model].filter(Boolean).join(' ') + '</td>'
+            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.serialNumber || '-') + '</td>'
+            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + installDate + '</td>'
+            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + warranty + '</td>'
+            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.warrantyNumber || '-') + '</td>'
+            + '</tr>';
+    }).join('');
+
+    const html = '<!DOCTYPE html>'
+        + '<html><head><meta charset="utf-8">'
+        + '<title>รายการเครื่อง (Devices)</title>'
+        + '<style>'
+        + '@page { size: A4 landscape; margin: 0; }'
+        + '* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }'
+        + 'body { font-family: "Sarabun", "Noto Sans Thai", sans-serif; font-size: 10px; color: #333; margin: 0; padding: 8mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }'
+        + '.page-content { flex: 1; }'
+        + 'table { width: 100%; border-collapse: collapse; }'
+        + 'th { background: #f5f5f5 !important; font-size: 9px; padding: 5px 6px; border: 1px solid #ddd; text-align: left; }'
+        + '.header-line { margin-bottom: 10px; position: relative; height: 2px; background: #ddd !important; }'
+        + '.header-line::before { content: ""; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }'
+        + '.page-footer { margin-top: auto; }'
+        + '.footer-line { position: relative; height: 2px; background: #ddd !important; }'
+        + '.footer-line::before { content: ""; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }'
+        + '.footer-text { display: flex; justify-content: space-between; font-size: 8px; color: #333; padding: 4px 0; }'
+        + '</style>'
+        + '<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">'
+        + '</head><body>'
+        + '<div style="display:flex; align-items:center; gap:12px; padding-bottom:10px;">'
+        + '<img src="/bioinnotech.svg" alt="Logo" style="height:55px; width:auto;">'
+        + '<div style="flex:1; text-align:right; font-size:9px; color:#333; line-height:1.6;">'
+        + '<b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>'
+        + '36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>'
+        + 'โทรศัพท์ 02-152-5405 เลขประจำตัวผู้เสียภาษี 0105557108369'
+        + '</div></div>'
+        + '<div class="header-line"></div>'
+        + '<div class="page-content">'
+        + '<h1 style="text-align:center; font-size:14px; margin:0 0 8px;">รายการเครื่อง (Devices)</h1>'
+        + '<p style="text-align:center; font-size:9px; color:#666; margin:0 0 10px;">จำนวนทั้งหมด ' + state.sites.length + ' เครื่อง</p>'
+        + '<table><thead><tr>'
+        + '<th style="width:25px; text-align:center;">No.</th>'
+        + '<th>รหัส</th>'
+        + '<th>โรงพยาบาล</th>'
+        + '<th>ผู้ดูแล</th>'
+        + '<th>เบอร์โทร</th>'
+        + '<th>สัญญา</th>'
+        + '<th>ยี่ห้อ/รุ่น</th>'
+        + '<th>S/N</th>'
+        + '<th>วันที่ติดตั้ง</th>'
+        + '<th>ประกัน</th>'
+        + '<th>เลขที่ใบรับประกัน</th>'
+        + '</tr></thead><tbody>'
+        + rowsHtml
+        + '</tbody></table></div>'
+        + '<div class="page-footer">'
+        + '<div class="footer-line"></div>'
+        + '<div class="footer-text">'
+        + '<span>บริษัท ไบโอ อินโน เทค จำกัด</span>'
+        + '<span>FM-SER-05 Rev.00 Effective date : 02-02-2026</span>'
+        + '</div></div>'
+        + '</body></html>';
+
+    // Reuse PDF preview modal
+    var pdfModal = document.getElementById('pdf-preview-modal');
+    if (!pdfModal) {
+        pdfModal = document.createElement('div');
+        pdfModal.id = 'pdf-preview-modal';
+        pdfModal.style.cssText = 'display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; padding:16px;';
+        pdfModal.innerHTML = '<div style="position:relative; width:100%; max-width:1100px; height:90vh; background:#fff; border-radius:12px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.3);">'
+            + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
+            + '<span id="pdf-preview-title" style="font-weight:700; font-size:14px; color:#333;">PDF Preview</span>'
+            + '<div style="display:flex; gap:8px;">'
+            + '<button id="pdf-btn-print" style="background:#8bc53f; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600;"><i class="fa-solid fa-print"></i> พิมพ์</button>'
+            + '<button id="pdf-btn-close" style="background:#ef4444; color:#fff; border:none; border-radius:6px; width:34px; height:34px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-xmark"></i></button>'
+            + '</div></div>'
+            + '<iframe id="pdf-preview-iframe" style="flex:1; border:none; width:100%; background:#fff;"></iframe>'
+            + '</div>';
+        document.body.appendChild(pdfModal);
+        document.getElementById('pdf-btn-close').onclick = function() { pdfModal.style.display = 'none'; };
+        pdfModal.onclick = function(e) { if (e.target === pdfModal) pdfModal.style.display = 'none'; };
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && pdfModal.style.display === 'flex') pdfModal.style.display = 'none'; });
+        document.getElementById('pdf-btn-print').onclick = function() { var fr = document.getElementById('pdf-preview-iframe'); if (fr && fr.contentWindow) fr.contentWindow.print(); };
+    }
+
+    var iframe = document.getElementById('pdf-preview-iframe');
+    document.getElementById('pdf-preview-title').textContent = 'รายการเครื่อง (Devices)';
+    iframe.srcdoc = html;
+    pdfModal.style.display = 'flex';
+}
+
+window.exportDevicesPDF = exportDevicesPDF;
 
 // --- Maintenance Plan Timeline ---
 function renderMaintenancePlan() {
