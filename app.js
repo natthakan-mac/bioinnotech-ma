@@ -7803,35 +7803,34 @@ function viewSiteDetails(id) {
         actionsContainer.style.position = "relative";
         actionsContainer.style.zIndex = "10";
         actionsContainer.innerHTML = `
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.4rem; flex-wrap: wrap; width: 100%;">
                 ${site.locationUrl
-                ? `
-                <a href="${site.locationUrl}" target="_blank" class="card-btn-action card-btn-labeled card-btn-maps" title="เปิดใน Google Maps">
+                ? `<a href="${site.locationUrl}" target="_blank" class="btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.82rem; display:inline-flex; align-items:center; gap:0.3rem; text-decoration:none;">
                     <i class="fa-solid fa-map-location-dot"></i> เส้นทาง
-                </a>`
-                : ""
-            }
+                </a>` : ""}
                 ${site.contactPhone
-                ? `
-                <a href="tel:${site.contactPhone}" class="card-btn-action card-btn-labeled card-btn-call" title="โทร ${site.contactPhone}">
+                ? `<a href="tel:${site.contactPhone}" class="btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.82rem; display:inline-flex; align-items:center; gap:0.3rem; text-decoration:none;">
                     <i class="fa-solid fa-phone"></i> โทร
-                </a>`
-                : ""
-            }
-                <button class="card-btn-action card-btn-labeled card-btn-case"
-                    onclick="viewSiteLogs('${site.id}');" title="ดูเคส">
+                </a>` : ""}
+                <button class="btn-secondary" onclick="viewSiteLogs('${site.id}');" style="padding:0.4rem 0.75rem; font-size:0.82rem;">
                     <i class="fa-solid fa-clipboard-list"></i> ดูเคส
                 </button>
-                <button class="card-btn-action card-btn-labeled card-btn-edit"
-                    onclick="editSite('${site.id}'); toggleModal('siteDetails', false);" title="แก้ไข">
+                <div style="width:1px; height:22px; background:rgba(0,0,0,0.1);"></div>
+                <button class="btn-secondary" onclick="exportInsuranceCardPDF('${site.id}');" style="padding:0.4rem 0.75rem; font-size:0.82rem;">
+                    <i class="fa-solid fa-shield-halved"></i> ใบประกัน
+                </button>
+                <button class="btn-secondary" onclick="exportCaseHistoryPDF('${site.id}');" style="padding:0.4rem 0.75rem; font-size:0.82rem;">
+                    <i class="fa-solid fa-file-lines"></i> ประวัติเคส
+                </button>
+                <div style="width:1px; height:22px; background:rgba(0,0,0,0.1);"></div>
+                <button class="btn-primary" onclick="editSite('${site.id}'); toggleModal('siteDetails', false);" style="padding:0.4rem 0.75rem; font-size:0.82rem;">
                     <i class="fa-solid fa-pen"></i> แก้ไข
                 </button>
-                <button class="card-btn-action card-btn-labeled card-btn-delete"
-                    onclick="deleteSite('${site.id}'); toggleModal('siteDetails', false);" title="ลบ">
+                <button class="btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.82rem; color:#ef4444; border-color:rgba(239,68,68,0.3);" onclick="deleteSite('${site.id}'); toggleModal('siteDetails', false);">
                     <i class="fa-solid fa-trash"></i> ลบ
                 </button>
+                <button type="button" class="btn-secondary" onclick="toggleModal('siteDetails', false)" style="padding:0.4rem 0.75rem; font-size:0.82rem;">ปิด</button>
             </div>
-            <button type="button" class="btn-secondary close-modal-btn" onclick="toggleModal('siteDetails', false)">ปิด</button>
         `;
     }
 
@@ -13155,6 +13154,209 @@ async function handleEmptyRecycleBin() {
     }
 }
 
+// --- Insurance Card PDF ---
+function exportInsuranceCardPDF(siteId) {
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site) return;
+
+    const thaiDate = (d) => d ? new Date(d).toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' }) : '-';
+    const warranty = site.insuranceStartDate && site.insuranceEndDate
+        ? `${thaiDate(site.insuranceStartDate)} ถึง ${thaiDate(site.insuranceEndDate)}` : 'ไม่มีข้อมูล';
+
+    const row = (label, value) => `<tr><td style="padding:6px 10px; font-weight:600; color:#555; width:160px; border-bottom:1px solid #eee;">${label}</td><td style="padding:6px 10px; border-bottom:1px solid #eee;">${value || '-'}</td></tr>`;
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Insurance Card - ${site.name}</title>
+<style>
+    @page { size: A4 portrait; margin: 0; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 11px; color: #333; margin: 0; padding: 10mm 12mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
+    .page-content { flex: 1; }
+    table { width: 100%; border-collapse: collapse; }
+    .header-line { margin-bottom: 12px; position: relative; height: 2px; background: #ddd !important; }
+    .header-line::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
+    .footer-line { position: relative; height: 2px; background: #ddd !important; }
+    .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
+    .footer-text { display: flex; justify-content: space-between; font-size: 8px; color: #333; padding: 4px 0; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+</head><body>
+<div style="display:flex; align-items:center; gap:12px; padding-bottom:10px;">
+    <img src="/bioinnotech.svg" alt="Logo" style="height:55px; width:auto;">
+    <div style="flex:1; text-align:right; font-size:9px; color:#333; line-height:1.6;">
+        <b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>
+        36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>
+        โทรศัพท์ 02-152-5405
+    </div>
+</div>
+<div class="header-line"></div>
+<div class="page-content">
+<h1 style="text-align:center; font-size:16px; margin:0 0 6px;">บัตรรับประกันอุปกรณ์</h1>
+<p style="text-align:center; font-size:10px; color:#666; margin:0 0 16px;">Insurance / Warranty Card</p>
+
+<table style="border:1px solid #ddd; border-radius:8px; font-size:11px;">
+    ${row('ชื่ออุปกรณ์', site.name)}
+    ${row('รหัสอุปกรณ์', site.siteCode)}
+    ${row('ประเภท', site.deviceType)}
+    ${row('ยี่ห้อ', site.brand)}
+    ${row('รุ่น', site.model)}
+    ${row('Serial Number', site.serialNumber)}
+    ${row('โรงพยาบาล', site.hospital)}
+    ${row('สถานที่ติดตั้ง', site.villageName)}
+    ${row('จังหวัด', site.province)}
+    ${row('ผู้ดูแล (PIC)', site.picName)}
+    ${row('เบอร์โทร', site.contactPhone)}
+    ${row('ระยะเวลาประกัน', warranty)}
+    ${row('รอบซ่อมบำรุง', site.maintenanceCycle ? site.maintenanceCycle + ' วัน' : '-')}
+    ${row('วันที่ MA ครั้งแรก', thaiDate(site.firstMaDate))}
+    ${row('รายละเอียด', site.description || '-')}
+</table>
+</div>
+<div style="margin-top:auto; padding-top:10px;">
+    <div class="footer-line"></div>
+    <div class="footer-text"><span>บริษัท ไบโอ อินโน เทค จำกัด</span><span>FM-SER-05/REV00/01JAN2019</span></div>
+</div>
+</body></html>`;
+
+    showPdfPreview(html, `ใบประกัน - ${site.name}`);
+}
+
+// --- Case History PDF ---
+function exportCaseHistoryPDF(siteId) {
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site) return;
+
+    const siteLogs = state.logs.filter(l => l.siteId === siteId).sort((a, b) => new Date(b.date) - new Date(a.date));
+    const thaiDate = (d) => d ? new Date(d).toLocaleDateString('th-TH', { year:'numeric', month:'short', day:'numeric' }) : '-';
+    const warranty = site.insuranceStartDate && site.insuranceEndDate
+        ? `${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : '-';
+
+    const infoRow = (label, value) => `<span style="margin-right:16px;"><b>${label}:</b> ${value || '-'}</span>`;
+
+    const tableRows = siteLogs.map((log, i) => {
+        const statusColors = { 'Open':'#ca8a04', 'Planning':'#3b82f6', 'On Process':'#f97316', 'Done':'#a855f7', 'Case Closed':'#22c55e', 'Cancel':'#ef4444' };
+        const statusLabels = { 'Open':'เปิดงาน', 'Planning':'วางแผน', 'On Process':'ดำเนินการ', 'Done':'เสร็จสิ้น', 'Case Closed':'ปิดเคส', 'Cancel':'ยกเลิก' };
+        const sc = statusColors[log.status] || '#888';
+        const sl = statusLabels[log.status] || log.status;
+        return `<tr style="border-bottom:1px solid #eee;">
+            <td style="padding:5px 8px; text-align:center;">${i + 1}</td>
+            <td style="padding:5px 8px; white-space:nowrap;">${thaiDate(log.date)}</td>
+            <td style="padding:5px 8px; font-family:'Courier New',monospace; font-weight:600;">${log.caseId || '-'}</td>
+            <td style="padding:5px 8px;">${log.category || '-'}</td>
+            <td style="padding:5px 8px;"><span style="background:${sc}; color:#fff; padding:1px 8px; border-radius:3px; font-size:9px; font-weight:600;">${sl}</span></td>
+            <td style="padding:5px 8px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${log.objective || '-'}</td>
+        </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Case History - ${site.name}</title>
+<style>
+    @page { size: A4 landscape; margin: 0; }
+    @page { @bottom-right { content: "หน้า " counter(page) " / " counter(pages); font-size: 8px; } }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 10mm 12mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
+    .page-content { flex: 1; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f5f5f5 !important; text-align: left; padding: 5px 8px; border-bottom: 2px solid #ddd; font-size: 9px; }
+    .header-line { margin-bottom: 12px; position: relative; height: 2px; background: #ddd !important; }
+    .header-line::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
+    .footer-line { position: relative; height: 2px; background: #ddd !important; }
+    .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
+    .footer-text { display: flex; justify-content: space-between; font-size: 8px; color: #333; padding: 4px 0; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+</head><body>
+<div style="display:flex; align-items:center; gap:12px; padding-bottom:10px;">
+    <img src="/bioinnotech.svg" alt="Logo" style="height:55px; width:auto;">
+    <div style="flex:1; text-align:right; font-size:9px; color:#333; line-height:1.6;">
+        <b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>
+        36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>
+        โทรศัพท์ 02-152-5405
+    </div>
+</div>
+<div class="header-line"></div>
+<div class="page-content">
+<h1 style="text-align:center; font-size:15px; margin:0 0 4px;">ประวัติการซ่อมบำรุงอุปกรณ์</h1>
+<p style="text-align:center; font-size:10px; color:#666; margin:0 0 12px;">Device Maintenance History</p>
+
+<div style="border:1px solid #ddd; border-radius:6px; padding:10px; margin-bottom:12px; font-size:10px; line-height:1.8;">
+    ${infoRow('ชื่ออุปกรณ์', site.name)}
+    ${infoRow('รหัส', site.siteCode)}
+    ${infoRow('ยี่ห้อ/รุ่น', [site.brand, site.model].filter(Boolean).join(' '))}
+    ${infoRow('S/N', site.serialNumber)}<br>
+    ${infoRow('ประเภท', site.deviceType)}
+    ${infoRow('โรงพยาบาล', site.hospital)}
+    ${infoRow('จังหวัด', site.province)}
+    ${infoRow('ประกัน', warranty)}<br>
+    ${infoRow('รอบ MA', site.maintenanceCycle ? site.maintenanceCycle + ' วัน' : '-')}
+    ${infoRow('ผู้ดูแล', site.picName)}
+    ${infoRow('เบอร์โทร', site.contactPhone)}
+</div>
+
+<div style="font-weight:700; font-size:11px; margin-bottom:6px;">ประวัติเคสทั้งหมด (${siteLogs.length} รายการ)</div>
+<table style="border:1px solid #ddd; border-radius:6px;">
+    <thead>
+        <tr>
+            <th style="width:30px; text-align:center;">#</th>
+            <th style="width:90px;">วันที่</th>
+            <th style="width:80px;">รหัสเคส</th>
+            <th style="width:100px;">ประเภท</th>
+            <th style="width:70px;">สถานะ</th>
+            <th>รายละเอียด</th>
+        </tr>
+    </thead>
+    <tbody>
+        ${tableRows || '<tr><td colspan="6" style="text-align:center; padding:12px; color:#999;">ไม่มีประวัติเคส</td></tr>'}
+    </tbody>
+</table>
+</div>
+<div style="margin-top:auto; padding-top:10px;">
+    <div class="footer-line"></div>
+    <div class="footer-text"><span>บริษัท ไบโอ อินโน เทค จำกัด</span><span>FM-SER-05/REV00/01JAN2019</span></div>
+</div>
+</body></html>`;
+
+    showPdfPreview(html, `ประวัติเคส - ${site.name}`);
+}
+
+// --- Shared PDF Preview ---
+function showPdfPreview(html, title) {
+    let pdfModal = document.getElementById('pdf-preview-modal');
+    if (!pdfModal) {
+        pdfModal = document.createElement('div');
+        pdfModal.id = 'pdf-preview-modal';
+        pdfModal.style.cssText = 'display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; padding:16px;';
+        pdfModal.innerHTML = '<div id="pdf-preview-inner" style="position:relative; width:100%; max-width:1100px; height:90vh; background:#fff; border-radius:12px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.3);">'
+            + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
+            + '<span id="pdf-preview-title" style="font-weight:700; font-size:14px; color:#333;">PDF Preview</span>'
+            + '<div style="display:flex; gap:8px;">'
+            + '<button id="pdf-btn-print" style="background:#111; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600;"><i class="fa-solid fa-print"></i> พิมพ์</button>'
+            + '<button id="pdf-btn-close" style="background:#ef4444; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600;"><i class="fa-solid fa-times"></i> ปิด</button>'
+            + '</div></div>'
+            + '<iframe style="flex:1; border:none; width:100%;"></iframe>'
+            + '</div>';
+        document.body.appendChild(pdfModal);
+        document.getElementById('pdf-btn-close').onclick = () => { pdfModal.style.display = 'none'; };
+    }
+
+    const iframe = pdfModal.querySelector('iframe');
+    const titleEl = document.getElementById('pdf-preview-title');
+    if (titleEl) titleEl.textContent = title;
+    if (iframe) iframe.srcdoc = html;
+    pdfModal.style.display = 'flex';
+
+    const printBtn = document.getElementById('pdf-btn-print');
+    if (printBtn) {
+        const newPrint = printBtn.cloneNode(true);
+        printBtn.parentNode.replaceChild(newPrint, printBtn);
+        newPrint.id = 'pdf-btn-print';
+        newPrint.onclick = () => { iframe.contentWindow.print(); };
+    }
+}
+
+window.exportInsuranceCardPDF = exportInsuranceCardPDF;
+window.exportCaseHistoryPDF = exportCaseHistoryPDF;
+
 // --- Annual Plan PDF Export ---
 function exportAnnualPlanPDF() {
     const yearSelect = document.getElementById('plan-year-select');
@@ -13253,39 +13455,7 @@ function exportAnnualPlanPDF() {
 
 </body></html>`;
 
-    // Reuse or create the PDF preview modal
-    let pdfModal = document.getElementById('pdf-preview-modal');
-    if (!pdfModal) {
-        pdfModal = document.createElement('div');
-        pdfModal.id = 'pdf-preview-modal';
-        pdfModal.style.cssText = 'display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; padding:16px;';
-        pdfModal.innerHTML = '<div id="pdf-preview-inner" style="position:relative; width:100%; max-width:1100px; height:90vh; background:#fff; border-radius:12px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.3);">'
-            + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
-            + '<span id="pdf-preview-title" style="font-weight:700; font-size:14px; color:#333;">PDF Preview</span>'
-            + '<div style="display:flex; gap:8px;">'
-            + '<button id="pdf-btn-print" style="background:#111; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600;"><i class="fa-solid fa-print"></i> พิมพ์</button>'
-            + '<button id="pdf-btn-close" style="background:#ef4444; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600;"><i class="fa-solid fa-times"></i> ปิด</button>'
-            + '</div></div>'
-            + '<iframe style="flex:1; border:none; width:100%;"></iframe>'
-            + '</div>';
-        document.body.appendChild(pdfModal);
-        document.getElementById('pdf-btn-close').onclick = () => { pdfModal.style.display = 'none'; };
-    }
-
-    const iframe = pdfModal.querySelector('iframe');
-    const title = document.getElementById('pdf-preview-title');
-    if (title) title.textContent = `แผนซ่อมบำรุงประจำปี ${displayYear}`;
-    if (iframe) iframe.srcdoc = html;
-    pdfModal.style.display = 'flex';
-
-    // Wire print button
-    const printBtn = document.getElementById('pdf-btn-print');
-    if (printBtn) {
-        const newPrint = printBtn.cloneNode(true);
-        printBtn.parentNode.replaceChild(newPrint, printBtn);
-        newPrint.id = 'pdf-btn-print';
-        newPrint.onclick = () => { iframe.contentWindow.print(); };
-    }
+    showPdfPreview(html, `แผนซ่อมบำรุงประจำปี ${displayYear}`);
 }
 
 window.exportAnnualPlanPDF = exportAnnualPlanPDF;
