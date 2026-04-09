@@ -1665,6 +1665,53 @@
                     </div>
                 </div>
             </div>
+
+            <!-- สำหรับการซ่อม -->
+            <div id="ma-repair-sections" style="border: 2px solid rgba(0,0,0,0.08); border-radius: 12px; padding: 1rem; margin-bottom: 1.25rem; display: none;">
+                <h4 style="margin: 0 0 0.75rem 0; font-size: 0.95rem; color: #111; display: flex; align-items: center; gap: 0.5rem; font-weight: 700;">
+                    <i class="fa-solid fa-wrench" style="color: #dc2626;"></i> สำหรับการซ่อม
+                </h4>
+
+                <label style="margin: 0 0 0.4rem; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; color: #555;">
+                    <i class="fa-solid fa-list-check"></i> รายการที่ซ่อม
+                </label>
+                <div id="repair-checklist-rows" style="display: flex; flex-direction: column; gap: 0.4rem;"></div>
+                <button type="button" id="btn-add-repair-row" style="margin-top: 0.5rem; background: #dc2626; color: #fff; border: none; border-radius: 6px; padding: 0.4rem 1rem; cursor: pointer; font-size: 0.82rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem;">
+                    <i class="fa-solid fa-plus"></i> เพิ่มรายการ
+                </button>
+                <input type="hidden" name="repairChecklistJSON" id="repair-checklist-json">
+
+                <!-- สภาพเครื่องหลังดำเนินการ -->
+                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(0,0,0,0.06);">
+                    <label style="margin: 0 0 0.4rem; font-size: 0.85rem; font-weight: 600; display: block;">
+                        <i class="fa-solid fa-clipboard-check"></i> สภาพเครื่องหลังดำเนินการ
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                        <div class="check-pill-group">
+                            <label class="check-pill pass"><input type="radio" name="machineStatusAfter" value="ready"><span>พร้อมใช้งาน</span></label>
+                            <label class="check-pill fail"><input type="radio" name="machineStatusAfter" value="not_ready"><span>ไม่พร้อมใช้งาน</span></label>
+                        </div>
+                    </div>
+                    <textarea name="machineStatusAfterNote" placeholder="หมายเหตุ..." rows="2" style="width: 100%; min-height: 50px; padding: 0.4rem; font-size: 0.82rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; resize: vertical;"></textarea>
+                </div>
+
+                <!-- กรณีรับสินค้ากลับ -->
+                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(0,0,0,0.06);">
+                    <label style="margin: 0 0 0.4rem; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fa-solid fa-box-archive"></i> กรณีรับสินค้ากลับ
+                    </label>
+                    <textarea name="returnProductNote" placeholder="หมายเหตุกรณีรับสินค้ากลับ..." rows="2" style="width: 100%; min-height: 50px; padding: 0.4rem; font-size: 0.82rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; resize: vertical; margin-bottom: 0.5rem;"></textarea>
+                    <label style="margin: 0 0 0.3rem; font-size: 0.82rem; font-weight: 600; color: #555; display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fa-solid fa-list"></i> รายการสินค้า
+                    </label>
+                    <div id="return-product-rows" style="display: flex; flex-direction: column; gap: 0.4rem;"></div>
+                    <button type="button" id="btn-add-return-product" style="margin-top: 0.5rem; background: #6366f1; color: #fff; border: none; border-radius: 6px; padding: 0.4rem 1rem; cursor: pointer; font-size: 0.82rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem;">
+                        <i class="fa-solid fa-plus"></i> เพิ่มรายการ
+                    </button>
+                    <input type="hidden" name="returnProductJSON" id="return-product-json">
+                </div>
+            </div>
+
                 <label><i class="fa-solid fa-list"></i> รายการและค่าใช้จ่าย (Items & Cost)</label>
                 <div id="line-items-container"></div>
                 <div id="line-items-footer-placeholder"></div>
