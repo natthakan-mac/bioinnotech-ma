@@ -2843,7 +2843,7 @@ function renderReturnProductList() {
     container.innerHTML = '';
     returnProductData.forEach(function(item, idx) {
         var row = document.createElement('div');
-        row.style.cssText = 'display:grid; grid-template-columns:24px 1fr 80px 28px; gap:8px; align-items:center; padding:4px 0;';
+        row.style.cssText = 'display:grid; grid-template-columns:24px 1fr 1fr 24px; gap:8px; align-items:center; padding:4px 0;';
 
         var num = document.createElement('span');
         num.style.cssText = 'font-size:0.82rem; font-weight:600; color:#555; text-align:center;';
@@ -2855,25 +2855,24 @@ function renderReturnProductList() {
         nameInput.dataset.returnIdx = idx;
         nameInput.dataset.field = 'name';
         nameInput.value = item.name || '';
-        nameInput.placeholder = 'ชื่อสินค้า/อะไหล่';
+        nameInput.placeholder = '\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32';
         nameInput.style.cssText = 'height:34px; padding:0 10px; font-size:0.82rem; border:1px solid rgba(0,0,0,0.12); border-radius:6px; box-sizing:border-box; width:100%;';
         row.appendChild(nameInput);
 
-        var qtyInput = document.createElement('input');
-        qtyInput.type = 'number';
-        qtyInput.dataset.returnIdx = idx;
-        qtyInput.dataset.field = 'qty';
-        qtyInput.value = item.qty || '';
-        qtyInput.placeholder = 'จำนวน';
-        qtyInput.min = '0';
-        qtyInput.style.cssText = 'height:34px; padding:0 10px; font-size:0.82rem; border:1px solid rgba(0,0,0,0.12); border-radius:6px; box-sizing:border-box; width:100%; text-align:center;';
-        row.appendChild(qtyInput);
+        var noteInput = document.createElement('input');
+        noteInput.type = 'text';
+        noteInput.dataset.returnIdx = idx;
+        noteInput.dataset.field = 'note';
+        noteInput.value = item.note || '';
+        noteInput.placeholder = '\u0e2b\u0e21\u0e32\u0e22\u0e40\u0e2b\u0e15\u0e38';
+        noteInput.style.cssText = 'height:34px; padding:0 10px; font-size:0.82rem; border:1px solid rgba(0,0,0,0.12); border-radius:6px; box-sizing:border-box; width:100%;';
+        row.appendChild(noteInput);
 
         var delBtn = document.createElement('button');
         delBtn.type = 'button';
         delBtn.dataset.removeReturn = idx;
         delBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
-        delBtn.style.cssText = 'background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.9rem; padding:0; display:flex; align-items:center; justify-content:center;';
+        delBtn.style.cssText = 'background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.85rem; padding:0; display:flex; align-items:center; justify-content:center;';
         row.appendChild(delBtn);
 
         container.appendChild(row);
@@ -2883,7 +2882,7 @@ function renderReturnProductList() {
 
 document.addEventListener('click', function(e) {
     if (e.target.closest('#btn-add-return-product')) {
-        returnProductData.push({ name: '', qty: '' });
+        returnProductData.push({ name: '', status: '', qty: '', note: '' });
         renderReturnProductList();
     }
     var removeBtn = e.target.closest('[data-remove-return]');
@@ -10619,10 +10618,27 @@ async function exportCasePDF(logId) {
         inspHtml += '<div style="display:flex; align-items:center; justify-content:center; padding:6px 20px; background:' + statusBg + '; border-radius:6px; min-width:130px;"><span style="font-size:13px; font-weight:700; color:' + statusColor + '; white-space:nowrap;">สภาพเครื่อง: ' + statusLabel + '</span></div>';
         inspHtml += '<div style="padding:6px 14px; font-size:10px;"><span style="font-weight:600; color:#555;">หมายเหตุ:</span> <span style="color:#333;">' + (log.machineStatusAfterNote || '-') + '</span></div>';
         inspHtml += '</div></div>';
+
+        // กรณีรับสินค้ากลับ
+        if ((log.returnProducts && log.returnProducts.length > 0) || log.returnProductNote) {
+            inspHtml += '<h2>กรณีรับสินค้ากลับ</h2>';
+            if (log.returnProductNote) {
+                inspHtml += '<div style="font-size:10px; padding:6px 8px; border:1px solid #ddd; border-radius:4px; margin-bottom:6px; white-space:pre-wrap; color:#555;">' + log.returnProductNote + '</div>';
+            }
+            if (log.returnProducts && log.returnProducts.length > 0) {
+                inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; width:100%;">';
+                inspHtml += '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px; width:25px;">ลำดับ</th><th style="padding:4px 8px;">รายการสินค้า</th><th style="padding:4px 8px;">หมายเหตุ</th></tr></thead>';
+                inspHtml += '<tbody>';
+                log.returnProducts.forEach(function(item, i) {
+                    inspHtml += '<tr style="border-bottom:1px solid #eee;"><td style="padding:3px 8px; text-align:center;">' + (i+1) + '</td><td style="padding:3px 8px;">' + (item.name || '-') + '</td><td style="padding:3px 8px; color:#666;">' + (item.note || '-') + '</td></tr>';
+                });
+                inspHtml += '</tbody></table>';
+            }
+        }
     }
 
     var pdfDocTitle = isInstallPdf ? 'ใบบันทึกการติดตั้ง-รื้อถอน' : (isRepairPdf ? 'ใบบันทึกการซ่อมเครื่องมือ' : 'ใบตรวจเช็คการบำรุงรักษาเครื่อง');
-    var pdfFooterCode = isInstallPdf ? 'FM-SER-01' : (isRepairPdf ? 'FM-SEV-06' : 'FM-SER-06');
+    var pdfFooterCode = isInstallPdf ? 'FM-SER-01' : (isRepairPdf ? 'FM-SEV-06' : 'FM-SER-05');
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -13744,7 +13760,7 @@ function exportAnnualPlanPDF() {
 <div class="header-line"></div>
 
 <div class="page-content">
-<h1 style="text-align:center; font-size:14px; margin:0 0 8px;">แผนซ่อมบำรุงประจำปี ${displayYear}</h1>
+<h1 style="text-align:center; font-size:14px; margin:0 0 8px;">แผนการบำรุงรักษาประจำปี ${displayYear}</h1>
 <p style="text-align:center; font-size:9px; color:#666; margin:0 0 10px;">Annual Maintenance Plan — จำนวนอุปกรณ์ ${state.sites.length} เครื่อง</p>
 
 <table>
@@ -13766,13 +13782,13 @@ function exportAnnualPlanPDF() {
     <div class="footer-line"></div>
     <div class="footer-text">
         <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
-        <span>FM-SER-06 Rev.00 Effective date : 02-02-2026</span>
+        <span>FM-SER-04 Rev.00 Effective date : 02-02-2026</span>
     </div>
 </div>
 
 </body></html>`;
 
-    showPdfPreview(html, `แผนซ่อมบำรุงประจำปี ${displayYear}`);
+    showPdfPreview(html, `แผนการบำรุงรักษาประจำปี ${displayYear}`);
 }
 
 window.exportAnnualPlanPDF = exportAnnualPlanPDF;
