@@ -13547,7 +13547,7 @@ function exportInsuranceCardPDF(siteId) {
 </div>
 <div style="margin-top:auto; padding-top:10px;">
     <div class="footer-line"></div>
-    <div class="footer-text"><span>บริษัท ไบโอ อินโน เทค จำกัด</span><span>FM-SAL-09 Rev.00 Effective date : 02-02-2026</span></div>
+    <div class="footer-text"><span>บริษัท ไบโอ อินโน เทค จำกัด</span><span>FM-SAL-00 Rev.00 Effective date : 02-02-2026</span></div>
 </div>
 </body></html>`;
 
@@ -13645,7 +13645,7 @@ function exportCaseHistoryPDF(siteId) {
 </div>
 <div style="margin-top:auto; padding-top:10px;">
     <div class="footer-line"></div>
-    <div class="footer-text"><span>บริษัท ไบโอ อินโน เทค จำกัด</span><span>FM-SER-09 Rev.00 Effective date : 02-02-2026</span></div>
+    <div class="footer-text"><span>บริษัท ไบโอ อินโน เทค จำกัด</span><span>FM-SER-07 Rev.00 Effective date : 02-02-2026</span></div>
 </div>
 </body></html>`;
 
@@ -13663,8 +13663,8 @@ function showPdfPreview(html, title) {
             + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
             + '<span id="pdf-preview-title" style="font-weight:700; font-size:14px; color:#333;">PDF Preview</span>'
             + '<div style="display:flex; gap:8px;">'
-            + '<button id="pdf-btn-print" style="background:#111; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600;"><i class="fa-solid fa-print"></i> พิมพ์</button>'
-            + '<button id="pdf-btn-close" style="background:#ef4444; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600;"><i class="fa-solid fa-times"></i> ปิด</button>'
+            + '<button id="pdf-btn-print" style="background:#8bc53f; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-print"></i> พิมพ์</button>'
+            + '<button id="pdf-btn-close" style="background:#ef4444; color:#fff; border:none; border-radius:6px; width:34px; height:34px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-xmark"></i></button>'
             + '</div></div>'
             + '<iframe style="flex:1; border:none; width:100%;"></iframe>'
             + '</div>';
@@ -13904,7 +13904,7 @@ function exportDevicesPDF() {
             + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
             + '<span id="pdf-preview-title" style="font-weight:700; font-size:14px; color:#333;">PDF Preview</span>'
             + '<div style="display:flex; gap:8px;">'
-            + '<button id="pdf-btn-print" style="background:#8bc53f; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600;"><i class="fa-solid fa-print"></i> พิมพ์</button>'
+            + '<button id="pdf-btn-print" style="background:#8bc53f; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-print"></i> พิมพ์</button>'
             + '<button id="pdf-btn-close" style="background:#ef4444; color:#fff; border:none; border-radius:6px; width:34px; height:34px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-xmark"></i></button>'
             + '</div></div>'
             + '<iframe id="pdf-preview-iframe" style="flex:1; border:none; width:100%; background:#fff;"></iframe>'
