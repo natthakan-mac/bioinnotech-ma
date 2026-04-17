@@ -134,6 +134,58 @@
     <!-- App Scripts (Type Module for Firebase 9+) -->
     <script src="hospital-data.js"></script>
     <script type="module" src="app.js"></script>
+
+<!-- PUBLIC SIGNING PAGE -->
+<section id="public-sign-view" style="display:none; min-height:100vh; background:#f5f5f5; padding:1rem;">
+    <div style="max-width:500px; margin:2rem auto; background:#fff; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); overflow:hidden;">
+        <div style="background:#8bc53f; padding:1.25rem 1.5rem; color:#fff;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <img src="/bioinnotech.svg" alt="Logo" style="height:40px; filter:brightness(10);">
+                <div>
+                    <div style="font-size:1.1rem; font-weight:700;">ลงลายเซ็นลูกค้า</div>
+                    <div style="font-size:0.8rem; opacity:0.9;">Customer Signature</div>
+                </div>
+            </div>
+        </div>
+        <div style="padding:1.5rem;">
+            <div id="sign-case-info" style="background:#f9fafb; border-radius:8px; padding:0.75rem; margin-bottom:1rem; font-size:0.85rem; color:#555;"></div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="display:block; font-size:0.85rem; margin-bottom:0.25rem; font-weight:600;">ชื่อ-นามสกุล <span style="color:#ef4444;">*</span></label>
+                <input type="text" id="sign-name" placeholder="ชื่อผู้ลงลายเซ็น" style="width:100%; padding:0.6rem; border:1px solid #ddd; border-radius:8px; font-size:0.9rem; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="display:block; font-size:0.85rem; margin-bottom:0.25rem; font-weight:600;">เบอร์โทร <span style="color:#ef4444;">*</span></label>
+                <input type="tel" id="sign-tel" placeholder="08XXXXXXXX" style="width:100%; padding:0.6rem; border:1px solid #ddd; border-radius:8px; font-size:0.9rem; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="display:block; font-size:0.85rem; margin-bottom:0.25rem; font-weight:600;">ตำแหน่ง</label>
+                <input type="text" id="sign-position" placeholder="ตำแหน่ง (ถ้ามี)" style="width:100%; padding:0.6rem; border:1px solid #ddd; border-radius:8px; font-size:0.9rem; box-sizing:border-box;">
+            </div>
+            <label style="display:block; font-size:0.85rem; margin-bottom:0.25rem; font-weight:600;">ลายเซ็น <span style="color:#ef4444;">*</span></label>
+            <div style="border:2px dashed #ddd; border-radius:8px; overflow:hidden; background:#fff; position:relative;">
+                <canvas id="public-sign-canvas" width="460" height="200" style="width:100%; cursor:crosshair; touch-action:none;"></canvas>
+                <button onclick="publicSignPad && publicSignPad.clear()" style="position:absolute; top:6px; right:6px; background:rgba(0,0,0,0.06); border:1px solid rgba(0,0,0,0.1); border-radius:6px; padding:4px 10px; font-size:0.75rem; cursor:pointer; color:#666;">
+                    <i class="fa-solid fa-eraser"></i> ล้าง
+                </button>
+            </div>
+            <div style="margin-top:0.5rem;">
+                <input type="file" id="public-sign-upload" accept="image/*" style="display:none;">
+                <button onclick="document.getElementById('public-sign-upload').click()" style="background:none; border:1px solid #ddd; border-radius:6px; padding:0.4rem 0.8rem; font-size:0.8rem; cursor:pointer; color:#666;">
+                    <i class="fa-solid fa-upload"></i> อัปโหลดรูปลายเซ็น
+                </button>
+            </div>
+            <button id="btn-public-sign-submit" style="width:100%; margin-top:1rem; padding:0.75rem; background:#8bc53f; color:#fff; border:none; border-radius:8px; font-size:1rem; font-weight:700; cursor:pointer;">
+                <i class="fa-solid fa-check"></i> ยืนยันลายเซ็น
+            </button>
+            <div id="sign-success-msg" style="display:none; text-align:center; padding:2rem 1rem;">
+                <i class="fa-solid fa-circle-check" style="font-size:3rem; color:#22c55e; margin-bottom:0.75rem;"></i>
+                <div style="font-size:1.1rem; font-weight:700; color:#333;">ลงลายเซ็นสำเร็จ</div>
+                <div style="font-size:0.85rem; color:#888; margin-top:0.25rem;">ขอบคุณที่ลงลายเซ็น คุณสามารถปิดหน้านี้ได้</div>
+            </div>
+        </div>
+    </div>
+</section>
+
 </body>
 <!-- LOGIN VIEW -->
 <section id="login-view" class="login-container hidden">
@@ -775,7 +827,6 @@
                     <select id="filter-status">
                         <option value="all">ทั้งหมด</option>
                         <option value="Open">เปิดงาน</option>
-                        <option value="Planning">วางแผน</option>
                         <option value="On Process">กำลังดำเนินการ</option>
                         <option value="Done">เสร็จสิ้น</option>
                         <option value="Case Closed">ปิดเคส</option>
@@ -1803,7 +1854,19 @@
             <div style="border: 2px dashed var(--border-color); border-radius: 8px; overflow: hidden; background: #fff;">
                 <canvas id="signature-canvas" width="460" height="200" style="width: 100%; cursor: crosshair; touch-action: none;"></canvas>
             </div>
-            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                <input type="file" id="signature-upload-input" accept="image/*" style="display: none;">
+                <button class="btn-secondary" onclick="document.getElementById('signature-upload-input').click()" style="flex: 1; font-size: 0.82rem;">
+                    <i class="fa-solid fa-upload"></i> อัปโหลดลายเซ็น
+                </button>
+                <button class="btn-secondary" onclick="shareSignatureLink()" style="flex: 1; font-size: 0.82rem;">
+                    <i class="fa-solid fa-share-nodes"></i> ส่งลิงก์ให้ลูกค้า
+                </button>
+            </div>
+            <div id="signature-upload-preview" style="display:none; margin-top:0.5rem; text-align:center;">
+                <img id="signature-upload-img" style="max-height:100px; max-width:250px; object-fit:contain; border:1px solid rgba(0,0,0,0.1); border-radius:6px;">
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
                 <button class="btn-secondary" onclick="clearSignatureCanvas()" style="flex: 1;">
                     <i class="fa-solid fa-eraser"></i> ล้าง
                 </button>

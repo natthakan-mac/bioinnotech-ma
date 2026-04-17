@@ -68,6 +68,7 @@ import {
     signInWithPopup,
     signInWithRedirect,
     linkWithPopup,
+    signInAnonymously,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 
@@ -542,6 +543,12 @@ function setupAuthStateListener() {
 
                 // Auto-Register New Users (Except LINE)
                 if (!userDoc) {
+                    // Skip anonymous users — they should not be registered
+                    if (user.isAnonymous) {
+                        console.log("Anonymous user detected, skipping registration.");
+                        return;
+                    }
+
                     // Check if user authenticated via LINE
                     const isLineUser = user.providerData.some(
                         (p) => p.providerId === "oidc.line",
@@ -4014,14 +4021,11 @@ async function handleLogMaintenance(e) {
             
             const statusLabels = {
                 'Open': 'เปิดงาน',
-                'Planning': 'วางแผน',
                 'On Process': 'กำลังดำเนินการ',
                 'Done': 'เสร็จสิ้น',
                 'Case Closed': 'ปิดเคส',
                 'Cancel': 'ยกเลิก'
             };
-            
-            // Compare fields
             if (existingLog) {
                 console.log('[Change Detection] existingLog found:', {
                     id: existingLog.id,
@@ -5973,6 +5977,8 @@ function populateResponderDropdown(selectedId = "") {
     if (!select || !state.users) return;
     select.innerHTML = '<option value="">-- เลือกเจ้าหน้าที่ช่างบริการ --</option>';
     Object.entries(state.users).forEach(([uid, u]) => {
+        // Skip anonymous users
+        if (!u.email && !u.displayName) return;
         const name = u.displayName || u.email || uid;
         select.innerHTML += `<option value="${uid}" ${uid === selectedId ? 'selected' : ''}>${name}</option>`;
     });
@@ -6259,8 +6265,25 @@ function editLog(logId) {
     if (custSigHidden) custSigHidden.value = log.customerSignature || "";
     if (log.customerSignature && customerSignaturePad) {
         setTimeout(() => {
-            try { customerSignaturePad.fromDataURL(log.customerSignature); } catch(e) {}
-        }, 200);
+            try {
+                var canvas = document.getElementById("customer-signature-canvas");
+                if (!canvas) return;
+                var ctx = canvas.getContext("2d");
+                var img = new Image();
+                img.onload = function() {
+                    var cw = canvas.width;
+                    var ch = canvas.height;
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(0, 0, cw, ch);
+                    var scale = Math.min(cw / img.width, ch / img.height) * 0.9;
+                    var x = (cw - img.width * scale) / 2;
+                    var y = (ch - img.height * scale) / 2;
+                    ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+                    customerSignaturePad._isEmpty = false;
+                };
+                img.src = log.customerSignature;
+            } catch(e) {}
+        }, 300);
     }
 
     let legacyAttachments = log.attachments || [];
@@ -6314,10 +6337,13 @@ function editLog(logId) {
 async function quickUpdateStatus(logId, newStatus) {
     if (!newStatus) return;
     if (newStatus === 'Done') {
-        openSignatureModal(logId, newStatus);
-    } else {
-        await executeStatusUpdate(logId, newStatus, null);
+        var log = state.logs.find(function(l) { return l.id === logId; });
+        if (log && (!log.customerName || !log.customerPhone || !log.customerSignature)) {
+            openSignatureModal(logId, newStatus);
+            return;
+        }
     }
+    await executeStatusUpdate(logId, newStatus, null);
 }
 
 window.quickUpdateStatus = quickUpdateStatus;
@@ -6646,7 +6672,6 @@ function renderCalendar() {
                 // Status Color with background
                 const statusColors = {
                     Open: { color: "#ca8a04", bg: "rgba(234,179,8,0.2)" },
-                    Planning: { color: "#3b82f6", bg: "rgba(59,130,246,0.2)" },
                     "On Process": { color: "#f97316", bg: "rgba(249,115,22,0.2)" },
                     Cancel: { color: "#ef4444", bg: "rgba(239,68,68,0.2)" },
                     Done: { color: "#a855f7", bg: "rgba(168,85,247,0.2)" },
@@ -6678,7 +6703,7 @@ function renderCalendar() {
                         '<i class="fa-solid fa-hammer" style="color: var(--text-muted); font-size: 0.6rem;"></i>';
 
                 const statusLabelsCalendar = {
-                    Open: 'เปิดงาน', Planning: 'วางแผน', 'On Process': 'ดำเนินการ',
+                    Open: 'เปิดงาน', 'On Process': 'ดำเนินการ',
                     Done: 'เสร็จสิ้น', 'Case Closed': 'ปิดเคส', Cancel: 'ยกเลิก', Completed: 'เสร็จสิ้น'
                 };
                 const statusLabel = statusLabelsCalendar[log.status] || log.status || '-';
@@ -6846,11 +6871,6 @@ function showDayDetails(dateStr, logs) {
         // Render Status Badge
         const statusColors = {
             Open: { bg: "rgba(234,179,8,0.15)", color: "#ca8a04", label: "เปิดงาน" },
-            Planning: {
-                bg: "rgba(59,130,246,0.15)",
-                color: "#3b82f6",
-                label: "วางแผน",
-            },
             "On Process": {
                 bg: "rgba(249,115,22,0.15)",
                 color: "#f97316",
@@ -6878,7 +6898,7 @@ function showDayDetails(dateStr, logs) {
 
         // Mobile status badge
         const statusLabelClean = {
-            Open: 'เปิดงาน', Planning: 'วางแผน', 'On Process': 'ดำเนินการ',
+            Open: 'เปิดงาน', 'On Process': 'ดำเนินการ',
             Done: 'เสร็จสิ้น', 'Case Closed': 'ปิดเคส', Cancel: 'ยกเลิก', Completed: 'เสร็จสิ้น'
         };
         const mobileStatusBadge = `<span style="background:${s.color}; color:#fff; padding:0.3rem 0.75rem; border-radius:8px; font-size:0.8rem; font-weight:700; white-space:nowrap;">${statusLabelClean[log.status] || log.status || '-'}</span>`;
@@ -8910,7 +8930,6 @@ function renderStatusTimeline(currentStatus, logId, statusHistory = {}) {
     
     const statuses = [
         { value: 'Open', label: 'เปิดงาน', icon: 'fa-folder-open' },
-        { value: 'Planning', label: 'วางแผน', icon: 'fa-clipboard-list' },
         { value: 'On Process', label: 'ดำเนินการ', icon: 'fa-gear' },
         { value: 'Done', label: 'เสร็จสิ้น', icon: 'fa-circle-check' },
         { value: 'Case Closed', label: 'ปิดเคส', icon: 'fa-lock', adminOnly: true },
@@ -9022,7 +9041,97 @@ function initSignatureCanvas() {
 
 function clearSignatureCanvas() {
     if (signaturePad) signaturePad.clear();
+    // Also clear uploaded signature
+    var preview = document.getElementById('signature-upload-preview');
+    var img = document.getElementById('signature-upload-img');
+    if (preview) preview.style.display = 'none';
+    if (img) img.src = '';
+    window._uploadedSignatureData = null;
 }
+
+// Upload signature image
+var sigUploadInput = document.getElementById('signature-upload-input');
+if (sigUploadInput) {
+    sigUploadInput.addEventListener('change', function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+            // Draw on canvas
+            var img = new Image();
+            img.onload = function() {
+                if (signaturePad) signaturePad.clear();
+                var canvas = document.getElementById('signature-canvas');
+                var ctx = canvas.getContext('2d');
+                var scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
+                var x = (canvas.width - img.width * scale) / 2;
+                var y = (canvas.height - img.height * scale) / 2;
+                ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+                // Store as data URL
+                window._uploadedSignatureData = canvas.toDataURL();
+                // Show preview
+                var previewEl = document.getElementById('signature-upload-preview');
+                var previewImg = document.getElementById('signature-upload-img');
+                if (previewEl && previewImg) {
+                    previewImg.src = window._uploadedSignatureData;
+                    previewEl.style.display = 'block';
+                }
+            };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+        e.target.value = '';
+    });
+}
+
+// Share signature link
+// Track active signature listener
+var _signatureListenerUnsub = null;
+
+function shareSignatureLink() {
+    if (!pendingStatusChange) {
+        showToast('กรุณาเลือกเคสก่อน', 'error');
+        return;
+    }
+    var logId = pendingStatusChange.logId;
+    var newStatus = pendingStatusChange.newStatus;
+    var baseUrl = window.location.origin;
+    var signUrl = baseUrl + '?sign=' + logId;
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(signUrl).then(function() {
+            showToast('คัดลอกลิงก์แล้ว — รอลูกค้าลงลายเซ็น...', 'success', 5000);
+        });
+    } else {
+        prompt('คัดลอกลิงก์นี้ส่งให้ลูกค้า:', signUrl);
+    }
+
+    // Start real-time listener for remote signature
+    if (_signatureListenerUnsub) _signatureListenerUnsub();
+    _signatureListenerUnsub = onSnapshot(doc(db, 'logs', logId), function(docSnap) {
+        if (!docSnap.exists()) return;
+        var data = docSnap.data();
+        if (data.customerSignature && data.customerName) {
+            // Customer has signed — update local state
+            var log = state.logs.find(function(l) { return l.id === logId; });
+            if (log) {
+                log.customerName = data.customerName;
+                log.customerPhone = data.customerPhone || '';
+                log.customerPosition = data.customerPosition || '';
+                log.customerSignature = data.customerSignature;
+                if (data.statusSignatures) log.statusSignatures = data.statusSignatures;
+            }
+            // Stop listening
+            if (_signatureListenerUnsub) { _signatureListenerUnsub(); _signatureListenerUnsub = null; }
+            // Close signature modal
+            closeSignatureModal();
+            // Notify and auto-update status
+            showToast('ลูกค้าลงลายเซ็นแล้ว — อัปเดตสถานะอัตโนมัติ', 'success', 5000);
+            executeStatusUpdate(logId, newStatus, data.customerSignature, data.customerName, data.customerPhone || '', data.customerPosition || '');
+        }
+    });
+}
+window.shareSignatureLink = shareSignatureLink;
 
 function openSignatureModal(logId, newStatus) {
     pendingStatusChange = { logId, newStatus };
@@ -9062,6 +9171,8 @@ function closeSignatureModal() {
     }
     pendingStatusChange = null;
     window._profileSignatureMode = false;
+    // Stop remote signature listener if active
+    if (_signatureListenerUnsub) { _signatureListenerUnsub(); _signatureListenerUnsub = null; }
 }
 
 function getSignatureDataUrl() {
@@ -9079,12 +9190,13 @@ function getSignatureDataUrl() {
 }
 
 async function confirmSignature() {
-    if (!signaturePad || signaturePad.isEmpty()) {
+    var hasUpload = !!window._uploadedSignatureData;
+    if (!hasUpload && (!signaturePad || signaturePad.isEmpty())) {
         showToast("กรุณาลงลายเซ็นก่อนยืนยัน", "error");
         return;
     }
 
-    const signatureData = getSignatureDataUrl();
+    const signatureData = hasUpload ? window._uploadedSignatureData : getSignatureDataUrl();
     const isProfileMode = !!window._profileSignatureMode;
     const pending = pendingStatusChange;
 
@@ -9119,12 +9231,14 @@ window.clearSignatureCanvas = clearSignatureCanvas;
 window.confirmSignature = confirmSignature;
 
 async function updateLogStatus(logId, newStatus) {
-    // Only require signature when changing to "Done"
     if (newStatus === 'Done') {
-        openSignatureModal(logId, newStatus);
-    } else {
-        await executeStatusUpdate(logId, newStatus, null);
+        var log = state.logs.find(function(l) { return l.id === logId; });
+        if (log && (!log.customerName || !log.customerPhone || !log.customerSignature)) {
+            openSignatureModal(logId, newStatus);
+            return;
+        }
     }
+    await executeStatusUpdate(logId, newStatus, null);
 }
 
 async function executeStatusUpdate(logId, newStatus, signatureData, signerName = '', signerTel = '', signerPosition = '') {
@@ -9140,7 +9254,7 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
         }
         
         // Define status order (excluding Cancel as it's a separate branch)
-        const statusOrder = ['Open', 'Planning', 'On Process', 'Done', 'Case Closed'];
+        const statusOrder = ['Open', 'On Process', 'Done', 'Case Closed'];
         const oldIndex = statusOrder.indexOf(oldStatus);
         const newIndex = statusOrder.indexOf(newStatus);
         
@@ -9211,6 +9325,18 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
         };
         if (signatureData) {
             updateData.statusSignatures = log.statusSignatures;
+            // Sync customer fields when Done signature is provided
+            if (newStatus === 'Done') {
+                updateData.customerSignature = signatureData;
+                if (signerName) updateData.customerName = signerName;
+                if (signerTel) updateData.customerPhone = signerTel;
+                if (signerPosition) updateData.customerPosition = signerPosition;
+                // Also update local state
+                log.customerSignature = signatureData;
+                if (signerName) log.customerName = signerName;
+                if (signerTel) log.customerPhone = signerTel;
+                if (signerPosition) log.customerPosition = signerPosition;
+            }
         }
         await FirestoreService.updateLog(logId, updateData);
         
@@ -9220,7 +9346,6 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
         // Add change log comment for status change
         const statusLabels = {
             'Open': 'เปิดงาน',
-            'Planning': 'วางแผน',
             'On Process': 'กำลังดำเนินการ',
             'Done': 'เสร็จสิ้น',
             'Case Closed': 'ปิดเคส',
@@ -9742,21 +9867,21 @@ function viewLogDetails(id) {
         const custPhone = log.customerPhone || '';
         const custPos = log.customerPosition || '';
         const custSig = log.customerSignature || '';
-        if (custName || custPhone || custPos || custSig) {
-            custSection.style.display = "block";
-            let custHtml = '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem 1.5rem;">';
-            const custRow = (label, value) => `<div style="display:flex; flex-direction:column; padding:0.4rem 0;"><span style="font-size:0.8rem; color:#888;">${label}</span><span style="font-size:0.9rem; font-weight:500; color:#111;">${value || '-'}</span></div>`;
-            custHtml += custRow('ชื่อลูกค้า', custName);
-            custHtml += custRow('เบอร์โทร', custPhone);
-            custHtml += custRow('ตำแหน่ง', custPos);
-            custHtml += '</div>';
-            if (custSig) {
-                custHtml += `<div style="margin-top:0.75rem;"><span style="font-size:0.8rem; color:#888;">ลายเซ็นลูกค้า</span><div style="margin-top:0.25rem; border:1px solid rgba(0,0,0,0.08); border-radius:8px; padding:0.5rem; background:#fafafa; display:inline-block;"><img src="${custSig}" style="max-height:80px; object-fit:contain;" alt="Customer Signature"></div></div>`;
-            }
-            custContent.innerHTML = custHtml;
-        } else {
-            custSection.style.display = "none";
+        custSection.style.display = "block";
+        let custHtml = '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem 1.5rem;">';
+        const custRow = (label, value) => `<div style="display:flex; flex-direction:column; padding:0.4rem 0;"><span style="font-size:0.8rem; color:#888;">${label}</span><span style="font-size:0.9rem; font-weight:500; color:#111;">${value || '-'}</span></div>`;
+        custHtml += custRow('ชื่อลูกค้า', custName);
+        custHtml += custRow('เบอร์โทร', custPhone);
+        custHtml += custRow('ตำแหน่ง', custPos);
+        custHtml += '</div>';
+        if (custSig) {
+            custHtml += '<div style="margin-top:0.75rem;">';
+            custHtml += '<span style="font-size:0.8rem; color:#888; display:block; margin-bottom:0.35rem;">ลายเซ็นลูกค้า</span>';
+            custHtml += '<div style="border:1px solid rgba(0,0,0,0.08); border-radius:8px; padding:0.5rem; background:#fafafa; display:inline-block;">';
+            custHtml += '<img src="' + custSig + '" style="max-height:80px; max-width:200px; object-fit:contain; display:block;" alt="Customer Signature">';
+            custHtml += '</div></div>';
         }
+        custContent.innerHTML = custHtml;
     }
 
     const postBtn = document.getElementById("btn-post-comment");
@@ -10240,30 +10365,17 @@ async function exportCasePDF(logId) {
     const responderName = responderUser ? (responderUser.displayName || responderUser.email || '-') : '-';
     const responderSignature = responderUser?.signature || '';
 
-    // Get Done signature (customer's drawn signature)
-    let doneSignature = '';
-    let doneName = '-';
-    let customerTel = '-';
-    let customerPosition = '-';
-    if (log.statusSignatures && log.statusSignatures['Done']) {
+    // Get Done signature — prefer customer fields (always synced), fallback to statusSignatures
+    let doneSignature = log.customerSignature || '';
+    let doneName = log.customerName || '-';
+    let customerTel = log.customerPhone || '-';
+    let customerPosition = log.customerPosition || '-';
+    if (!doneSignature && log.statusSignatures && log.statusSignatures['Done']) {
         const sig = log.statusSignatures['Done'];
         doneSignature = sig.data || '';
-        doneName = sig.signerName || sig.signedBy || '-';
-        customerTel = sig.signerTel || '-';
-        customerPosition = sig.signerPosition || '-';
-    }
-    // Fallback to customer signature from form if no Done status signature
-    if (!doneSignature && log.customerSignature) {
-        doneSignature = log.customerSignature;
-    }
-    if (doneName === '-' && log.customerName) {
-        doneName = log.customerName;
-    }
-    if (customerTel === '-' && log.customerPhone) {
-        customerTel = log.customerPhone;
-    }
-    if (customerPosition === '-' && log.customerPosition) {
-        customerPosition = log.customerPosition;
+        if (doneName === '-') doneName = sig.signerName || sig.signedBy || '-';
+        if (customerTel === '-') customerTel = sig.signerTel || '-';
+        if (customerPosition === '-') customerPosition = sig.signerPosition || '-';
     }
 
     // Get Case Closed closer info (from user profile)
@@ -10280,7 +10392,7 @@ async function exportCasePDF(logId) {
     }
 
     const statusLabels = {
-        'Open': 'เปิดงาน', 'Planning': 'วางแผน', 'On Process': 'กำลังดำเนินการ',
+        'Open': 'เปิดงาน', 'On Process': 'กำลังดำเนินการ',
         'Done': 'เสร็จสิ้น', 'Case Closed': 'ปิดเคส', 'Cancel': 'ยกเลิก'
     };
     const statusText = statusLabels[log.status] || log.status || '-';
@@ -10303,7 +10415,6 @@ async function exportCasePDF(logId) {
     // Build status history timeline (horizontal)
     const statusDefs = [
         { value: 'Open', label: 'เปิดงาน', icon: '●', color: '#ca8a04' },
-        { value: 'Planning', label: 'วางแผน', icon: '●', color: '#3b82f6' },
         { value: 'On Process', label: 'ดำเนินการ', icon: '●', color: '#f97316' },
         { value: 'Done', label: 'เสร็จสิ้น', icon: '●', color: '#a855f7' },
         { value: 'Case Closed', label: 'ปิดเคส', icon: '●', color: '#22c55e' },
@@ -10831,7 +10942,7 @@ window.onload = function() {
     // Create page number overlays for each page
     var pageNumStyle = 'position:absolute; right:10mm; font-size:8px; color:#333; z-index:100; background:#fff; padding:0 4px;';
     var pagePx = 297 * 3.78;
-    var footerOffset = 22 * 3.78;
+    var footerOffset = 20 * 3.78;
     
     for (var p = 1; p <= totalPages; p++) {
         var marker = document.createElement('div');
@@ -11132,7 +11243,6 @@ async function exportLogsToExcel() {
         // Status label mapping
         const statusLabels = {
             Open: "เปิดงาน",
-            Planning: "วางแผน",
             "On Process": "กำลังดำเนินการ",
             Cancel: "ยกเลิก",
             Done: "เสร็จสิ้น",
@@ -11193,7 +11303,6 @@ async function exportLogsToExcel() {
         // Status label mapping
         const statusLabels = {
             Open: "เปิดงาน",
-            Planning: "วางแผน",
             "On Process": "กำลังดำเนินการ",
             Cancel: "ยกเลิก",
             Done: "เสร็จสิ้น",
@@ -11613,11 +11722,6 @@ function appendLogRows(newLogs, targetTbody = null) {
         // Render Status Badge
         const statusColors = {
             Open: { bg: "rgba(234,179,8,0.15)", color: "#ca8a04", label: "เปิดงาน" },
-            Planning: {
-                bg: "rgba(59,130,246,0.15)",
-                color: "#3b82f6",
-                label: "วางแผน",
-            },
             "On Process": {
                 bg: "rgba(249,115,22,0.15)",
                 color: "#f97316",
@@ -11645,7 +11749,7 @@ function appendLogRows(newLogs, targetTbody = null) {
 
         // Mobile status: solid filled, white text, no emoji
         const statusLabelClean = {
-            Open: 'เปิดงาน', Planning: 'วางแผน', 'On Process': 'ดำเนินการ',
+            Open: 'เปิดงาน', 'On Process': 'ดำเนินการ',
             Done: 'เสร็จสิ้น', 'Case Closed': 'ปิดเคส', Cancel: 'ยกเลิก', Completed: 'เสร็จสิ้น'
         };
         const mobileStatusBadge = `<span style="background:${s.color}; color:#fff; padding:0.3rem 0.75rem; border-radius:8px; font-size:0.8rem; font-weight:700; white-space:nowrap;">${statusLabelClean[log.status] || log.status || '-'}</span>`;
@@ -13567,8 +13671,8 @@ function exportCaseHistoryPDF(siteId) {
     const infoRow = (label, value) => `<span style="margin-right:16px;"><b>${label}:</b> ${value || '-'}</span>`;
 
     const tableRows = siteLogs.map((log, i) => {
-        const statusColors = { 'Open':'#ca8a04', 'Planning':'#3b82f6', 'On Process':'#f97316', 'Done':'#a855f7', 'Case Closed':'#22c55e', 'Cancel':'#ef4444' };
-        const statusLabels = { 'Open':'เปิดงาน', 'Planning':'วางแผน', 'On Process':'ดำเนินการ', 'Done':'เสร็จสิ้น', 'Case Closed':'ปิดเคส', 'Cancel':'ยกเลิก' };
+        const statusColors = { 'Open':'#ca8a04', 'On Process':'#f97316', 'Done':'#a855f7', 'Case Closed':'#22c55e', 'Cancel':'#ef4444' };
+        const statusLabels = { 'Open':'เปิดงาน', 'On Process':'ดำเนินการ', 'Done':'เสร็จสิ้น', 'Case Closed':'ปิดเคส', 'Cancel':'ยกเลิก' };
         const sc = statusColors[log.status] || '#888';
         const sl = statusLabels[log.status] || log.status;
         return `<tr style="border-bottom:1px solid #eee;">
@@ -13670,6 +13774,8 @@ function showPdfPreview(html, title) {
             + '</div>';
         document.body.appendChild(pdfModal);
         document.getElementById('pdf-btn-close').onclick = () => { pdfModal.style.display = 'none'; };
+        pdfModal.onclick = (e) => { if (e.target === pdfModal) pdfModal.style.display = 'none'; };
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && pdfModal.style.display === 'flex') pdfModal.style.display = 'none'; });
     }
 
     const iframe = pdfModal.querySelector('iframe');
@@ -13882,7 +13988,7 @@ function exportDevicesPDF() {
         + '  var el = document.getElementById("dev-page-info");'
         + '  if (el) el.textContent = "";'
         + '  var pageNumStyle = "position:absolute; right:10mm; font-size:8px; color:#333; z-index:100; background:#fff; padding:0 4px;";'
-        + '  var footerOffset = 18 * 3.78;'
+        + '  var footerOffset = 16 * 3.78;'
         + '  for (var p = 1; p <= totalPages; p++) {'
         + '    var marker = document.createElement("div");'
         + '    marker.style.cssText = pageNumStyle;'
@@ -14048,6 +14154,146 @@ window.togglePlanMonth = togglePlanMonth;
 // --- Global Event Listeners (Must be outside init() for Login) ---
 document.addEventListener("DOMContentLoaded", () => {
     console.log("Global Listeners Attached");
+
+    // --- Public Signing Page (no auth required) ---
+    (function() {
+        var urlParams = new URLSearchParams(window.location.search);
+        var signLogId = urlParams.get('sign');
+        if (!signLogId) return;
+
+        // Hide everything, show signing page
+        document.querySelectorAll('.app-container, #login-view').forEach(function(el) { el.style.display = 'none'; });
+        var signView = document.getElementById('public-sign-view');
+        if (signView) signView.style.display = 'block';
+
+        // Init signature pad
+        var canvas = document.getElementById('public-sign-canvas');
+        if (canvas && typeof SignaturePad !== 'undefined') {
+            window.publicSignPad = new SignaturePad(canvas, { backgroundColor: 'rgb(255,255,255)' });
+        }
+
+        // Upload handler
+        var uploadInput = document.getElementById('public-sign-upload');
+        if (uploadInput) {
+            uploadInput.addEventListener('change', function(e) {
+                var file = e.target.files[0];
+                if (!file || !canvas) return;
+                var reader = new FileReader();
+                reader.onload = function(ev) {
+                    var img = new Image();
+                    img.onload = function() {
+                        if (window.publicSignPad) window.publicSignPad.clear();
+                        var ctx = canvas.getContext('2d');
+                        ctx.fillStyle = '#fff';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        var scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
+                        var x = (canvas.width - img.width * scale) / 2;
+                        var y = (canvas.height - img.height * scale) / 2;
+                        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+                    };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+                e.target.value = '';
+            });
+        }
+
+        // Sign in anonymously first, then load case info
+        var initSigningPage = async function() {
+            try {
+                await signInAnonymously(auth);
+                console.log('Anonymous auth success');
+            } catch(e) {
+                console.warn('Anonymous auth failed:', e);
+            }
+            // Load case info
+            try {
+                var docSnap = await getDoc(doc(db, 'logs', signLogId));
+                if (docSnap.exists()) {
+                    var logData = docSnap.data();
+                    var infoEl = document.getElementById('sign-case-info');
+                    if (infoEl) {
+                        infoEl.innerHTML = '<b>เคส:</b> ' + (logData.caseId || signLogId) + '<br><b>หมวดหมู่:</b> ' + (logData.category || '-');
+                    }
+                }
+            } catch(e) { console.warn('Could not load case info:', e); }
+        };
+        initSigningPage();
+
+        // Submit handler
+        var submitBtn = document.getElementById('btn-public-sign-submit');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', async function() {
+                var name = document.getElementById('sign-name').value.trim();
+                var tel = document.getElementById('sign-tel').value.trim();
+                var position = document.getElementById('sign-position').value.trim();
+
+                if (!name || !tel) {
+                    alert('กรุณากรอกชื่อและเบอร์โทร');
+                    return;
+                }
+
+                if (window.publicSignPad && window.publicSignPad.isEmpty()) {
+                    alert('กรุณาลงลายเซ็น');
+                    return;
+                }
+
+                // Get signature data
+                var tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+                var ctx = tempCanvas.getContext('2d');
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                ctx.drawImage(canvas, 0, 0);
+                var sigData = tempCanvas.toDataURL('image/jpeg', 0.8);
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'กำลังบันทึก...';
+
+                try {
+                    // Ensure anonymous auth is still active
+                    if (!auth.currentUser) {
+                        await signInAnonymously(auth);
+                    }
+                    var logRef = doc(db, 'logs', signLogId);
+                    var logSnap = await getDoc(logRef);
+                    if (!logSnap.exists()) { alert('ไม่พบเคสนี้'); return; }
+
+                    var logData = logSnap.data();
+                    var signatures = logData.statusSignatures || {};
+                    signatures['Done'] = {
+                        data: sigData,
+                        timestamp: new Date().toISOString(),
+                        signedBy: name,
+                        signerName: name,
+                        signerTel: tel,
+                        signerPosition: position,
+                        signedRemotely: true
+                    };
+
+                    await updateDoc(logRef, {
+                        statusSignatures: signatures,
+                        customerName: name,
+                        customerPhone: tel,
+                        customerPosition: position,
+                        customerSignature: sigData
+                    });
+
+                    // Show success
+                    document.getElementById('sign-success-msg').style.display = 'block';
+                    submitBtn.style.display = 'none';
+                    document.querySelectorAll('#public-sign-view input, #public-sign-view canvas, #public-sign-view button:not(#btn-public-sign-submit)').forEach(function(el) { el.style.pointerEvents = 'none'; el.style.opacity = '0.5'; });
+
+                } catch(e) {
+                    console.error('Signing failed:', e);
+                    alert('เกิดข้อผิดพลาด: ' + e.message);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'ยืนยันลายเซ็น';
+                }
+            });
+        }
+    })();
 
     // Login Form
     const loginForm = document.getElementById("login-form");

@@ -4376,15 +4376,14 @@ span.flatpickr-weekday {
 }
 
 .profile-unified-card {
-    background: rgba(0,0,0,0.5);
+    background: #ffffff;
     backdrop-filter: none;
     border: 1px solid rgba(0,0,0,0.06);
     border-radius: 24px;
     padding: 2.5rem;
     width: 100%;
     max-width: 1400px;
-    /* Wider for better space utilization */
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
     color: var(--text-color);
 }
 
@@ -4950,11 +4949,11 @@ span.flatpickr-weekday {
 }
 
 .password-section {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.03);
     border-radius: 12px;
     padding: 1.5rem;
     margin-top: 2rem;
-    border: 1px solid rgba(0,0,0,0.04);
+    border: 1px solid rgba(0,0,0,0.06);
 }
 
 @media (max-width: 850px) {
@@ -7070,11 +7069,13 @@ summary:focus-visible {
     font-weight: 600;
 }
 
-/* Planning - Blue */
+/* Planning - Blue - REMOVED */
+
+/* On Process - Orange */
 .status-step.active:nth-child(2) .status-dot {
-    background: #3b82f6;
-    border-color: #3b82f6;
-    box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+    background: #f97316;
+    border-color: #f97316;
+    box-shadow: 0 0 8px rgba(249, 115, 22, 0.3);
 }
 
 .status-step.active:nth-child(2) .status-dot i {
@@ -7082,15 +7083,15 @@ summary:focus-visible {
 }
 
 .status-step.active:nth-child(2) .status-label {
-    color: #3b82f6;
+    color: #f97316;
     font-weight: 600;
 }
 
-/* On Process - Orange */
+/* Done - Purple */
 .status-step.active:nth-child(3) .status-dot {
-    background: #f97316;
-    border-color: #f97316;
-    box-shadow: 0 0 8px rgba(249, 115, 22, 0.3);
+    background: #a855f7;
+    border-color: #a855f7;
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
 }
 
 .status-step.active:nth-child(3) .status-dot i {
@@ -7098,15 +7099,15 @@ summary:focus-visible {
 }
 
 .status-step.active:nth-child(3) .status-label {
-    color: #f97316;
+    color: #a855f7;
     font-weight: 600;
 }
 
-/* Done - Purple */
+/* Case Closed - Green */
 .status-step.active:nth-child(4) .status-dot {
-    background: #a855f7;
-    border-color: #a855f7;
-    box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+    background: #22c55e;
+    border-color: #22c55e;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
 }
 
 .status-step.active:nth-child(4) .status-dot i {
@@ -7114,15 +7115,15 @@ summary:focus-visible {
 }
 
 .status-step.active:nth-child(4) .status-label {
-    color: #a855f7;
+    color: #22c55e;
     font-weight: 600;
 }
 
-/* Case Closed - Green */
+/* Cancel - Red */
 .status-step.active:nth-child(5) .status-dot {
-    background: #22c55e;
-    border-color: #22c55e;
-    box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+    background: #ef4444;
+    border-color: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
 
 .status-step.active:nth-child(5) .status-dot i {
@@ -7130,22 +7131,6 @@ summary:focus-visible {
 }
 
 .status-step.active:nth-child(5) .status-label {
-    color: #22c55e;
-    font-weight: 600;
-}
-
-/* Cancel - Red */
-.status-step.active:nth-child(6) .status-dot {
-    background: #ef4444;
-    border-color: #ef4444;
-    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
-}
-
-.status-step.active:nth-child(6) .status-dot i {
-    color: #ffffff;
-}
-
-.status-step.active:nth-child(6) .status-label {
     color: #ef4444;
     font-weight: 600;
 }
