@@ -2945,7 +2945,7 @@ span.flatpickr-weekday {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(255, 255, 255, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -6593,7 +6593,7 @@ summary:focus-visible {
     left: 0;
     width: 100% !important;
     height: 100% !important;
-    background: rgba(0, 0, 0, 0.4) !important;
+    background: rgba(255, 255, 255, 0.6) !important;
     color: #111111 !important;
     border: none !important;
     border-radius: 50%;
@@ -6674,7 +6674,7 @@ summary:focus-visible {
 .edit-photo-btn:hover {
     transform: none !important;
     /* Disable scale effect on hover for overlay */
-    background: rgba(0, 0, 0, 0.6) !important;
+    background: rgba(255, 255, 255, 0.8) !important;
 }
 
 /* Ensure Cropper.js image fits within the container */

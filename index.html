@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -667,7 +667,7 @@
                 <div class="filters-bar desktop-only" style="margin-bottom: 1rem; flex-wrap: wrap; width: 100%;">
                     <div class="filter-group">
                         <label>ค้นหา</label>
-                        <input type="text" id="site-search-input" placeholder="ชื่อ, หน่วยงาน, ที่อยู่..."
+                        <input type="text" id="site-search-input" placeholder="รหัสเครื่อง, ชื่อ, หน่วยงาน, ที่อยู่..."
                             class="site-search-input-wide" autocomplete="off">
                     </div>
 
@@ -688,21 +688,21 @@
                     <div class="filter-group actions-filter">
                         <label>ตัวเลือก</label>
                         <div class="filter-actions-row">
-                            <button id="btn-clear-site-filters" class="btn-secondary btn-outline-danger"
-                                title="ล้างตัวกรอง" style="flex: 1; min-width: 80px; justify-content: center;">
-                                <i class="fa-solid fa-rotate-left"></i> ล้าง
+                            <button class="desktop-only" id="btn-add-site" title="เพิ่มเครื่องใหม่"
+                                style="width: 40px; padding: 0; justify-content: center; background: #38bdf8; color: #ffffff; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; font-size: 1.1rem; flex-shrink: 0;">
+                                <i class="fa-solid fa-plus"></i>
                             </button>
-                            <button id="btn-export-sites" class="btn-secondary btn-outline-success" title="ส่งออก"
-                                style="flex: 1; min-width: 80px; justify-content: center;">
-                                <i class="fa-solid fa-file-excel"></i> ส่งออก
+                            <button id="btn-export-sites" class="btn-secondary" title="ส่งออก Excel"
+                                style="width: 40px; padding: 0; justify-content: center; border-color: #16a34a; background: rgba(22, 163, 74, 0.05); font-size: 1.1rem; flex-shrink: 0;">
+                                <i class="fa-solid fa-file-excel" style="color: #16a34a;"></i>
                             </button>
                             <button onclick="exportDevicesPDF()" class="btn-secondary" title="ส่งออก PDF"
-                                style="flex: 1; min-width: 80px; justify-content: center;">
-                                <i class="fa-solid fa-file-pdf"></i> PDF
+                                style="width: 40px; padding: 0; justify-content: center; border-color: #dc2626; background: rgba(220, 38, 38, 0.05); font-size: 1.1rem; flex-shrink: 0;">
+                                <i class="fa-solid fa-file-pdf" style="color: #dc2626;"></i>
                             </button>
-                            <button class="desktop-only" id="btn-add-site" title="เพิ่มเครื่องใหม่"
-                                style="flex: 2; min-width: 120px; justify-content: center; background: #38bdf8; color: #ffffff; border: none; border-radius: 8px; padding: 0.5rem 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-                                <i class="fa-solid fa-plus"></i> เพิ่มเครื่องใหม่
+                            <button id="btn-clear-site-filters" class="btn-secondary"
+                                title="ล้างตัวกรอง" style="flex: 1; min-width: 80px; justify-content: center; color: #4b5563; border-color: #d1d5db; background: rgba(243, 244, 246, 0.5);">
+                                <i class="fa-solid fa-rotate-left"></i> ล้าง
                             </button>
                         </div>
                     </div>
@@ -711,7 +711,7 @@
 
             <!-- Mobile Search Box (Always Visible) -->
             <div class="filter-group mobile-only" style="width: 100%; margin-bottom: 1rem;">
-                <input type="text" id="site-search-input-mobile" placeholder="ชื่อ, ประเภท, ยี่ห้อ..."
+                <input type="text" id="site-search-input-mobile" placeholder="รหัสเครื่อง, ชื่อ, ประเภท, ยี่ห้อ..."
                     class="site-search-input-wide" autocomplete="off">
             </div>
 
@@ -741,17 +741,21 @@
                 <div class="filter-group actions-filter">
                     <label>ตัวเลือก</label>
                     <div class="filter-actions-row">
-                        <button id="btn-clear-site-filters-mobile" class="btn-secondary btn-outline-danger"
-                            title="ล้างตัวกรอง" style="flex: 1; min-width: 80px; justify-content: center;">
-                            <i class="fa-solid fa-rotate-left"></i> ล้าง
-                        </button>
-                        <button id="btn-export-sites-mobile" class="btn-secondary btn-outline-success"
-                            title="Export as Excel" style="flex: 1; min-width: 80px; justify-content: center;">
-                            <i class="fa-solid fa-file-excel"></i> Export
-                        </button>
                         <button class="mobile-only hidden" id="btn-add-site-mobile" title="เพิ่มเครื่องใหม่"
-                            style="flex: 2; min-width: 120px; justify-content: center; background: #38bdf8; color: #ffffff; border: none; border-radius: 8px; padding: 0.5rem 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-                                <i class="fa-solid fa-plus"></i> <span class="btn-text">เพิ่มเครื่อง</span>
+                            style="width: 40px; padding: 0; justify-content: center; background: #38bdf8; color: #ffffff; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; font-size: 1.1rem; flex-shrink: 0;">
+                                <i class="fa-solid fa-plus"></i>
+                        </button>
+                        <button id="btn-export-sites-mobile" class="btn-secondary"
+                            title="Export as Excel" style="width: 40px; padding: 0; justify-content: center; border-color: #16a34a; background: rgba(22, 163, 74, 0.05); font-size: 1.1rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-file-excel" style="color: #16a34a;"></i>
+                        </button>
+                        <button onclick="exportDevicesPDF()" class="btn-secondary mobile-only" title="ส่งออก PDF"
+                            style="width: 40px; padding: 0; justify-content: center; border-color: #dc2626; background: rgba(220, 38, 38, 0.05); font-size: 1.1rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-file-pdf" style="color: #dc2626;"></i>
+                        </button>
+                        <button id="btn-clear-site-filters-mobile" class="btn-secondary"
+                            title="ล้างตัวกรอง" style="flex: 1; min-width: 80px; justify-content: center; color: #4b5563; border-color: #d1d5db; background: rgba(243, 244, 246, 0.5);">
+                            <i class="fa-solid fa-rotate-left"></i> ล้าง
                         </button>
                     </div>
                 </div>
@@ -1134,6 +1138,13 @@
             </div>
 
             <div class="form-row form-row-3col">
+                <div class="form-group">
+                    <label><i class="fa-solid fa-calendar-check"></i> วันที่ติดตั้ง (Installation Date)</label>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="date" name="installationDate" placeholder="เลือกวันที่" autocomplete="off" style="flex: 1;">
+                        <span id="install-case-link-form" style="font-size: 0.85rem;"></span>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label><i class="fa-regular fa-calendar-plus"></i> วันที่เข้าซ่อมบำรุงครั้งแรก (First MA Date)</label>
                     <input type="date" name="firstMaDate" placeholder="เลือกวันที่" autocomplete="off">
@@ -1972,6 +1983,11 @@
                             <span style="color: var(--text-muted); width: 140px; display: inline-block;">รอบซ่อมบำรุง
                                 (วัน):</span>
                             <span id="detail-maintenance-cycle" style="font-weight: 500;">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span
+                                style="color: var(--text-muted); width: 140px; display: inline-block;">วันที่ติดตั้ง:</span>
+                            <span id="detail-installation-date" style="font-weight: 500;">-</span>
                         </div>
                         <div class="detail-row">
                             <span

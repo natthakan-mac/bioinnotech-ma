@@ -2463,6 +2463,7 @@ function resetSiteForm() {
         "locationUrl",
         "maintenanceCycle",
         "firstMaDate",
+        "installationDate",
         "siteName",
         "deviceType",
         "brand",
@@ -2500,6 +2501,9 @@ function resetSiteForm() {
         'input[name="existingAttachmentsJSON"]',
     );
     if (hiddenExisting) hiddenExisting.value = "";
+
+    const formLinkEl = document.getElementById("install-case-link-form");
+    if (formLinkEl) formLinkEl.innerHTML = "";
 
     // Unlock manual name edit
     const siteNameInput = form.querySelector('input[name="siteName"]');
@@ -2554,7 +2558,15 @@ function updateSiteFieldDataLists() {
         setupAutocomplete(
             `input-${field}`,
             `dropdown-${field}`,
-            () => [...new Set(state.sites.map(s => s[field]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'th')),
+            () => {
+                let options = [...new Set(state.sites.map(s => s[field]).filter(Boolean))];
+                if (field === 'deviceType') {
+                    if (!options.includes('เครื่องเช่า')) {
+                        options.push('เครื่องเช่า');
+                    }
+                }
+                return options.sort((a, b) => a.localeCompare(b, 'th'));
+            },
             () => {},
             "ค้นหา...",
             false,
@@ -3251,6 +3263,7 @@ async function handleSiteSubmit(e) {
             maintenanceCycle: formData.get("maintenanceCycle")
                 ? Number(formData.get("maintenanceCycle"))
                 : null,
+            installationDate: sanitizeDate(formData.get("installationDate")),
             firstMaDate: sanitizeDate(formData.get("firstMaDate")),
 
             locationUrl: formData.get("locationUrl") || "",
@@ -3476,6 +3489,28 @@ function editSite(id) {
     setVal("insuranceEndDate", site.insuranceEndDate);
     setVal("warrantyNumber", site.warrantyNumber);
     setVal("maintenanceCycle", site.maintenanceCycle);
+    
+    let installDate = site.installationDate;
+    let installLogCaseId = null;
+    let installLogId = null;
+    if (!installDate && state.logs) {
+        const installLog = state.logs.find(l => l.siteId === site.id && l.category === "ติดตั้ง");
+        if (installLog && installLog.date) {
+            installDate = sanitizeDate(installLog.date).split('T')[0];
+            installLogCaseId = installLog.caseId;
+            installLogId = installLog.id;
+        }
+    }
+    setVal("installationDate", installDate);
+    const formLinkEl = document.getElementById("install-case-link-form");
+    if (formLinkEl) {
+        if (installLogCaseId && installLogId) {
+            formLinkEl.innerHTML = `<a href="javascript:void(0)" onclick="openLogDetails('${installLogId}')" style="color: var(--primary-color); text-decoration: underline; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-link"></i> ${installLogCaseId}</a>`;
+        } else {
+            formLinkEl.innerHTML = "";
+        }
+    }
+
     setVal("firstMaDate", site.firstMaDate);
 
     const titleEl = document.getElementById("modal-site-title");
@@ -7637,6 +7672,8 @@ function renderSites() {
             .includes(searchTerm);
 
         const otherFields = [
+            site.siteCode,
+            site.serialNumber,
             site.district,
             site.subdistrict,
             site.zipcode,
@@ -7965,6 +8002,36 @@ function viewSiteDetails(id) {
             });
         } else {
             fmaEl.textContent = "-";
+        }
+    }
+    
+    const installDateEl = document.getElementById("detail-installation-date");
+    if (installDateEl) {
+        let installDate = site.installationDate;
+        let installLogCaseId = null;
+        let installLogId = null;
+        if (!installDate && state.logs) {
+            const installLog = state.logs.find(l => l.siteId === site.id && l.category === "ติดตั้ง");
+            if (installLog && installLog.date) {
+                installDate = sanitizeDate(installLog.date).split('T')[0];
+                installLogCaseId = installLog.caseId;
+                installLogId = installLog.id;
+            }
+        }
+        if (installDate) {
+            let dateText = formatThaiDate(installDate, {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+            });
+            if (installLogCaseId && installLogId) {
+                dateText += ` <a href="javascript:void(0)" onclick="openLogDetails('${installLogId}')" style="color: var(--primary-color); text-decoration: underline; margin-left: 8px; font-size: 0.85em;"><i class="fa-solid fa-link"></i> ${installLogCaseId}</a>`;
+                installDateEl.innerHTML = dateText;
+            } else {
+                installDateEl.textContent = dateText;
+            }
+        } else {
+            installDateEl.textContent = "-";
         }
     }
 
@@ -10255,24 +10322,41 @@ async function exportSitesToExcel() {
             .filter((x) => x)
             .join(" ");
 
+        let installDateExcel = site.installationDate;
+        if (!installDateExcel && state.logs) {
+            const installLog = state.logs.find(l => l.siteId === site.id && l.category === "ติดตั้ง");
+            if (installLog && installLog.date) {
+                installDateExcel = sanitizeDate(installLog.date).split('T')[0];
+            }
+        }
+        installDateExcel = installDateExcel ? formatDDMMYYYY(installDateExcel) : "-";
+
         return {
-            "รหัสสถานที่": site.siteCode || "-",
-            "ชื่อสถานที่": site.name || "-",
-            "สถานที่ติดตั้ง": site.installLocation || site.villageName || "-",
+            "รหัสเครื่อง": site.siteCode || "-",
+            "ชื่อเครื่อง": site.name || "-",
+            "รูปแบบสัญญา": site.deviceType || "-",
+            "ยี่ห้อ": site.brand || "-",
+            "รุ่น": site.model || "-",
+            "Serial Number": site.serialNumber || "-",
+            "โรงพยาบาล/หน่วยงาน": site.hospital || site.installLocation || site.villageName || "-",
             "หมู่ที่": site.moo || "-",
             "ตำบล": site.subdistrict || "-",
             "อำเภอ": site.district || "-",
             "จังหวัด": site.province || "-",
             "รหัสไปรษณีย์": site.zipcode || "-",
             "ที่อยู่เต็ม": address || "-",
+            "ผู้รับผิดชอบ (PIC)": site.picName || "-",
+            "ชื่อผู้ติดต่อ": site.contactName || "-",
             "เบอร์โทรศัพท์": site.contactPhone || "-",
-            "ลิงก์ Google Maps": site.locationUrl || "-",
-            "รอบ MA (วัน)": site.maintenanceCycle || "-",
+            "เลขที่ใบรับประกัน": site.warrantyNumber || "-",
+            "วันที่ติดตั้ง": installDateExcel,
             "วันเริ่มประกัน": startDate,
             "วันหมดประกัน": endDate,
+            "รอบ MA (วัน)": site.maintenanceCycle || "-",
             "วันเข้า MA ครั้งแรก": firstMaDate,
-            "จำนวนบันทึก": logCount,
+            "ลิงก์ Google Maps": site.locationUrl || "-",
             "รายละเอียด": site.description || "-",
+            "จำนวนบันทึก": logCount
         };
     });
 
