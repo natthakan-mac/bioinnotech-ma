@@ -3013,7 +3013,18 @@ function renderPreInstallPhotoPreview() {
         const removeBtn = document.createElement('div');
         removeBtn.innerHTML = '&times;';
         removeBtn.style.cssText = 'position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;';
-        removeBtn.onclick = function() { preInstallPhotoPending.splice(idx, 1); renderPreInstallPhotoPreview(); };
+        // Use reference-based removal to avoid stale index issues
+        var fileRef = file;
+        removeBtn.onclick = function(e) {
+            e.stopPropagation();
+            if (removeBtn._deleted) return; // Guard against double-click
+            removeBtn._deleted = true;
+            var currentIdx = preInstallPhotoPending.indexOf(fileRef);
+            if (currentIdx !== -1) {
+                preInstallPhotoPending.splice(currentIdx, 1);
+            }
+            renderPreInstallPhotoPreview();
+        };
         wrapper.appendChild(removeBtn);
         container.appendChild(wrapper);
     });
@@ -3073,8 +3084,16 @@ function renderInstallPhotoPreview() {
         const removeBtn = document.createElement('div');
         removeBtn.innerHTML = '&times;';
         removeBtn.style.cssText = 'position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;';
-        removeBtn.onclick = function() {
-            installPhotoPending.splice(idx, 1);
+        // Use reference-based removal to avoid stale index issues
+        var fileRef = file;
+        removeBtn.onclick = function(e) {
+            e.stopPropagation();
+            if (removeBtn._deleted) return; // Guard against double-click
+            removeBtn._deleted = true;
+            var currentIdx = installPhotoPending.indexOf(fileRef);
+            if (currentIdx !== -1) {
+                installPhotoPending.splice(currentIdx, 1);
+            }
             renderInstallPhotoPreview();
         };
         wrapper.appendChild(removeBtn);
@@ -3960,6 +3979,7 @@ async function handleLogMaintenance(e) {
             precheck_exterior: formData.get("precheck_exterior") || "",
             precheck_exterior_note: formData.get("precheck_exterior_note") || "",
             precheckDate: formData.get("precheckDate") || "",
+            installDate: formData.get("installDate") || "",
             actionPlan: formData.get("actionPlan") || "",
             // Inspection Checklist
             insp_exteriorCleaning: formData.get("insp_exteriorCleaning") || "",
@@ -4165,6 +4185,80 @@ async function handleLogMaintenance(e) {
                     }
                 }
 
+                // Track extra UI fields
+                const extraFields = [
+                    'actionPlan', 'walkwayWidth', 'walkwayHeight', 'doorCount', 'useRamp', 'rampWidth', 
+                    'useElevator', 'elevatorCapacity', 'elevatorDoorWidth', 'elevatorDoorHeight', 
+                    'installDate', 'returnProductNote', 'precheckDate', 'customerName', 'customerPhone', 
+                    'customerPosition', 'timeStart', 'timeEnd', 'installType', 'machineStatusAfter', 
+                    'machineStatusAfterNote', 'needWiring', 'needPowerPlug', 'wireDistance', 
+                    'needDrillWall', 'wireThroughCeiling', 'hospitalTechName', 'hospitalTechPhone'
+                ];
+                const extraLabels = {
+                    actionPlan: 'แนวทางการดำเนินงาน', walkwayWidth: 'ความกว้างช่องทางเดิน', walkwayHeight: 'ความสูงช่องทางเดิน',
+                    doorCount: 'จำนวนประตูที่ต้องผ่าน', useRamp: 'ต้องใช้ทางลาด', rampWidth: 'ความกว้างทางลาด',
+                    useElevator: 'ต้องใช้ลิฟต์', elevatorCapacity: 'น้ำหนักลิฟต์ที่รับได้', elevatorDoorWidth: 'ความกว้างประตูลิฟต์',
+                    elevatorDoorHeight: 'ความสูงประตูลิฟต์', installDate: 'วันเวลาติดตั้ง/รื้อถอน', returnProductNote: 'หมายเหตุการรับสินค้ากลับ',
+                    precheckDate: 'วันที่ตรวจสอบรายละเอียดก่อนส่งมอบ', customerName: 'ชื่อลูกค้า', customerPhone: 'เบอร์โทรลูกค้า', customerPosition: 'ตำแหน่งลูกค้า',
+                    timeStart: 'เวลาเริ่มปฏิบัติงาน', timeEnd: 'เวลาเสร็จสิ้นภารกิจ', installType: 'ประเภทการติดตั้ง/รื้อถอน', 
+                    machineStatusAfter: 'สถานะเครื่องหลังซ่อม', machineStatusAfterNote: 'หมายเหตุสถานะเครื่อง',
+                    needWiring: 'ต้องเดินสายไฟ', needPowerPlug: 'ต้องเดิน Power Plug', wireDistance: 'ระยะจากตู้ไฟไปยังเครื่อง',
+                    needDrillWall: 'เจาะกำแพง', wireThroughCeiling: 'สายไฟเดินลอดฝ้า', hospitalTechName: 'ชื่อช่างโรงพยาบาล', hospitalTechPhone: 'เบอร์ช่างโรงพยาบาล'
+                };
+                
+                const formatValue = (v) => {
+                    if (v === 'yes') return 'ใช่';
+                    if (v === 'no') return 'ไม่ใช่';
+                    if (v === 'pass') return 'ผ่าน';
+                    if (v === 'fail') return 'ไม่ผ่าน';
+                    if (v === 'noneed') return 'ไม่จำเป็น';
+                    if (v === 'pending') return 'รอตรวจ';
+                    if (v === 'ready') return 'พร้อมใช้งาน';
+                    if (v === 'not_ready') return 'ไม่พร้อมใช้งาน';
+                    return v || '-';
+                };
+
+                extraFields.forEach(f => {
+                    const oldV = existingLog[f] || '';
+                    const newV = logData[f] || '';
+                    if (String(oldV) !== String(newV)) {
+                        const oldDisplay = formatValue(oldV);
+                        const newDisplay = formatValue(newV);
+                        const truncatedOld = String(oldDisplay).length > 50 ? String(oldDisplay).substring(0, 47) + '...' : oldDisplay;
+                        const truncatedNew = String(newDisplay).length > 50 ? String(newDisplay).substring(0, 47) + '...' : newDisplay;
+                        changes.push(`${extraLabels[f]}: ${truncatedOld} → ${truncatedNew}`);
+                    }
+                });
+
+                // Missing complex fields
+                if (JSON.stringify(existingLog.repairChecklist || []) !== JSON.stringify(logData.repairChecklist || [])) {
+                    changes.push(`รายการที่ซ่อม: มีการเปลี่ยนแปลง`);
+                }
+                if (JSON.stringify(existingLog.returnProducts || []) !== JSON.stringify(logData.returnProducts || [])) {
+                    changes.push(`รายการสินค้ารับกลับ: มีการเปลี่ยนแปลง`);
+                }
+                if (JSON.stringify(existingLog.doorSizes || []) !== JSON.stringify(logData.doorSizes || [])) {
+                    changes.push(`ขนาดประตู: มีการเปลี่ยนแปลง`);
+                }
+
+                // Precheck fields
+                const precheckFields = ['precheck_electrical', 'precheck_wiring', 'precheck_grounding', 'precheck_doorMotor', 'precheck_connectors', 'precheck_vacuumPump', 'precheck_leakTest', 'precheck_chemical', 'precheck_sensors', 'precheck_sterilize', 'precheck_gasResidual', 'precheck_interior', 'precheck_exterior'];
+                const precheckLabels = {
+                    'precheck_electrical': 'ระบบไฟฟ้าภายในเครื่อง', 'precheck_wiring': 'ระบบการเดินสายไฟ', 'precheck_grounding': 'ระบบสายดิน',
+                    'precheck_doorMotor': 'ระบบประตู, มอเตอร์', 'precheck_connectors': 'ระบบข้อต่อ', 'precheck_vacuumPump': 'ระบบปั้มสุญญากาศ',
+                    'precheck_leakTest': 'การตรวจการรั่วไหล', 'precheck_chemical': 'การตรวจปริมาณน้ำยาที่ฉีด', 'precheck_sensors': 'ระบบ Sensor ต่างๆ',
+                    'precheck_sterilize': 'การตรวจ Sterilize ด้วย CI, CI PCD', 'precheck_gasResidual': 'การตรวจปริมาณแก๊สตกค้าง',
+                    'precheck_interior': 'การตรวจความเรียบร้อยภายในเครื่อง', 'precheck_exterior': 'การตรวจความเรียบร้อยภายนอกเครื่อง'
+                };
+                precheckFields.forEach(f => {
+                    if ((existingLog[f] || '') !== (logData[f] || '')) {
+                        changes.push(`ตรวจสอบ ${precheckLabels[f]}: ${existingLog[f] || '-'} → ${logData[f] || '-'}`);
+                    }
+                    if ((existingLog[f+'_note'] || '') !== (logData[f+'_note'] || '')) {
+                        changes.push(`หมายเหตุ ${precheckLabels[f]}: ${existingLog[f+'_note'] || '-'} → ${logData[f+'_note'] || '-'}`);
+                    }
+                });
+
                 // Check electrical fields
                 const elecFields = ['voltageL1','voltageL2','voltageL3','currentL1','currentL2','currentL3'];
                 const elecLabels = { voltageL1:'แรงดัน R', voltageL2:'แรงดัน S', voltageL3:'แรงดัน T', currentL1:'กระแส R', currentL2:'กระแส S', currentL3:'กระแส T' };
@@ -4195,19 +4289,35 @@ async function handleLogMaintenance(e) {
                         changes.push(`${label}: ${inspLabelMap[existingLog[k]] || existingLog[k] || '-'} → ${inspLabelMap[logData[k]] || logData[k] || '-'}`);
                     }
                 });
+                
+                // Check photo changes
+                if (JSON.stringify(existingLog.installPhotos || []) !== JSON.stringify(installPhotoPending)) {
+                    changes.push(`รูปถ่ายการดำเนินงาน: มีการเปลี่ยนแปลง`);
+                }
+                if (JSON.stringify(existingLog.preInstallPhotos || []) !== JSON.stringify(preInstallPhotoPending)) {
+                    changes.push(`รูปถ่ายก่อนดำเนินงาน: มีการเปลี่ยนแปลง`);
+                }
             }
             
             await FirestoreService.updateLog(logId, logData);
 
-            // Upload install photos if any
-            if (installPhotoPending.length > 0 || preInstallPhotoPending.length > 0) {
+            // Upload/update install photos
+            // Always update if editing an existing log that had photos, or if there are pending photos
+            const hadInstallPhotos = existingLog && existingLog.installPhotos && existingLog.installPhotos.length > 0;
+            const hadPreInstallPhotos = existingLog && existingLog.preInstallPhotos && existingLog.preInstallPhotos.length > 0;
+            const hasInstallChanges = installPhotoPending.length > 0 || hadInstallPhotos;
+            const hasPreInstallChanges = preInstallPhotoPending.length > 0 || hadPreInstallPhotos;
+            
+            if (hasInstallChanges || hasPreInstallChanges) {
                 try {
                     var photoUpdate = {};
-                    if (installPhotoPending.length > 0) {
+                    if (hasInstallChanges) {
+                        // uploadPhotoArray handles both File objects (new) and url objects (existing)
+                        // If array is empty, it returns [], effectively clearing all photos
                         photoUpdate.installPhotos = await uploadPhotoArray(installPhotoPending, logId, 'install');
                         installPhotoPending = []; window.installPhotoPending = installPhotoPending;
                     }
-                    if (preInstallPhotoPending.length > 0) {
+                    if (hasPreInstallChanges) {
                         photoUpdate.preInstallPhotos = await uploadPhotoArray(preInstallPhotoPending, logId, 'preinstall');
                         preInstallPhotoPending = []; window.preInstallPhotoPending = preInstallPhotoPending;
                     }
@@ -4795,6 +4905,8 @@ function renderAttachments(
             "position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; background: rgba(239, 68, 68, 0.9); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; z-index: 50; box-shadow: 0 2px 4px rgba(0,0,0,0.3);";
         removeBtn.onclick = (e) => {
             e.stopPropagation();
+            if (removeBtn._deleted) return; // Guard against double-click
+            removeBtn._deleted = true;
             onDelete(att);
         };
         thumbContainer.appendChild(removeBtn);
@@ -5993,6 +6105,12 @@ function resetLogForm() {
         lineContainer.innerHTML = "";
         addLineItemRow();
     }
+    
+    // Reset Items & Cost section to collapsed
+    const formCostContent = document.getElementById("form-cost-section-content");
+    const formCostIcon = document.getElementById("form-cost-collapse-icon");
+    if (formCostContent) formCostContent.style.display = "none";
+    if (formCostIcon) formCostIcon.style.transform = "";
     recalcLineItemTotal();
     populateResponderDropdown();
 }
@@ -6066,6 +6184,12 @@ function editLog(logId) {
     // updateSiteSelects(); // Removed
     const form = document.getElementById("form-log-maintenance");
     document.getElementById("log-id-hidden").value = log.id;
+
+    // Reset Items & Cost section to collapsed
+    const formCostContent = document.getElementById("form-cost-section-content");
+    const formCostIcon = document.getElementById("form-cost-collapse-icon");
+    if (formCostContent) formCostContent.style.display = "none";
+    if (formCostIcon) formCostIcon.style.transform = "";
 
     // Update title with case ID in header
     const caseIdEl = document.getElementById('ma-form-case-id');
@@ -6234,11 +6358,12 @@ function editLog(logId) {
     setField("elevatorDoorHeight", log.elevatorDoorHeight);
     setField("walkwayWidth", log.walkwayWidth);
     setField("walkwayHeight", log.walkwayHeight);
-    setField("doorCount", log.doorCount);
+    const currentDoorCount = log.doorCount !== undefined ? log.doorCount : 1;
+    setField("doorCount", currentDoorCount);
     const doorDisplay = document.getElementById('install-door-count-display');
-    if (doorDisplay) doorDisplay.textContent = log.doorCount || 0;
-    if (log.doorCount) {
-        renderDoorSizeFields(log.doorCount);
+    if (doorDisplay) doorDisplay.textContent = currentDoorCount;
+    if (currentDoorCount > 0) {
+        renderDoorSizeFields(currentDoorCount);
         if (log.doorSizes && log.doorSizes.length > 0) {
             log.doorSizes.forEach(function(door, i) {
                 setField("doorWidth_" + (i + 1), door.width);
@@ -6268,6 +6393,10 @@ function editLog(logId) {
     // Precheck date
     const precheckDateEl = form.querySelector('input[name="precheckDate"]');
     if (precheckDateEl && log.precheckDate) precheckDateEl.value = log.precheckDate;
+    
+    // Install date
+    const installDateEl = form.querySelector('input[name="installDate"]');
+    if (installDateEl && log.installDate) installDateEl.value = log.installDate;
     const actionPlanEl = form.querySelector('textarea[name="actionPlan"]');
     if (actionPlanEl) actionPlanEl.value = log.actionPlan || '';
     // Repair checklist
@@ -6748,7 +6877,12 @@ function renderCalendar() {
                         <span style="font-size:0.7rem; font-weight:600; color:var(--text-color);">${site.siteCode || "-"}</span>
                         <span style="font-size:0.65rem; font-weight:600; color:${statusStyle.color}; background:${statusStyle.color}20; padding:1px 5px; border-radius:4px;">${statusLabel}</span>
                     </div>
-                    <span style="white-space:normal; word-break:break-word; line-height:1.3; font-size:0.8rem; color:var(--text-color);">${siteName}</span>
+                    <span style="white-space:normal; word-break:break-word; line-height:1.3; font-size:0.8rem; color:var(--text-color); margin-bottom:4px;">${siteName}</span>
+                    <div style="display:flex; align-items:center; gap:4px; margin-top:2px;">
+                        <span style="font-size:0.65rem; color:#64748b; background:#f8fafc; padding:2px 6px; border-radius:4px; border:1px solid #e2e8f0; font-weight:500;">
+                            ${catIcon} ${log.category || 'อื่นๆ'}
+                        </span>
+                    </div>
                 `;
 
                 badge.style.backgroundColor = `${siteColor}15`;
@@ -8463,6 +8597,8 @@ function scrollToLatestComment() {
 window.scrollToInitialComment = scrollToInitialComment;
 window.scrollToLatestComment = scrollToLatestComment;
 window.toggleCommentSection = toggleCommentSection;
+window.toggleCostSection = toggleCostSection;
+window.toggleFormCostSection = toggleFormCostSection;
 
 function toggleCommentSection() {
     const content = document.getElementById("comment-collapsible");
@@ -8471,6 +8607,24 @@ function toggleCommentSection() {
     const isHidden = content.style.display === "none";
     content.style.display = isHidden ? "" : "none";
     if (icon) icon.style.transform = isHidden ? "" : "rotate(180deg)";
+}
+
+function toggleCostSection() {
+    const content = document.getElementById("cost-section-content");
+    const icon = document.getElementById("cost-collapse-icon");
+    if (!content) return;
+    const isHidden = content.style.display === "none";
+    content.style.display = isHidden ? "" : "none";
+    if (icon) icon.style.transform = isHidden ? "rotate(180deg)" : "";
+}
+
+function toggleFormCostSection() {
+    const content = document.getElementById("form-cost-section-content");
+    const icon = document.getElementById("form-cost-collapse-icon");
+    if (!content) return;
+    const isHidden = content.style.display === "none";
+    content.style.display = isHidden ? "" : "none";
+    if (icon) icon.style.transform = isHidden ? "rotate(180deg)" : "";
 }
 
 async function postLogComment(logId, inputEl) {
@@ -9626,6 +9780,12 @@ window.updateLogStatus = updateLogStatus;
 function viewLogDetails(id) {
     const log = state.logs.find((l) => l.id === id);
     if (!log) return;
+    
+    // Reset Cost section to collapsed by default
+    const costContent = document.getElementById("cost-section-content");
+    const costIcon = document.getElementById("cost-collapse-icon");
+    if (costContent) costContent.style.display = "none";
+    if (costIcon) costIcon.style.transform = "";
 
     // Refresh users data to ensure we have latest profile info for comments
     FirestoreService.fetchUsers().then((users) => {
@@ -9746,6 +9906,18 @@ function viewLogDetails(id) {
     if (statusTextEl) {
         const statusLabels = { 'Open': 'เปิด', 'On Process': 'ดำเนินการ', 'Done': 'เสร็จสิ้น', 'Case Closed': 'ปิดเคส', 'Cancel': 'ยกเลิก' };
         statusTextEl.textContent = statusLabels[log.status] || log.status || "-";
+    }
+    
+    // Objective/Description
+    const objectiveWrap = document.getElementById("detail-log-objective-wrap");
+    const objectiveEl = document.getElementById("detail-log-objective");
+    if (objectiveWrap && objectiveEl) {
+        if (log.objective) {
+            objectiveWrap.style.display = "block";
+            objectiveEl.textContent = log.objective;
+        } else {
+            objectiveWrap.style.display = "none";
+        }
     }
     
     // Render Status Timeline
@@ -9902,6 +10074,7 @@ function viewLogDetails(id) {
 
         let iHtml = '';
         if (log.installType) iHtml += valRow('ประเภทงาน', `<span class="detail-pill" style="background:${log.installType === 'ติดตั้ง' ? '#22c55e' : '#f59e0b'};">${log.installType}</span>`);
+        if (log.installDate) iHtml += valRow('วันเวลาดำเนินการ', formatDateTimeDDMMYYYY(log.installDate));
         iHtml += gridRow('มีทางลาดหรือไม่', yesNo(log.useRamp), log.useRamp === 'yes' && log.rampWidth ? 'กว้าง ' + log.rampWidth + ' ม.' : '');
         iHtml += gridRow('มีลิฟต์หรือไม่', yesNo(log.useElevator), log.useElevator === 'yes' ? [log.elevatorCapacity ? log.elevatorCapacity + ' kg' : '', log.elevatorDoorWidth && log.elevatorDoorHeight ? 'ประตู ' + log.elevatorDoorWidth + '×' + log.elevatorDoorHeight + ' ม.' : ''].filter(Boolean).join(' / ') : '');
         iHtml += valRow('ช่องทางเดิน (ที่แคบที่สุด)', `${log.walkwayWidth ? 'กว้าง ' + log.walkwayWidth + ' ม.' : '-'} / ${log.walkwayHeight ? 'สูง ' + log.walkwayHeight + ' ม.' : '-'}`);
@@ -9916,14 +10089,162 @@ function viewLogDetails(id) {
         iHtml += valRow('ระยะจากตู้ไฟไปยังเครื่อง', log.wireDistance ? log.wireDistance + ' ม.' : '-');
         iHtml += gridRow('เจาะกำแพง', yesNo(log.needDrillWall), '');
         iHtml += gridRow('สายไฟเดินลอดฝ้า', yesNo(log.wireThroughCeiling), '');
-        if (log.hospitalTechName || log.hospitalTechPhone) {
-            iHtml += `<div style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid rgba(0,0,0,0.08);">`;
-            iHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.25rem;">กรณีใช้ช่างโรงพยาบาล</div>`;
-            iHtml += valRow('ชื่อ-สกุล', log.hospitalTechName || '-');
-            iHtml += valRow('เบอร์โทร', log.hospitalTechPhone || '-');
-            iHtml += `</div>`;
-        }
+        iHtml += `<div style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid rgba(0,0,0,0.08);">`;
+        iHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.25rem;">กรณีใช้ช่างโรงพยาบาล</div>`;
+        iHtml += valRow('ชื่อ-สกุล', log.hospitalTechName || '-');
+        iHtml += valRow('เบอร์โทร', log.hospitalTechPhone || '-');
+        iHtml += `</div>`;
         installContent.innerHTML = iHtml;
+    }
+
+    // Precheck Section - for ติดตั้ง/รื้อถอน
+    const precheckSection = document.getElementById("detail-precheck-section");
+    const precheckContent = document.getElementById("detail-precheck-content");
+    if (precheckSection) precheckSection.style.display = isInstallLog ? "block" : "none";
+    if (precheckSection && precheckContent && isInstallLog) {
+        const precheckBadge = (val) => {
+            if (val === 'noneed') return `<span class="detail-pill" style="background:#94a3b8;">ไม่จำเป็น</span>`;
+            if (!val || val === 'pending') return `<span class="detail-pill" style="background:#f59e0b;">รอตรวจ</span>`;
+            if (val === 'pass') return `<span class="detail-pill" style="background:#22c55e;">ผ่าน</span>`;
+            return `<span class="detail-pill" style="background:#ef4444;">ไม่ผ่าน</span>`;
+        };
+        const precheckItems = [
+            ['precheck_electrical', 'ระบบไฟฟ้าภายในเครื่อง'],
+            ['precheck_wiring', 'ระบบการเดินสายไฟ'],
+            ['precheck_grounding', 'ระบบสายดิน'],
+            ['precheck_doorMotor', 'ระบบประตู, มอเตอร์'],
+            ['precheck_connectors', 'ระบบข้อต่อ'],
+            ['precheck_vacuumPump', 'ระบบปั้มสุญญากาศ'],
+            ['precheck_leakTest', 'การตรวจการรั่วไหล'],
+            ['precheck_chemical', 'การตรวจปริมาณน้ำยาที่ฉีด'],
+            ['precheck_sensors', 'ระบบ Sensor ต่างๆ'],
+            ['precheck_sterilize', 'การตรวจ Sterilize ด้วย CI, CI PCD'],
+            ['precheck_gasResidual', 'การตรวจปริมาณแก๊สตกค้าง'],
+            ['precheck_interior', 'การตรวจความเรียบร้อยภายในเครื่อง'],
+            ['precheck_exterior', 'การตรวจความเรียบร้อยภายนอกเครื่อง']
+        ];
+        let pcHtml = '';
+        if (log.precheckDate) {
+            pcHtml += `<div style="margin-bottom:0.5rem; font-size:0.85rem; color:#666;"><i class="fa-regular fa-calendar"></i> วันที่ตรวจ: <strong>${formatDateTimeDDMMYYYY(log.precheckDate)}</strong></div>`;
+        }
+        if (log.category === 'รื้อถอน') {
+            pcHtml += `<div style="padding:1rem; text-align:center; color:#666; font-size:0.9rem; border:1px solid rgba(0,0,0,0.08); border-radius:8px; background:rgba(0,0,0,0.02);">ไม่จำเป็น (No need) — กรณีรื้อถอน</div>`;
+        } else {
+            pcHtml += `<div style="display:flex; flex-direction:column;">`;
+            precheckItems.forEach(([key, label], idx) => {
+                const val = log[key] || 'pending';
+                const note = log[key + '_note'] || '';
+                pcHtml += `<div style="display:grid; grid-template-columns:30px 1fr 90px 1fr; align-items:center; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05); gap:0.5rem;">`;
+                pcHtml += `<span style="font-size:0.82rem; color:#888; text-align:center;">${idx + 1}</span>`;
+                pcHtml += `<span style="font-size:0.85rem; color:#333;">${label}</span>`;
+                pcHtml += `<span>${precheckBadge(val)}</span>`;
+                pcHtml += `<span style="font-size:0.82rem; color:#888;">${note || '-'}</span>`;
+                pcHtml += `</div>`;
+            });
+            pcHtml += `</div>`;
+        }
+        precheckContent.innerHTML = pcHtml;
+    }
+
+    // Install Photos Section - for ติดตั้ง/รื้อถอน
+    const installPhotosSection = document.getElementById("detail-install-photos-section");
+    const installPhotosContent = document.getElementById("detail-install-photos-content");
+    const hasPrePhotos = log.preInstallPhotos && log.preInstallPhotos.length > 0;
+    const hasPostPhotos = log.installPhotos && log.installPhotos.length > 0;
+    if (installPhotosSection) installPhotosSection.style.display = (isInstallLog && (hasPrePhotos || hasPostPhotos)) ? "block" : "none";
+    if (installPhotosSection && installPhotosContent && isInstallLog && (hasPrePhotos || hasPostPhotos)) {
+        let phHtml = '';
+        if (hasPrePhotos) {
+            phHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.4rem;"><i class="fa-solid fa-camera-retro"></i> รูปถ่ายก่อนติดตั้ง/รื้อถอน (${log.preInstallPhotos.length} รูป)</div>`;
+            phHtml += `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:0.75rem;">`;
+            log.preInstallPhotos.forEach(p => {
+                const url = p.url || p;
+                phHtml += `<div style="width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer;" onclick="window.openImageViewer('${url}')"><img src="${url}" style="width:100%; height:100%; object-fit:cover;" loading="lazy"></div>`;
+            });
+            phHtml += `</div>`;
+        }
+        if (hasPostPhotos) {
+            phHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.4rem;"><i class="fa-solid fa-camera"></i> รูปถ่ายหลังติดตั้ง/รื้อถอน (${log.installPhotos.length} รูป)</div>`;
+            phHtml += `<div style="display:flex; gap:8px; flex-wrap:wrap;">`;
+            log.installPhotos.forEach(p => {
+                const url = p.url || p;
+                phHtml += `<div style="width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer;" onclick="window.openImageViewer('${url}')"><img src="${url}" style="width:100%; height:100%; object-fit:cover;" loading="lazy"></div>`;
+            });
+            phHtml += `</div>`;
+        }
+        installPhotosContent.innerHTML = phHtml;
+    }
+
+    // Action Plan Section
+    const actionPlanSection = document.getElementById("detail-action-plan-section");
+    const actionPlanContent = document.getElementById("detail-action-plan-content");
+    if (actionPlanSection) actionPlanSection.style.display = log.actionPlan ? "block" : "none";
+    if (actionPlanSection && actionPlanContent && log.actionPlan) {
+        actionPlanContent.innerHTML = `<div style="padding:0.75rem; border:1px solid rgba(0,0,0,0.08); border-radius:8px; background:rgba(0,0,0,0.02); white-space:pre-wrap; font-size:0.88rem; color:#333; line-height:1.6;">${log.actionPlan}</div>`;
+    }
+
+    // Repair Section - for ซ่อม
+    const isRepairLog = log.category === 'ซ่อม';
+    const repairSection = document.getElementById("detail-repair-section");
+    const repairContent = document.getElementById("detail-repair-content");
+    if (repairSection) repairSection.style.display = isRepairLog ? "block" : "none";
+    if (repairSection && repairContent && isRepairLog) {
+        let rHtml = '';
+
+        // Repair checklist
+        if (log.repairChecklist && log.repairChecklist.length > 0) {
+            rHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.4rem;"><i class="fa-solid fa-list-check"></i> รายการที่ซ่อม</div>`;
+            rHtml += `<div style="display:flex; flex-direction:column; margin-bottom:0.75rem;">`;
+            log.repairChecklist.forEach((item, i) => {
+                const statusBadge = item.status === 'pass'
+                    ? `<span class="detail-pill" style="background:#22c55e;">ผ่าน</span>`
+                    : item.status === 'fail'
+                        ? `<span class="detail-pill" style="background:#ef4444;">ไม่ผ่าน</span>`
+                        : `<span style="color:#ccc;">-</span>`;
+                rHtml += `<div style="display:grid; grid-template-columns:30px 1fr 80px 1fr; align-items:center; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05); gap:0.5rem;">`;
+                rHtml += `<span style="font-size:0.82rem; color:#888; text-align:center;">${i + 1}</span>`;
+                rHtml += `<span style="font-size:0.85rem; color:#333;">${item.label || '-'}</span>`;
+                rHtml += `<span>${statusBadge}</span>`;
+                rHtml += `<span style="font-size:0.82rem; color:#888;">${item.note || '-'}</span>`;
+                rHtml += `</div>`;
+            });
+            rHtml += `</div>`;
+        }
+
+        // Machine status after repair
+        if (log.machineStatusAfter) {
+            const msReady = log.machineStatusAfter === 'ready';
+            rHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.4rem;"><i class="fa-solid fa-clipboard-check"></i> สภาพเครื่องหลังดำเนินการ</div>`;
+            rHtml += `<div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">`;
+            rHtml += `<span class="detail-pill" style="background:${msReady ? '#22c55e' : '#ef4444'};">${msReady ? 'พร้อมใช้งาน' : 'ไม่พร้อมใช้งาน'}</span>`;
+            rHtml += `</div>`;
+            if (log.machineStatusAfterNote) {
+                rHtml += `<div style="font-size:0.85rem; color:#666; margin-top:0.25rem;">หมายเหตุ: ${log.machineStatusAfterNote}</div>`;
+            }
+        }
+
+        // Return product
+        if (log.returnProductNote || (log.returnProducts && log.returnProducts.length > 0)) {
+            rHtml += `<div style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid rgba(0,0,0,0.08);">`;
+            rHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.4rem;"><i class="fa-solid fa-box-archive"></i> กรณีรับสินค้ากลับ</div>`;
+            if (log.returnProductNote) {
+                rHtml += `<div style="font-size:0.85rem; color:#333; margin-bottom:0.5rem; padding:0.5rem; border:1px solid rgba(0,0,0,0.06); border-radius:6px; background:rgba(0,0,0,0.02);">${log.returnProductNote}</div>`;
+            }
+            if (log.returnProducts && log.returnProducts.length > 0) {
+                rHtml += `<div style="font-size:0.82rem; font-weight:600; color:#555; margin-bottom:0.25rem;">รายการสินค้า:</div>`;
+                log.returnProducts.forEach((prod, i) => {
+                    rHtml += `<div style="display:flex; align-items:center; gap:0.5rem; padding:0.3rem 0; border-bottom:1px solid rgba(0,0,0,0.04); font-size:0.85rem;">`;
+                    rHtml += `<span style="color:#888;">${i + 1}.</span>`;
+                    rHtml += `<span style="color:#333;">${prod.name || prod.label || '-'}</span>`;
+                    if (prod.qty) rHtml += `<span style="color:#666;">x${prod.qty}</span>`;
+                    if (prod.note) rHtml += `<span style="color:#888;">(${prod.note})</span>`;
+                    rHtml += `</div>`;
+                });
+            }
+            rHtml += `</div>`;
+        }
+
+        repairContent.innerHTML = rHtml;
     }
 
     // Customer Information Section
@@ -10437,12 +10758,15 @@ async function exportCasePDF(logId) {
     const log = state.logs.find(l => l.id === logId);
     if (!log) return;
 
-    const site = state.sites.find(s => s.id === log.siteId) || { name: '-' };
-    const thaiDate = formatDateDDMMYYYY(log.date);
-    const recorderName = log.updatedBy || (state.users && log.recorderId && state.users[log.recorderId]
+    const site = log._mockSite || state.sites.find(s => s.id === log.siteId) || { name: '-' };
+    const isBlank = !!log._isBlank;
+    const fallback = isBlank ? '....................' : 'ไม่ระบุข้อมูล';
+    
+    const thaiDate = isBlank ? '....................' : formatDateDDMMYYYY(log.date);
+    const recorderName = isBlank ? '....................' : (log.updatedBy || (state.users && log.recorderId && state.users[log.recorderId]
         ? state.users[log.recorderId].displayName || state.users[log.recorderId].email || log.recordedBy
-        : log.recordedBy || '-');
-    const timestampStr = log.timestamp ? new Date(log.timestamp).toLocaleString('th-TH') : '-';
+        : log.recordedBy || '-'));
+    const timestampStr = isBlank ? '....................' : (log.timestamp ? new Date(log.timestamp).toLocaleString('th-TH') : '-');
 
     // Get responder info (from user profile)
     const responderUser = log.responderId && state.users ? state.users[log.responderId] : null;
@@ -10570,23 +10894,33 @@ async function exportCasePDF(logId) {
     }
 
     // --- Build inspection data for PDF ---
+    const renderPillGroup = (items) => {
+        return '<div style="display:inline-flex; border:1px solid #ddd; border-radius:5px; overflow:hidden; font-size:8.5px; background:#fff; white-space:nowrap;">' +
+            items.map((it, i) => 
+                '<div style="padding:4px 12px; border-left:' + (i === 0 ? '0' : '1px solid #ddd') + '; color:' + (it.color || '#333') + '; font-weight:700; display:flex; align-items:center; gap:4px; min-width:35px; justify-content:center;">' +
+                '<div style="width:9px; height:9px; border:1.2px solid ' + (it.color || '#ddd') + '; border-radius:2px; display:inline-block; flex:none;"></div> ' + it.label + '</div>'
+            ).join('') +
+            '</div>';
+    };
     const pdfBadge = (val) => {
+        if (isBlank) return renderPillGroup([{label:'ผ่าน', color:'#22c55e'}, {label:'ไม่ผ่าน', color:'#ef4444'}]);
         if (!val) return '-';
         const bg = val === 'pass' ? '#22c55e' : '#ef4444';
         const text = val === 'pass' ? 'ผ่าน' : 'ไม่ผ่าน';
         return '<span style="background:' + bg + '; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:45px; text-align:center;">' + text + '</span>';
     };
     const pdfInspBadge = (val) => {
+        if (isBlank) return renderPillGroup([{label:'Check', color:'#22c55e'}, {label:'Service', color:'#f59e0b'}, {label:'Replace', color:'#ef4444'}]);
         if (!val) return '-';
         const cfg = { check: { l: 'Check', b: '#22c55e' }, service: { l: 'Service', b: '#f59e0b' }, replace: { l: 'Replace', b: '#ef4444' } };
         const c = cfg[val] || { l: val, b: '#111' };
         return '<span style="background:' + c.b + '; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:700; display:inline-block; width:42px; text-align:center;">' + c.l + '</span>';
     };
 
-    const hasElec = log.voltageL1 || log.voltageL2 || log.voltageL3 || log.currentL1 || log.currentL2 || log.currentL3;
-    const hasPhys = log.avgWorkTemp || log.avgAreaTemp || log.leakCheck || log.leakPressure;
-    const hasPerf = log.complyType5 || log.ciPcdType5;
-    const hasGas = log.gasDoor1||log.gasDoor2||log.gasDoor3||log.gas1m1||log.gas1m2||log.gas1m3||log.gas2m1||log.gas2m2||log.gas2m3;
+    const hasElec = isBlank || log.voltageL1 || log.voltageL2 || log.voltageL3 || log.currentL1 || log.currentL2 || log.currentL3;
+    const hasPhys = isBlank || log.avgWorkTemp || log.avgAreaTemp || log.leakCheck || log.leakPressure;
+    const hasPerf = isBlank || log.complyType5 || log.ciPcdType5;
+    const hasGas = isBlank || log.gasDoor1||log.gasDoor2||log.gasDoor3||log.gas1m1||log.gas1m2||log.gas1m3||log.gas2m1||log.gas2m2||log.gas2m3;
     const pdfInspItems = [
         ['insp_exteriorCleaning','1. ความสะอาดภายนอก'],['insp_interiorCleaning','2. ความสะอาดภายใน'],
         ['insp_doorSystem','3. การทำงานระบบประตู'],['insp_footSwitch','4. การทำงาน Foot Switch'],['insp_sensor','5. ระบบ Sensor'],
@@ -10595,7 +10929,7 @@ async function exportCasePDF(logId) {
         ['insp_decomposer','12. Decomposor'],['insp_vacuumPumpOil','13. น้ำมันปั้มสุญากาศ'],['insp_connectors','14. ระบบข้อต่อต่างๆ'],
         ['insp_drainTank','15. ถังเดรนน้ำ'],['insp_chemicalLine','16. สายส่งน้ำยา'],['insp_phaseRelay','17. รีเลย์ควบคุมลำดับเฟส'],['insp_systemRelay','18. รีเลย์ควบคุมระบบต่างๆ'],
     ];
-    const hasInspChecklist = pdfInspItems.some(function(item) { return log[item[0]]; });
+    const hasInspChecklist = isBlank || pdfInspItems.some(function(item) { return log[item[0]]; });
 
     var inspHtml = '';
     var isMaPdf = isMaCategory(log.category);
@@ -10605,27 +10939,29 @@ async function exportCasePDF(logId) {
     if (isMaPdf) {
 
     if (hasElec) {
+        const vF = isBlank ? '......' : '___';
         inspHtml += '<div class="section-block"><table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:10px;">'
             + '<tr style="border-bottom:1px solid #eee;"><td colspan="4" style="padding:6px 8px; font-weight:700; font-size:11px;">ข้อมูลไฟฟ้า (Electrical)</td></tr>'
             + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;"><b>แรงดันไฟฟ้า</b></td>'
-            + '<td style="text-align:center; padding:4px 8px;">R <b>' + (log.voltageL1||'___') + '</b> V (Load/Unload)</td>'
-            + '<td style="text-align:center; padding:4px 8px;">S <b>' + (log.voltageL2||'___') + '</b> V (Load/Unload)</td>'
-            + '<td style="text-align:center; padding:4px 8px;">T <b>' + (log.voltageL3||'___') + '</b> V (Load/Unload)</td></tr>'
+            + '<td style="text-align:center; padding:4px 8px;">R <b>' + (log.voltageL1||vF) + '</b> V (Load/Unload)</td>'
+            + '<td style="text-align:center; padding:4px 8px;">S <b>' + (log.voltageL2||vF) + '</b> V (Load/Unload)</td>'
+            + '<td style="text-align:center; padding:4px 8px;">T <b>' + (log.voltageL3||vF) + '</b> V (Load/Unload)</td></tr>'
             + '<tr><td style="padding:4px 8px;"><b>กระแส</b></td>'
-            + '<td style="text-align:center; padding:4px 8px;">R <b>' + (log.currentL1||'___') + '</b> A (Load/Unload)</td>'
-            + '<td style="text-align:center; padding:4px 8px;">S <b>' + (log.currentL2||'___') + '</b> A (Load/Unload)</td>'
-            + '<td style="text-align:center; padding:4px 8px;">T <b>' + (log.currentL3||'___') + '</b> A (Load/Unload)</td></tr>'
+            + '<td style="text-align:center; padding:4px 8px;">R <b>' + (log.currentL1||vF) + '</b> A (Load/Unload)</td>'
+            + '<td style="text-align:center; padding:4px 8px;">S <b>' + (log.currentL2||vF) + '</b> A (Load/Unload)</td>'
+            + '<td style="text-align:center; padding:4px 8px;">T <b>' + (log.currentL3||vF) + '</b> A (Load/Unload)</td></tr>'
             + '</table></div>';
     }
 
     if (hasPhys || hasPerf) {
         inspHtml += '<div class="section-block"><div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px;">';
         if (hasPhys) {
+            const vF = isBlank ? '......' : '-';
             inspHtml += '<div style="border:1px solid #ddd; border-radius:6px; padding:8px; font-size:10px;">'
                 + '<div style="font-weight:700; margin-bottom:4px; font-size:11px;">ตรวจสอบทางกายภาพ (Physical Inspection)</div>'
-                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">อุณหภูมิเฉลี่ยทำงาน <span style="display:flex; align-items:center; gap:6px;">' + (log.avgWorkTemp ? log.avgWorkTemp + ' °C' : '-') + ' ' + pdfBadge(log.avgWorkTempCheck) + '</span></div>'
-                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">อุณหภูมิเฉลี่ยพื้นที่ <span style="display:flex; align-items:center; gap:6px;">' + (log.avgAreaTemp ? log.avgAreaTemp + ' °C' : '-') + ' ' + pdfBadge(log.avgAreaTempCheck) + '</span></div>'
-                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">ตรวจสอบการรั่วไหล <span style="display:flex; align-items:center; gap:6px;">' + (log.leakPressure ? log.leakPressure + ' PSI' : '-') + ' ' + pdfBadge(log.leakCheck) + '</span></div>'
+                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">อุณหภูมิเฉลี่ยทำงาน <span style="display:flex; align-items:center; gap:6px;">' + (log.avgWorkTemp ? log.avgWorkTemp + ' °C' : vF) + ' ' + pdfBadge(log.avgWorkTempCheck) + '</span></div>'
+                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">อุณหภูมิเฉลี่ยพื้นที่ <span style="display:flex; align-items:center; gap:6px;">' + (log.avgAreaTemp ? log.avgAreaTemp + ' °C' : vF) + ' ' + pdfBadge(log.avgAreaTempCheck) + '</span></div>'
+                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">ตรวจสอบการรั่วไหล <span style="display:flex; align-items:center; gap:6px;">' + (log.leakPressure ? log.leakPressure + ' PSI' : vF) + ' ' + pdfBadge(log.leakCheck) + '</span></div>'
                 + '</div>';
         }
         if (hasPerf) {
@@ -10639,12 +10975,13 @@ async function exportCasePDF(logId) {
     }
 
     if (hasGas) {
+        const vF = isBlank ? '......' : '-';
         inspHtml += '<div class="section-block"><table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:10px;">'
             + '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px;">ตรวจสอบปริมาณแก๊ส (Gas Detection)</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 1</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 2</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 3</th></tr></thead>'
             + '<tbody>'
-            + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;">บริเวณหน้าประตู</td><td style="text-align:center;">' + (log.gasDoor1||'-') + ' PPM</td><td style="text-align:center;">' + (log.gasDoor2||'-') + ' PPM</td><td style="text-align:center;">' + (log.gasDoor3||'-') + ' PPM</td></tr>'
-            + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;">ระยะห่าง 1 เมตร</td><td style="text-align:center;">' + (log.gas1m1||'-') + ' PPM</td><td style="text-align:center;">' + (log.gas1m2||'-') + ' PPM</td><td style="text-align:center;">' + (log.gas1m3||'-') + ' PPM</td></tr>'
-            + '<tr><td style="padding:4px 8px;">ระยะห่าง 2 เมตร</td><td style="text-align:center;">' + (log.gas2m1||'-') + ' PPM</td><td style="text-align:center;">' + (log.gas2m2||'-') + ' PPM</td><td style="text-align:center;">' + (log.gas2m3||'-') + ' PPM</td></tr>'
+            + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;">บริเวณหน้าประตู</td><td style="text-align:center;">' + (log.gasDoor1||vF) + ' PPM</td><td style="text-align:center;">' + (log.gasDoor2||vF) + ' PPM</td><td style="text-align:center;">' + (log.gasDoor3||vF) + ' PPM</td></tr>'
+            + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;">ระยะห่าง 1 เมตร</td><td style="text-align:center;">' + (log.gas1m1||vF) + ' PPM</td><td style="text-align:center;">' + (log.gas1m2||vF) + ' PPM</td><td style="text-align:center;">' + (log.gas1m3||vF) + ' PPM</td></tr>'
+            + '<tr><td style="padding:4px 8px;">ระยะห่าง 2 เมตร</td><td style="text-align:center;">' + (log.gas2m1||vF) + ' PPM</td><td style="text-align:center;">' + (log.gas2m2||vF) + ' PPM</td><td style="text-align:center;">' + (log.gas2m3||vF) + ' PPM</td></tr>'
             + '</tbody></table>';
     }
 
@@ -10662,41 +10999,39 @@ async function exportCasePDF(logId) {
     // Install/Uninstall section for PDF
     if (isInstallPdf) {
         var pdfYesNo = function(val) {
-            if (!val) return '-';
+            if (isBlank) return renderPillGroup([{label:'ใช่', color:'#22c55e'}, {label:'ไม่ใช่', color:'#ef4444'}]);
+            if (!val) return fallback;
             var isYes = val === 'yes';
             return '<span style="background:' + (isYes ? '#22c55e' : '#ef4444') + '; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:35px; text-align:center; margin-right:6px;">' + (isYes ? 'ใช่' : 'ไม่ใช่') + '</span>';
         };
-        inspHtml += '<div class="section-block"><h2>ข้อมูลสถานที่การติดตั้ง/รื้อถอน</h2>';
+        var installDateStr = log.installDate ? formatDateTimeDDMMYYYY(log.installDate) : fallback;
+        inspHtml += '<div class="section-block"><h2>ข้อมูลสถานที่การติดตั้ง/รื้อถอน <span style="font-weight:400; font-size:9px; color:#666; margin-left:8px;">วันที่ดำเนินการ: ' + installDateStr + '</span></h2>';
         var pdfCell = function(label, value) {
             return '<div style="display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee; font-size:10px; min-height:22px;"><span style="font-weight:600; color:#555; white-space:nowrap;">' + label + '</span><span style="text-align:right;">' + value + '</span></div>';
         };
         inspHtml += '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px 16px; border:1px solid #ddd; border-radius:6px; padding:8px;">';
-        if (log.installType) inspHtml += '<div style="display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee; font-size:10px; min-height:22px;"><span style="font-weight:700; color:#333;">ประเภทงาน</span><span style="font-weight:700; color:#333;">' + log.installType + '</span></div>';
+        inspHtml += '<div style="display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee; font-size:10px; min-height:22px;"><span style="font-weight:700; color:#333;">ประเภทงาน</span><span style="font-weight:700; color:#333;">' + (log.installType || fallback) + '</span></div>';
         inspHtml += pdfCell('มีทางลาด', pdfYesNo(log.useRamp) + (log.useRamp === 'yes' && log.rampWidth ? ' <span style="font-weight:600; color:#555;">กว้าง:</span> ' + log.rampWidth + ' ม.' : ''));
-        inspHtml += pdfCell('มีลิฟต์', pdfYesNo(log.useElevator) + (log.useElevator === 'yes' ? ' <span style="font-weight:600; color:#555;">น้ำหนัก:</span> ' + (log.elevatorCapacity ? log.elevatorCapacity + ' kg' : '-') + ' <span style="font-weight:600; color:#555;">ประตู:</span> ' + (log.elevatorDoorWidth && log.elevatorDoorHeight ? log.elevatorDoorWidth + '×' + log.elevatorDoorHeight + ' ม.' : '-') : ''));
-        inspHtml += pdfCell('ช่องทางเดิน (แคบสุด)', (log.walkwayWidth ? 'กว้าง ' + log.walkwayWidth + ' ม.' : '-') + ' / ' + (log.walkwayHeight ? 'สูง ' + log.walkwayHeight + ' ม.' : '-'));
+        inspHtml += pdfCell('มีลิฟต์', pdfYesNo(log.useElevator) + (log.useElevator === 'yes' ? ' <span style="font-weight:600; color:#555;">น้ำหนัก:</span> ' + (log.elevatorCapacity ? log.elevatorCapacity + ' kg' : fallback) + ' <span style="font-weight:600; color:#555;">ประตู:</span> ' + (log.elevatorDoorWidth && log.elevatorDoorHeight ? log.elevatorDoorWidth + '×' + log.elevatorDoorHeight + ' ม.' : fallback) : ''));
+        inspHtml += pdfCell('ช่องทางเดิน (แคบสุด)', (log.walkwayWidth ? 'กว้าง ' + log.walkwayWidth + ' ม.' : fallback) + ' / ' + (log.walkwayHeight ? 'สูง ' + log.walkwayHeight + ' ม.' : fallback));
         inspHtml += pdfCell('ต้องเดินสายไฟ', pdfYesNo(log.needWiring));
         inspHtml += pdfCell('ต้องเดิน Power Plug', pdfYesNo(log.needPowerPlug));
-        inspHtml += pdfCell('ระยะจากตู้ไฟไปยังเครื่อง', log.wireDistance ? log.wireDistance + ' ม.' : '-');
+        inspHtml += pdfCell('ระยะจากตู้ไฟไปยังเครื่อง', log.wireDistance ? log.wireDistance + ' ม.' : fallback);
         inspHtml += pdfCell('เจาะกำแพง', pdfYesNo(log.needDrillWall));
         inspHtml += pdfCell('สายไฟเดินลอดฝ้า', pdfYesNo(log.wireThroughCeiling));
-        if (log.hospitalTechName || log.hospitalTechPhone) {
-            inspHtml += pdfCell('ช่างโรงพยาบาล', (log.hospitalTechName || '-') + ' / ' + (log.hospitalTechPhone || '-'));
-        }
+        inspHtml += pdfCell('ช่างโรงพยาบาล', (log.hospitalTechName || fallback) + ' / ' + (log.hospitalTechPhone || fallback));
         inspHtml += '</div>';
         // Door section - full width
-        if (log.doorCount) {
-            inspHtml += '<div style="border:1px solid #ddd; border-radius:6px; padding:8px; margin-top:6px; font-size:10px;">';
-            inspHtml += '<div style="font-weight:600; margin-bottom:4px;">ประตูที่ต้องผ่าน: ' + log.doorCount + ' ประตู</div>';
-            if (log.doorSizes && log.doorSizes.length > 0) {
-                inspHtml += '<div style="display:grid; grid-template-columns:repeat(' + Math.min(log.doorSizes.length, 4) + ', 1fr); gap:6px;">';
-                log.doorSizes.forEach(function(door, i) {
-                    inspHtml += '<div style="background:#f9f9f9; border:1px solid #eee; border-radius:4px; padding:4px 8px; text-align:center;"><div style="font-weight:600; font-size:9px; color:#555;">ประตูที่ ' + (i+1) + '</div><div>กว้าง ' + (door.width || '-') + ' × สูง ' + (door.height || '-') + ' ม.</div></div>';
-                });
-                inspHtml += '</div>';
-            }
+        inspHtml += '<div style="border:1px solid #ddd; border-radius:6px; padding:8px; margin-top:6px; font-size:10px;">';
+        inspHtml += '<div style="font-weight:600; margin-bottom:4px;">ประตูที่ต้องผ่าน: ' + (log.doorCount || fallback) + (log.doorCount ? ' ประตู' : '') + '</div>';
+        if (log.doorSizes && log.doorSizes.length > 0) {
+            inspHtml += '<div style="display:grid; grid-template-columns:repeat(' + Math.min(log.doorSizes.length, 4) + ', 1fr); gap:6px;">';
+            log.doorSizes.forEach(function(door, i) {
+                inspHtml += '<div style="background:#f9f9f9; border:1px solid #eee; border-radius:4px; padding:4px 8px; text-align:center;"><div style="font-weight:600; font-size:9px; color:#555;">ประตูที่ ' + (i+1) + '</div><div>กว้าง ' + (door.width || fallback) + ' × สูง ' + (door.height || fallback) + ' ม.</div></div>';
+            });
             inspHtml += '</div>';
         }
+        inspHtml += '</div>';
         // ผลการปฎิบัติงาน section
         inspHtml += '<div class="section-block">';
         inspHtml += '<h2>ผลการปฎิบัติงาน</h2>';
@@ -10728,8 +11063,7 @@ async function exportCasePDF(logId) {
         }
         inspHtml += '</div>';
 
-        // ตรวจสอบรายละเอียดก่อนส่งมอบ section (skip for รื้อถอน)
-        if (log.category !== 'รื้อถอน') {
+        // ตรวจสอบรายละเอียดก่อนส่งมอบ section (For รื้อถอน, show as "ไม่จำเป็น" (no need))
         var precheckItems = [
             ['precheck_electrical', 'ระบบไฟฟ้าภายในเครื่อง'],
             ['precheck_wiring', 'ระบบการเดินสายไฟ'],
@@ -10746,22 +11080,25 @@ async function exportCasePDF(logId) {
             ['precheck_exterior', 'การตรวจความเรียบร้อยภายนอกเครื่อง']
         ];
         var precheckBadge = function(val) {
+            if (isBlank) return renderPillGroup([{label:'ผ่าน', color:'#22c55e'}, {label:'ไม่ผ่าน', color:'#ef4444'}, {label:'ไม่จำเป็น', color:'#94a3b8'}]);
+            if (val === 'noneed') return '<span style="background:#94a3b8; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ไม่จำเป็น</span>';
             if (!val || val === 'pending') return '<span style="background:#f59e0b; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">รอตรวจ</span>';
             if (val === 'pass') return '<span style="background:#22c55e; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ผ่าน</span>';
             return '<span style="background:#ef4444; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ไม่ผ่าน</span>';
         };
         var precheckDateStr = log.precheckDate ? formatDateTimeDDMMYYYY(log.precheckDate) : '-';
-        inspHtml += '<div class="section-block"><h2>ตรวจสอบรายละเอียดก่อนส่งมอบ <span style="font-weight:400; font-size:9px; color:#666; margin-left:8px;">วันที่ตรวจ: ' + precheckDateStr + '</span></h2>';
+        if (log.category === 'รื้อถอน') precheckDateStr = '-';
+        inspHtml += '<div class="section-block"><h2>ตรวจสอบรายละเอียดก่อนส่งมอบ (กรณีติดตั้งเครื่องเท่านั้น) <span style="font-weight:400; font-size:9px; color:#666; margin-left:8px;">วันที่ตรวจ: ' + precheckDateStr + '</span></h2>';
         inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; width:100%;">';
-        inspHtml += '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px; width:25px;">ลำดับ</th><th style="padding:4px 8px; width:180px;">รายการตรวจสอบ</th><th style="padding:4px 8px; width:55px; text-align:center;">ผลตรวจ</th><th style="padding:4px 8px;">หมายเหตุ</th></tr></thead>';
+        inspHtml += '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px; width:25px;">ลำดับ</th><th style="padding:4px 8px; width:160px;">รายการตรวจสอบ</th><th style="padding:4px 8px; width:' + (isBlank ? '160px' : '55px') + '; text-align:center;">ผลตรวจ</th><th style="padding:4px 8px;">หมายเหตุ</th></tr></thead>';
         inspHtml += '<tbody>';
         precheckItems.forEach(function(item, idx) {
             var val = log[item[0]] || 'pending';
-            var note = log[item[0] + '_note'] || '-';
+            if (log.category === 'รื้อถอน') val = 'noneed';
+            var note = log.category === 'รื้อถอน' ? '-' : (log[item[0] + '_note'] || '-');
             inspHtml += '<tr style="border-bottom:1px solid #eee;"><td style="padding:3px 8px; text-align:center;">' + (idx + 1) + '</td><td style="padding:3px 8px;">' + item[1] + '</td><td style="padding:3px 8px; text-align:center;">' + precheckBadge(val) + '</td><td style="padding:3px 8px; color:#666;">' + note + '</td></tr>';
         });
         inspHtml += '</tbody></table></div>';
-        } // end precheck skip for รื้อถอน
 
     }
 
@@ -10774,12 +11111,13 @@ async function exportCasePDF(logId) {
         inspHtml += '<h2>รายการที่ซ่อม</h2>';
         if (log.repairChecklist && log.repairChecklist.length > 0) {
             var repairBadge = function(val) {
+                if (isBlank) return renderPillGroup([{label:'ผ่าน', color:'#22c55e'}, {label:'ไม่ผ่าน', color:'#ef4444'}]);
                 if (val === 'pass') return '<span style="background:#22c55e; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ผ่าน</span>';
                 if (val === 'fail') return '<span style="background:#ef4444; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ไม่ผ่าน</span>';
                 return '<span style="color:#999; font-size:9px;">-</span>';
             };
             inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; width:100%;">';
-            inspHtml += '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px; width:25px;">ลำดับ</th><th style="padding:4px 8px;">รายการ</th><th style="padding:4px 8px; width:55px; text-align:center;">ผลตรวจ</th><th style="padding:4px 8px;">หมายเหตุ</th></tr></thead>';
+            inspHtml += '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px; width:25px;">ลำดับ</th><th style="padding:4px 8px;">รายการ</th><th style="padding:4px 8px; width:' + (isBlank ? '110px' : '55px') + '; text-align:center;">ผลตรวจ</th><th style="padding:4px 8px;">หมายเหตุ</th></tr></thead>';
             inspHtml += '<tbody>';
             log.repairChecklist.forEach(function(item, i) {
                 inspHtml += '<tr style="border-bottom:1px solid #eee;"><td style="padding:3px 8px; text-align:center;">' + (i+1) + '</td><td style="padding:3px 8px;">' + (item.label||'-') + '</td><td style="padding:3px 8px; text-align:center;">' + repairBadge(item.status) + '</td><td style="padding:3px 8px; color:#666;">' + (item.note||'-') + '</td></tr>';
@@ -10892,7 +11230,7 @@ async function exportCasePDF(logId) {
 
 <tfoot><tr><td>
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px; margin-top:4px;">
-        <div style="display:flex; align-items:center; gap:8px;">
+        <div style="display:flex; align-items:center; gap:8px; visibility: ${isBlank ? 'hidden' : 'visible'};">
             <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`https://water-plant-maintenance.web.app?logId=${log.id}`)}" alt="QR" style="width:45px; height:45px;">
             <div>
                 <div style="font-size:8px; font-weight:700; color:#333;">สแกนเพื่อดูรายละเอียดเคสฉบับเต็ม</div>
@@ -10973,19 +11311,21 @@ ${inspHtml}
 </table>
 </div>
 
-${isInstallPdf && (log.preInstallPhotos && log.preInstallPhotos.length > 0) ? `
+${isInstallPdf ? `
 <div style="page-break-before: always;">
 <h2>รูปถ่ายก่อนติดตั้ง/รื้อถอน (Pre-installation/removal Photos)</h2>
+${(log.preInstallPhotos && log.preInstallPhotos.length > 0) ? `
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
 ${log.preInstallPhotos.map(function(img) { return '<div style="border:1px solid #eee; border-radius:4px; overflow:hidden; aspect-ratio:4/3;"><img src="' + img.url + '" style="width:100%; height:100%; display:block; object-fit:contain;"></div>'; }).join('')}
+</div>` : `<div style="padding:15px; text-align:center; color:#999; font-size:11px; border:1px solid #eee; border-radius:6px; background:#fafafa;">ไม่มีข้อมูล</div>`}
 </div>
-</div>` : ''}
 
-${isInstallPdf && (log.installPhotos && log.installPhotos.length > 0) ? `
 <h2>รูปถ่ายหลังติดตั้ง/รื้อถอน (Post-installation/removal Photos)</h2>
+${(log.installPhotos && log.installPhotos.length > 0) ? `
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
 ${log.installPhotos.map(function(img) { return '<div style="border:1px solid #eee; border-radius:4px; overflow:hidden; aspect-ratio:4/3;"><img src="' + img.url + '" style="width:100%; height:100%; display:block; object-fit:contain;"></div>'; }).join('')}
-</div>` : ''}
+</div>` : `<div style="padding:15px; text-align:center; color:#999; font-size:11px; border:1px solid #eee; border-radius:6px; background:#fafafa;">ไม่มีข้อมูล</div>`}
+` : ''}
 
 <div style="page-break-inside: avoid;">
 <h2>ลายเซ็น (Signatures)</h2>
@@ -10997,7 +11337,7 @@ ${signatureHtml}
 
 <div class="fixed-footer">
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
-        <div style="display:flex; align-items:center; gap:8px;">
+        <div style="display:flex; align-items:center; gap:8px; visibility: ${isBlank ? 'hidden' : 'visible'};">
             <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`https://water-plant-maintenance.web.app?logId=${log.id}`)}" alt="QR" style="width:45px; height:45px;">
             <div>
                 <div style="font-size:8px; font-weight:700; color:#333;">สแกนเพื่อดูรายละเอียดเคสฉบับเต็ม</div>
