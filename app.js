@@ -1,5 +1,5 @@
 /**
- * AquaFlow - Water Plant Maintenance App
+ * BioInnotech Maintenance System
  * Core Application Logic (Thai Localized) - Firebase Integrated
  */
 
