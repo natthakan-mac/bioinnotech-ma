@@ -451,6 +451,26 @@
                                             </div>
                                         </div>
 
+                                        <!-- Blank ISO Templates Section -->
+                                        <div class="profile-subsection" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+                                            <h3 class="profile-subsection-title">
+                                                <i class="fa-solid fa-file-contract"></i>
+                                                แบบฟอร์มเปล่า (ISO Templates)
+                                            </h3>
+                                            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 1rem;">ดาวน์โหลดแบบฟอร์ม ISO เปล่าสำหรับลงทะเบียนเอกสาร</p>
+                                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                                <button type="button" class="btn-secondary" onclick="exportBlankISO('install')">
+                                                    <i class="fa-solid fa-file-pdf"></i> FM-SER-01
+                                                </button>
+                                                <button type="button" class="btn-secondary" onclick="exportBlankISO('ma')">
+                                                    <i class="fa-solid fa-file-pdf"></i> FM-SER-05
+                                                </button>
+                                                <button type="button" class="btn-secondary" onclick="exportBlankISO('repair')">
+                                                    <i class="fa-solid fa-file-pdf"></i> FM-SEV-06
+                                                </button>
+                                            </div>
+                                        </div>
+
                                         <div class="password-section profile-subsection">
                                             <h3 class="profile-subsection-title">
                                                 <i class="fa-solid fa-key"></i>
@@ -1419,9 +1439,15 @@
 
             <!-- สำหรับการติดตั้ง/รื้อถอน -->
             <div id="ma-install-sections" style="border: 2px solid rgba(0,0,0,0.08); border-radius: 12px; padding: 1rem; margin-bottom: 1.25rem; display: none;">
-                <h4 style="margin: 0 0 0.75rem 0; font-size: 0.95rem; color: #111; display: flex; align-items: center; gap: 0.5rem; font-weight: 700;">
-                    <i class="fa-solid fa-truck-ramp-box" style="color: #38bdf8;"></i> สำหรับการติดตั้ง/รื้อถอน
-                </h4>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <h4 style="margin: 0; font-size: 0.95rem; color: #111; display: flex; align-items: center; gap: 0.5rem; font-weight: 700;">
+                        <i class="fa-solid fa-truck-ramp-box" style="color: #38bdf8;"></i> สำหรับการติดตั้ง/รื้อถอน
+                    </h4>
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                        <label style="margin: 0; font-size: 0.82rem; color: #666; white-space: nowrap;">วันที่ดำเนินการ:</label>
+                        <input type="datetime-local" name="installDate" style="height: 30px; padding: 0.25rem 0.4rem; font-size: 0.82rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                    </div>
+                </div>
 
                 <!-- ประเภทงาน pill switch -->
                 <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
@@ -1490,10 +1516,10 @@
                         <label style="margin: 0; font-size: 0.85rem; font-weight: 600; min-width: 160px;">มีประตูที่ต้องผ่านกี่ประตู</label>
                         <div style="display: flex; align-items: center; gap: 0.4rem;">
                             <button type="button" id="btn-door-minus" style="width:28px; height:28px; border-radius:50%; border:none; background:#ef4444; color:#fff; cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-minus" style="font-size:0.7rem;"></i></button>
-                            <span id="install-door-count-display" style="font-size:0.9rem; font-weight:600; min-width:24px; text-align:center;">0</span>
+                            <span id="install-door-count-display" style="font-size:0.9rem; font-weight:600; min-width:24px; text-align:center;">1</span>
                             <button type="button" id="btn-door-plus" style="width:28px; height:28px; border-radius:50%; border:none; background:#22c55e; color:#fff; cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-plus" style="font-size:0.7rem;"></i></button>
                         </div>
-                        <input type="hidden" name="doorCount" id="install-door-count" value="0">
+                        <input type="hidden" name="doorCount" id="install-door-count" value="1">
                         <span style="font-size: 0.82rem; color: #888;">ประตู</span>
                     </div>
                     <div id="install-door-sizes" style="display: flex; flex-direction: column; gap: 0.4rem; border: 1.5px dashed rgba(0,0,0,0.15); border-radius: 8px; padding: 0.5rem 0.75rem;"></div>
@@ -1564,7 +1590,7 @@
                     <div id="precheck-section" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(0,0,0,0.06);">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
                             <label style="margin: 0; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
-                                <i class="fa-solid fa-clipboard-check"></i> ตรวจสอบรายละเอียดก่อนส่งมอบ
+                                <i class="fa-solid fa-clipboard-check"></i> ตรวจสอบรายละเอียดก่อนส่งมอบ (กรณีติดตั้งเครื่องเท่านั้น)
                             </label>
                             <div style="display: flex; align-items: center; gap: 0.4rem;">
                                 <label style="margin: 0; font-size: 0.82rem; color: #666; white-space: nowrap;">วันที่ตรวจ:</label>
@@ -1774,9 +1800,14 @@
                 </div>
             </div>
 
-                <label><i class="fa-solid fa-list"></i> รายการและค่าใช้จ่าย (Items & Cost)</label>
-                <div id="line-items-container"></div>
-                <div id="line-items-footer-placeholder"></div>
+                <div onclick="toggleFormCostSection()" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; background: rgba(0,0,0,0.02); padding: 0.5rem 0.75rem; border: 1px solid rgba(0,0,0,0.06); border-radius: 8px;">
+                    <label style="margin: 0; cursor: pointer; font-weight: 600; color: #111;"><i class="fa-solid fa-list"></i> รายการและค่าใช้จ่าย (Items & Cost)</label>
+                    <i id="form-cost-collapse-icon" class="fa-solid fa-chevron-down" style="font-size: 0.8rem; transition: transform 0.2s; opacity: 0.5;"></i>
+                </div>
+                <div id="form-cost-section-content" style="display: none;">
+                    <div id="line-items-container"></div>
+                    <div id="line-items-footer-placeholder"></div>
+                </div>
                 <input type="hidden" name="lineItemsJSON" id="line-items-json">
                 <input type="hidden" name="details" id="log-details-input" value="">
                 <input type="hidden" name="cost" id="log-cost-hidden" value="0">
@@ -2093,6 +2124,11 @@
                 <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">ประกัน:</span><span id="detail-log-warranty" style="font-weight:500;">-</span></div>
                 <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="color:#888;">จำนวนรอบขณะเช็ค:</span><span id="detail-log-cycle-count" style="font-weight:500;">-</span></div>
             </div>
+            <!-- Objective/Description -->
+            <div id="detail-log-objective-wrap" style="padding:0.5rem 0; border-top:1px solid rgba(0,0,0,0.05); display:none;">
+                <div style="font-size:0.82rem; color:#888; margin-bottom:0.25rem;">คำอธิบายงาน:</div>
+                <div id="detail-log-objective" style="font-size:0.88rem; color:#333; white-space:pre-wrap; line-height:1.5;">-</div>
+            </div>
         </div>
 
         <!-- Status Timeline -->
@@ -2117,6 +2153,38 @@
             <div id="detail-install-content" style="font-size: 0.88rem; line-height: 1.7; padding: 0.75rem 0;"></div>
         </div>
 
+        <!-- Precheck Section (ตรวจสอบรายละเอียดก่อนส่งมอบ) -->
+        <div class="case-detail-section" id="detail-precheck-section" style="display: none; margin-bottom: 1.25rem;">
+            <div class="case-detail-section-header">
+                <i class="fa-solid fa-clipboard-check"></i> ตรวจสอบรายละเอียดก่อนส่งมอบ (กรณีติดตั้งเครื่องเท่านั้น)
+            </div>
+            <div id="detail-precheck-content" style="font-size: 0.88rem; line-height: 1.7; padding: 0.75rem 0;"></div>
+        </div>
+
+        <!-- Install Photos Section -->
+        <div class="case-detail-section" id="detail-install-photos-section" style="display: none; margin-bottom: 1.25rem;">
+            <div class="case-detail-section-header">
+                <i class="fa-solid fa-camera"></i> รูปถ่ายก่อน/หลังติดตั้ง-รื้อถอน
+            </div>
+            <div id="detail-install-photos-content" style="font-size: 0.88rem; line-height: 1.7; padding: 0.75rem 0;"></div>
+        </div>
+
+        <!-- Action Plan Section -->
+        <div class="case-detail-section" id="detail-action-plan-section" style="display: none; margin-bottom: 1.25rem;">
+            <div class="case-detail-section-header">
+                <i class="fa-solid fa-route"></i> แนวทางการดำเนินงาน (Action Plan)
+            </div>
+            <div id="detail-action-plan-content" style="font-size: 0.88rem; line-height: 1.7; padding: 0.75rem 0;"></div>
+        </div>
+
+        <!-- Repair Section (สำหรับการซ่อม) -->
+        <div class="case-detail-section" id="detail-repair-section" style="display: none; margin-bottom: 1.25rem;">
+            <div class="case-detail-section-header">
+                <i class="fa-solid fa-wrench"></i> สำหรับการซ่อม (Repair)
+            </div>
+            <div id="detail-repair-content" style="font-size: 0.88rem; line-height: 1.7; padding: 0.75rem 0;"></div>
+        </div>
+
         <!-- Customer Section -->
         <div class="case-detail-section" id="detail-customer-section" style="display: none; margin-bottom: 1.25rem;">
             <div class="case-detail-section-header">
@@ -2127,14 +2195,17 @@
 
         <!-- Cost Section (full width) -->
         <div class="case-detail-section" style="margin-bottom: 1.25rem;">
-            <div class="case-detail-section-header">
-                <i class="fa-solid fa-receipt"></i> รายละเอียดงาน & ค่าใช้จ่าย
+            <div onclick="toggleCostSection()" class="case-detail-section-header" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                <div><i class="fa-solid fa-receipt"></i> รายละเอียดงาน & ค่าใช้จ่าย</div>
+                <i id="cost-collapse-icon" class="fa-solid fa-chevron-down" style="font-size: 0.65rem; transition: transform 0.2s; opacity: 0.5;"></i>
             </div>
-            <div class="bill-receipt-box">
-                <div id="detail-log-details" class="bill-receipt-content">-</div>
-                <div class="bill-receipt-footer">
-                    <span class="bill-receipt-total-label">ยอดรวมสุทธิ</span>
-                    <span id="detail-log-cost" class="bill-receipt-total-value">-</span>
+            <div id="cost-section-content" style="display: none;">
+                <div class="bill-receipt-box">
+                    <div id="detail-log-details" class="bill-receipt-content">-</div>
+                    <div class="bill-receipt-footer">
+                        <span class="bill-receipt-total-label">ยอดรวมสุทธิ</span>
+                        <span id="detail-log-cost" class="bill-receipt-total-value">-</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2223,6 +2294,7 @@
         <img id="image-viewer-img" src="" alt="Preview">
     </div>
 </div>
+    <script src="pdf-blank-templates.js"></script>
 </body>
 
 </html>
