@@ -5651,8 +5651,19 @@ function setupEventListeners() {
     }
 
     document.querySelectorAll(".close-modal, .close-modal-btn").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
+        btn.addEventListener("click", async (e) => {
             const modal = e.target.closest(".modal-overlay");
+            if (!modal) return;
+            
+            // Add confirmation for specific forms
+            if (modal.id === "modal-add-site" || modal.id === "modal-log-maintenance") {
+                const confirmed = await showDialog("คุณต้องการปิดหน้านี้ใช่หรือไม่? ข้อมูลที่คุณกรอกไว้จะหายไป", {
+                    title: "ยืนยันการปิด",
+                    type: "confirm"
+                });
+                if (!confirmed) return;
+            }
+            
             modal.classList.add("hidden");
             modal.style.display = "none";
         });
@@ -5660,7 +5671,7 @@ function setupEventListeners() {
 
     // Close modal when clicking outside (on the overlay)
     document.querySelectorAll(".modal-overlay").forEach((overlay) => {
-        overlay.addEventListener("click", (e) => {
+        overlay.addEventListener("click", async (e) => {
             // DO NOT allow clicking outside to close mandatory modals
             if (
                 overlay.id === "modal-force-password" ||
@@ -5669,6 +5680,15 @@ function setupEventListeners() {
                 return;
 
             if (e.target === overlay) {
+                // Add confirmation for specific forms
+                if (overlay.id === "modal-add-site" || overlay.id === "modal-log-maintenance") {
+                    const confirmed = await showDialog("คุณต้องการปิดหน้านี้ใช่หรือไม่? ข้อมูลที่คุณกรอกไว้จะหายไป", {
+                        title: "ยืนยันการปิด",
+                        type: "confirm"
+                    });
+                    if (!confirmed) return;
+                }
+                
                 overlay.classList.add("hidden");
                 overlay.style.display = "none";
             }
@@ -11171,7 +11191,7 @@ async function exportCasePDF(logId) {
     }
 
     var pdfDocTitle = isInstallPdf ? 'ใบบันทึกการติดตั้ง-รื้อถอน' : (isRepairPdf ? 'ใบบันทึกการซ่อมเครื่องมือ' : 'ใบตรวจเช็คการบำรุงรักษาเครื่อง');
-    var pdfFooterCode = isInstallPdf ? 'FM-SER-01' : (isRepairPdf ? 'FM-SEV-06' : 'FM-SER-05');
+    var pdfFooterCode = isInstallPdf ? 'FM-SER-01' : (isRepairPdf ? 'FM-SER-06' : 'FM-SER-05');
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
