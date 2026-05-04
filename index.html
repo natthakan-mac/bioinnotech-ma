@@ -82,6 +82,9 @@
     <!-- Signature Pad -->
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.2.0/dist/signature_pad.umd.min.js"></script>
 
+    <!-- QR Code Generator -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
     <!-- jsPDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -182,6 +185,75 @@
                 <div style="font-size:1.1rem; font-weight:700; color:#333;">ลงลายเซ็นสำเร็จ</div>
                 <div style="font-size:0.85rem; color:#888; margin-top:0.25rem;">ขอบคุณที่ลงลายเซ็น คุณสามารถปิดหน้านี้ได้</div>
             </div>
+        </div>
+    </div>
+</section>
+
+<!-- PUBLIC INCIDENT REPORT PAGE (shown when ?report=DEVICE_ID) -->
+<section id="public-report-view" class="public-report-page" style="display:none;">
+    <div class="public-report-bg"></div>
+    <div class="public-report-card">
+        <!-- Header -->
+        <div class="public-report-header">
+            <img src="app-ico.svg" alt="CASP Logo" class="public-report-logo">
+            <div>
+                <h1 class="public-report-title">แจ้งปัญหาเครื่อง</h1>
+                <p class="public-report-subtitle">Report Device Issue</p>
+            </div>
+        </div>
+
+        <!-- Device Info Banner -->
+        <div class="public-report-device-info" id="report-device-info">
+            <div class="report-device-spinner">
+                <i class="fa-solid fa-circle-notch fa-spin"></i>
+                <span>กำลังโหลดข้อมูลเครื่อง...</span>
+            </div>
+        </div>
+
+        <!-- Form -->
+        <form id="public-report-form" class="public-report-form" autocomplete="off">
+            <div class="public-report-field">
+                <label class="public-report-label">
+                    <i class="fa-solid fa-user"></i>
+                    ชื่อ-นามสกุล <span class="required-star">*</span>
+                </label>
+                <input type="text" id="report-name" class="public-report-input" placeholder="กรอกชื่อ-นามสกุลของคุณ" required>
+            </div>
+
+            <div class="public-report-field">
+                <label class="public-report-label">
+                    <i class="fa-solid fa-phone"></i>
+                    เบอร์โทรศัพท์ <span class="required-star">*</span>
+                </label>
+                <input type="tel" id="report-tel" class="public-report-input" placeholder="08XXXXXXXX" inputmode="numeric" required>
+            </div>
+
+            <div class="public-report-field">
+                <label class="public-report-label">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    อาการปัญหา / รายละเอียด <span class="required-star">*</span>
+                </label>
+                <textarea id="report-description" class="public-report-input public-report-textarea" placeholder="อธิบายปัญหาที่พบ เช่น เครื่องไม่ทำงาน เสียงดัง มีควัน ฯลฯ" rows="4" required></textarea>
+            </div>
+
+            <button type="submit" id="btn-public-report-submit" class="public-report-submit-btn">
+                <i class="fa-solid fa-paper-plane"></i>
+                <span>ส่งคำร้อง</span>
+            </button>
+        </form>
+
+        <!-- Success Message -->
+        <div id="report-success-msg" class="public-report-success" style="display:none;">
+            <div class="report-success-icon">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h2>ส่งคำร้องสำเร็จ!</h2>
+            <p>ทีมงานได้รับคำร้องของคุณแล้ว<br>และจะติดต่อกลับโดยเร็วที่สุด</p>
+            <div id="report-case-id-display" class="report-case-id"></div>
+        </div>
+
+        <div class="public-report-footer">
+            © CASP Maintenance System — ระบบจัดการซ่อมบำรุง
         </div>
     </div>
 </section>
@@ -2295,6 +2367,49 @@
     </div>
 </div>
     <script src="pdf-blank-templates.js"></script>
+
+<!-- QR Code Device Modal -->
+<div id="modal-device-qr" class="modal-overlay modal-layer-top hidden">
+    <div class="modal glass-panel" style="max-width:480px; width:92vw;">
+        <div class="modal-header">
+            <div>
+                <h3 id="qr-modal-device-name">QR Code เครื่อง</h3>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin:0.25rem 0 0 0; font-weight:400;">สแกนเพื่อแจ้งปัญหาเครื่อง</p>
+            </div>
+            <button class="close-modal" id="btn-close-qr-modal">&times;</button>
+        </div>
+        <div class="modal-body" style="padding:1.5rem; display:flex; flex-direction:column; align-items:center; gap:1.25rem;">
+            <!-- Device Info -->
+            <div id="qr-device-info" class="qr-device-info-banner"></div>
+
+            <!-- QR Code Canvas -->
+            <div class="qr-code-wrapper">
+                <canvas id="device-qr-canvas"></canvas>
+                <div class="qr-scan-hint">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                    สแกนด้วยกล้องโทรศัพท์
+                </div>
+            </div>
+
+            <!-- URL display -->
+            <div class="qr-url-display" id="qr-url-display"></div>
+
+            <!-- Actions -->
+            <div style="display:flex; gap:0.75rem; width:100%;">
+                <button id="btn-download-qr" class="btn-secondary" style="flex:1; justify-content:center;">
+                    <i class="fa-solid fa-download"></i> ดาวน์โหลด
+                </button>
+                <button id="btn-copy-qr-link" class="btn-secondary" style="flex:1; justify-content:center;">
+                    <i class="fa-solid fa-link"></i> คัดลอกลิงก์
+                </button>
+                <button id="btn-print-qr" class="btn-primary" style="flex:1; justify-content:center;">
+                    <i class="fa-solid fa-print"></i> พิมพ์
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 </body>
 
 </html>
