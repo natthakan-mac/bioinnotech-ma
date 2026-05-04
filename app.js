@@ -14825,8 +14825,9 @@ function showDeviceQR(siteId) {
     // Generate QR Code
     const canvas = document.getElementById('device-qr-canvas');
     if (canvas && typeof QRCode !== 'undefined') {
+        const qrSize = window.innerWidth > 768 ? 300 : 220;
         QRCode.toCanvas(canvas, reportUrl, {
-            width: 220,
+            width: qrSize,
             margin: 2,
             color: {
                 dark: '#0f172a',

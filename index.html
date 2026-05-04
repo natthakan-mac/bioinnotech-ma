@@ -594,6 +594,24 @@
             padding: 4px 10px;
             border-radius: 8px;
         }
+
+        /* Desktop Refinements for QR Modal */
+        @media (min-width: 769px) {
+            #modal-device-qr .modal-body {
+                padding: 2.5rem !important;
+                gap: 2rem !important;
+            }
+            .qr-code-wrapper {
+                padding: 2rem;
+                gap: 1.25rem;
+            }
+            .qr-scan-hint {
+                font-size: 0.85rem;
+            }
+            .qr-device-info-banner {
+                padding: 1.5rem 2rem;
+            }
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 
@@ -3555,7 +3573,7 @@
 
 <!-- QR Code Device Modal -->
 <div id="modal-device-qr" class="modal-overlay modal-layer-top hidden">
-    <div class="modal glass-panel" style="max-width:480px; width:92vw;">
+    <div class="modal glass-panel" style="max-width:640px; width:92vw;">
         <div class="modal-header">
             <div>
                 <h3 id="qr-modal-device-name">QR Code เครื่อง</h3>
