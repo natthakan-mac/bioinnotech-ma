@@ -2757,6 +2757,10 @@ function toggleMaRoundSections(category) {
     if (repairSection) {
         repairSection.style.display = category === 'ซ่อม' ? 'block' : 'none';
     }
+    const descAttachmentGroup = document.getElementById('description-attachment-group');
+    if (descAttachmentGroup) {
+        descAttachmentGroup.style.display = category === 'ซ่อม' ? 'block' : 'none';
+    }
     // Hide precheck section for รื้อถอน
     const precheckSection = document.getElementById('precheck-section');
     if (precheckSection) {
@@ -4394,12 +4398,14 @@ async function handleLogMaintenance(e) {
             const hadInstallPhotos = existingLog && existingLog.installPhotos && existingLog.installPhotos.length > 0;
             const hadPreInstallPhotos = existingLog && existingLog.preInstallPhotos && existingLog.preInstallPhotos.length > 0;
             const hadRepairPhotos = existingLog && existingLog.repairPhotos && existingLog.repairPhotos.length > 0;
+            const hadDescriptionAttachments = existingLog && existingLog.descriptionAttachments && existingLog.descriptionAttachments.length > 0;
 
             const hasInstallChanges = installPhotoPending.length > 0 || hadInstallPhotos;
             const hasPreInstallChanges = preInstallPhotoPending.length > 0 || hadPreInstallPhotos;
             const hasRepairChanges = repairPhotoPending.length > 0 || hadRepairPhotos;
+            const hasDescriptionChanges = descriptionAttachments.length > 0 || hadDescriptionAttachments;
             
-            if (hasInstallChanges || hasPreInstallChanges || hasRepairChanges) {
+            if (hasInstallChanges || hasPreInstallChanges || hasRepairChanges || hasDescriptionChanges) {
                 try {
                     var photoUpdate = {};
                     if (hasInstallChanges) {
@@ -4413,6 +4419,10 @@ async function handleLogMaintenance(e) {
                     if (hasRepairChanges) {
                         photoUpdate.repairPhotos = await uploadPhotoArray(repairPhotoPending, logId, 'repair');
                         repairPhotoPending = []; window.repairPhotoPending = repairPhotoPending;
+                    }
+                    if (hasDescriptionChanges) {
+                        photoUpdate.descriptionAttachments = await uploadPhotoArray(descriptionAttachments, logId, 'description');
+                        descriptionAttachments = []; window.descriptionAttachments = descriptionAttachments;
                     }
                     await FirestoreService.updateLog(logId, photoUpdate);
                 } catch(photoErr) { console.error('Photo upload failed:', photoErr); }
@@ -6542,6 +6552,9 @@ function editLog(logId) {
     repairPhotoPending = (log.repairPhotos || []).slice();
     window.repairPhotoPending = repairPhotoPending;
     renderRepairPhotoPreview();
+    descriptionAttachments = (log.descriptionAttachments || []).slice();
+    window.descriptionAttachments = descriptionAttachments;
+    updateDescriptionAttachmentPreview();
 
     // Load existing customer signature
     const custSigHidden = document.getElementById("customer-signature-data");
@@ -10077,7 +10090,10 @@ function viewLogDetails(id) {
         ...(log.attachmentsBefore || []),
         ...(log.attachmentsAfter || []),
         ...(log.attachments || []),
-        ...(log.repairPhotos || [])
+        ...(log.repairPhotos || []),
+        ...(log.descriptionAttachments || []),
+        ...(log.installPhotos || []),
+        ...(log.preInstallPhotos || [])
     ];
     
     if (attachSection && attachContent) {
