@@ -87,17 +87,14 @@ function createDeviceBannerHTML(site) {
         <div class="report-device-loaded">
             <div class="report-device-icon"><i class="fa-solid fa-microchip"></i></div>
             <div class="report-device-details">
-                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <div class="report-device-name">${site.name || 'เครื่อง'}</div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.35rem;">
                     ${site.siteCode ? `<span class="report-device-code">${site.siteCode}</span>` : ''}
                     ${site.serialNumber ? `<span class="report-device-code" style="background: rgba(0,0,0,0.05); color: #666;"><i class="fa-solid fa-barcode"></i> ${site.serialNumber}</span>` : ''}
-                </div>
-                <div class="report-device-name">${site.name || 'เครื่อง'}</div>
-                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                    ${site.brand || site.model ? `
-                        <div class="report-device-hospital" style="color: #111; font-weight: 500;">
+                    ${(site.brand || site.model) ? `
+                        <span style="font-size: 0.75rem; color: #555; font-weight: 600; display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.02); padding: 3px 10px; border-radius: 20px; border: 1px solid rgba(0,0,0,0.05);">
                             <i class="fa-solid fa-industry"></i> ${[site.brand, site.model].filter(Boolean).join(' / ')}
-                        </div>` : ''}
-                    ${site.hospital ? `<div class="report-device-hospital"><i class="fa-solid fa-hospital"></i> ${site.hospital}</div>` : ''}
+                        </span>` : ''}
                 </div>
             </div>
         </div>
