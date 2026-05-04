@@ -77,6 +77,33 @@ function isMaCategory(cat) {
     return cat === "บำรุงรักษาตามรอบ" || cat === "ตามสัญญาจ้าง" || cat === "ตามใบสั่งซื้อ" || cat === "Maintenance" || cat === "อื่นๆ";
 }
 
+/**
+ * Unified helper to generate a standardized device information banner.
+ * Used across Dashboard (Site Details), QR Modal, and Public Report Portal.
+ */
+function createDeviceBannerHTML(site) {
+    if (!site) return '';
+    return `
+        <div class="report-device-loaded">
+            <div class="report-device-icon"><i class="fa-solid fa-microchip"></i></div>
+            <div class="report-device-details">
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                    ${site.siteCode ? `<span class="report-device-code">${site.siteCode}</span>` : ''}
+                    ${site.serialNumber ? `<span class="report-device-code" style="background: rgba(0,0,0,0.05); color: #666;"><i class="fa-solid fa-barcode"></i> ${site.serialNumber}</span>` : ''}
+                </div>
+                <div class="report-device-name">${site.name || 'เครื่อง'}</div>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    ${site.brand || site.model ? `
+                        <div class="report-device-hospital" style="color: #111; font-weight: 500;">
+                            <i class="fa-solid fa-industry"></i> ${[site.brand, site.model].filter(Boolean).join(' / ')}
+                        </div>` : ''}
+                    ${site.hospital ? `<div class="report-device-hospital"><i class="fa-solid fa-hospital"></i> ${site.hospital}</div>` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 // --- Firebase Configuration ---
 const firebaseConfig = {
     apiKey: "AIzaSyDIgPA8WHnxP5X_JoRQtwdGDIqGYRdCZOI",
@@ -3101,6 +3128,67 @@ function renderInstallPhotoPreview() {
     });
 }
 
+// Repair photos
+let repairPhotoPending = [];
+const btnRepairPhoto = document.getElementById('btn-repair-photo');
+const repairPhotoInput = document.getElementById('repair-photo-input');
+if (btnRepairPhoto && repairPhotoInput) {
+    btnRepairPhoto.addEventListener('click', function () { repairPhotoInput.click(); });
+    repairPhotoInput.addEventListener('change', function (e) {
+        const files = Array.from(e.target.files);
+        repairPhotoPending.push(...files);
+        renderRepairPhotoPreview();
+        e.target.value = '';
+    });
+}
+
+function renderRepairPhotoPreview() {
+    const container = document.getElementById('repair-photo-preview');
+    const countEl = document.getElementById('repair-photo-count');
+    if (!container) return;
+    container.innerHTML = '';
+    if (countEl) countEl.textContent = repairPhotoPending.length > 0 ? repairPhotoPending.length + ' ไฟล์' : 'ไม่ได้เลือกไฟล์';
+    repairPhotoPending.forEach(function (file, idx) {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:relative; width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); background:#000;';
+        
+        const isVideo = (file.type && file.type.startsWith('video/')) || (file.name && file.name.endsWith('.mp4'));
+        
+        if (isVideo) {
+            const video = document.createElement('video');
+            video.style.cssText = 'width:100%; height:100%; object-fit:cover;';
+            if (file instanceof File) { video.src = URL.createObjectURL(file); } else if (file.url) { video.src = file.url; }
+            wrapper.appendChild(video);
+            const playIcon = document.createElement('div');
+            playIcon.innerHTML = '<i class="fa-solid fa-play"></i>';
+            playIcon.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:#fff; font-size:1.2rem; pointer-events:none;';
+            wrapper.appendChild(playIcon);
+        } else {
+            const img = document.createElement('img');
+            img.style.cssText = 'width:100%; height:100%; object-fit:cover;';
+            if (file instanceof File) { img.src = URL.createObjectURL(file); } else if (file.url) { img.src = file.url; }
+            wrapper.appendChild(img);
+        }
+        
+        const removeBtn = document.createElement('div');
+        removeBtn.innerHTML = '&times;';
+        removeBtn.style.cssText = 'position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; z-index:2;';
+        var fileRef = file;
+        removeBtn.onclick = function (e) {
+            e.stopPropagation();
+            var currentIdx = repairPhotoPending.indexOf(fileRef);
+            if (currentIdx !== -1) {
+                repairPhotoPending.splice(currentIdx, 1);
+            }
+            renderRepairPhotoPreview();
+        };
+        wrapper.appendChild(removeBtn);
+        container.appendChild(wrapper);
+    });
+}
+window.repairPhotoPending = repairPhotoPending;
+window.renderRepairPhotoPreview = renderRepairPhotoPreview;
+
 window.installPhotoPending = installPhotoPending;
 window.renderInstallPhotoPreview = renderInstallPhotoPreview;
 
@@ -4305,21 +4393,26 @@ async function handleLogMaintenance(e) {
             // Always update if editing an existing log that had photos, or if there are pending photos
             const hadInstallPhotos = existingLog && existingLog.installPhotos && existingLog.installPhotos.length > 0;
             const hadPreInstallPhotos = existingLog && existingLog.preInstallPhotos && existingLog.preInstallPhotos.length > 0;
+            const hadRepairPhotos = existingLog && existingLog.repairPhotos && existingLog.repairPhotos.length > 0;
+
             const hasInstallChanges = installPhotoPending.length > 0 || hadInstallPhotos;
             const hasPreInstallChanges = preInstallPhotoPending.length > 0 || hadPreInstallPhotos;
+            const hasRepairChanges = repairPhotoPending.length > 0 || hadRepairPhotos;
             
-            if (hasInstallChanges || hasPreInstallChanges) {
+            if (hasInstallChanges || hasPreInstallChanges || hasRepairChanges) {
                 try {
                     var photoUpdate = {};
                     if (hasInstallChanges) {
-                        // uploadPhotoArray handles both File objects (new) and url objects (existing)
-                        // If array is empty, it returns [], effectively clearing all photos
                         photoUpdate.installPhotos = await uploadPhotoArray(installPhotoPending, logId, 'install');
                         installPhotoPending = []; window.installPhotoPending = installPhotoPending;
                     }
                     if (hasPreInstallChanges) {
                         photoUpdate.preInstallPhotos = await uploadPhotoArray(preInstallPhotoPending, logId, 'preinstall');
                         preInstallPhotoPending = []; window.preInstallPhotoPending = preInstallPhotoPending;
+                    }
+                    if (hasRepairChanges) {
+                        photoUpdate.repairPhotos = await uploadPhotoArray(repairPhotoPending, logId, 'repair');
+                        repairPhotoPending = []; window.repairPhotoPending = repairPhotoPending;
                     }
                     await FirestoreService.updateLog(logId, photoUpdate);
                 } catch(photoErr) { console.error('Photo upload failed:', photoErr); }
@@ -6083,6 +6176,9 @@ function resetLogForm() {
     if (typeof pendingUploadsBefore !== "undefined") pendingUploadsBefore = [];
     if (typeof pendingUploadsAfter !== "undefined") pendingUploadsAfter = [];
     if (typeof pendingDeletions !== "undefined") pendingDeletions = [];
+    repairPhotoPending = [];
+    window.repairPhotoPending = repairPhotoPending;
+    if (typeof renderRepairPhotoPreview === 'function') renderRepairPhotoPreview();
 
     // Clear customer fields
     clearCustomerSignature();
@@ -6443,6 +6539,9 @@ function editLog(logId) {
     preInstallPhotoPending = (log.preInstallPhotos || []).slice();
     window.preInstallPhotoPending = preInstallPhotoPending;
     renderPreInstallPhotoPreview();
+    repairPhotoPending = (log.repairPhotos || []).slice();
+    window.repairPhotoPending = repairPhotoPending;
+    renderRepairPhotoPreview();
 
     // Load existing customer signature
     const custSigHidden = document.getElementById("customer-signature-data");
@@ -8258,36 +8357,55 @@ function viewSiteDetails(id) {
     // Inject Action Buttons
     const actionsContainer = document.getElementById("detail-modal-actions");
     if (actionsContainer) {
-        actionsContainer.style.position = "relative";
-        actionsContainer.style.zIndex = "10";
         actionsContainer.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: center; gap: 0.4rem; flex-wrap: wrap; width: 100%;">
-                ${site.locationUrl
-                ? `<a href="${site.locationUrl}" target="_blank" class="btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.82rem; display:inline-flex; align-items:center; gap:0.3rem; text-decoration:none;">
-                    <i class="fa-solid fa-map-location-dot"></i> เส้นทาง
-                </a>` : ""}
-                ${site.contactPhone
-                ? `<a href="tel:${site.contactPhone}" class="btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.82rem; display:inline-flex; align-items:center; gap:0.3rem; text-decoration:none;">
-                    <i class="fa-solid fa-phone"></i> โทร
-                </a>` : ""}
-                <button class="btn-secondary" onclick="viewSiteLogs('${site.id}');" style="padding:0.4rem 0.75rem; font-size:0.82rem;">
-                    <i class="fa-solid fa-clipboard-list"></i> ดูเคส
-                </button>
-                <div style="width:1px; height:22px; background:rgba(0,0,0,0.1);"></div>
-                <button class="btn-secondary" onclick="exportInsuranceCardPDF('${site.id}');" style="padding:0.4rem 0.75rem; font-size:0.82rem;">
-                    <i class="fa-solid fa-shield-halved"></i> ใบประกัน
-                </button>
-                <button class="btn-secondary" onclick="exportCaseHistoryPDF('${site.id}');" style="padding:0.4rem 0.75rem; font-size:0.82rem;">
-                    <i class="fa-solid fa-file-lines"></i> ประวัติเคส
-                </button>
-                <div style="width:1px; height:22px; background:rgba(0,0,0,0.1);"></div>
-                <button class="btn-primary" onclick="editSite('${site.id}'); toggleModal('siteDetails', false);" style="padding:0.4rem 0.75rem; font-size:0.82rem;">
-                    <i class="fa-solid fa-pen"></i> แก้ไข
-                </button>
-                <button class="btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.82rem; color:#ef4444; border-color:rgba(239,68,68,0.3);" onclick="deleteSite('${site.id}'); toggleModal('siteDetails', false);">
-                    <i class="fa-solid fa-trash"></i> ลบ
-                </button>
-                <button type="button" class="btn-secondary" onclick="toggleModal('siteDetails', false)" style="padding:0.4rem 0.75rem; font-size:0.82rem;">ปิด</button>
+            <div class="glass-action-bar">
+                <div class="action-group">
+                    ${site.locationUrl ? `
+                        <a href="${site.locationUrl}" target="_blank" class="glass-btn glass-btn-secondary">
+                            <i class="fa-solid fa-map-location-dot"></i>
+                            <span>เส้นทาง</span>
+                        </a>
+                    ` : ""}
+                    ${site.contactPhone ? `
+                        <a href="tel:${site.contactPhone}" class="glass-btn glass-btn-secondary">
+                            <i class="fa-solid fa-phone"></i>
+                            <span>โทร</span>
+                        </a>
+                    ` : ""}
+                    <button class="glass-btn glass-btn-secondary" onclick="viewSiteLogs('${site.id}');">
+                        <i class="fa-solid fa-clipboard-list"></i>
+                        <span>ดูเคส</span>
+                    </button>
+                </div>
+                
+                <div class="action-divider"></div>
+                
+                <div class="action-group">
+                    <button class="glass-btn glass-btn-secondary" onclick="exportInsuranceCardPDF('${site.id}');">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <span>ใบประกัน</span>
+                    </button>
+                    <button class="glass-btn glass-btn-secondary" onclick="exportCaseHistoryPDF('${site.id}');">
+                        <i class="fa-solid fa-file-lines"></i>
+                        <span>ประวัติเคส</span>
+                    </button>
+                </div>
+                
+                <div class="action-divider"></div>
+                
+                <div class="action-group">
+                    <button class="glass-btn glass-btn-primary" onclick="editSite('${site.id}'); toggleModal('siteDetails', false);">
+                        <i class="fa-solid fa-pen"></i>
+                        <span>แก้ไข</span>
+                    </button>
+                    <button class="glass-btn glass-btn-danger" onclick="deleteSite('${site.id}'); toggleModal('siteDetails', false);">
+                        <i class="fa-solid fa-trash"></i>
+                        <span>ลบ</span>
+                    </button>
+                    <button type="button" class="glass-btn glass-btn-secondary glass-btn-close" onclick="toggleModal('siteDetails', false)" title="ปิด">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
             </div>
         `;
     }
@@ -9879,6 +9997,15 @@ function viewLogDetails(id) {
         siteEl.textContent = site.name;
     }
 
+    // Populate Unified Device Banner
+    const bannerContainer = document.getElementById("detail-log-banner-container");
+    if (bannerContainer) {
+        bannerContainer.innerHTML = createDeviceBannerHTML(site);
+        // Make the banner clickable to view site details
+        bannerContainer.style.cursor = 'pointer';
+        bannerContainer.onclick = () => viewSiteDetails(site.id);
+    }
+
     // Responder
     const responderEl = document.getElementById("detail-log-responder");
     if (responderEl) {
@@ -9942,6 +10069,45 @@ function viewLogDetails(id) {
             objectiveWrap.style.display = "none";
         }
     }
+
+    // Render General Attachments (from public reports or manual uploads)
+    const attachSection = document.getElementById("detail-attachments-section");
+    const attachContent = document.getElementById("detail-attachments-content");
+    const allAttachments = [
+        ...(log.attachmentsBefore || []),
+        ...(log.attachmentsAfter || []),
+        ...(log.attachments || []),
+        ...(log.repairPhotos || [])
+    ];
+    
+    if (attachSection && attachContent) {
+        if (allAttachments.length > 0) {
+            attachSection.style.display = "block";
+            let attHtml = '<div style="display:flex; gap:10px; flex-wrap:wrap;">';
+            allAttachments.forEach(att => {
+                const url = att.url || att;
+                const isVideo = (att.type && att.type.startsWith('video/')) || (typeof url === 'string' && url.includes('.mp4'));
+                
+                if (isVideo) {
+                    attHtml += `
+                        <div style="width:120px; height:90px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer; background:#000; position:relative;" onclick="window.openImageViewer('${url}', 'video')">
+                            <video src="${url}" style="width:100%; height:100%; object-fit:cover;"></video>
+                            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:#fff; font-size:1.5rem; text-shadow:0 2px 4px rgba(0,0,0,0.5);"><i class="fa-solid fa-play"></i></div>
+                        </div>`;
+                } else {
+                    attHtml += `
+                        <div style="width:120px; height:90px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer;" onclick="window.openImageViewer('${url}')">
+                            <img src="${url}" style="width:100%; height:100%; object-fit:cover;" loading="lazy">
+                        </div>`;
+                }
+            });
+            attHtml += '</div>';
+            attachContent.innerHTML = attHtml;
+        } else {
+            attachSection.style.display = "none";
+        }
+    }
+
     
     // Render Status Timeline
     // Initialize status history if it doesn't exist (for old logs)
@@ -14634,15 +14800,7 @@ function showDeviceQR(siteId) {
     // Fill device info banner
     const infoEl = document.getElementById('qr-device-info');
     if (infoEl) {
-        infoEl.innerHTML = `
-            <div class="qr-info-row">
-                ${site.siteCode ? `<span class="qr-info-badge qr-info-code"><i class="fa-solid fa-hashtag"></i> ${site.siteCode}</span>` : ''}
-                ${site.deviceType ? `<span class="qr-info-badge"><i class="fa-solid fa-tag"></i> ${site.deviceType}</span>` : ''}
-            </div>
-            <div class="qr-info-name"><i class="fa-solid fa-microchip"></i> ${site.name}</div>
-            ${site.serialNumber ? `<div class="qr-info-serial"><i class="fa-solid fa-barcode"></i> ${site.serialNumber}</div>` : ''}
-            ${site.hospital ? `<div class="qr-info-location"><i class="fa-solid fa-hospital"></i> ${site.hospital}</div>` : ''}
-        `;
+        infoEl.innerHTML = createDeviceBannerHTML(site);
     }
 
     // Show URL
@@ -14811,17 +14969,7 @@ function initPublicReportPage() {
                 if (docSnap.exists()) {
                     const site = { id: docSnap.id, ...docSnap.data() };
                     if (deviceInfoEl) {
-                        deviceInfoEl.innerHTML = `
-                            <div class="report-device-loaded">
-                                <div class="report-device-icon"><i class="fa-solid fa-microchip"></i></div>
-                                <div class="report-device-details">
-                                    ${site.siteCode ? `<span class="report-device-code">${site.siteCode}</span>` : ''}
-                                    <div class="report-device-name">${site.name || 'เครื่อง'}</div>
-                                    ${site.serialNumber ? `<div class="report-device-serial"><i class="fa-solid fa-barcode"></i> ${site.serialNumber}</div>` : ''}
-                                    ${site.hospital ? `<div class="report-device-hospital"><i class="fa-solid fa-hospital"></i> ${site.hospital}</div>` : ''}
-                                </div>
-                            </div>
-                        `;
+                        deviceInfoEl.innerHTML = createDeviceBannerHTML(site);
                     }
                 } else {
                     if (deviceInfoEl) {
@@ -14845,6 +14993,7 @@ function initPublicReportPage() {
                     const name = document.getElementById('report-name')?.value.trim();
                     const tel = document.getElementById('report-tel')?.value.trim();
                     const description = document.getElementById('report-description')?.value.trim();
+                    const cycleCount = document.getElementById('report-cycle-count')?.value || "";
 
                     if (!name || !tel || !description) {
                         alert('กรุณากรอกข้อมูลให้ครบถ้วน');
@@ -14863,18 +15012,22 @@ function initPublicReportPage() {
                             await signInAnonymously(auth);
                         }
 
-                        // Generate case ID
-                        const caseId = 'RPT-' + Date.now().toString(36).toUpperCase();
+                        // Generate CASE-XXXXX logic
+                        const prefix = 'CASE-';
+                        const random = Math.floor(10000 + Math.random() * 90000);
+                        const caseId = prefix + random;
+                        
                         const now = new Date();
                         const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
                         const logData = {
                             siteId: reportSiteId,
                             caseId: caseId,
-                            category: 'แจ้งซ่อม',
+                            category: 'ซ่อม', // Simplified from แจ้งซ่อม as requested
                             status: 'Open',
                             objective: description,
                             details: description,
+                            cycleCount: cycleCount,
                             date: dateStr,
                             timestamp: now.toISOString(),
                             recordedBy: name,
