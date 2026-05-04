@@ -7970,6 +7970,9 @@ function renderSites() {
                          <i class="fa-solid fa-clipboard-list"></i>
                          <span>${logCount} รายการ</span>
                      </button>
+                     <button class="card-btn-action card-btn-qr" onclick="event.stopPropagation(); showDeviceQR('${site.id}')" title="QR Code แจ้งปัญหา">
+                         <i class="fa-solid fa-qrcode"></i>
+                     </button>
 
                 </div>
                  <div style="display: flex; gap: 0.5rem;">
@@ -14595,9 +14598,329 @@ async function togglePlanMonth(siteId, year, month) {
 }
 
 window.togglePlanMonth = togglePlanMonth;
+
+// ============================================================
+// QR CODE DEVICE FEATURE
+// ============================================================
+
+/**
+ * Get the base URL for QR links. Uses the current origin.
+ */
+function getAppBaseUrl() {
+    return window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
+}
+
+/**
+ * Show the QR Code modal for a given device (site)
+ */
+function showDeviceQR(siteId) {
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site) {
+        showToast('ไม่พบข้อมูลเครื่อง', 'error');
+        return;
+    }
+
+    const modal = document.getElementById('modal-device-qr');
+    if (!modal) return;
+
+    // Build the public report URL
+    const baseUrl = getAppBaseUrl();
+    const reportUrl = `${baseUrl}index.html?report=${siteId}`;
+
+    // Set device name in header
+    const nameEl = document.getElementById('qr-modal-device-name');
+    if (nameEl) nameEl.textContent = site.name || 'QR Code เครื่อง';
+
+    // Fill device info banner
+    const infoEl = document.getElementById('qr-device-info');
+    if (infoEl) {
+        infoEl.innerHTML = `
+            <div class="qr-info-row">
+                ${site.siteCode ? `<span class="qr-info-badge qr-info-code"><i class="fa-solid fa-hashtag"></i> ${site.siteCode}</span>` : ''}
+                ${site.deviceType ? `<span class="qr-info-badge"><i class="fa-solid fa-tag"></i> ${site.deviceType}</span>` : ''}
+            </div>
+            <div class="qr-info-name"><i class="fa-solid fa-microchip"></i> ${site.name}</div>
+            ${site.serialNumber ? `<div class="qr-info-serial"><i class="fa-solid fa-barcode"></i> ${site.serialNumber}</div>` : ''}
+            ${site.hospital ? `<div class="qr-info-location"><i class="fa-solid fa-hospital"></i> ${site.hospital}</div>` : ''}
+        `;
+    }
+
+    // Show URL
+    const urlEl = document.getElementById('qr-url-display');
+    if (urlEl) {
+        urlEl.textContent = reportUrl;
+    }
+
+    // Generate QR Code
+    const canvas = document.getElementById('device-qr-canvas');
+    if (canvas && typeof QRCode !== 'undefined') {
+        QRCode.toCanvas(canvas, reportUrl, {
+            width: 220,
+            margin: 2,
+            color: {
+                dark: '#0f172a',
+                light: '#ffffff'
+            },
+            errorCorrectionLevel: 'M'
+        }, function(error) {
+            if (error) console.error('QR generation error:', error);
+        });
+    } else if (canvas) {
+        // Fallback: use qrserver API via img
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function() {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+        };
+        img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(reportUrl)}`;
+    }
+
+    // Show modal
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+
+    // Download button
+    const btnDownload = document.getElementById('btn-download-qr');
+    if (btnDownload) {
+        btnDownload.onclick = () => {
+            if (!canvas) return;
+            const link = document.createElement('a');
+            link.download = `qr-${site.siteCode || siteId}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        };
+    }
+
+    // Copy link button
+    const btnCopy = document.getElementById('btn-copy-qr-link');
+    if (btnCopy) {
+        btnCopy.onclick = () => {
+            navigator.clipboard.writeText(reportUrl).then(() => {
+                showToast('คัดลอกลิงก์เรียบร้อย', 'success');
+            }).catch(() => {
+                // fallback
+                const ta = document.createElement('textarea');
+                ta.value = reportUrl;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('คัดลอกลิงก์เรียบร้อย', 'success');
+            });
+        };
+    }
+
+    // Print button
+    const btnPrint = document.getElementById('btn-print-qr');
+    if (btnPrint) {
+        btnPrint.onclick = () => printDeviceQR(site, reportUrl, canvas);
+    }
+
+    // Close button
+    const btnClose = document.getElementById('btn-close-qr-modal');
+    if (btnClose) {
+        btnClose.onclick = () => closeDeviceQRModal();
+    }
+
+    // Close on overlay click
+    modal.onclick = (e) => {
+        if (e.target === modal) closeDeviceQRModal();
+    };
+}
+
+function closeDeviceQRModal() {
+    const modal = document.getElementById('modal-device-qr');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = '';
+    }
+}
+
+function printDeviceQR(site, reportUrl, canvas) {
+    const qrDataUrl = canvas ? canvas.toDataURL('image/png') : '';
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>QR Code - ${site.name}</title>
+    <style>
+        body { font-family: 'Prompt', Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #fff; }
+        .qr-print-card { text-align: center; padding: 24px; border: 2px solid #e5e7eb; border-radius: 16px; max-width: 320px; }
+        .qr-print-logo { width: 48px; margin-bottom: 12px; }
+        .qr-print-title { font-size: 1.1rem; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+        .qr-print-sub { font-size: 0.8rem; color: #64748b; margin-bottom: 16px; }
+        .qr-print-img { width: 200px; height: 200px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; }
+        .qr-print-name { font-size: 0.9rem; font-weight: 600; color: #1e293b; margin-top: 12px; }
+        .qr-print-code { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+        .qr-print-url { font-size: 0.65rem; color: #94a3b8; margin-top: 8px; word-break: break-all; }
+        .qr-print-badge { display: inline-block; background: #f0fdf4; color: #16a34a; font-size: 0.75rem; font-weight: 600; padding: 4px 12px; border-radius: 20px; margin-top: 8px; border: 1px solid #bbf7d0; }
+    </style>
+</head>
+<body>
+    <div class="qr-print-card">
+        <div class="qr-print-title">แจ้งปัญหาเครื่อง</div>
+        <div class="qr-print-sub">สแกน QR Code เพื่อแจ้งปัญหา</div>
+        ${qrDataUrl ? `<img src="${qrDataUrl}" class="qr-print-img" alt="QR Code">` : ''}
+        <div class="qr-print-name">${site.name}</div>
+        ${site.siteCode ? `<div class="qr-print-code">${site.siteCode}</div>` : ''}
+        ${site.serialNumber ? `<div class="qr-print-code">S/N: ${site.serialNumber}</div>` : ''}
+        <div class="qr-print-badge">CASP Maintenance System</div>
+        <div class="qr-print-url">${reportUrl}</div>
+    </div>
+</body>
+</html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); }, 400);
+}
+
+window.showDeviceQR = showDeviceQR;
+
+// ============================================================
+// PUBLIC INCIDENT REPORT PAGE (?report=DEVICE_ID)
+// ============================================================
+function initPublicReportPage() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const reportSiteId = urlParams.get('report');
+    if (!reportSiteId) return;
+
+    // This is a public page - hide login & app, show report view
+    document.querySelectorAll('.app-container, #login-view, #loading-splash').forEach(el => {
+        el.style.display = 'none';
+    });
+    const reportView = document.getElementById('public-report-view');
+    if (reportView) reportView.style.display = 'flex';
+
+    // Load device info anonymously
+    (async function() {
+        try {
+            // Sign in anonymously to access Firestore
+            try {
+                await signInAnonymously(auth);
+            } catch (e) {
+                console.warn('Anonymous auth failed:', e);
+            }
+
+            const deviceInfoEl = document.getElementById('report-device-info');
+            try {
+                const docSnap = await getDoc(doc(db, 'sites', reportSiteId));
+                if (docSnap.exists()) {
+                    const site = { id: docSnap.id, ...docSnap.data() };
+                    if (deviceInfoEl) {
+                        deviceInfoEl.innerHTML = `
+                            <div class="report-device-loaded">
+                                <div class="report-device-icon"><i class="fa-solid fa-microchip"></i></div>
+                                <div class="report-device-details">
+                                    ${site.siteCode ? `<span class="report-device-code">${site.siteCode}</span>` : ''}
+                                    <div class="report-device-name">${site.name || 'เครื่อง'}</div>
+                                    ${site.serialNumber ? `<div class="report-device-serial"><i class="fa-solid fa-barcode"></i> ${site.serialNumber}</div>` : ''}
+                                    ${site.hospital ? `<div class="report-device-hospital"><i class="fa-solid fa-hospital"></i> ${site.hospital}</div>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    if (deviceInfoEl) {
+                        deviceInfoEl.innerHTML = `<div class="report-device-not-found"><i class="fa-solid fa-triangle-exclamation"></i> ไม่พบข้อมูลเครื่องในระบบ</div>`;
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not load device info:', e);
+                if (deviceInfoEl) {
+                    deviceInfoEl.innerHTML = `<div class="report-device-spinner"><i class="fa-solid fa-circle-exclamation"></i> ไม่สามารถโหลดข้อมูลได้</div>`;
+                }
+            }
+
+            // Handle form submission
+            const form = document.getElementById('public-report-form');
+            const submitBtn = document.getElementById('btn-public-report-submit');
+            if (form && submitBtn) {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+
+                    const name = document.getElementById('report-name')?.value.trim();
+                    const tel = document.getElementById('report-tel')?.value.trim();
+                    const description = document.getElementById('report-description')?.value.trim();
+
+                    if (!name || !tel || !description) {
+                        alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+                        return;
+                    }
+
+                    submitBtn.disabled = true;
+                    const btnIcon = submitBtn.querySelector('i');
+                    const btnText = submitBtn.querySelector('span');
+                    if (btnIcon) btnIcon.className = 'fa-solid fa-circle-notch fa-spin';
+                    if (btnText) btnText.textContent = 'กำลังส่ง...';
+
+                    try {
+                        // Ensure auth is still active
+                        if (!auth.currentUser) {
+                            await signInAnonymously(auth);
+                        }
+
+                        // Generate case ID
+                        const caseId = 'RPT-' + Date.now().toString(36).toUpperCase();
+                        const now = new Date();
+                        const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+                        const logData = {
+                            siteId: reportSiteId,
+                            caseId: caseId,
+                            category: 'แจ้งซ่อม',
+                            status: 'Open',
+                            objective: description,
+                            details: description,
+                            date: dateStr,
+                            timestamp: now.toISOString(),
+                            recordedBy: name,
+                            recorderId: 'public',
+                            customerName: name,
+                            customerPhone: tel,
+                            isPublicReport: true,
+                            lineItems: [],
+                            attachments: [],
+                            attachmentsBefore: [],
+                            attachmentsAfter: [],
+                            statusHistory: { 'Open': now.toISOString() }
+                        };
+
+                        const docRef = await addDoc(collection(db, 'logs'), logData);
+
+                        // Show success
+                        if (form) form.style.display = 'none';
+                        const successEl = document.getElementById('report-success-msg');
+                        if (successEl) successEl.style.display = 'flex';
+                        const caseIdDisplay = document.getElementById('report-case-id-display');
+                        if (caseIdDisplay) {
+                            caseIdDisplay.innerHTML = `<i class="fa-solid fa-ticket"></i> รหัสเคส: <strong>${caseId}</strong>`;
+                        }
+
+                    } catch (err) {
+                        console.error('Public report submission failed:', err);
+                        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง\n' + err.message);
+                        submitBtn.disabled = false;
+                        if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
+                        if (btnText) btnText.textContent = 'ส่งคำร้อง';
+                    }
+                });
+            }
+        } catch (err) {
+            console.error('Public report page init error:', err);
+        }
+    })();
+}
+
 // --- Global Event Listeners (Must be outside init() for Login) ---
 document.addEventListener("DOMContentLoaded", () => {
     console.log("Global Listeners Attached");
+
+    // --- Public Incident Report Page (no auth required) ---
+    initPublicReportPage();
 
     // --- Public Signing Page (no auth required) ---
     (function() {
