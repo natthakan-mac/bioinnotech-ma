@@ -14501,7 +14501,7 @@ function exportAnnualPlanPDF() {
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 8mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
     .page-content { flex: 1; }
-    table { width: 100%; border-collapse: collapse; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     th { background: #f5f5f5 !important; font-size: 9px; padding: 5px 3px; border: 1px solid #ddd; }
     .page-footer { margin-top: auto; }
     .footer-line { position: relative; height: 2px; background: #ddd !important; }
@@ -14530,10 +14530,10 @@ function exportAnnualPlanPDF() {
 <table>
     <thead>
         <tr>
-            <th style="text-align:center; width:30px;">No.</th>
-            <th style="text-align:center; width:50px;">รหัส</th>
-            <th style="text-align:left; min-width:160px;">อุปกรณ์ (Device)</th>
-            ${monthNames.map(m => `<th>${m}</th>`).join('')}
+            <th style="text-align:center; width:3.5%;">No.</th>
+            <th style="text-align:center; width:6.5%;">รหัส</th>
+            <th style="text-align:left; width:22%;">อุปกรณ์ (Device)</th>
+            ${monthNames.map(m => `<th style="width:5.66%; text-align:center;">${m}</th>`).join('')}
         </tr>
     </thead>
     <tbody>
