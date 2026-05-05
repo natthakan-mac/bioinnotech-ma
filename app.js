@@ -5657,6 +5657,9 @@ function setupMaDateAutoCalculation() {
 }
 
 function setupEventListeners() {
+    // Initialize Cycle Count Modal for Annual Plan
+    initCycleCountModal();
+
     // Brand Logo Redirect (Desktop & Mobile)
     const brandIcons = document.querySelectorAll(
         ".brand .logo-icon, .mobile-only-text",
@@ -14437,11 +14440,18 @@ function exportAnnualPlanPDF() {
 
     // Build table rows
     let rowsHtml = state.sites.map((site, idx) => {
-        const plans = (site.maintenancePlans && site.maintenancePlans[selectedBE]) || [];
         const siteColor = getSiteColor(site.name);
         const cells = Array.from({length: 12}, (_, m) => {
-            const isPlanned = plans.includes(m + 1);
-            return `<td style="text-align:center; padding:4px 2px; border:1px solid #ddd; background:${isPlanned ? siteColor : '#fff'};">${isPlanned ? '<span style="color:#fff; font-size:8px;">✓</span>' : ''}</td>`;
+            const pd = getPlanMonthData(site, selectedBE, m + 1);
+            const { planned, cycleCount, inputDate } = pd;
+            if (!planned) return `<td style="text-align:center; padding:4px 2px; border:1px solid #ddd; background:#fff;"></td>`;
+            const countHtml = cycleCount != null
+                ? `<div style="color:#fff; font-size:8px; font-weight:700; line-height:1.2;">${Number(cycleCount).toLocaleString()}</div>`
+                : `<span style="color:#fff; font-size:8px;">✓</span>`;
+            const dateHtml = inputDate
+                ? `<div style="color:rgba(255,255,255,0.85); font-size:6.5px; margin-top:1px; white-space:nowrap;">${inputDate}</div>`
+                : '';
+            return `<td style="text-align:center; padding:3px 2px; border:1px solid #ddd; background:${siteColor};">${countHtml}${dateHtml}</td>`;
         }).join('');
         const noCell = `<td style="text-align:center; padding:5px 4px; border:1px solid #ddd; font-size:9px; font-weight:600;">${idx + 1}</td>`;
         const warranty = site.insuranceStartDate && site.insuranceEndDate ? `${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : '-';
@@ -14460,6 +14470,7 @@ function exportAnnualPlanPDF() {
         </td>`;
         return `<tr>${noCell}${siteIdCell}${info}${cells}</tr>`;
     }).join('');
+
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -14657,6 +14668,43 @@ function exportDevicesPDF() {
 window.exportDevicesPDF = exportDevicesPDF;
 
 // --- Maintenance Plan Timeline ---
+
+/**
+ * Normalizes the maintenancePlans data for a site/year/month.
+ * Supports BOTH legacy format (array of month numbers) and new format (object with month keys).
+ * Returns: { planned, cycleCount, inputDate, notes }
+ */
+function getPlanMonthData(site, year, month) {
+    const planData = site.maintenancePlans && site.maintenancePlans[year];
+    if (!planData) return { planned: false, cycleCount: null, inputDate: null, notes: null };
+    // Legacy format: array of month numbers e.g. [1, 3, 6]
+    if (Array.isArray(planData)) {
+        return { planned: planData.includes(month), cycleCount: null, inputDate: null, notes: null };
+    }
+    // New format: object with month keys e.g. { "1": { planned: true, cycleCount: 5000 } }
+    const monthKey = String(month);
+    const monthData = planData[monthKey];
+    if (!monthData) return { planned: false, cycleCount: null, inputDate: null, notes: null };
+    return {
+        planned: monthData.planned !== false,
+        cycleCount: monthData.cycleCount != null ? monthData.cycleCount : null,
+        inputDate: monthData.inputDate || null,
+        notes: monthData.notes || null,
+    };
+}
+
+/** Migrates a site's maintenancePlans year from legacy array to new object format. */
+function migratePlanToObjectFormat(existingPlan) {
+    if (Array.isArray(existingPlan)) {
+        const obj = {};
+        existingPlan.forEach(m => {
+            obj[String(m)] = { planned: true, cycleCount: null, inputDate: null, notes: null };
+        });
+        return obj;
+    }
+    return existingPlan || {};
+}
+
 function renderMaintenancePlan() {
     const yearSelect = document.getElementById('plan-year-select');
     const headerRow = document.getElementById('plan-timeline-header');
@@ -14695,11 +14743,13 @@ function renderMaintenancePlan() {
         return d.toLocaleString(userLocale, { month: 'short' });
     });
 
+    const isEditMode = document.querySelector('input[name="planMode"]:checked')?.value === 'edit';
+
     // Header
     headerRow.innerHTML = `<th style="text-align:center; padding:0.6rem 0.4rem; border:1px solid rgba(0,0,0,0.08); width:30px; background:#f5f5f5;">No.</th><th style="text-align:center; padding:0.6rem 0.4rem; border:1px solid rgba(0,0,0,0.08); width:50px; background:#f5f5f5;">รหัส</th><th style="text-align:left; padding:0.6rem 0.75rem; border:1px solid rgba(0,0,0,0.08); min-width:180px; position:sticky; left:0; background:#f5f5f5; z-index:3;">อุปกรณ์</th>`;
     for (let m = 0; m < 12; m++) {
         const isCurrent = m === currentMonth;
-        headerRow.innerHTML += `<th style="text-align:center; padding:0.5rem 0.4rem; border:1px solid rgba(0,0,0,0.08); min-width:70px; font-size:0.8rem; ${isCurrent ? 'background:#111; color:#fff;' : ''}">${monthNames[m]}</th>`;
+        headerRow.innerHTML += `<th style="text-align:center; padding:0.5rem 0.4rem; border:1px solid rgba(0,0,0,0.08); min-width:80px; font-size:0.8rem; ${isCurrent ? 'background:#111; color:#fff;' : ''}">${monthNames[m]}</th>`;
     }
 
     if (state.sites.length === 0) {
@@ -14710,19 +14760,17 @@ function renderMaintenancePlan() {
     if (emptyState) emptyState.style.display = 'none';
 
     tbody.innerHTML = state.sites.map((site, siteIndex) => {
-        const plans = (site.maintenancePlans && site.maintenancePlans[selectedBE]) || [];
         const siteColor = getSiteColor(site.name);
 
         const noCell = `<td style="text-align:center; padding:0.4rem; border:1px solid rgba(0,0,0,0.06); font-size:0.82rem; font-weight:600;">${siteIndex + 1}</td>`;
         const siteIdCell = `<td style="text-align:center; padding:0.4rem; border:1px solid rgba(0,0,0,0.06); font-size:0.78rem; white-space:nowrap;">${site.siteCode || '-'}</td>`;
-        const warranty = site.insuranceStartDate && site.insuranceEndDate ? `${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : '-';
         const deviceSubtle = [
             site.brand || site.model ? [site.brand, site.model].filter(Boolean).join(' ') : '',
             site.serialNumber ? `S/N: ${site.serialNumber}` : '',
             site.province ? `จ.${site.province}` : '',
             site.insuranceStartDate && site.insuranceEndDate ? `ประกัน: ${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : ''
         ].filter(Boolean).map(t => `<span style="display:inline-block; background:rgba(0,0,0,0.05); padding:1px 6px; border-radius:3px; font-size:0.7rem; color:#555; white-space:nowrap;">${t}</span>`).join(' ');
-        const deviceCell = `<td class="plan-device-cell" onclick="viewSiteDetails('${site.id}')" style="border-left:4px solid ${siteColor};">
+        const deviceCell = `<td class="plan-device-cell" onclick="viewSiteDetails('${site.id}')" style="border-left:4px solid ${siteColor}; min-width:180px; position:sticky; left:0; background:#fff; z-index:2; cursor:pointer;">
             <div class="plan-device-info">
                 <span class="plan-device-name">${site.name}</span>
                 ${deviceSubtle ? `<div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:3px;">${deviceSubtle}</div>` : ''}
@@ -14731,49 +14779,160 @@ function renderMaintenancePlan() {
 
         const monthCells = Array.from({length: 12}, (_, m) => {
             const monthNum = m + 1;
-            const isPlanned = plans.includes(monthNum);
             const isCurrent = m === currentMonth;
-            const bg = isPlanned ? siteColor : (isCurrent ? 'rgba(0,0,0,0.02)' : '');
-            const content = isPlanned ? `<i class="fa-solid fa-wrench" style="color:#fff; font-size:0.75rem;"></i>` : '';
+            const pd = getPlanMonthData(site, selectedBE, monthNum);
+            const { planned, cycleCount, inputDate, notes } = pd;
 
-            const isEditMode = document.querySelector('input[name="planMode"]:checked')?.value === 'edit';
-            const clickAttr = isEditMode ? `onclick="togglePlanMonth('${site.id}','${selectedBE}',${monthNum})"` : '';
+            const bg = planned ? siteColor : (isCurrent ? 'rgba(0,0,0,0.02)' : '');
             const cursorStyle = isEditMode ? 'cursor:pointer;' : 'cursor:default;';
-            const title = isEditMode ? `title="คลิกเพื่อ${isPlanned ? 'ยกเลิก' : 'เพิ่ม'}แผน"` : '';
+            const clickAttr = isEditMode ? `onclick="openCycleCountModal('${site.id}','${selectedBE}',${monthNum})"` : '';
+            const titleAttr = isEditMode ? `title="คลิกเพื่อ${planned ? 'แก้ไข' : 'เพิ่ม'}รอบ/แผน"` : '';
 
-            return `<td class="plan-month-cell" style="background:${bg}; ${cursorStyle}" ${clickAttr} ${title}>${content}</td>`;
+            let content = '';
+            if (planned) {
+                const countHtml = cycleCount != null
+                    ? `<span class="plan-cycle-count" style="color:#fff;">${Number(cycleCount).toLocaleString()}</span>`
+                    : `<i class="fa-solid fa-wrench" style="color:#fff; font-size:0.75rem;"></i>`;
+                const dateHtml = inputDate
+                    ? `<span class="plan-cycle-date" style="color:rgba(255,255,255,0.85);">${inputDate}</span>`
+                    : '';
+                const notesHtml = notes
+                    ? `<span class="plan-cycle-notes" style="color:rgba(255,255,255,0.7);">${notes}</span>`
+                    : '';
+                content = `<div class="plan-cycle-chip">${countHtml}${dateHtml}${notesHtml}</div>`;
+            } else if (isEditMode) {
+                content = `<span style="color:#ccc; font-size:0.9rem;">+</span>`;
+            }
+
+            return `<td class="plan-month-cell" style="background:${bg}; ${cursorStyle}" ${clickAttr} ${titleAttr}>${content}</td>`;
         }).join('');
 
         return `<tr>${noCell}${siteIdCell}${deviceCell}${monthCells}</tr>`;
     }).join('');
 }
 
-async function togglePlanMonth(siteId, year, month) {
+// --- Cycle Count Modal Logic ---
+let _cycleModalState = { siteId: null, year: null, month: null };
+
+function openCycleCountModal(siteId, year, month) {
     const site = state.sites.find(s => s.id === siteId);
     if (!site) return;
 
-    if (!site.maintenancePlans) site.maintenancePlans = {};
-    if (!site.maintenancePlans[year]) site.maintenancePlans[year] = [];
+    const modal = document.getElementById('modal-plan-cycle-count');
+    if (!modal) return;
 
-    const arr = site.maintenancePlans[year];
-    const idx = arr.indexOf(month);
-    if (idx >= 0) {
-        arr.splice(idx, 1);
+    const userLocale = navigator.language || 'th-TH';
+    const monthName = new Date(2024, month - 1, 1).toLocaleString(userLocale, { month: 'long' });
+    const yearCE = parseInt(year) - 543;
+
+    // Store state
+    _cycleModalState = { siteId, year, month };
+
+    // Populate modal
+    document.getElementById('cycle-device-name').textContent = site.name || siteId;
+    document.getElementById('cycle-month-label').textContent = `${monthName} ${year} (${yearCE})`;
+
+    // Load existing data
+    const pd = getPlanMonthData(site, year, month);
+    document.getElementById('cycle-planned-toggle').checked = pd.planned;
+    document.getElementById('cycle-count-input').value = pd.cycleCount != null ? pd.cycleCount : '';
+    document.getElementById('cycle-date-input').value = pd.inputDate || new Date().toISOString().split('T')[0];
+    document.getElementById('cycle-notes-input').value = pd.notes || '';
+
+    // Show modal
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+
+    // Focus cycle count input
+    setTimeout(() => document.getElementById('cycle-count-input').focus(), 150);
+}
+window.openCycleCountModal = openCycleCountModal;
+
+function closeCycleCountModal() {
+    const modal = document.getElementById('modal-plan-cycle-count');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = '';
+    }
+    _cycleModalState = { siteId: null, year: null, month: null };
+}
+
+async function saveCycleCount() {
+    const { siteId, year, month } = _cycleModalState;
+    if (!siteId || !year || !month) return;
+
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site) return;
+
+    const planned = document.getElementById('cycle-planned-toggle').checked;
+    const cycleCountVal = document.getElementById('cycle-count-input').value;
+    const inputDate = document.getElementById('cycle-date-input').value;
+    const notes = document.getElementById('cycle-notes-input').value.trim();
+    const cycleCount = cycleCountVal !== '' ? parseInt(cycleCountVal, 10) : null;
+
+    if (!site.maintenancePlans) site.maintenancePlans = {};
+
+    // Migrate to new object format if currently legacy array
+    if (Array.isArray(site.maintenancePlans[year])) {
+        site.maintenancePlans[year] = migratePlanToObjectFormat(site.maintenancePlans[year]);
+    }
+    if (!site.maintenancePlans[year]) site.maintenancePlans[year] = {};
+
+    const monthKey = String(month);
+
+    if (!planned && cycleCount == null && !inputDate && !notes) {
+        // Remove this month entry entirely
+        delete site.maintenancePlans[year][monthKey];
+        if (Object.keys(site.maintenancePlans[year]).length === 0) {
+            delete site.maintenancePlans[year];
+        }
     } else {
-        arr.push(month);
-        arr.sort((a, b) => a - b);
+        site.maintenancePlans[year][monthKey] = {
+            planned,
+            cycleCount: cycleCount,
+            inputDate: inputDate || new Date().toISOString().split('T')[0],
+            notes: notes || null,
+        };
     }
 
-    // Remove empty year
-    if (arr.length === 0) delete site.maintenancePlans[year];
+    const saveBtn = document.getElementById('btn-cycle-save');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังบันทึก...'; }
 
     try {
         await FirestoreService.updateSite(siteId, { maintenancePlans: site.maintenancePlans || {} });
+        closeCycleCountModal();
         renderMaintenancePlan();
+        showToast('บันทึก Cycle Count สำเร็จ', 'success', 2000);
     } catch (e) {
-        console.error('Failed to update plan:', e);
-        showToast('บันทึกแผนไม่สำเร็จ', 'error');
+        console.error('Failed to save cycle count:', e);
+        showToast('บันทึกไม่สำเร็จ กรุณาลองใหม่', 'error');
+    } finally {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> บันทึก'; }
     }
+}
+
+/** Wire up cycle count modal buttons. Called once during init. */
+function initCycleCountModal() {
+    const saveBtn = document.getElementById('btn-cycle-save');
+    const cancelBtn = document.getElementById('btn-cycle-cancel');
+    const closeBtn = document.getElementById('btn-close-cycle-modal');
+    const modal = document.getElementById('modal-plan-cycle-count');
+
+    if (saveBtn) saveBtn.addEventListener('click', saveCycleCount);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeCycleCountModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeCycleCountModal);
+    if (modal) {
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeCycleCountModal(); });
+    }
+    const countInput = document.getElementById('cycle-count-input');
+    if (countInput) {
+        countInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveCycleCount(); });
+    }
+}
+
+async function togglePlanMonth(siteId, year, month) {
+    // Now opens cycle count modal instead of direct toggle
+    openCycleCountModal(siteId, year, month);
 }
 
 window.togglePlanMonth = togglePlanMonth;
