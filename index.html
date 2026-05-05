@@ -3618,6 +3618,104 @@
     </div>
 </div>
 
+<!-- MODAL: Cycle Count Input for Annual Plan -->
+<div id="modal-plan-cycle-count" class="modal-overlay modal-layer-top hidden" style="z-index:1100;">
+    <div class="modal glass-panel" style="max-width:400px; width:92vw;">
+        <div class="modal-header">
+            <div>
+                <h3 id="cycle-modal-title" style="margin:0;">บันทึก Cycle Count</h3>
+                <p id="cycle-modal-subtitle" style="font-size:0.8rem; color:var(--text-muted); margin:0.25rem 0 0 0; font-weight:400;">กรอกจำนวนรอบของเครื่อง</p>
+            </div>
+            <button class="close-modal" id="btn-close-cycle-modal">&times;</button>
+        </div>
+        <div class="modal-body" style="padding:1.5rem; display:flex; flex-direction:column; gap:1.25rem;">
+            <!-- Device Info Badge -->
+            <div id="cycle-device-badge" style="display:flex; align-items:center; gap:0.75rem; background:rgba(0,0,0,0.03); border:1px solid rgba(0,0,0,0.07); border-radius:12px; padding:0.85rem 1rem;">
+                <div style="width:40px; height:40px; background:#111; color:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <i class="fa-solid fa-microchip"></i>
+                </div>
+                <div style="min-width:0;">
+                    <div id="cycle-device-name" style="font-weight:700; font-size:0.95rem; color:#111; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                    <div id="cycle-month-label" style="font-size:0.8rem; color:#64748b; margin-top:2px;"></div>
+                </div>
+            </div>
+
+            <!-- Planned Toggle -->
+            <div style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; background:rgba(0,0,0,0.02); border-radius:10px; border:1px solid rgba(0,0,0,0.06);">
+                <label style="font-size:0.9rem; font-weight:600; flex:1; margin:0;">เพิ่มในแผนประจำปี</label>
+                <label class="toggle-switch" style="position:relative; display:inline-block; width:46px; height:26px; flex-shrink:0;">
+                    <input type="checkbox" id="cycle-planned-toggle" style="opacity:0; width:0; height:0;">
+                    <span class="toggle-slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; border-radius:26px; transition:background 0.3s;"></span>
+                </label>
+            </div>
+
+            <!-- Cycle Count Input -->
+            <div class="form-group" style="margin:0;">
+                <label for="cycle-count-input" style="font-weight:600; color:#374151; font-size:0.88rem;">
+                    <i class="fa-solid fa-arrows-spin" style="color:#111;"></i>
+                    จำนวนรอบ (Cycle Count)
+                </label>
+                <input type="number" id="cycle-count-input" min="0" step="1" inputmode="numeric"
+                    placeholder="ระบุจำนวนรอบ เช่น 12500"
+                    style="width:100%; padding:0.65rem 0.85rem; border:1.5px solid #e2e8f0; border-radius:10px; font-size:1rem; box-sizing:border-box; transition:border-color 0.2s;">
+            </div>
+
+            <!-- Input Date -->
+            <div class="form-group" style="margin:0;">
+                <label for="cycle-date-input" style="font-weight:600; color:#374151; font-size:0.88rem;">
+                    <i class="fa-solid fa-calendar-day" style="color:#111;"></i>
+                    วันที่บันทึก (Input Date)
+                </label>
+                <input type="date" id="cycle-date-input"
+                    style="width:100%; padding:0.65rem 0.85rem; border:1.5px solid #e2e8f0; border-radius:10px; font-size:1rem; box-sizing:border-box; transition:border-color 0.2s;">
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group" style="margin:0;">
+                <label for="cycle-notes-input" style="font-weight:600; color:#374151; font-size:0.88rem;">
+                    <i class="fa-solid fa-note-sticky" style="color:#111;"></i>
+                    หมายเหตุ (Notes)
+                </label>
+                <input type="text" id="cycle-notes-input" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)"
+                    style="width:100%; padding:0.65rem 0.85rem; border:1.5px solid #e2e8f0; border-radius:10px; font-size:1rem; box-sizing:border-box; transition:border-color 0.2s;">
+            </div>
+        </div>
+        <div class="modal-actions" style="padding:1.25rem 1.5rem; border-top:1px solid rgba(0,0,0,0.07); gap:0.75rem;">
+            <button type="button" class="btn-secondary" id="btn-cycle-cancel" style="flex:1;">ยกเลิก</button>
+            <button type="button" class="btn-primary" id="btn-cycle-save" style="flex:2; justify-content:center;">
+                <i class="fa-solid fa-floppy-disk"></i> บันทึก
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .toggle-slider { background: #ccc; }
+    .toggle-switch input:checked + .toggle-slider { background: #111 !important; }
+    .toggle-slider::before {
+        position: absolute; content: ""; height: 20px; width: 20px;
+        left: 3px; bottom: 3px; background: white; border-radius: 50%;
+        transition: 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+    /* Plan cell with cycle count styles */
+    .plan-month-cell { text-align: center; padding: 0.25rem 0.15rem; border: 1px solid rgba(0,0,0,0.06); min-width: 75px; vertical-align: middle; }
+    .plan-cycle-chip {
+        display: inline-flex; flex-direction: column; align-items: center; gap: 1px;
+        padding: 3px 6px; border-radius: 6px; min-width: 60px;
+        line-height: 1.2;
+    }
+    .plan-cycle-count { font-size: 0.82rem; font-weight: 700; }
+    .plan-cycle-date { font-size: 0.65rem; opacity: 0.85; white-space: nowrap; }
+    .plan-cycle-notes { font-size: 0.6rem; opacity: 0.7; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Input focus style */
+    #cycle-count-input:focus, #cycle-date-input:focus, #cycle-notes-input:focus {
+        outline: none; border-color: #111; box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
+    }
+</style>
+
 </body>
 
 </html>
