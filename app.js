@@ -15191,7 +15191,6 @@ function printDeviceQR(site, reportUrl, canvas) {
         ${site.siteCode ? `<div class="qr-print-code">${site.siteCode}</div>` : ''}
         ${site.serialNumber ? `<div class="qr-print-code">S/N: ${site.serialNumber}</div>` : ''}
         <div class="qr-print-badge">CASP Maintenance System</div>
-        <div class="qr-print-url">${reportUrl}</div>
     </div>
 </body>
 </html>`);
