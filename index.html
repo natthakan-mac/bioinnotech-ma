@@ -1627,19 +1627,8 @@
                 <h2>แผนซ่อมบำรุงประจำปี <span style="font-size: 0.75em; font-weight: 400; color: #888;">(Annual
                         Maintenance Plan)</span></h2>
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <select id="plan-year-select" class="plan-year-dropdown"></select>
-                    <div class="check-pill-group" id="plan-mode-toggle" style="min-height:38px; border-radius:8px;">
-                        <label class="check-pill neutral"
-                            style="min-height:38px; padding:0 0.75rem; font-size:0.9rem; border-radius:8px 0 0 8px;">
-                            <input type="radio" name="planMode" value="view" checked>
-                            <span><i class="fa-solid fa-eye" style="margin-right:4px;"></i>ดู</span>
-                        </label>
-                        <label class="check-pill neutral"
-                            style="min-height:38px; padding:0 0.75rem; font-size:0.9rem; border-radius:0 8px 8px 0;">
-                            <input type="radio" name="planMode" value="edit">
-                            <span><i class="fa-solid fa-pen" style="margin-right:4px;"></i>แก้ไข</span>
-                        </label>
-                    </div>
+                    <select id="plan-year-select" class="plan-year-dropdown" style="padding: 0 1rem; height: 38px; border-radius: 8px; border: 1.5px solid #e2e8f0; background: #fff; font-size: 0.9rem; font-weight: 600; cursor: pointer; outline: none; transition: all 0.2s; min-width: 120px;"></select>
+
                     <button onclick="exportAnnualPlanPDF()" class="btn-secondary"
                         style="padding: 0.5rem 0.75rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem; border-radius: 8px; height: 38px; box-sizing: border-box;">
                         <i class="fa-solid fa-file-pdf"></i> PDF
@@ -3642,7 +3631,7 @@
 
             <!-- Planned Toggle -->
             <div style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; background:rgba(0,0,0,0.02); border-radius:10px; border:1px solid rgba(0,0,0,0.06);">
-                <label style="font-size:0.9rem; font-weight:600; flex:1; margin:0;">เพิ่มในแผนประจำปี</label>
+                <label style="font-size:0.9rem; font-weight:600; flex:1; margin:0;">เพิ่มเป็นแผนซ่อมบำรุงประจำปี</label>
                 <label class="toggle-switch" style="position:relative; display:inline-block; width:46px; height:26px; flex-shrink:0;">
                     <input type="checkbox" id="cycle-planned-toggle" style="opacity:0; width:0; height:0;">
                     <span class="toggle-slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; border-radius:26px; transition:background 0.3s;"></span>
@@ -3680,9 +3669,14 @@
                     style="width:100%; padding:0.65rem 0.85rem; border:1.5px solid #e2e8f0; border-radius:10px; font-size:1rem; box-sizing:border-box; transition:border-color 0.2s;">
             </div>
         </div>
-        <div class="modal-actions" style="padding:1.25rem 1.5rem; border-top:1px solid rgba(0,0,0,0.07); gap:0.75rem;">
-            <button type="button" class="btn-secondary" id="btn-cycle-cancel" style="flex:1;">ยกเลิก</button>
-            <button type="button" class="btn-primary" id="btn-cycle-save" style="flex:2; justify-content:center;">
+        <div class="modal-actions" style="margin-top: 0; padding: 1.25rem 1.5rem; border-top: 1px solid rgba(0,0,0,0.07); display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
+            <button type="button" class="btn-secondary" id="btn-cycle-clear" style="margin-right: auto; background:#fef2f2; color:#ef4444; border: 1px solid #fee2e2; height: 44px; border-radius: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0 1.25rem;">
+                <i class="fa-solid fa-trash-can"></i> ล้างข้อมูล
+            </button>
+            <button type="button" class="btn-secondary" id="btn-cycle-cancel" style="height: 44px; border-radius: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0 1.5rem;">
+                <i class="fa-solid fa-xmark"></i> ยกเลิก
+            </button>
+            <button type="button" class="btn-primary" id="btn-cycle-save" style="height: 44px; border-radius: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0 2rem;">
                 <i class="fa-solid fa-floppy-disk"></i> บันทึก
             </button>
         </div>
@@ -3700,7 +3694,24 @@
     .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
 
     /* Plan cell with cycle count styles */
-    .plan-month-cell { text-align: center; padding: 0.25rem 0.15rem; border: 1px solid rgba(0,0,0,0.06); min-width: 75px; vertical-align: middle; }
+    .plan-month-cell { position: relative; text-align: center; padding: 0; border: 1px solid rgba(0,0,0,0.06); min-width: 85px; vertical-align: middle; height: 52px; overflow: hidden; background: #fff; }
+    .plan-cell-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 4px; }
+    
+    .plan-cell-overlay {
+        position: absolute; inset: 0; background: #f8fafc; 
+        display: flex; flex-direction: column; opacity: 0; transition: all 0.2s; z-index: 10;
+    }
+    .plan-month-cell:hover .plan-cell-overlay { opacity: 1; }
+    
+    .plan-hover-btn {
+        flex: 1; border: none; background: transparent; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+        font-size: 10px; font-weight: 700; color: #64748b; transition: all 0.2s;
+        text-transform: uppercase; letter-spacing: 0.02em;
+    }
+    .plan-hover-btn.edit:hover { background: #f1f5f9; color: #111; }
+    .plan-hover-btn.clear:hover { background: #fef2f2; color: #ef4444; }
+    .plan-hover-divider { height: 1px; background: rgba(0,0,0,0.05); margin: 0 4px; }
     .plan-cycle-chip {
         display: inline-flex; flex-direction: column; align-items: center; gap: 1px;
         padding: 3px 6px; border-radius: 6px; min-width: 60px;
