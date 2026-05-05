@@ -378,6 +378,17 @@ function showDialog(message, options = {}) {
         btnCancel.style.display =
             options.type === "confirm" ? "inline-block" : "none";
 
+        // Style for danger actions
+        if (options.danger) {
+            btnConfirm.style.background = "#ef4444";
+            btnConfirm.style.borderColor = "#ef4444";
+            btnConfirm.style.color = "#fff";
+        } else {
+            btnConfirm.style.background = ""; // Revert to CSS default
+            btnConfirm.style.borderColor = "";
+            btnConfirm.style.color = "";
+        }
+
         // Force Show (Direct Style)
         modal.classList.remove("hidden"); // Just in case
         modal.style.display = "flex";
@@ -14443,15 +14454,25 @@ function exportAnnualPlanPDF() {
         const siteColor = getSiteColor(site.name);
         const cells = Array.from({length: 12}, (_, m) => {
             const pd = getPlanMonthData(site, selectedBE, m + 1);
-            const { planned, cycleCount, inputDate } = pd;
-            if (!planned) return `<td style="text-align:center; padding:4px 2px; border:1px solid #ddd; background:#fff;"></td>`;
+            const { planned, cycleCount, inputDate, notes } = pd;
+            if (!planned && cycleCount == null) return `<td style="text-align:center; padding:4px 2px; border:1px solid #ddd; background:#fff;"></td>`;
+            
+            const isUnplanned = !planned;
+            const cellBg = isUnplanned ? '#fff' : siteColor;
+            const cellBorder = isUnplanned ? `border: 1px dashed ${siteColor};` : 'border: 1px solid #ddd;';
+            const textColor = isUnplanned ? siteColor : '#fff';
+            const subTextColor = isUnplanned ? '#888' : 'rgba(255,255,255,0.85)';
+
             const countHtml = cycleCount != null
-                ? `<div style="color:#fff; font-size:8px; font-weight:700; line-height:1.2;">${Number(cycleCount).toLocaleString()}</div>`
-                : `<span style="color:#fff; font-size:8px;">✓</span>`;
+                ? `<div style="color:${textColor}; font-size:8px; font-weight:700; line-height:1.2;">${Number(cycleCount).toLocaleString()} <span style="font-size:6px; font-weight:400;">รอบ</span></div>`
+                : `<span style="color:${textColor}; font-size:8px;">${isUnplanned ? '○' : '✓'}</span>`;
             const dateHtml = inputDate
-                ? `<div style="color:rgba(255,255,255,0.85); font-size:6.5px; margin-top:1px; white-space:nowrap;">${inputDate}</div>`
+                ? `<div style="color:${subTextColor}; font-size:6px; margin-top:1px; white-space:nowrap;">${inputDate}</div>`
                 : '';
-            return `<td style="text-align:center; padding:3px 2px; border:1px solid #ddd; background:${siteColor};">${countHtml}${dateHtml}</td>`;
+            const notesHtml = notes
+                ? `<div style="color:${subTextColor}; font-size:5.5px; margin-top:1px; font-style:italic; line-height:1; max-width:60px; word-break:break-word;">${notes}</div>`
+                : '';
+            return `<td style="text-align:center; padding:3px 2px; ${cellBorder} background:${cellBg};">${countHtml}${dateHtml}${notesHtml}</td>`;
         }).join('');
         const noCell = `<td style="text-align:center; padding:5px 4px; border:1px solid #ddd; font-size:9px; font-weight:600;">${idx + 1}</td>`;
         const warranty = site.insuranceStartDate && site.insuranceEndDate ? `${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : '-';
@@ -14725,11 +14746,6 @@ function renderMaintenancePlan() {
             yearSelect.appendChild(opt);
         }
         yearSelect.addEventListener('change', renderMaintenancePlan);
-
-        // Mode toggle listener
-        document.querySelectorAll('input[name="planMode"]').forEach(r => {
-            r.addEventListener('change', renderMaintenancePlan);
-        });
     }
 
     const selectedBE = String(yearSelect.value);
@@ -14743,7 +14759,7 @@ function renderMaintenancePlan() {
         return d.toLocaleString(userLocale, { month: 'short' });
     });
 
-    const isEditMode = document.querySelector('input[name="planMode"]:checked')?.value === 'edit';
+    const isEditMode = true;
 
     // Header
     headerRow.innerHTML = `<th style="text-align:center; padding:0.6rem 0.4rem; border:1px solid rgba(0,0,0,0.08); width:30px; background:#f5f5f5;">No.</th><th style="text-align:center; padding:0.6rem 0.4rem; border:1px solid rgba(0,0,0,0.08); width:50px; background:#f5f5f5;">รหัส</th><th style="text-align:left; padding:0.6rem 0.75rem; border:1px solid rgba(0,0,0,0.08); min-width:180px; position:sticky; left:0; background:#f5f5f5; z-index:3;">อุปกรณ์</th>`;
@@ -14783,28 +14799,53 @@ function renderMaintenancePlan() {
             const pd = getPlanMonthData(site, selectedBE, monthNum);
             const { planned, cycleCount, inputDate, notes } = pd;
 
-            const bg = planned ? siteColor : (isCurrent ? 'rgba(0,0,0,0.02)' : '');
-            const cursorStyle = isEditMode ? 'cursor:pointer;' : 'cursor:default;';
-            const clickAttr = isEditMode ? `onclick="openCycleCountModal('${site.id}','${selectedBE}',${monthNum})"` : '';
-            const titleAttr = isEditMode ? `title="คลิกเพื่อ${planned ? 'แก้ไข' : 'เพิ่ม'}รอบ/แผน"` : '';
+            const isUnplanned = !planned && cycleCount != null;
+            const bg = planned 
+                ? siteColor 
+                : (cycleCount != null ? 'rgba(0,0,0,0.03)' : (isCurrent ? 'rgba(0,0,0,0.02)' : ''));
 
-            let content = '';
-            if (planned) {
+            const hasData = planned || cycleCount != null;
+            let cellContent = '';
+            if (hasData) {
+                const isUnplanned = !planned;
+                const chipStyle = isUnplanned 
+                    ? `background: #fff; border: 1.5px dashed ${siteColor}; color: ${siteColor}; box-shadow: 0 1px 3px rgba(0,0,0,0.05);` 
+                    : `color: #fff;`;
+                
+                const countTextColor = isUnplanned ? siteColor : '#fff';
+                const subTextColor = isUnplanned ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.85)';
+
                 const countHtml = cycleCount != null
-                    ? `<span class="plan-cycle-count" style="color:#fff;">${Number(cycleCount).toLocaleString()}</span>`
-                    : `<i class="fa-solid fa-wrench" style="color:#fff; font-size:0.75rem;"></i>`;
+                    ? `<span class="plan-cycle-count" style="color:${countTextColor};">${Number(cycleCount).toLocaleString()} <small style="font-size: 0.8em; opacity: 0.9;">รอบ</small></span>`
+                    : `<i class="fa-solid fa-wrench" style="color:${countTextColor}; font-size:0.75rem;"></i>`;
                 const dateHtml = inputDate
-                    ? `<span class="plan-cycle-date" style="color:rgba(255,255,255,0.85);">${inputDate}</span>`
+                    ? `<span class="plan-cycle-date" style="color:${subTextColor};">${inputDate}</span>`
                     : '';
                 const notesHtml = notes
-                    ? `<span class="plan-cycle-notes" style="color:rgba(255,255,255,0.7);">${notes}</span>`
+                    ? `<span class="plan-cycle-notes" style="color:${subTextColor}; opacity:0.8;">${notes}</span>`
                     : '';
-                content = `<div class="plan-cycle-chip">${countHtml}${dateHtml}${notesHtml}</div>`;
-            } else if (isEditMode) {
-                content = `<span style="color:#ccc; font-size:0.9rem;">+</span>`;
+                cellContent = `<div class="plan-cycle-chip" style="${chipStyle}">${countHtml}${dateHtml}${notesHtml}</div>`;
             }
 
-            return `<td class="plan-month-cell" style="background:${bg}; ${cursorStyle}" ${clickAttr} ${titleAttr}>${content}</td>`;
+            // Normal content
+            const contentWrapper = `<div class="plan-cell-content">${cellContent}</div>`;
+
+            // Hover overlay with stacked full-width buttons
+            const overlay = `
+                <div class="plan-cell-overlay">
+                    <button class="plan-hover-btn edit" onclick="openCycleCountModal('${site.id}','${selectedBE}',${monthNum})">
+                        <i class="fa-solid fa-pen-to-square"></i> ${hasData ? 'แก้ไข' : 'เพิ่ม'}
+                    </button>
+                    ${hasData ? `
+                        <div class="plan-hover-divider"></div>
+                        <button class="plan-hover-btn clear" onclick="deletePlanEntry('${site.id}', '${selectedBE}', ${monthNum})">
+                            <i class="fa-solid fa-trash-can"></i> ล้าง
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+
+            return `<td class="plan-month-cell" style="background:${bg};">${contentWrapper}${overlay}</td>`;
         }).join('');
 
         return `<tr>${noCell}${siteIdCell}${deviceCell}${monthCells}</tr>`;
@@ -14911,14 +14952,64 @@ async function saveCycleCount() {
     }
 }
 
+async function deletePlanEntry(siteId, year, month) {
+    if (!(await showDialog('คุณแน่ใจหรือไม่ที่จะล้างข้อมูลของเดือนนี้?', { 
+        type: 'confirm', 
+        confirmText: 'ล้างข้อมูล', 
+        cancelText: 'ยกเลิก',
+        danger: true 
+    }))) return;
+    
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site) return;
+    
+    if (site.maintenancePlans && site.maintenancePlans[year]) {
+        const monthKey = String(month);
+        delete site.maintenancePlans[year][monthKey];
+        
+        // Clean up empty year
+        if (Object.keys(site.maintenancePlans[year]).length === 0) {
+            delete site.maintenancePlans[year];
+        }
+        
+        try {
+            await FirestoreService.updateSite(siteId, { maintenancePlans: site.maintenancePlans });
+            renderMaintenancePlan();
+            showToast('ล้างข้อมูลสำเร็จ', 'success', 2000);
+        } catch (e) {
+            console.error('Failed to delete plan entry:', e);
+            showToast('ไม่สามารถล้างข้อมูลได้', 'error');
+        }
+    }
+}
+window.deletePlanEntry = deletePlanEntry;
+
+async function clearCycleCount() {
+    if (!(await showDialog('คุณแน่ใจหรือไม่ที่จะล้างข้อมูลของเดือนนี้?', { 
+        type: 'confirm', 
+        confirmText: 'ล้างข้อมูล', 
+        cancelText: 'ยกเลิก',
+        danger: true 
+    }))) return;
+    
+    document.getElementById('cycle-planned-toggle').checked = false;
+    document.getElementById('cycle-count-input').value = '';
+    document.getElementById('cycle-date-input').value = '';
+    document.getElementById('cycle-notes-input').value = '';
+    
+    await saveCycleCount();
+}
+
 /** Wire up cycle count modal buttons. Called once during init. */
 function initCycleCountModal() {
     const saveBtn = document.getElementById('btn-cycle-save');
+    const clearBtn = document.getElementById('btn-cycle-clear');
     const cancelBtn = document.getElementById('btn-cycle-cancel');
     const closeBtn = document.getElementById('btn-close-cycle-modal');
     const modal = document.getElementById('modal-plan-cycle-count');
 
     if (saveBtn) saveBtn.addEventListener('click', saveCycleCount);
+    if (clearBtn) clearBtn.addEventListener('click', clearCycleCount);
     if (cancelBtn) cancelBtn.addEventListener('click', closeCycleCountModal);
     if (closeBtn) closeBtn.addEventListener('click', closeCycleCountModal);
     if (modal) {
