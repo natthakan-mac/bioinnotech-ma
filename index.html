@@ -3242,6 +3242,19 @@
         <div id="detail-modal-actions">
             <!-- Dynamically injected via app.js -->
         </div>
+
+        <!-- Change History Section -->
+        <div style="margin-top: 1.5rem; border-top: 1px solid rgba(0,0,0,0.07); padding-top: 1.25rem;">
+            <h4 onclick="toggleSiteHistorySection()" style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem; cursor:pointer; user-select:none;">
+                <i class="fa-solid fa-clock-rotate-left"></i> ประวัติการแก้ไข (Change History)
+                <i id="site-history-collapse-icon" class="fa-solid fa-chevron-down" style="font-size:0.65rem; margin-left:auto; opacity:0.5; transition:transform 0.2s;"></i>
+            </h4>
+            <div id="site-history-content">
+                <div id="site-history-list" style="display:flex; flex-direction:column; gap:0.5rem; max-height:280px; overflow-y:auto;">
+                    <p style="color:var(--text-muted); font-size:0.85rem; font-style:italic;">กำลังโหลด...</p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

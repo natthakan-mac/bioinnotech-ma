@@ -937,7 +937,7 @@ const FirestoreService = {
         siteData.updatedAt = serverTimestamp();
         const siteRef = doc(db, "sites", id);
 
-        // Fetch previous data for logging
+        // Fetch previous data for diffing
         let previousData = null;
         try {
             const docSnap = await getDoc(siteRef);
@@ -947,11 +947,96 @@ const FirestoreService = {
         }
 
         await updateDoc(siteRef, siteData);
+
+        // Write change history to subcollection
+        try {
+            await this.logSiteHistory(id, siteData, previousData);
+        } catch (e) {
+            console.warn("Could not write site history:", e);
+        }
+
         await this.logAction("SITE", "EDIT", `Updated site: ${siteData.name}`, {
             siteId: id,
             data: siteData,
             previousData: previousData,
         });
+    },
+
+    async logSiteHistory(siteId, newData, oldData) {
+        const user = auth.currentUser;
+        const SKIP_FIELDS = new Set([
+            'updatedAt', 'createdAt', 'maintenancePlans', 'attachments',
+            '_cachedSiteName', 'statusHistory'
+        ]);
+
+        const FIELD_LABELS = {
+            name: 'ชื่อโรงพยาบาล',
+            siteCode: 'รหัสสถานที่',
+            deviceType: 'ประเภทสัญญา',
+            brand: 'ยี่ห้อ',
+            model: 'รุ่น',
+            serialNumber: 'Serial No.',
+            installLocation: 'หน่วยงาน',
+            villageName: 'ชื่อหมู่บ้าน',
+            subdistrict: 'ตำบล',
+            district: 'อำเภอ',
+            province: 'จังหวัด',
+            picName: 'ผู้ดูแล',
+            contactPhone: 'เบอร์โทร',
+            maintenanceCycle: 'รอบซ่อมบำรุง (วัน)',
+            insuranceStartDate: 'วันเริ่มประกัน',
+            insuranceEndDate: 'วันสิ้นสุดประกัน',
+            warrantyNumber: 'เลขที่ใบรับประกัน',
+            description: 'รายละเอียด',
+            latitude: 'Latitude',
+            longitude: 'Longitude',
+        };
+
+        const changes = [];
+        const allKeys = new Set([
+            ...Object.keys(newData || {}),
+            ...Object.keys(oldData || {})
+        ]);
+
+        for (const key of allKeys) {
+            if (SKIP_FIELDS.has(key)) continue;
+            const oldVal = oldData ? (oldData[key] ?? '') : '';
+            const newVal = newData ? (newData[key] ?? '') : '';
+            if (String(oldVal) !== String(newVal)) {
+                changes.push({
+                    field: key,
+                    label: FIELD_LABELS[key] || key,
+                    from: oldVal || '-',
+                    to: newVal || '-',
+                });
+            }
+        }
+
+        if (changes.length === 0) return; // Nothing changed
+
+        const historyRef = collection(db, 'sites', siteId, 'history');
+        await addDoc(historyRef, {
+            changedBy: user ? (user.displayName || user.email || 'Unknown') : 'Unknown',
+            changedById: user ? user.uid : null,
+            changedAt: serverTimestamp(),
+            changedAtISO: new Date().toISOString(),
+            changes,
+        });
+    },
+
+    async fetchSiteHistory(siteId, limitCount = 20) {
+        try {
+            const q = query(
+                collection(db, 'sites', siteId, 'history'),
+                orderBy('changedAt', 'desc'),
+                limit(limitCount)
+            );
+            const snap = await getDocs(q);
+            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (e) {
+            console.warn('Could not fetch site history:', e);
+            return [];
+        }
     },
 
     async deleteSite(id) {
@@ -8325,6 +8410,60 @@ function viewSiteDetails(id) {
     }
 
     toggleModal("siteDetails", true);
+
+    // Load change history
+    loadSiteHistory(site.id);
+}
+
+function toggleSiteHistorySection() {
+    const content = document.getElementById('site-history-content');
+    const icon = document.getElementById('site-history-collapse-icon');
+    if (!content) return;
+    const isHidden = content.style.display === 'none';
+    content.style.display = isHidden ? '' : 'none';
+    if (icon) icon.style.transform = isHidden ? '' : 'rotate(-90deg)';
+}
+window.toggleSiteHistorySection = toggleSiteHistorySection;
+
+async function loadSiteHistory(siteId) {
+    const list = document.getElementById('site-history-list');
+    if (!list) return;
+
+    list.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; font-style:italic;">กำลังโหลด...</p>';
+
+    const entries = await FirestoreService.fetchSiteHistory(siteId);
+
+    if (entries.length === 0) {
+        list.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; font-style:italic;">ยังไม่มีประวัติการแก้ไข</p>';
+        return;
+    }
+
+    list.innerHTML = entries.map(entry => {
+        const dateStr = entry.changedAtISO
+            ? new Date(entry.changedAtISO).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })
+            : '-';
+
+        const changesHtml = (entry.changes || []).map(c => `
+            <div style="display:flex; align-items:baseline; gap:0.4rem; font-size:0.8rem; padding:2px 0; border-bottom:1px solid rgba(0,0,0,0.04);">
+                <span style="color:#555; font-weight:600; min-width:120px; flex-shrink:0;">${c.label}</span>
+                <span style="color:#9ca3af; text-decoration:line-through; word-break:break-word;">${c.from}</span>
+                <span style="color:#94a3b8; font-size:0.7rem; flex-shrink:0;">→</span>
+                <span style="color:#16a34a; font-weight:600; word-break:break-word;">${c.to}</span>
+            </div>
+        `).join('');
+
+        return `
+            <div style="background:rgba(0,0,0,0.02); border:1px solid rgba(0,0,0,0.06); border-radius:8px; padding:0.75rem 1rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
+                    <span style="font-size:0.8rem; font-weight:600; color:#111;">
+                        <i class="fa-solid fa-user" style="font-size:0.7rem; opacity:0.5; margin-right:4px;"></i>${entry.changedBy}
+                    </span>
+                    <span style="font-size:0.75rem; color:var(--text-muted);">${dateStr}</span>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:2px;">${changesHtml}</div>
+            </div>
+        `;
+    }).join('');
 }
 
 // ─── Comment Helpers ─────────────────────────────────────────────────────────
