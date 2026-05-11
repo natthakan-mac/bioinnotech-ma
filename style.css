@@ -4966,12 +4966,14 @@ span.flatpickr-weekday {
         border-right: none;
         padding-right: 0;
         border-bottom: 1px solid rgba(0,0,0,0.08);
-        padding-bottom: 2rem;
+        padding-bottom: 0;
+        overflow: visible;
     }
 
     .profile-unified-card {
         padding: 1.5rem;
         border-radius: 16px;
+        overflow: visible !important;
     }
 }
 

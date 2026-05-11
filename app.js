@@ -959,8 +959,7 @@ const FirestoreService = {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
             const data = docSnap.data();
-            await this.moveToRecycleBin("sites", id, data, `สถานที่: ${data.name}`);
-            await this.logAction("SITE", "DELETE", `Deleted site (moved to bin)`, {
+            await this.logAction("SITE", "DELETE", `Deleted site`, {
                 siteId: id,
                 data: data,
             });
@@ -1239,18 +1238,7 @@ const FirestoreService = {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
             const data = docSnap.data();
-            const site = state.sites.find((s) => s.id === data.siteId) || {
-                name: "Unknown Site",
-            };
-            // Cache site name in data for robustness
-            data._cachedSiteName = site.name;
-            await this.moveToRecycleBin(
-                "logs",
-                id,
-                data,
-                `บันทึก: ${data.objective} @ ${site.name} (${data.date})`,
-            );
-            await this.logAction("LOG", "DELETE", `Deleted log (moved to bin)`, {
+            await this.logAction("LOG", "DELETE", `Deleted log`, {
                 logId: id,
                 data: data,
             });
@@ -1265,133 +1253,6 @@ const FirestoreService = {
         const batchPromises = snapshot.docs.map((doc) => deleteDoc(doc.ref));
         await Promise.all(batchPromises);
         console.log("All logs deleted.");
-    },
-
-    async recycleLogsBySiteId(siteId) {
-        const logsRef = collection(db, "logs");
-        const q = query(logsRef);
-        const snapshot = await getDocs(q);
-        const site = state.sites.find((s) => s.id === siteId) || {
-            name: "Deleted Site",
-        }; // Get site name once
-
-        const batchPromises = [];
-        snapshot.forEach((docSnap) => {
-            if (docSnap.data().siteId === siteId) {
-                const data = docSnap.data();
-                data._cachedSiteName = site.name; // Cache name
-                batchPromises.push(
-                    this.moveToRecycleBin(
-                        "logs",
-                        docSnap.id,
-                        data,
-                        `บันทึก (จาก ${site.name}): ${data.objective || "-"}`,
-                    ).then(() => deleteDoc(doc(db, "logs", docSnap.id))),
-                );
-            }
-        });
-        await Promise.all(batchPromises);
-    },
-
-    // --- Recycle Bin ---
-    async moveToRecycleBin(collectionName, id, data, description) {
-        const user = auth.currentUser;
-        await addDoc(collection(db, "deleted_items"), {
-            originalCollection: collectionName,
-            originalId: id,
-            data: data,
-            description: description || "No Description",
-            deletedBy: user ? user.displayName || user.email : "Unknown",
-            deletedAt: new Date().toISOString(),
-        });
-    },
-
-    async restoreFromRecycleBin(binId, originalCollection, originalId, data) {
-        await setDoc(doc(db, originalCollection, originalId), data);
-        await deleteDoc(doc(db, "deleted_items", binId));
-    },
-
-    async deletePermanently(binId) {
-        // Fetch to find file info before deleting
-        const binRef = doc(db, "deleted_items", binId);
-        const binSnap = await getDoc(binRef);
-
-        if (binSnap.exists()) {
-            const binData = binSnap.data();
-            const originalData = binData.data || {};
-            // Check for attachments to delete (attachments are inside data.data)
-            const attachments = [];
-            // Normalize
-            if (originalData.attachments && Array.isArray(originalData.attachments)) {
-                attachments.push(...originalData.attachments);
-            } else if (originalData.attachmentUrl) {
-                attachments.push({ url: originalData.attachmentUrl, path: null });
-            }
-
-            // Cleanup Storage
-            for (const att of attachments) {
-                try {
-                    // Prefer path if available, else derive from URL if possible (legacy)
-                    if (att.path) {
-                        const fileRef = ref(storage, att.path);
-                        await deleteObject(fileRef);
-                        console.log("Permanently deleted file:", att.path);
-                    } else if (att.url && att.url.includes("firebasestorage")) {
-                        // Attempt to reconstruct ref from URL for legacy files?
-                        // It's tricky without path. Better to just verify valid path usage moving forward.
-                        // Or use refFromURL logic (ref(storage, url))
-                        const fileRef = ref(storage, att.url);
-                        await deleteObject(fileRef);
-                        console.log("Permanently deleted file from URL:", att.url);
-                    }
-                } catch (err) {
-                    console.warn("Failed to delete associated storage file:", err);
-                }
-            }
-        }
-        await deleteDoc(binRef);
-    },
-
-    async fetchDeletedItems() {
-        const q = query(
-            collection(db, "deleted_items"),
-            orderBy("deletedAt", "desc"),
-        );
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    },
-
-    async emptyRecycleBin() {
-        const q = query(collection(db, "deleted_items"));
-        const snapshot = await getDocs(q);
-
-        // Use serial or limited concurrency to avoid errors
-        for (const d of snapshot.docs) {
-            const binData = d.data();
-            const originalData = binData.data || {};
-            // Check for attachments logic (attachments are inside data.data)
-            const attachments = [];
-            if (originalData.attachments && Array.isArray(originalData.attachments)) {
-                attachments.push(...originalData.attachments);
-            } else if (originalData.attachmentUrl) {
-                attachments.push({ url: originalData.attachmentUrl, path: null });
-            }
-
-            for (const att of attachments) {
-                try {
-                    if (att.path) {
-                        await deleteObject(ref(storage, att.path));
-                    } else if (att.url && att.url.includes("firebasestorage")) {
-                        await deleteObject(ref(storage, att.url));
-                    }
-                } catch (e) {
-                    console.warn("Cleanup file fail:", e);
-                }
-            }
-            // Delete doc
-            await deleteDoc(doc(db, "deleted_items", d.id));
-        }
-        console.log("Recycle bin emptied.");
     },
 
     // --- Action Logging ---
@@ -1449,71 +1310,6 @@ const FirestoreService = {
         }
     },
 
-    async fetchActionLogs(limitCount = 500) {
-        try {
-            const q = query(
-                collection(db, "action_logs"),
-                orderBy("timestamp", "desc"),
-            ); // Get newest first
-            // Note: Limit could be applied here if query supports it easily,
-            // but for now we fetch and client-side slice if usage is low.
-            // JS SDK `limit` import needed if strict.
-            const snapshot = await getDocs(q);
-            return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-        } catch (e) {
-            console.error("Error fetching action logs:", e);
-            return [];
-        }
-    },
-
-    // Real-time Subscription for Action Logs
-    subscribeToActionLogs(callback, limitCount = 50) {
-        try {
-            const q = query(
-                collection(db, "action_logs"),
-                orderBy("timestamp", "desc"),
-                limit(limitCount),
-            );
-
-            // onSnapshot returns the unsubscribe function
-            const unsubscribe = onSnapshot(
-                q,
-                (snapshot) => {
-                    const logs = snapshot.docs.map((doc) => ({
-                        id: doc.id,
-                        ...doc.data(),
-                    }));
-                    callback(logs);
-                },
-                (error) => {
-                    console.error("Error in action logs subscription:", error);
-                },
-            );
-
-            return unsubscribe;
-        } catch (error) {
-            console.error("Error setting up subscription:", error);
-            return () => { }; // return empty fn fallback
-        }
-    },
-
-    async deleteAllActionLogs() {
-        const logsRef = collection(db, "action_logs");
-        const snapshot = await getDocs(logsRef);
-        const total = snapshot.size;
-        console.log(`Deleting ${total} action logs...`);
-        
-        // Delete in small batches to avoid rate limits
-        const batchSize = 50;
-        const docs = snapshot.docs;
-        for (let i = 0; i < docs.length; i += batchSize) {
-            const chunk = docs.slice(i, i + batchSize);
-            await Promise.all(chunk.map((d) => deleteDoc(d.ref)));
-            console.log(`Deleted ${Math.min(i + batchSize, total)} / ${total}`);
-        }
-        console.log("All action logs deleted.");
-    },
-
     // --- Notification Settings Methods ---
     async updateNotificationSettings(settings) {
         try {
@@ -1556,7 +1352,6 @@ const views = {
     plan: document.getElementById("plan-view"),
     login: document.getElementById("login-view"),
     profile: document.getElementById("profile-view"),
-    recycleBin: document.getElementById("recycle-bin-view"),
 };
 
 // Force hidden state on load just in case HTML/CSS didn't catch it
@@ -1713,7 +1508,6 @@ async function init() {
             "engineer-view",
             "plan-view",
             "profile-view",
-            "recycle-bin-view",
         ];
         const initialView = allowedViews.includes(savedView)
             ? savedView
@@ -1722,9 +1516,8 @@ async function init() {
 
         await loadAddressData();
         setupEventListeners();
-        setupRecycleBinTabs(); // New Tab Logic
-        setupRecycleBinTabs(); // New Tab Logic
-        setupCustomNameLogic(); // Initialize custom name logic
+
+setupCustomNameLogic(); // Initialize custom name logic
         setupSiteManagerFilters();
 
         // Restore Log View Sub-state
@@ -1903,12 +1696,6 @@ window.wipeAllDataExceptSites = async function () {
 
         console.log("1. Deleting Maintenance Logs...");
         await FirestoreService.deleteAllLogs();
-
-        console.log("2. Emptying Recycle Bin...");
-        await FirestoreService.emptyRecycleBin();
-
-        console.log("3. Deleting Action Logs...");
-        await FirestoreService.deleteAllActionLogs();
 
         console.log("--- WIPE COMPLETE ---");
         alert("Success: All data (except Sites/Users) has been wiped.");
@@ -2418,11 +2205,9 @@ function switchView(viewName) {
         views.profile.classList.add("active");
         renderProfile();
     }
-    if (views.recycleBin && viewName === "recycle-bin-view")
-        views.recycleBin.classList.add("active");
     if (views.plan && viewName === "plan-view") {
         views.plan.classList.add("active");
-        renderMaintenancePlan();
+        if (typeof renderMaintenancePlan === 'function') renderMaintenancePlan();
     }
     if (views.login && viewName === "login-view")
         views.login.classList.add("active"); // Typically handled separately but good for safety
@@ -2443,9 +2228,6 @@ function switchView(viewName) {
         }
     }
 
-    if (viewName === "recycle-bin-view") {
-        renderRecycleBin();
-    }
 }
 
 function toggleModal(name, show) {
@@ -5355,8 +5137,8 @@ async function confirmDelete() {
         } else if (state.currentDeleteId) {
             const id = state.currentDeleteId;
             await FirestoreService.deleteSite(id);
-            await FirestoreService.recycleLogsBySiteId(id);
-            showToast("ลบสถานที่สำเร็จ (ย้ายไปถังขยะ)", "success");
+            await FirestoreService.deleteLogsBySiteId(id);
+            showToast("ลบสถานที่สำเร็จ", "success");
             state.currentDeleteId = null;
         }
 
@@ -5689,14 +5471,6 @@ function setupEventListeners() {
     document.querySelectorAll(".nav-btn").forEach((btn) => {
         btn.addEventListener("click", () => switchView(btn.dataset.view));
     });
-
-    const recycleBtn = document.getElementById("btn-view-recycle-bin");
-    if (recycleBtn) {
-        recycleBtn.addEventListener("click", () => {
-            switchView("recycle-bin-view");
-            renderRecycleBin();
-        });
-    }
 
     document.getElementById("btn-add-site").addEventListener("click", () => {
         console.log("Add Site Button Clicked");
@@ -6042,7 +5816,6 @@ window.handleClearAllData = async function () {
         return;
     try {
         await FirestoreService.deleteAllLogs();
-        await FirestoreService.emptyRecycleBin();
         await refreshData();
         await showDialog("All data cleared successfully.");
     } catch (e) {
@@ -6707,7 +6480,7 @@ function renderCurrentView() {
     // Re-render plan if active
     const planView = document.getElementById("plan-view");
     if (planView && planView.classList.contains("active")) {
-        renderMaintenancePlan();
+        if (typeof renderMaintenancePlan === 'function') renderMaintenancePlan();
     }
 }
 
@@ -13465,28 +13238,71 @@ async function renderProfile(userArg = null) {
 function setupProfileTabs() {
     const tabs = document.querySelectorAll('.profile-tab');
     const tabContents = document.querySelectorAll('.profile-tab-content');
-    
+
+    function switchTab(targetTab) {
+        tabs.forEach(t => t.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.pmn-btn').forEach(b => b.classList.remove('active'));
+
+        const matchingTab = document.querySelector(`.profile-tab[data-tab="${targetTab}"]`);
+        if (matchingTab) matchingTab.classList.add('active');
+
+        const matchingMobileBtn = document.querySelector(`.pmn-btn[data-tab="${targetTab}"]`);
+        if (matchingMobileBtn) matchingMobileBtn.classList.add('active');
+
+        const targetContent = document.getElementById(targetTab);
+        if (targetContent) targetContent.classList.add('active');
+    }
+
     tabs.forEach(tab => {
         tab.addEventListener('click', async () => {
             const targetTab = tab.getAttribute('data-tab');
-            
-            // Remove active class from all tabs and contents
-            tabs.forEach(t => t.classList.remove('active'));
-            tabContents.forEach(c => c.classList.remove('active'));
-            
-            // Add active class to clicked tab and corresponding content
-            tab.classList.add('active');
-            const targetContent = document.getElementById(targetTab);
-            if (targetContent) {
-                targetContent.classList.add('active');
-            }
-
-            // Load notification settings when notification tab is opened
-            if (targetTab === 'notification-settings') {
-                await loadNotificationSettings();
-            }
+            switchTab(targetTab);
+            if (targetTab === 'notification-settings') await loadNotificationSettings();
         });
     });
+
+    // Mobile nav buttons
+    document.querySelectorAll('.pmn-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const targetTab = btn.getAttribute('data-tab');
+            if (!targetTab) return;
+            switchTab(targetTab);
+            if (targetTab === 'notification-settings') await loadNotificationSettings();
+        });
+    });
+
+    // Mobile logout button
+    const pmnLogout = document.getElementById('pmn-logout');
+    if (pmnLogout) {
+        pmnLogout.addEventListener('click', () => {
+            const desktopLogout = document.getElementById('btn-logout-profile');
+            if (desktopLogout) desktopLogout.click();
+        });
+    }
+
+    // Sync mobile nav visibility with desktop tab visibility
+    function syncMobileNavVisibility() {
+        const userMgmtTab = document.getElementById('user-management-tab');
+        const notifTab = document.getElementById('notification-settings-tab');
+        const pmnUserMgmt = document.getElementById('pmn-user-management');
+        const pmnNotif = document.getElementById('pmn-notification-settings');
+        if (pmnUserMgmt && userMgmtTab) {
+            pmnUserMgmt.style.display = userMgmtTab.style.display === 'none' ? 'none' : 'inline-flex';
+        }
+        if (pmnNotif && notifTab) {
+            pmnNotif.style.display = notifTab.style.display === 'none' ? 'none' : 'inline-flex';
+        }
+    }
+
+    // Observe desktop tab visibility changes
+    const observer = new MutationObserver(syncMobileNavVisibility);
+    ['user-management-tab', 'notification-settings-tab'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) observer.observe(el, { attributes: true, attributeFilter: ['style'] });
+    });
+
+    syncMobileNavVisibility();
 }
 
 async function loadNotificationSettings() {
@@ -13850,1989 +13666,6 @@ window.generateMockLogs = async function (count = 50) {
     }
 };
 
-// --- Recycle Bin UI Logic ---
-async function renderRecycleBin() {
-    const tbody = document.getElementById("recycle-bin-table-body");
-    if (!tbody) return;
-
-    tbody.innerHTML =
-        '<tr><td colspan="9" style="text-align: center; padding: 2rem;">กำลังโหลด...</td></tr>';
-
-    try {
-        const deletedItems = await FirestoreService.fetchDeletedItems();
-        state.deletedItems = deletedItems;
-
-        // Populate "ลบโดย" filter dropdown
-        const deletedBySelect = document.getElementById("recycle-filter-deletedby");
-        if (deletedBySelect) {
-            const currentVal = deletedBySelect.value;
-            const users = [...new Set(deletedItems.map((i) => i.deletedBy || "ไม่ระบุ"))].sort();
-            deletedBySelect.innerHTML = '<option value="all">ทั้งหมด</option>';
-            users.forEach((u) => {
-                deletedBySelect.innerHTML += `<option value="${u}">${u}</option>`;
-            });
-            deletedBySelect.value = currentVal || "all";
-        }
-
-        tbody.innerHTML = "";
-        if (deletedItems.length === 0) {
-            tbody.innerHTML =
-                '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: var(--text-muted);">ถังขยะว่างเปล่า (Empty)</td></tr>';
-            return;
-        }
-
-        const dateOptions = { year: "numeric", month: "short", day: "numeric" };
-        const dateTimeOptions = {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        };
-
-        deletedItems.forEach((item) => {
-            const tr = document.createElement("tr");
-
-            // Common Data
-            const deletedBy = item.deletedBy || "ไม่ระบุ";
-            const deletedAt = item.deletedAt
-                ? new Date(item.deletedAt).toLocaleDateString(undefined, dateTimeOptions)
-                : "-";
-            const isSite = item.originalCollection === "sites";
-
-            // 1. Type Column (Icon)
-            let typeIconHtml = "";
-            if (isSite) {
-                typeIconHtml = `<div class="icon-type-site"><i class="fa-solid fa-house-chimney"></i></div>`;
-            } else {
-                typeIconHtml = `<div class="icon-type-log"><i class="fa-solid fa-clipboard-list"></i></div>`;
-            }
-
-            // 2. Item Column (Complex)
-            let itemHtml = "";
-
-            const dateBadge = `<span class="badge-info mobile-date-badge"><i class="fa-regular fa-calendar"></i> ${deletedAt}</span>`;
-
-            if (isSite) {
-                const data = item.data || {};
-                const badgesHtml = `
-                    ${dateBadge}
-                    <span class="badge-info"><i class="fa-solid fa-map-pin"></i> ${data.subdistrict || "-"}</span>
-                    <span class="badge-info"><i class="fa-solid fa-map"></i> ${data.district || "-"}</span>
-                    <span class="badge-info"><i class="fa-solid fa-location-dot"></i> ${data.province || "-"}</span>
-                `;
-                itemHtml = `
-                    <div class="item-cell-content">
-                        <div class="item-header">${data.name || "ไม่ระบุชื่อ"}</div>
-                        <div class="item-badges">${badgesHtml}</div>
-                    </div>
-                `;
-            } else {
-                const data = item.data || {};
-
-                // Resolve Site Name
-                let siteName = "ไม่ระบุสถานที่";
-                if (data._cachedSiteName) siteName = data._cachedSiteName;
-                else if (data.siteId) {
-                    const s = state.sites.find((site) => site.id === data.siteId);
-                    if (s) siteName = s.name;
-                }
-
-                // Format Cost
-                const cost = data.cost
-                    ? new Intl.NumberFormat('th-TH', {
-                        style: "currency",
-                        currency: "THB",
-                    }).format(data.cost).replace("฿", "").trim() + " บาท"
-                    : "-";
-
-                // Check for attachments
-                let attachmentBadge = "";
-                if (data.attachments && data.attachments.length > 0) {
-                    attachmentBadge = `<span class="badge-info" style="color: var(--primary-color); border: 1px solid var(--primary-light);"><i class="fa-solid fa-paperclip"></i> ${data.attachments.length}</span>`;
-                }
-
-                const badgesHtml = `
-                    ${dateBadge}
-                    <span class="badge-info" style="background: rgba(249, 115, 22, 0.1); color: #f97316; border: 1px solid rgba(249, 115, 22, 0.2);">${data.category || "-"}</span>
-                    <span class="badge-info" style="color: var(--success-color); border: 1px solid rgba(34, 197, 94, 0.2);">${cost}</span>
-                    ${attachmentBadge}
-                `;
-
-                itemHtml = `
-                    <div class="item-cell-content">
-                        <div class="item-header">${siteName}</div>
-                        <div class="item-badges">${badgesHtml}</div>
-                        <div class="item-sub-header">
-                            <div class="sub-info-line"><strong>รายละเอียด:</strong> ${data.details || "-"}</div>
-                            <div class="sub-info-line"><strong>หมายเหตุ:</strong> ${data.objective || "-"}</div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            if (isSite) {
-                tr.classList.add("recycle-row-site");
-            } else {
-                tr.classList.add("recycle-row-log");
-            }
-            tr.dataset.deletedby = deletedBy;
-            tr.dataset.deletedat = item.deletedAt || "";
-
-            // ... (HTML Generation Logic remains same, just wrapping it)
-
-            tr.innerHTML = `
-                <td class="cell-type" data-label="ประเภท" style="text-align: center;">${typeIconHtml}</td>
-                <td class="cell-item" data-label="รายการ">${itemHtml}</td>
-                <td class="cell-user" data-label="ลบโดย">${deletedBy}</td>
-                <td class="cell-date" data-label="วันที่ลบ">${deletedAt}</td>
-                <td class="cell-action" data-label="ตัวเลือก" style="text-align: center;">
-                    <div style="display: inline-flex; gap: 0.5rem; justify-content: center; align-items: center;">
-                        <button class="btn-icon action-restore" onclick="handleRestore('${item.id}')" title="กู้คืน">
-                            <i class="fa-solid fa-rotate-left" style="color: var(--success-color);"></i>
-                        </button>
-                        <button class="btn-icon action-delete" onclick="handleDeleteForever('${item.id}')" title="ลบถาวร">
-                            <i class="fa-solid fa-trash-can" style="color: var(--danger-color);"></i>
-                        </button>
-                    </div>
-                </td>
-            `;
-
-            tbody.appendChild(tr);
-        });
-    } catch (error) {
-        console.error("Error loading recycle bin:", error);
-        tbody.innerHTML =
-            '<tr><td colspan="5" style="text-align: center; color: var(--danger-color);">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
-    }
-}
-
-async function handleRestore(binId) {
-    if (!state.deletedItems) return;
-    const item = state.deletedItems.find((i) => i.id === binId);
-    if (!item) return;
-
-    // Check if restoring a log whose site is also deleted
-    let siteToRestore = null;
-    let logsToRestore = [];
-    if (item.originalCollection === "logs" && item.data && item.data.siteId) {
-        const siteExists = state.sites.some((s) => s.id === item.data.siteId);
-        if (!siteExists) {
-            siteToRestore = state.deletedItems.find(
-                (i) => i.originalCollection === "sites" && i.originalId === item.data.siteId
-            );
-        }
-    }
-
-    // Check if restoring a site — offer to restore its logs too
-    if (item.originalCollection === "sites") {
-        logsToRestore = state.deletedItems.filter(
-            (i) => i.originalCollection === "logs" && i.data && i.data.siteId === item.originalId
-        );
-    }
-
-    let confirmMsg;
-    if (siteToRestore) {
-        confirmMsg = `เคสนี้อยู่ในสถานที่ "${siteToRestore.description}" ที่ถูกลบ\nต้องการกู้คืนทั้งสถานที่และเคสนี้ใช่หรือไม่?`;
-    } else if (logsToRestore.length > 0) {
-        confirmMsg = `ต้องการกู้คืน "${item.description}" พร้อมเคสที่เกี่ยวข้อง ${logsToRestore.length} รายการใช่หรือไม่?`;
-    } else {
-        confirmMsg = `ต้องการกู้คืน "${item.description}" ใช่หรือไม่?`;
-    }
-
-    if (
-        !(await showDialog(confirmMsg, {
-            type: "confirm",
-        }))
-    )
-        return;
-
-    try {
-        // Restore the parent site first if needed
-        if (siteToRestore) {
-            await FirestoreService.restoreFromRecycleBin(
-                siteToRestore.id,
-                siteToRestore.originalCollection,
-                siteToRestore.originalId,
-                siteToRestore.data,
-            );
-            await FirestoreService.logAction(
-                "BIN",
-                "RESTORE",
-                `Auto-restored site: ${siteToRestore.description}`,
-            );
-        }
-
-        await FirestoreService.restoreFromRecycleBin(
-            binId,
-            item.originalCollection,
-            item.originalId,
-            item.data,
-        );
-        await FirestoreService.logAction(
-            "BIN",
-            "RESTORE",
-            `Restored item: ${item.description}`,
-        );
-
-        // Restore associated logs when restoring a site
-        for (const logItem of logsToRestore) {
-            await FirestoreService.restoreFromRecycleBin(
-                logItem.id,
-                logItem.originalCollection,
-                logItem.originalId,
-                logItem.data,
-            );
-            await FirestoreService.logAction(
-                "BIN",
-                "RESTORE",
-                `Auto-restored log: ${logItem.description}`,
-            );
-        }
-
-        showToast("กู้คืนข้อมูลเรียบร้อยแล้ว", "success");
-
-        await refreshData();
-        renderRecycleBin();
-    } catch (error) {
-        console.error("Restore failed:", error);
-        showToast("เกิดข้อผิดพลาดในการกู้คืน", "error");
-    }
-}
-
-async function handleDeleteForever(binId) {
-    if (!state.deletedItems) return;
-    const item = state.deletedItems.find((i) => i.id === binId);
-    if (!item) return;
-
-    if (
-        !(await showDialog(
-            `ต้องการลบถาวร "${item.description}" ใช่หรือไม่?\n(ไม่สามารถกู้คืนได้)`,
-            { type: "confirm", confirmText: "ลบถาวร", cancelText: "ยกเลิก" },
-        ))
-    )
-        return;
-
-    try {
-        await FirestoreService.deletePermanently(binId);
-        await FirestoreService.logAction(
-            "BIN",
-            "DELETE",
-            `Permanently deleted: ${item.description}`,
-        );
-        showToast("ลบข้อมูลถาวรเรียบร้อยแล้ว", "success");
-
-        await refreshData();
-        renderRecycleBin();
-    } catch (error) {
-        console.error("Permanent delete failed:", error);
-        showToast("เกิดข้อผิดพลาดในการลบข้อมูล", "error");
-    }
-}
-
-// Expose Globally
-
-window.renderRecycleBin = renderRecycleBin;
-window.handleRestore = handleRestore;
-window.handleDeleteForever = handleDeleteForever;
-window.filterRecycleBin = filterRecycleBin;
-window.handleEmptyRecycleBin = handleEmptyRecycleBin;
-window.clearRecycleBinFilters = clearRecycleBinFilters;
-window.handleClearActionLogs = handleClearActionLogs;
-
-async function handleClearActionLogs() {
-    if (!(await showDialog(
-        "ต้องการล้าง Activity Log ทั้งหมดใช่หรือไม่?\n(ไม่สามารถกู้คืนได้)",
-        { type: "confirm", confirmText: "ล้างทั้งหมด", cancelText: "ยกเลิก" }
-    ))) return;
-
-    try {
-        await FirestoreService.deleteAllActionLogs();
-        showToast("ล้าง Activity Log เรียบร้อยแล้ว", "success");
-    } catch (error) {
-        console.error("Clear action logs failed:", error);
-        showToast("เกิดข้อผิดพลาดในการล้าง Activity Log", "error");
-    }
-}
-
-function clearRecycleBinFilters() {
-    const search = document.getElementById("recycle-search-input");
-    const type = document.getElementById("recycle-filter-type");
-    const deletedBy = document.getElementById("recycle-filter-deletedby");
-    const date = document.getElementById("recycle-date-filter");
-    if (search) search.value = "";
-    if (type) type.value = "all";
-    if (deletedBy) deletedBy.value = "all";
-    if (date) date.value = "";
-    filterRecycleBin();
-}
-
-function filterRecycleBin() {
-    const search = (document.getElementById("recycle-search-input")?.value || "").toLowerCase();
-    const typeFilter = document.getElementById("recycle-filter-type")?.value || "all";
-    const deletedByFilter = document.getElementById("recycle-filter-deletedby")?.value || "all";
-    const dateFilter = document.getElementById("recycle-date-filter")?.value || "";
-    const rows = document.querySelectorAll("#recycle-bin-table-body tr");
-
-    rows.forEach((row) => {
-        const text = row.textContent.toLowerCase();
-        const isSite = row.classList.contains("recycle-row-site");
-        const isLog = row.classList.contains("recycle-row-log");
-        const rowDeletedBy = row.dataset.deletedby || "";
-        const rowDeletedAt = row.dataset.deletedat || "";
-
-        const matchSearch = !search || text.includes(search);
-        const matchType = typeFilter === "all" ||
-            (typeFilter === "sites" && isSite) ||
-            (typeFilter === "logs" && isLog);
-        const matchDeletedBy = deletedByFilter === "all" || rowDeletedBy === deletedByFilter;
-        const matchDate = !dateFilter || rowDeletedAt.substring(0, 10) === dateFilter;
-
-        row.style.display = matchSearch && matchType && matchDeletedBy && matchDate ? "" : "none";
-    });
-}
-
-async function handleEmptyRecycleBin() {
-    if (!state.deletedItems || state.deletedItems.length === 0) {
-        showToast("ถังขยะว่างเปล่า", "info");
-        return;
-    }
-
-    if (!(await showDialog(
-        `ต้องการลบข้อมูลทั้งหมด ${state.deletedItems.length} รายการในถังขยะถาวรใช่หรือไม่?\n(ไม่สามารถกู้คืนได้)`,
-        { type: "confirm", confirmText: "ลบทั้งหมด", cancelText: "ยกเลิก" }
-    ))) return;
-
-    try {
-        await FirestoreService.emptyRecycleBin();
-        await FirestoreService.logAction("BIN", "EMPTY", "Emptied recycle bin");
-        showToast("ล้างถังขยะเรียบร้อยแล้ว", "success");
-        await refreshData();
-        renderRecycleBin();
-    } catch (error) {
-        console.error("Empty recycle bin failed:", error);
-        showToast("เกิดข้อผิดพลาดในการล้างถังขยะ", "error");
-    }
-}
-
-// --- Insurance Card PDF ---
-function exportInsuranceCardPDF(siteId) {
-    const site = state.sites.find(s => s.id === siteId);
-    if (!site) return;
-
-    const thaiDate = (d) => d ? new Date(d).toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' }) : '-';
-    const warranty = site.insuranceStartDate && site.insuranceEndDate
-        ? `${thaiDate(site.insuranceStartDate)} ถึง ${thaiDate(site.insuranceEndDate)}` : 'ไม่มีข้อมูล';
-
-    const row = (label, value) => `<tr><td style="padding:6px 10px; font-weight:600; color:#555; width:160px; border-bottom:1px solid #eee;">${label}</td><td style="padding:6px 10px; border-bottom:1px solid #eee;">${value || '-'}</td></tr>`;
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>Insurance Card - ${site.name}</title>
-<style>
-    @page { size: A4 portrait; margin: 0; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 11px; color: #333; margin: 0; padding: 10mm 12mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
-    .page-content { flex: 1; }
-    table { width: 100%; border-collapse: collapse; }
-    .header-line { margin-bottom: 12px; position: relative; height: 2px; background: #ddd !important; }
-    .header-line::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
-    .footer-line { position: relative; height: 2px; background: #ddd !important; }
-    .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
-    .footer-text { display: flex; justify-content: space-between; font-size: 8px; color: #333; padding: 4px 0; }
-</style>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
-</head><body>
-<div style="display:flex; align-items:center; gap:12px; padding-bottom:10px;">
-    <img src="/bioinnotech.svg" alt="Logo" style="height:55px; width:auto;">
-    <div style="flex:1; text-align:right; font-size:9px; color:#333; line-height:1.6;">
-        <b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>
-        36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>
-        โทรศัพท์ 02-152-5405
-    </div>
-</div>
-<div class="header-line"></div>
-<div class="page-content">
-<h1 style="text-align:center; font-size:16px; margin:0 0 6px;">ใบรับประกันสินค้า</h1>
-<p style="text-align:center; font-size:10px; color:#666; margin:0 0 16px;">Product Warranty Certificate</p>
-
-<table style="border:1px solid #ddd; border-radius:8px; font-size:11px;">
-    ${row('เลขที่', 'WR-' + (site.siteCode || '').replace(/[^A-Za-z0-9]/g,'') + '-' + (site.id ? site.id.substring(0,6).toUpperCase() : '000000'))}
-    ${row('นามลูกค้า', site.picName || '-')}
-    ${row('โรงพยาบาล', site.name || '-')}
-    ${row('ที่อยู่', [site.installLocation || site.villageName, site.subdistrict, site.district, site.province, site.zipcode].filter(Boolean).join(', ') || '-')}
-    ${row('เบอร์โทรศัพท์', site.contactPhone || '-')}
-    ${row('สินค้า', site.brand || '-')}
-    ${row('รุ่น', site.model || '-')}
-    ${row('จำนวน', '1')}
-    ${row('หมายเลขเครื่อง (S/N)', site.serialNumber || '-')}
-    ${row('วันที่ติดตั้ง', (() => { const installLog = state.logs.find(l => l.siteId === site.id && l.category === 'ติดตั้ง'); return installLog ? new Date(installLog.date).toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'}) : '-'; })())}
-    ${row('วันเริ่มต้นการรับประกัน', site.insuranceStartDate ? new Date(site.insuranceStartDate).toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'}) : '-')}
-    ${row('วันสิ้นสุดการรับประกัน', site.insuranceEndDate ? new Date(site.insuranceEndDate).toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'}) : '-')}
-</table>
-
-<div style="margin-top:20px; padding:12px; border:1px solid #ddd; border-radius:8px; font-size:10px;">
-    <div style="font-weight:700; font-size:11px; margin-bottom:8px;">เงื่อนไขของการรับประกัน</div>
-    <div style="color:#333; line-height:1.8;">
-        บริษัทฯ จะไม่รับผิดชอบในกรณีดังต่อไปนี้<br>
-        1. การใช้งานที่ผิดจากข้อกำหนดไว้ หรือการใช้งานที่เกินกว่าขีดความสามารถของเครื่อง<br>
-        2. มีการดัดแปลง ต่อเติม แก้ไข หรือซ่อมแซมส่วนหนึ่งส่วนใดโดยบุคคลที่มิใช่ตัวแทนของบริษัทฯ<br>
-        3. การชำรุดของอุปกรณ์ต่าง เนื่องจากสนิม ฝุ่น ถูกสารเคมี หรือเก็บไว้ในสถานที่ที่มีอุณหภูมิสูงความชื้นสูงเกินกว่าขีดความสามารถของเครื่อง<br>
-        4. การชำรุดจากอุบัติเหตุ หรือภัยธรรมชาติ<br>
-        5. อุปกรณ์ที่มีการสึกหรอ หรือเสื่อมสภาพตามอายุการใช้งาน ไม่ใช่เป็นการชำรุดจากการผลิต
-    </div>
-    <div style="text-align:right; margin-top:24px; font-weight:700; font-size:12px;">บริษัท ไบโอ อินโน เทค จำกัด</div>
-    <div style="text-align:right; margin-top:30px;">
-        <div style="border-top:1px dotted #333; width:200px; margin-left:auto;"></div>
-        <div style="margin-top:6px; font-size:11px;">(นางสาวรศิกาญจน์ ตันติศรัญภัสร์)</div>
-        <div style="font-size:10px; color:#555;">กรรมการผู้จัดการ</div>
-    </div>
-    <div style="text-align:center; margin-top:20px; font-size:9px; color:#666; font-style:italic;">(โปรดเก็บเอกสารชุดนี้ไว้เป็นหลักฐานในการส่งซ่อมทุกครั้งกรณีที่อยู่ในระยะเวลาประกัน)</div>
-</div>
-</div>
-<div style="margin-top:auto; padding-top:10px;">
-    <div class="footer-line"></div>
-    <div class="footer-text"><span>บริษัท ไบโอ อินโน เทค จำกัด</span><span>FM-SAL-00 Rev.00 Effective date : 02-02-2026</span></div>
-</div>
-</body></html>`;
-
-    showPdfPreview(html, `ใบรับประกันสินค้า - ${site.name}`);
-}
-
-// --- Case History PDF ---
-function exportCaseHistoryPDF(siteId) {
-    const site = state.sites.find(s => s.id === siteId);
-    if (!site) return;
-
-    const siteLogs = state.logs.filter(l => l.siteId === siteId).sort((a, b) => new Date(b.date) - new Date(a.date));
-    const thaiDate = (d) => d ? new Date(d).toLocaleDateString('th-TH', { year:'numeric', month:'short', day:'numeric' }) : '-';
-    const warranty = site.insuranceStartDate && site.insuranceEndDate
-        ? `${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : '-';
-
-    const infoRow = (label, value) => `<span style="margin-right:16px;"><b>${label}:</b> ${value || '-'}</span>`;
-
-    const tableRows = siteLogs.map((log, i) => {
-        const statusColors = { 'Open':'#ca8a04', 'On Process':'#f97316', 'Done':'#a855f7', 'Case Closed':'#22c55e', 'Cancel':'#ef4444' };
-        const statusLabels = { 'Open':'เปิดงาน', 'On Process':'ดำเนินการ', 'Done':'เสร็จสิ้น', 'Case Closed':'ปิดเคส', 'Cancel':'ยกเลิก' };
-        const sc = statusColors[log.status] || '#888';
-        const sl = statusLabels[log.status] || log.status;
-        return `<tr style="border-bottom:1px solid #eee;">
-            <td style="padding:5px 8px; text-align:center;">${i + 1}</td>
-            <td style="padding:5px 8px; white-space:nowrap;">${thaiDate(log.date)}</td>
-            <td style="padding:5px 8px; font-family:'Courier New',monospace; font-weight:600;">${log.caseId || '-'}</td>
-            <td style="padding:5px 8px;">${log.category || '-'}</td>
-            <td style="padding:5px 8px;"><span style="background:${sc}; color:#fff; padding:1px 8px; border-radius:3px; font-size:9px; font-weight:600;">${sl}</span></td>
-            <td style="padding:5px 8px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${log.objective || '-'}</td>
-        </tr>`;
-    }).join('');
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>Case History - ${site.name}</title>
-<style>
-    @page { size: A4 landscape; margin: 0; }
-    @page { @bottom-right { content: "หน้า " counter(page) " / " counter(pages); font-size: 8px; } }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 10mm 12mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
-    .page-content { flex: 1; }
-    table { width: 100%; border-collapse: collapse; }
-    th { background: #f5f5f5 !important; text-align: left; padding: 5px 8px; border-bottom: 2px solid #ddd; font-size: 9px; }
-    .header-line { margin-bottom: 12px; position: relative; height: 2px; background: #ddd !important; }
-    .header-line::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
-    .footer-line { position: relative; height: 2px; background: #ddd !important; }
-    .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
-    .footer-text { display: flex; justify-content: space-between; font-size: 8px; color: #333; padding: 4px 0; }
-</style>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
-</head><body>
-<div style="display:flex; align-items:center; gap:12px; padding-bottom:10px;">
-    <img src="/bioinnotech.svg" alt="Logo" style="height:55px; width:auto;">
-    <div style="flex:1; text-align:right; font-size:9px; color:#333; line-height:1.6;">
-        <b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>
-        36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>
-        โทรศัพท์ 02-152-5405
-    </div>
-</div>
-<div class="header-line"></div>
-<div class="page-content">
-<h1 style="text-align:center; font-size:15px; margin:0 0 4px;">ประวัติการซ่อมบำรุง</h1>
-<p style="text-align:center; font-size:10px; color:#666; margin:0 0 12px;">Maintenance History</p>
-
-<div style="border:1px solid #ddd; border-radius:6px; padding:10px; margin-bottom:12px; font-size:10px; line-height:1.8;">
-    ${infoRow('รหัส', site.siteCode)}
-    ${infoRow('โรงพยาบาล', site.name)}
-    ${infoRow('ยี่ห้อ', site.brand)}
-    ${infoRow('รุ่น', site.model)}
-    ${infoRow('S/N', site.serialNumber)}
-    ${infoRow('ประเภท', site.deviceType)}<br>
-    ${infoRow('หน่วยงาน', site.installLocation || site.villageName)}
-    ${infoRow('จังหวัด', site.province)}
-    ${infoRow('ประกัน', warranty)}
-    ${infoRow('ผู้ดูแล', site.picName)}
-    ${infoRow('เบอร์โทร', site.contactPhone)}
-</div>
-
-<div style="font-weight:700; font-size:11px; margin-bottom:6px;">ประวัติเคสทั้งหมด (${siteLogs.length} รายการ)</div>
-<table style="border:1px solid #ddd; border-radius:6px;">
-    <thead>
-        <tr>
-            <th style="width:30px; text-align:center;">#</th>
-            <th style="width:90px;">วันที่</th>
-            <th style="width:80px;">รหัสเคส</th>
-            <th style="width:100px;">ประเภท</th>
-            <th style="width:70px;">สถานะ</th>
-            <th>รายละเอียด</th>
-        </tr>
-    </thead>
-    <tbody>
-        ${tableRows || '<tr><td colspan="6" style="text-align:center; padding:12px; color:#999;">ไม่มีประวัติเคส</td></tr>'}
-    </tbody>
-</table>
-</div>
-<div style="margin-top:auto; padding-top:10px;">
-    <div class="footer-line"></div>
-    <div class="footer-text"><span>บริษัท ไบโอ อินโน เทค จำกัด</span><span>FM-SER-07 Rev.00 Effective date : 02-02-2026</span></div>
-</div>
-</body></html>`;
-
-    showPdfPreview(html, `ประวัติเคส - ${site.name}`);
-}
-
-// --- Shared PDF Preview ---
-function showPdfPreview(html, title) {
-    let pdfModal = document.getElementById('pdf-preview-modal');
-    if (!pdfModal) {
-        pdfModal = document.createElement('div');
-        pdfModal.id = 'pdf-preview-modal';
-        pdfModal.style.cssText = 'display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; padding:16px;';
-        pdfModal.innerHTML = '<div id="pdf-preview-inner" style="position:relative; width:100%; max-width:1100px; height:90vh; background:#fff; border-radius:12px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.3);">'
-            + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
-            + '<span id="pdf-preview-title" style="font-weight:700; font-size:14px; color:#333;">PDF Preview</span>'
-            + '<div style="display:flex; gap:8px;">'
-            + '<button id="pdf-btn-print" style="background:#8bc53f; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-print"></i> พิมพ์</button>'
-            + '<button id="pdf-btn-close" style="background:#ef4444; color:#fff; border:none; border-radius:6px; width:34px; height:34px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-xmark"></i></button>'
-            + '</div></div>'
-            + '<iframe style="flex:1; border:none; width:100%;"></iframe>'
-            + '</div>';
-        document.body.appendChild(pdfModal);
-        document.getElementById('pdf-btn-close').onclick = () => { pdfModal.style.display = 'none'; };
-        pdfModal.onclick = (e) => { if (e.target === pdfModal) pdfModal.style.display = 'none'; };
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && pdfModal.style.display === 'flex') pdfModal.style.display = 'none'; });
-    }
-
-    const iframe = pdfModal.querySelector('iframe');
-    const titleEl = document.getElementById('pdf-preview-title');
-    if (titleEl) titleEl.textContent = title;
-    if (iframe) iframe.srcdoc = html;
-    pdfModal.style.display = 'flex';
-
-    const printBtn = document.getElementById('pdf-btn-print');
-    if (printBtn) {
-        const newPrint = printBtn.cloneNode(true);
-        printBtn.parentNode.replaceChild(newPrint, printBtn);
-        newPrint.id = 'pdf-btn-print';
-        newPrint.onclick = () => { iframe.contentWindow.print(); };
-    }
-}
-
-window.exportInsuranceCardPDF = exportInsuranceCardPDF;
-window.exportCaseHistoryPDF = exportCaseHistoryPDF;
-
-// --- Annual Plan PDF Export ---
-function exportAnnualPlanPDF() {
-    const yearSelect = document.getElementById('plan-year-select');
-    const selectedBE = yearSelect ? yearSelect.value : String(new Date().getFullYear() + 543);
-    const userLocale = navigator.language || 'th-TH';
-    const usesBE = userLocale.startsWith('th');
-    const displayYear = usesBE ? `พ.ศ. ${selectedBE}` : `${parseInt(selectedBE) - 543}`;
-
-    const monthNames = Array.from({length: 12}, (_, i) => {
-        const d = new Date(2024, i, 1);
-        return d.toLocaleString(userLocale, { month: 'short' });
-    });
-
-    // Build table rows
-    let rowsHtml = state.sites.map((site, idx) => {
-        const siteColor = getSiteColor(site.name);
-        const cells = Array.from({length: 12}, (_, m) => {
-            const pd = getPlanMonthData(site, selectedBE, m + 1);
-            const { planned, cycleCount, inputDate, notes } = pd;
-            if (!planned && cycleCount == null) return `<td style="text-align:center; padding:4px 2px; border:1px solid #ddd; background:#fff;"></td>`;
-            
-            const isUnplanned = !planned;
-            const cellBg = isUnplanned ? '#fff' : siteColor;
-            const cellBorder = isUnplanned ? `border: 1px dashed ${siteColor};` : 'border: 1px solid #ddd;';
-            const textColor = isUnplanned ? siteColor : '#fff';
-            const subTextColor = isUnplanned ? '#888' : 'rgba(255,255,255,0.85)';
-
-            const countHtml = cycleCount != null
-                ? `<div style="color:${textColor}; font-size:8px; font-weight:700; line-height:1.2;">${Number(cycleCount).toLocaleString()} <span style="font-size:6px; font-weight:400;">รอบ</span></div>`
-                : `<span style="color:${textColor}; font-size:8px;">${isUnplanned ? '○' : '✓'}</span>`;
-            const dateHtml = inputDate
-                ? `<div style="color:${subTextColor}; font-size:6px; margin-top:1px; white-space:nowrap;">${inputDate}</div>`
-                : '';
-            const notesHtml = notes
-                ? `<div style="color:${subTextColor}; font-size:5.5px; margin-top:1px; font-style:italic; line-height:1; max-width:60px; word-break:break-word;">${notes}</div>`
-                : '';
-            return `<td style="text-align:center; padding:3px 2px; ${cellBorder} background:${cellBg};">${countHtml}${dateHtml}${notesHtml}</td>`;
-        }).join('');
-        const noCell = `<td style="text-align:center; padding:5px 4px; border:1px solid #ddd; font-size:9px; font-weight:600;">${idx + 1}</td>`;
-        const warranty = site.insuranceStartDate && site.insuranceEndDate ? `${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : '-';
-        const subtleInfo = [
-            site.brand || site.model ? '<span style="font-weight:600;">รุ่น:</span> ' + [site.brand, site.model].filter(Boolean).join(' ') : '',
-            site.serialNumber ? '<span style="font-weight:600;">S/N:</span> ' + site.serialNumber : '',
-            '<span style="font-weight:600;">ประกัน:</span> ' + warranty,
-            site.province ? '<span style="font-weight:600;">จ.</span>' + site.province : ''
-        ].filter(Boolean).join(' | ');
-        const siteIdCell = `<td style="text-align:center; padding:5px 4px; border:1px solid #ddd; font-size:8px; white-space:nowrap;">${site.siteCode || '-'}</td>`;
-        const info = `<td style="padding:5px 8px; border:1px solid #ddd; border-left:4px solid ${siteColor}; font-size:9px;">
-            <div>
-                <b>${site.name}</b>
-                <div style="font-size:7px; color:#999; margin-top:1px;">${subtleInfo}</div>
-            </div>
-        </td>`;
-        return `<tr>${noCell}${siteIdCell}${info}${cells}</tr>`;
-    }).join('');
-
-
-    const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8">
-<title>Annual Maintenance Plan ${displayYear}</title>
-<style>
-    @page { size: A4 landscape; margin: 0; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 8mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
-    .page-content { flex: 1; }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    th { background: #f5f5f5 !important; font-size: 9px; padding: 5px 3px; border: 1px solid #ddd; }
-    .page-footer { margin-top: auto; }
-    .footer-line { position: relative; height: 2px; background: #ddd !important; }
-    .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
-    .footer-text { display: flex; justify-content: space-between; font-size: 8px; color: #333; padding: 4px 0; }
-    .header-line { margin-bottom: 10px; position: relative; height: 2px; background: #ddd !important; }
-    .header-line::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
-</style>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
-</head><body>
-
-<div style="display:flex; align-items:center; gap:12px; padding-bottom:10px;">
-    <img src="/bioinnotech.svg" alt="Logo" style="height:55px; width:auto;">
-    <div style="flex:1; text-align:right; font-size:9px; color:#333; line-height:1.6;">
-        <b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>
-        36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>
-        โทรศัพท์ 02-152-5405 เลขประจำตัวผู้เสียภาษี 0105557108369
-    </div>
-</div>
-<div class="header-line"></div>
-
-<div class="page-content">
-<h1 style="text-align:center; font-size:14px; margin:0 0 8px;">แผนการบำรุงรักษาประจำปี ${displayYear}</h1>
-<p style="text-align:center; font-size:9px; color:#666; margin:0 0 10px;">Annual Maintenance Plan — จำนวนอุปกรณ์ ${state.sites.length} เครื่อง</p>
-
-<table>
-    <thead>
-        <tr>
-            <th style="text-align:center; width:3.5%;">No.</th>
-            <th style="text-align:center; width:6.5%;">รหัส</th>
-            <th style="text-align:left; width:22%;">อุปกรณ์ (Device)</th>
-            ${monthNames.map(m => `<th style="width:5.66%; text-align:center;">${m}</th>`).join('')}
-        </tr>
-    </thead>
-    <tbody>
-        ${rowsHtml}
-    </tbody>
-</table>
-</div>
-
-<div class="page-footer">
-    <div class="footer-line"></div>
-    <div class="footer-text">
-        <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
-        <span>FM-SER-04 Rev.00 Effective date : 02-02-2026</span>
-    </div>
-</div>
-
-</body></html>`;
-
-    showPdfPreview(html, `แผนการบำรุงรักษาประจำปี ${displayYear}`);
-}
-
-window.exportAnnualPlanPDF = exportAnnualPlanPDF;
-
-// --- Devices List PDF Export ---
-function exportDevicesPDF() {
-    if (!state.sites || state.sites.length === 0) {
-        showToast('ไม่มีข้อมูลเครื่อง', 'error');
-        return;
-    }
-
-    const rowsHtml = state.sites.map(function(site, idx) {
-        const siteColor = getSiteColor(site.name);
-        const warranty = site.insuranceStartDate && site.insuranceEndDate ? site.insuranceStartDate + ' ~ ' + site.insuranceEndDate : '-';
-        const address = [site.subdistrict, site.district, site.province].filter(Boolean).join(', ') || '-';
-        // Find installation date from logs
-        const installLog = state.logs.find(function(l) { return l.siteId === site.id && l.category === 'ติดตั้ง'; });
-        const installDate = installLog ? formatDateDDMMYYYY(installLog.date) : '-';
-        return '<tr>'
-            + '<td style="text-align:center; padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (idx + 1) + '</td>'
-            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.siteCode || '-') + '</td>'
-            + '<td style="padding:4px 6px; border:1px solid #ddd; border-left:3px solid ' + siteColor + '; font-size:9px;"><b>' + site.name + '</b>' + (site.installLocation || site.villageName ? '<div style="font-size:8px; color:#333;"><span style="font-weight:600;">หน่วยงาน:</span> ' + (site.installLocation || site.villageName) + '</div>' : '') + (address !== '-' ? '<div style="font-size:8px; color:#333;"><span style="font-weight:600;">ที่อยู่:</span> ' + address + '</div>' : '') + (site.description ? '<div style="font-size:8px; color:#333;"><span style="font-weight:600;">รายละเอียด:</span> ' + site.description + '</div>' : '') + '</td>'
-            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.picName || '-') + '</td>'
-            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.contactPhone || '-') + '</td>'
-            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.deviceType || '-') + '</td>'
-            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + [site.brand, site.model].filter(Boolean).join(' ') + '</td>'
-            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.serialNumber || '-') + '</td>'
-            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + installDate + '</td>'
-            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + warranty + '</td>'
-            + '<td style="padding:4px 6px; border:1px solid #ddd; font-size:9px;">' + (site.warrantyNumber || '-') + '</td>'
-            + '</tr>';
-    }).join('');
-
-    const html = '<!DOCTYPE html>'
-        + '<html><head><meta charset="utf-8">'
-        + '<title>รายการเครื่อง (Devices)</title>'
-        + '<style>'
-        + '@page { size: A4 landscape; margin: 0; }'
-        + '* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }'
-        + 'body { font-family: "Sarabun", "Noto Sans Thai", sans-serif; font-size: 10px; color: #333; margin: 0; padding: 8mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }'
-        + '.page-content { flex: 1; }'
-        + 'table { width: 100%; border-collapse: collapse; }'
-        + 'th { background: #f5f5f5 !important; font-size: 9px; padding: 5px 6px; border: 1px solid #ddd; text-align: left; }'
-        + '.header-line { margin-bottom: 10px; position: relative; height: 2px; background: #ddd !important; }'
-        + '.header-line::before { content: ""; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }'
-        + '.page-footer { margin-top: auto; }'
-        + '.footer-line { position: relative; height: 2px; background: #ddd !important; }'
-        + '.footer-line::before { content: ""; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }'
-        + '.footer-text { display: flex; justify-content: space-between; font-size: 8px; color: #333; padding: 4px 0; }'
-        + '</style>'
-        + '<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">'
-        + '</head><body>'
-        + '<div style="display:flex; align-items:center; gap:12px; padding-bottom:10px;">'
-        + '<img src="/bioinnotech.svg" alt="Logo" style="height:55px; width:auto;">'
-        + '<div style="flex:1; text-align:right; font-size:9px; color:#333; line-height:1.6;">'
-        + '<b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>'
-        + '36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>'
-        + 'โทรศัพท์ 02-152-5405 เลขประจำตัวผู้เสียภาษี 0105557108369'
-        + '</div></div>'
-        + '<div class="header-line"></div>'
-        + '<div class="page-content">'
-        + '<h1 style="text-align:center; font-size:14px; margin:0 0 8px;">ทะเบียนเครื่องมือ</h1>'
-        + '<p style="text-align:center; font-size:9px; color:#666; margin:0 0 10px;">จำนวนทั้งหมด ' + state.sites.length + ' เครื่อง</p>'
-        + '<table><thead><tr>'
-        + '<th style="width:25px; text-align:center;">No.</th>'
-        + '<th>รหัส</th>'
-        + '<th>โรงพยาบาล</th>'
-        + '<th>ผู้ดูแล</th>'
-        + '<th>เบอร์โทร</th>'
-        + '<th>สัญญา</th>'
-        + '<th>ยี่ห้อ/รุ่น</th>'
-        + '<th>S/N</th>'
-        + '<th>วันที่ติดตั้ง</th>'
-        + '<th>ประกัน</th>'
-        + '<th>เลขที่ใบรับประกัน</th>'
-        + '</tr></thead><tbody>'
-        + rowsHtml
-        + '</tbody></table></div>'
-        + '<div class="page-footer">'
-        + '<div class="footer-line"></div>'
-        + '<div class="footer-text">'
-        + '<span>บริษัท ไบโอ อินโน เทค จำกัด</span>'
-        + '<span id="dev-page-info" style="font-size:8px; color:#333;"></span>'
-        + '<span>FM-SER-03 Rev.00 Effective date : 02-02-2026</span>'
-        + '</div></div>'
-        + '<script>'
-        + 'window.onload = function() {'
-        + '  var contentHeight = document.body.scrollHeight;'
-        + '  var pageHeight = 210 * 3.78;'
-        + '  var totalPages = Math.max(1, Math.ceil(contentHeight / pageHeight));'
-        + '  var el = document.getElementById("dev-page-info");'
-        + '  if (el) el.textContent = "";'
-        + '  var pageNumStyle = "position:absolute; right:10mm; font-size:8px; color:#333; z-index:100; background:#fff; padding:0 4px;";'
-        + '  var footerOffset = 16 * 3.78;'
-        + '  for (var p = 1; p <= totalPages; p++) {'
-        + '    var marker = document.createElement("div");'
-        + '    marker.style.cssText = pageNumStyle;'
-        + '    marker.style.top = (p * pageHeight - footerOffset) + "px";'
-        + '    marker.textContent = "หน้า " + p + " จาก " + totalPages;'
-        + '    document.body.appendChild(marker);'
-        + '  }'
-        + '};'
-        + '</script>'
-        + '</body></html>';
-
-    // Reuse PDF preview modal
-    var pdfModal = document.getElementById('pdf-preview-modal');
-    if (!pdfModal) {
-        pdfModal = document.createElement('div');
-        pdfModal.id = 'pdf-preview-modal';
-        pdfModal.style.cssText = 'display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; padding:16px;';
-        pdfModal.innerHTML = '<div style="position:relative; width:100%; max-width:1100px; height:90vh; background:#fff; border-radius:12px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.3);">'
-            + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
-            + '<span id="pdf-preview-title" style="font-weight:700; font-size:14px; color:#333;">PDF Preview</span>'
-            + '<div style="display:flex; gap:8px;">'
-            + '<button id="pdf-btn-print" style="background:#8bc53f; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-print"></i> พิมพ์</button>'
-            + '<button id="pdf-btn-close" style="background:#ef4444; color:#fff; border:none; border-radius:6px; width:34px; height:34px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-xmark"></i></button>'
-            + '</div></div>'
-            + '<iframe id="pdf-preview-iframe" style="flex:1; border:none; width:100%; background:#fff;"></iframe>'
-            + '</div>';
-        document.body.appendChild(pdfModal);
-        document.getElementById('pdf-btn-close').onclick = function() { pdfModal.style.display = 'none'; };
-        pdfModal.onclick = function(e) { if (e.target === pdfModal) pdfModal.style.display = 'none'; };
-        document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && pdfModal.style.display === 'flex') pdfModal.style.display = 'none'; });
-        document.getElementById('pdf-btn-print').onclick = function() { var fr = document.getElementById('pdf-preview-iframe'); if (fr && fr.contentWindow) fr.contentWindow.print(); };
-    }
-
-    var iframe = document.getElementById('pdf-preview-iframe');
-    document.getElementById('pdf-preview-title').textContent = 'ทะเบียนเครื่องมือ';
-    iframe.srcdoc = html;
-    pdfModal.style.display = 'flex';
-}
-
-window.exportDevicesPDF = exportDevicesPDF;
-
-// --- Maintenance Plan Timeline ---
-
-/**
- * Normalizes the maintenancePlans data for a site/year/month.
- * Supports BOTH legacy format (array of month numbers) and new format (object with month keys).
- * Returns: { planned, cycleCount, inputDate, notes }
- */
-function getPlanMonthData(site, year, month) {
-    const planData = site.maintenancePlans && site.maintenancePlans[year];
-    if (!planData) return { planned: false, cycleCount: null, inputDate: null, notes: null };
-    // Legacy format: array of month numbers e.g. [1, 3, 6]
-    if (Array.isArray(planData)) {
-        return { planned: planData.includes(month), cycleCount: null, inputDate: null, notes: null };
-    }
-    // New format: object with month keys e.g. { "1": { planned: true, cycleCount: 5000 } }
-    const monthKey = String(month);
-    const monthData = planData[monthKey];
-    if (!monthData) return { planned: false, cycleCount: null, inputDate: null, notes: null };
-    return {
-        planned: monthData.planned !== false,
-        cycleCount: monthData.cycleCount != null ? monthData.cycleCount : null,
-        inputDate: monthData.inputDate || null,
-        notes: monthData.notes || null,
-    };
-}
-
-/** Migrates a site's maintenancePlans year from legacy array to new object format. */
-function migratePlanToObjectFormat(existingPlan) {
-    if (Array.isArray(existingPlan)) {
-        const obj = {};
-        existingPlan.forEach(m => {
-            obj[String(m)] = { planned: true, cycleCount: null, inputDate: null, notes: null };
-        });
-        return obj;
-    }
-    return existingPlan || {};
-}
-
-function renderMaintenancePlan() {
-    const yearSelect = document.getElementById('plan-year-select');
-    const headerRow = document.getElementById('plan-timeline-header');
-    const tbody = document.getElementById('plan-timeline-body');
-    const emptyState = document.getElementById('plan-empty-state');
-    if (!yearSelect || !headerRow || !tbody) return;
-
-    const currentYear = new Date().getFullYear();
-    const currentBE = currentYear + 543;
-    if (yearSelect.options.length === 0) {
-        const userLocale = navigator.language || 'th-TH';
-        const usesBE = userLocale.startsWith('th');
-        for (let y = currentBE + 1; y >= currentBE - 5; y--) {
-            const opt = document.createElement('option');
-            opt.value = y;
-            opt.textContent = usesBE ? `พ.ศ. ${y}` : `${y - 543}`;
-            if (y === currentBE) opt.selected = true;
-            yearSelect.appendChild(opt);
-        }
-        yearSelect.addEventListener('change', renderMaintenancePlan);
-    }
-
-    const selectedBE = String(yearSelect.value);
-    const now = new Date();
-    const currentMonth = (currentYear + 543) == parseInt(selectedBE) ? now.getMonth() : -1;
-
-    // Use browser locale for month names
-    const userLocale = navigator.language || 'th-TH';
-    const monthNames = Array.from({length: 12}, (_, i) => {
-        const d = new Date(2024, i, 1);
-        return d.toLocaleString(userLocale, { month: 'short' });
-    });
-
-    const isEditMode = true;
-
-    // Header
-    headerRow.innerHTML = `<th style="text-align:center; padding:0.6rem 0.4rem; border:1px solid rgba(0,0,0,0.08); width:30px; background:#f5f5f5;">No.</th><th style="text-align:center; padding:0.6rem 0.4rem; border:1px solid rgba(0,0,0,0.08); width:50px; background:#f5f5f5;">รหัส</th><th style="text-align:left; padding:0.6rem 0.75rem; border:1px solid rgba(0,0,0,0.08); min-width:180px; position:sticky; left:0; background:#f5f5f5; z-index:3;">อุปกรณ์</th>`;
-    for (let m = 0; m < 12; m++) {
-        const isCurrent = m === currentMonth;
-        headerRow.innerHTML += `<th style="text-align:center; padding:0.5rem 0.4rem; border:1px solid rgba(0,0,0,0.08); min-width:80px; font-size:0.8rem; ${isCurrent ? 'background:#111; color:#fff;' : ''}">${monthNames[m]}</th>`;
-    }
-
-    if (state.sites.length === 0) {
-        tbody.innerHTML = '';
-        if (emptyState) emptyState.style.display = 'block';
-        return;
-    }
-    if (emptyState) emptyState.style.display = 'none';
-
-    tbody.innerHTML = state.sites.map((site, siteIndex) => {
-        const siteColor = getSiteColor(site.name);
-
-        const noCell = `<td style="text-align:center; padding:0.4rem; border:1px solid rgba(0,0,0,0.06); font-size:0.82rem; font-weight:600;">${siteIndex + 1}</td>`;
-        const siteIdCell = `<td style="text-align:center; padding:0.4rem; border:1px solid rgba(0,0,0,0.06); font-size:0.78rem; white-space:nowrap;">${site.siteCode || '-'}</td>`;
-        const deviceSubtle = [
-            site.brand || site.model ? [site.brand, site.model].filter(Boolean).join(' ') : '',
-            site.serialNumber ? `S/N: ${site.serialNumber}` : '',
-            site.province ? `จ.${site.province}` : '',
-            site.insuranceStartDate && site.insuranceEndDate ? `ประกัน: ${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : ''
-        ].filter(Boolean).map(t => `<span style="display:inline-block; background:rgba(0,0,0,0.05); padding:1px 6px; border-radius:3px; font-size:0.7rem; color:#555; white-space:nowrap;">${t}</span>`).join(' ');
-        const deviceCell = `<td class="plan-device-cell" onclick="viewSiteDetails('${site.id}')" style="border-left:4px solid ${siteColor}; min-width:180px; position:sticky; left:0; background:#fff; z-index:2; cursor:pointer;">
-            <div class="plan-device-info">
-                <span class="plan-device-name">${site.name}</span>
-                ${deviceSubtle ? `<div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:3px;">${deviceSubtle}</div>` : ''}
-            </div>
-        </td>`;
-
-        const monthCells = Array.from({length: 12}, (_, m) => {
-            const monthNum = m + 1;
-            const isCurrent = m === currentMonth;
-            const pd = getPlanMonthData(site, selectedBE, monthNum);
-            const { planned, cycleCount, inputDate, notes } = pd;
-
-            const isUnplanned = !planned && cycleCount != null;
-            const bg = planned 
-                ? siteColor 
-                : (cycleCount != null ? 'rgba(0,0,0,0.03)' : (isCurrent ? 'rgba(0,0,0,0.02)' : ''));
-
-            const hasData = planned || cycleCount != null;
-            let cellContent = '';
-            if (hasData) {
-                const isUnplanned = !planned;
-                const chipStyle = isUnplanned 
-                    ? `background: #fff; border: 1.5px dashed ${siteColor}; color: ${siteColor}; box-shadow: 0 1px 3px rgba(0,0,0,0.05);` 
-                    : `color: #fff;`;
-                
-                const countTextColor = isUnplanned ? siteColor : '#fff';
-                const subTextColor = isUnplanned ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.85)';
-
-                const countHtml = cycleCount != null
-                    ? `<span class="plan-cycle-count" style="color:${countTextColor};">${Number(cycleCount).toLocaleString()} <small style="font-size: 0.8em; opacity: 0.9;">รอบ</small></span>`
-                    : `<i class="fa-solid fa-wrench" style="color:${countTextColor}; font-size:0.75rem;"></i>`;
-                const dateHtml = inputDate
-                    ? `<span class="plan-cycle-date" style="color:${subTextColor};">${inputDate}</span>`
-                    : '';
-                const notesHtml = notes
-                    ? `<span class="plan-cycle-notes" style="color:${subTextColor}; opacity:0.8;">${notes}</span>`
-                    : '';
-                cellContent = `<div class="plan-cycle-chip" style="${chipStyle}">${countHtml}${dateHtml}${notesHtml}</div>`;
-            }
-
-            // Normal content
-            const contentWrapper = `<div class="plan-cell-content">${cellContent}</div>`;
-
-            // Hover overlay with stacked full-width buttons
-            const overlay = `
-                <div class="plan-cell-overlay">
-                    <button class="plan-hover-btn edit" onclick="openCycleCountModal('${site.id}','${selectedBE}',${monthNum})">
-                        <i class="fa-solid fa-pen-to-square"></i> ${hasData ? 'แก้ไข' : 'เพิ่ม'}
-                    </button>
-                    ${hasData ? `
-                        <div class="plan-hover-divider"></div>
-                        <button class="plan-hover-btn clear" onclick="deletePlanEntry('${site.id}', '${selectedBE}', ${monthNum})">
-                            <i class="fa-solid fa-trash-can"></i> ล้าง
-                        </button>
-                    ` : ''}
-                </div>
-            `;
-
-            return `<td class="plan-month-cell" style="background:${bg};">${contentWrapper}${overlay}</td>`;
-        }).join('');
-
-        return `<tr>${noCell}${siteIdCell}${deviceCell}${monthCells}</tr>`;
-    }).join('');
-}
-
-// --- Cycle Count Modal Logic ---
-let _cycleModalState = { siteId: null, year: null, month: null };
-
-function openCycleCountModal(siteId, year, month) {
-    const site = state.sites.find(s => s.id === siteId);
-    if (!site) return;
-
-    const modal = document.getElementById('modal-plan-cycle-count');
-    if (!modal) return;
-
-    const userLocale = navigator.language || 'th-TH';
-    const monthName = new Date(2024, month - 1, 1).toLocaleString(userLocale, { month: 'long' });
-    const yearCE = parseInt(year) - 543;
-
-    // Store state
-    _cycleModalState = { siteId, year, month };
-
-    // Populate modal
-    document.getElementById('cycle-device-name').textContent = site.name || siteId;
-    document.getElementById('cycle-month-label').textContent = `${monthName} ${year} (${yearCE})`;
-
-    // Load existing data
-    const pd = getPlanMonthData(site, year, month);
-    document.getElementById('cycle-planned-toggle').checked = pd.planned;
-    document.getElementById('cycle-count-input').value = pd.cycleCount != null ? pd.cycleCount : '';
-    document.getElementById('cycle-date-input').value = pd.inputDate || new Date().toISOString().split('T')[0];
-    document.getElementById('cycle-notes-input').value = pd.notes || '';
-
-    // Show modal
-    modal.classList.remove('hidden');
-    modal.style.display = 'flex';
-
-    // Focus cycle count input
-    setTimeout(() => document.getElementById('cycle-count-input').focus(), 150);
-}
-window.openCycleCountModal = openCycleCountModal;
-
-function closeCycleCountModal() {
-    const modal = document.getElementById('modal-plan-cycle-count');
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.style.display = '';
-    }
-    _cycleModalState = { siteId: null, year: null, month: null };
-}
-
-async function saveCycleCount() {
-    const { siteId, year, month } = _cycleModalState;
-    if (!siteId || !year || !month) return;
-
-    const site = state.sites.find(s => s.id === siteId);
-    if (!site) return;
-
-    const planned = document.getElementById('cycle-planned-toggle').checked;
-    const cycleCountVal = document.getElementById('cycle-count-input').value;
-    const inputDate = document.getElementById('cycle-date-input').value;
-    const notes = document.getElementById('cycle-notes-input').value.trim();
-    const cycleCount = cycleCountVal !== '' ? parseInt(cycleCountVal, 10) : null;
-
-    if (!site.maintenancePlans) site.maintenancePlans = {};
-
-    // Migrate to new object format if currently legacy array
-    if (Array.isArray(site.maintenancePlans[year])) {
-        site.maintenancePlans[year] = migratePlanToObjectFormat(site.maintenancePlans[year]);
-    }
-    if (!site.maintenancePlans[year]) site.maintenancePlans[year] = {};
-
-    const monthKey = String(month);
-
-    if (!planned && cycleCount == null && !inputDate && !notes) {
-        // Remove this month entry entirely
-        delete site.maintenancePlans[year][monthKey];
-        if (Object.keys(site.maintenancePlans[year]).length === 0) {
-            delete site.maintenancePlans[year];
-        }
-    } else {
-        site.maintenancePlans[year][monthKey] = {
-            planned,
-            cycleCount: cycleCount,
-            inputDate: inputDate || new Date().toISOString().split('T')[0],
-            notes: notes || null,
-        };
-    }
-
-    const saveBtn = document.getElementById('btn-cycle-save');
-    if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังบันทึก...'; }
-
-    try {
-        await FirestoreService.updateSite(siteId, { maintenancePlans: site.maintenancePlans || {} });
-        closeCycleCountModal();
-        renderMaintenancePlan();
-        showToast('บันทึก Cycle Count สำเร็จ', 'success', 2000);
-    } catch (e) {
-        console.error('Failed to save cycle count:', e);
-        showToast('บันทึกไม่สำเร็จ กรุณาลองใหม่', 'error');
-    } finally {
-        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> บันทึก'; }
-    }
-}
-
-async function deletePlanEntry(siteId, year, month) {
-    if (!(await showDialog('คุณแน่ใจหรือไม่ที่จะล้างข้อมูลของเดือนนี้?', { 
-        type: 'confirm', 
-        confirmText: 'ล้างข้อมูล', 
-        cancelText: 'ยกเลิก',
-        danger: true 
-    }))) return;
-    
-    const site = state.sites.find(s => s.id === siteId);
-    if (!site) return;
-    
-    if (site.maintenancePlans && site.maintenancePlans[year]) {
-        const monthKey = String(month);
-        delete site.maintenancePlans[year][monthKey];
-        
-        // Clean up empty year
-        if (Object.keys(site.maintenancePlans[year]).length === 0) {
-            delete site.maintenancePlans[year];
-        }
-        
-        try {
-            await FirestoreService.updateSite(siteId, { maintenancePlans: site.maintenancePlans });
-            renderMaintenancePlan();
-            showToast('ล้างข้อมูลสำเร็จ', 'success', 2000);
-        } catch (e) {
-            console.error('Failed to delete plan entry:', e);
-            showToast('ไม่สามารถล้างข้อมูลได้', 'error');
-        }
-    }
-}
-window.deletePlanEntry = deletePlanEntry;
-
-async function clearCycleCount() {
-    if (!(await showDialog('คุณแน่ใจหรือไม่ที่จะล้างข้อมูลของเดือนนี้?', { 
-        type: 'confirm', 
-        confirmText: 'ล้างข้อมูล', 
-        cancelText: 'ยกเลิก',
-        danger: true 
-    }))) return;
-    
-    document.getElementById('cycle-planned-toggle').checked = false;
-    document.getElementById('cycle-count-input').value = '';
-    document.getElementById('cycle-date-input').value = '';
-    document.getElementById('cycle-notes-input').value = '';
-    
-    await saveCycleCount();
-}
-
-/** Wire up cycle count modal buttons. Called once during init. */
-function initCycleCountModal() {
-    const saveBtn = document.getElementById('btn-cycle-save');
-    const clearBtn = document.getElementById('btn-cycle-clear');
-    const cancelBtn = document.getElementById('btn-cycle-cancel');
-    const closeBtn = document.getElementById('btn-close-cycle-modal');
-    const modal = document.getElementById('modal-plan-cycle-count');
-
-    if (saveBtn) saveBtn.addEventListener('click', saveCycleCount);
-    if (clearBtn) clearBtn.addEventListener('click', clearCycleCount);
-    if (cancelBtn) cancelBtn.addEventListener('click', closeCycleCountModal);
-    if (closeBtn) closeBtn.addEventListener('click', closeCycleCountModal);
-    if (modal) {
-        modal.addEventListener('click', (e) => { if (e.target === modal) closeCycleCountModal(); });
-    }
-    const countInput = document.getElementById('cycle-count-input');
-    if (countInput) {
-        countInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveCycleCount(); });
-    }
-}
-
-async function togglePlanMonth(siteId, year, month) {
-    // Now opens cycle count modal instead of direct toggle
-    openCycleCountModal(siteId, year, month);
-}
-
-window.togglePlanMonth = togglePlanMonth;
-
-// ============================================================
-// QR CODE DEVICE FEATURE
-// ============================================================
-
-/**
- * Get the base URL for QR links. Uses the current origin.
- */
-function getAppBaseUrl() {
-    return window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
-}
-
-/**
- * Show the QR Code modal for a given device (site)
- */
-function showDeviceQR(siteId) {
-    const site = state.sites.find(s => s.id === siteId);
-    if (!site) {
-        showToast('ไม่พบข้อมูลเครื่อง', 'error');
-        return;
-    }
-
-    const modal = document.getElementById('modal-device-qr');
-    if (!modal) return;
-
-    // Build the public report URL
-    const baseUrl = getAppBaseUrl();
-    const reportUrl = `${baseUrl}index.html?report=${siteId}`;
-
-    // Set device name in header
-    const nameEl = document.getElementById('qr-modal-device-name');
-    if (nameEl) nameEl.textContent = site.name || 'QR Code เครื่อง';
-
-    // Fill device info banner
-    const infoEl = document.getElementById('qr-device-info');
-    if (infoEl) {
-        infoEl.innerHTML = createDeviceBannerHTML(site);
-    }
-
-    // Show URL
-    const urlEl = document.getElementById('qr-url-display');
-    if (urlEl) {
-        urlEl.textContent = reportUrl;
-    }
-
-    // Generate QR Code
-    const canvas = document.getElementById('device-qr-canvas');
-    if (canvas && typeof QRCode !== 'undefined') {
-        const qrSize = window.innerWidth > 768 ? 300 : 220;
-        QRCode.toCanvas(canvas, reportUrl, {
-            width: qrSize,
-            margin: 2,
-            color: {
-                dark: '#0f172a',
-                light: '#ffffff'
-            },
-            errorCorrectionLevel: 'M'
-        }, function(error) {
-            if (error) console.error('QR generation error:', error);
-        });
-    } else if (canvas) {
-        // Fallback: use qrserver API via img
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = function() {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
-        };
-        img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(reportUrl)}`;
-    }
-
-    // Show modal
-    modal.classList.remove('hidden');
-    modal.style.display = 'flex';
-
-    // Download button
-    const btnDownload = document.getElementById('btn-download-qr');
-    if (btnDownload) {
-        btnDownload.onclick = () => {
-            if (!canvas) return;
-            const link = document.createElement('a');
-            link.download = `qr-${site.siteCode || siteId}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-        };
-    }
-
-    // Copy link button
-    const btnCopy = document.getElementById('btn-copy-qr-link');
-    if (btnCopy) {
-        btnCopy.onclick = () => {
-            navigator.clipboard.writeText(reportUrl).then(() => {
-                showToast('คัดลอกลิงก์เรียบร้อย', 'success');
-            }).catch(() => {
-                // fallback
-                const ta = document.createElement('textarea');
-                ta.value = reportUrl;
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-                showToast('คัดลอกลิงก์เรียบร้อย', 'success');
-            });
-        };
-    }
-
-    // Print button
-    const btnPrint = document.getElementById('btn-print-qr');
-    if (btnPrint) {
-        btnPrint.onclick = () => printDeviceQR(site, reportUrl, canvas);
-    }
-
-    // Close button
-    const btnClose = document.getElementById('btn-close-qr-modal');
-    if (btnClose) {
-        btnClose.onclick = () => closeDeviceQRModal();
-    }
-
-    // Close on overlay click
-    modal.onclick = (e) => {
-        if (e.target === modal) closeDeviceQRModal();
-    };
-}
-
-function closeDeviceQRModal() {
-    const modal = document.getElementById('modal-device-qr');
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.style.display = '';
-    }
-}
-
-function printDeviceQR(site, reportUrl, canvas) {
-    const qrDataUrl = canvas ? canvas.toDataURL('image/png') : '';
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>QR Code - ${site.name}</title>
-    <style>
-        body { font-family: 'Prompt', Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #fff; }
-        .qr-print-card { text-align: center; padding: 24px; border: 2px solid #e5e7eb; border-radius: 16px; max-width: 320px; }
-        .qr-print-logo { width: 48px; margin-bottom: 12px; }
-        .qr-print-title { font-size: 1.1rem; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
-        .qr-print-sub { font-size: 0.8rem; color: #64748b; margin-bottom: 16px; }
-        .qr-print-img { width: 200px; height: 200px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; }
-        .qr-print-name { font-size: 0.9rem; font-weight: 600; color: #1e293b; margin-top: 12px; }
-        .qr-print-code { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
-        .qr-print-url { font-size: 0.65rem; color: #94a3b8; margin-top: 8px; word-break: break-all; }
-        .qr-print-badge { display: inline-block; background: #f0fdf4; color: #16a34a; font-size: 0.75rem; font-weight: 600; padding: 4px 12px; border-radius: 20px; margin-top: 8px; border: 1px solid #bbf7d0; }
-    </style>
-</head>
-<body>
-    <div class="qr-print-card">
-        <div class="qr-print-title">แจ้งปัญหาเครื่อง</div>
-        <div class="qr-print-sub">สแกน QR Code เพื่อแจ้งปัญหา</div>
-        ${qrDataUrl ? `<img src="${qrDataUrl}" class="qr-print-img" alt="QR Code">` : ''}
-        <div class="qr-print-name">${site.name}</div>
-        ${site.siteCode ? `<div class="qr-print-code">${site.siteCode}</div>` : ''}
-        ${site.serialNumber ? `<div class="qr-print-code">S/N: ${site.serialNumber}</div>` : ''}
-        <div class="qr-print-badge">CASP Maintenance System</div>
-    </div>
-</body>
-</html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => { printWindow.print(); }, 400);
-}
-
-window.showDeviceQR = showDeviceQR;
-
-// ============================================================
-// PUBLIC INCIDENT REPORT PAGE (?report=DEVICE_ID)
-// ============================================================
-function initPublicReportPage() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const reportSiteId = urlParams.get('report');
-    if (!reportSiteId) return;
-
-    // This is a public page - hide login & app, show report view
-    document.querySelectorAll('.app-container, #login-view, #loading-splash').forEach(el => {
-        el.style.display = 'none';
-    });
-    const reportView = document.getElementById('public-report-view');
-    if (reportView) reportView.style.display = 'flex';
-
-    // Load device info anonymously
-    (async function() {
-        try {
-            // Sign in anonymously to access Firestore
-            try {
-                await signInAnonymously(auth);
-            } catch (e) {
-                console.warn('Anonymous auth failed:', e);
-            }
-
-            const deviceInfoEl = document.getElementById('report-device-info');
-            try {
-                const docSnap = await getDoc(doc(db, 'sites', reportSiteId));
-                if (docSnap.exists()) {
-                    const site = { id: docSnap.id, ...docSnap.data() };
-                    if (deviceInfoEl) {
-                        deviceInfoEl.innerHTML = createDeviceBannerHTML(site);
-                    }
-                } else {
-                    if (deviceInfoEl) {
-                        deviceInfoEl.innerHTML = `<div class="report-device-not-found"><i class="fa-solid fa-triangle-exclamation"></i> ไม่พบข้อมูลเครื่องในระบบ</div>`;
-                    }
-                }
-            } catch (e) {
-                console.warn('Could not load device info:', e);
-                if (deviceInfoEl) {
-                    deviceInfoEl.innerHTML = `<div class="report-device-spinner"><i class="fa-solid fa-circle-exclamation"></i> ไม่สามารถโหลดข้อมูลได้</div>`;
-                }
-            }
-
-            // Handle form submission
-            const form = document.getElementById('public-report-form');
-            const submitBtn = document.getElementById('btn-public-report-submit');
-            if (form && submitBtn) {
-                form.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-
-                    const name = document.getElementById('report-name')?.value.trim();
-                    const tel = document.getElementById('report-tel')?.value.trim();
-                    const description = document.getElementById('report-description')?.value.trim();
-                    const cycleCount = document.getElementById('report-cycle-count')?.value || "";
-
-                    if (!name || !tel || !description) {
-                        alert('กรุณากรอกข้อมูลให้ครบถ้วน');
-                        return;
-                    }
-
-                    submitBtn.disabled = true;
-                    const btnIcon = submitBtn.querySelector('i');
-                    const btnText = submitBtn.querySelector('span');
-                    if (btnIcon) btnIcon.className = 'fa-solid fa-circle-notch fa-spin';
-                    if (btnText) btnText.textContent = 'กำลังส่ง...';
-
-                    try {
-                        // Ensure auth is still active
-                        if (!auth.currentUser) {
-                            await signInAnonymously(auth);
-                        }
-
-                        // Generate CASE-XXXXX logic
-                        const prefix = 'CASE-';
-                        const random = Math.floor(10000 + Math.random() * 90000);
-                        const caseId = prefix + random;
-                        
-                        const now = new Date();
-                        const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-
-                        const logData = {
-                            siteId: reportSiteId,
-                            caseId: caseId,
-                            category: 'ซ่อม', // Simplified from แจ้งซ่อม as requested
-                            status: 'Open',
-                            objective: description,
-                            details: description,
-                            cycleCount: cycleCount,
-                            date: dateStr,
-                            timestamp: now.toISOString(),
-                            recordedBy: name,
-                            recorderId: 'public',
-                            customerName: name,
-                            customerPhone: tel,
-                            isPublicReport: true,
-                            lineItems: [],
-                            attachments: [],
-                            attachmentsBefore: [],
-                            attachmentsAfter: [],
-                            statusHistory: { 'Open': now.toISOString() }
-                        };
-
-                        const docRef = await addDoc(collection(db, 'logs'), logData);
-
-                        // Show success
-                        if (form) form.style.display = 'none';
-                        const successEl = document.getElementById('report-success-msg');
-                        if (successEl) successEl.style.display = 'flex';
-                        const caseIdDisplay = document.getElementById('report-case-id-display');
-                        if (caseIdDisplay) {
-                            caseIdDisplay.innerHTML = `<i class="fa-solid fa-ticket"></i> รหัสเคส: <strong>${caseId}</strong>`;
-                        }
-
-                    } catch (err) {
-                        console.error('Public report submission failed:', err);
-                        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง\n' + err.message);
-                        submitBtn.disabled = false;
-                        if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
-                        if (btnText) btnText.textContent = 'ส่งคำร้อง';
-                    }
-                });
-            }
-        } catch (err) {
-            console.error('Public report page init error:', err);
-        }
-    })();
-}
-
-// --- Global Event Listeners (Must be outside init() for Login) ---
-document.addEventListener("DOMContentLoaded", () => {
-    console.log("Global Listeners Attached");
-
-    // --- Public Incident Report Page (no auth required) ---
-    initPublicReportPage();
-
-    // --- Public Signing Page (no auth required) ---
-    (function() {
-        var urlParams = new URLSearchParams(window.location.search);
-        var signLogId = urlParams.get('sign');
-        if (!signLogId) return;
-
-        // Hide everything, show signing page
-        document.querySelectorAll('.app-container, #login-view').forEach(function(el) { el.style.display = 'none'; });
-        var signView = document.getElementById('public-sign-view');
-        if (signView) signView.style.display = 'block';
-
-        // Init signature pad
-        var canvas = document.getElementById('public-sign-canvas');
-        if (canvas && typeof SignaturePad !== 'undefined') {
-            window.publicSignPad = new SignaturePad(canvas, { backgroundColor: 'rgb(255,255,255)' });
-        }
-
-        // Upload handler
-        var uploadInput = document.getElementById('public-sign-upload');
-        if (uploadInput) {
-            uploadInput.addEventListener('change', function(e) {
-                var file = e.target.files[0];
-                if (!file || !canvas) return;
-                var reader = new FileReader();
-                reader.onload = function(ev) {
-                    var img = new Image();
-                    img.onload = function() {
-                        if (window.publicSignPad) window.publicSignPad.clear();
-                        var ctx = canvas.getContext('2d');
-                        ctx.fillStyle = '#fff';
-                        ctx.fillRect(0, 0, canvas.width, canvas.height);
-                        var scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
-                        var x = (canvas.width - img.width * scale) / 2;
-                        var y = (canvas.height - img.height * scale) / 2;
-                        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-                    };
-                    img.src = ev.target.result;
-                };
-                reader.readAsDataURL(file);
-                e.target.value = '';
-            });
-        }
-
-        // Sign in anonymously first, then load case info
-        var initSigningPage = async function() {
-            try {
-                await signInAnonymously(auth);
-                console.log('Anonymous auth success');
-            } catch(e) {
-                console.warn('Anonymous auth failed:', e);
-            }
-            // Load case info
-            try {
-                var docSnap = await getDoc(doc(db, 'logs', signLogId));
-                if (docSnap.exists()) {
-                    var logData = docSnap.data();
-                    var infoEl = document.getElementById('sign-case-info');
-                    if (infoEl) {
-                        infoEl.innerHTML = '<b>เคส:</b> ' + (logData.caseId || signLogId) + '<br><b>หมวดหมู่:</b> ' + (logData.category || '-');
-                    }
-                }
-            } catch(e) { console.warn('Could not load case info:', e); }
-        };
-        initSigningPage();
-
-        // Submit handler
-        var submitBtn = document.getElementById('btn-public-sign-submit');
-        if (submitBtn) {
-            submitBtn.addEventListener('click', async function() {
-                var name = document.getElementById('sign-name').value.trim();
-                var tel = document.getElementById('sign-tel').value.trim();
-                var position = document.getElementById('sign-position').value.trim();
-
-                if (!name || !tel) {
-                    alert('กรุณากรอกชื่อและเบอร์โทร');
-                    return;
-                }
-
-                if (window.publicSignPad && window.publicSignPad.isEmpty()) {
-                    alert('กรุณาลงลายเซ็น');
-                    return;
-                }
-
-                // Get signature data
-                var tempCanvas = document.createElement('canvas');
-                tempCanvas.width = canvas.width;
-                tempCanvas.height = canvas.height;
-                var ctx = tempCanvas.getContext('2d');
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-                ctx.drawImage(canvas, 0, 0);
-                var sigData = tempCanvas.toDataURL('image/jpeg', 0.8);
-
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'กำลังบันทึก...';
-
-                try {
-                    // Ensure anonymous auth is still active
-                    if (!auth.currentUser) {
-                        await signInAnonymously(auth);
-                    }
-                    var logRef = doc(db, 'logs', signLogId);
-                    var logSnap = await getDoc(logRef);
-                    if (!logSnap.exists()) { alert('ไม่พบเคสนี้'); return; }
-
-                    var logData = logSnap.data();
-                    var signatures = logData.statusSignatures || {};
-                    signatures['Done'] = {
-                        data: sigData,
-                        timestamp: new Date().toISOString(),
-                        signedBy: name,
-                        signerName: name,
-                        signerTel: tel,
-                        signerPosition: position,
-                        signedRemotely: true
-                    };
-
-                    await updateDoc(logRef, {
-                        statusSignatures: signatures,
-                        customerName: name,
-                        customerPhone: tel,
-                        customerPosition: position,
-                        customerSignature: sigData
-                    });
-
-                    // Show success
-                    document.getElementById('sign-success-msg').style.display = 'block';
-                    submitBtn.style.display = 'none';
-                    document.querySelectorAll('#public-sign-view input, #public-sign-view canvas, #public-sign-view button:not(#btn-public-sign-submit)').forEach(function(el) { el.style.pointerEvents = 'none'; el.style.opacity = '0.5'; });
-
-                } catch(e) {
-                    console.error('Signing failed:', e);
-                    alert('เกิดข้อผิดพลาด: ' + e.message);
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'ยืนยันลายเซ็น';
-                }
-            });
-        }
-    })();
-
-    // Login Form
-    const loginForm = document.getElementById("login-form");
-    if (loginForm) loginForm.addEventListener("submit", handleLogin);
-});
-
-window.FirestoreService = FirestoreService; // Exposed for debugging
-
-function setupRecycleBinTabs() {
-    const btnRecycle = document.getElementById("btn-rb-recycle");
-    const btnActionLog = document.getElementById("btn-rb-actionlog");
-    const contentRecycle = document.getElementById("content-rb-recycle");
-    const contentActionLog = document.getElementById("content-rb-actionlog");
-
-    if (!btnRecycle || !btnActionLog) return;
-
-    btnRecycle.addEventListener("click", () => {
-        btnRecycle.classList.add("active");
-        btnActionLog.classList.remove("active");
-        contentRecycle.classList.remove("hidden");
-        contentActionLog.classList.add("hidden");
-    });
-
-    btnActionLog.addEventListener("click", () => {
-        btnActionLog.classList.add("active");
-        btnRecycle.classList.remove("active");
-        contentActionLog.classList.remove("hidden");
-        contentRecycle.classList.add("hidden");
-        renderActionLogs(); // Load logs when tab is clicked
-    });
-}
-
-async function renderActionLogs() {
-    const container = document.getElementById("content-rb-actionlog");
-    if (!container) return;
-
-    // Reset or Initialize State Limit if not present
-    if (!state.currentLogLimit) state.currentLogLimit = 50;
-
-    // Prevent duplicate subscriptions if already active AND limit hasn't changed
-    if (
-        state.actionLogUnsubscribe &&
-        state.lastRenderedLimit === state.currentLogLimit
-    ) {
-        return;
-    }
-
-    // Cleanup previous subscription if limit changed
-    if (state.actionLogUnsubscribe) {
-        state.actionLogUnsubscribe();
-        state.actionLogUnsubscribe = null;
-    }
-
-    state.lastRenderedLimit = state.currentLogLimit;
-
-    // Only set innerHTML on first load to preserve scroll
-    if (!document.getElementById("terminal-container")) {
-        // Check if user is admin for clear button
-        const user = auth.currentUser;
-        let clearBtnHtml = '';
-        if (user) {
-            const userDoc = await FirestoreService.getUser(user.uid);
-            if (userDoc?.role === 'admin') {
-                clearBtnHtml = `<div style="display: flex; justify-content: flex-end; margin-bottom: 0.75rem; position: relative; z-index: 1;">
-                    <button class="btn-secondary btn-outline-danger" onclick="handleClearActionLogs()">
-                        <i class="fa-solid fa-trash"></i> ล้าง Activity Log
-                    </button>
-                </div>`;
-            }
-        }
-
-        container.innerHTML = `
-            ${clearBtnHtml}
-            <div id="terminal-container" style="background: #1e1e1e; border-radius: 8px; padding: 1.5rem; color: #d4d4d4; font-family: 'Courier New', monospace; height: 600px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); box-shadow: inset 0 0 20px rgba(0,0,0,0.5);">
-                <div style="margin-bottom: 1rem; border-bottom: 1px dashed #404040; padding-bottom: 0.5rem; opacity: 0.7;">
-                    > System Action Log initialized...<br>
-                    > Listening for real-time events... <span class="blink">_</span>
-                </div>
-                <div id="terminal-output" style="display: flex; flex-direction: column; gap: 6px;">
-                    <span style="color: #9ca3af;">Connecting to stream...</span>
-                </div>
-                <div id="terminal-loading" style="display: none; color: #6b7280; font-style: italic; margin-top: 10px;">
-                    > Loading more history...
-                </div>
-            </div>
-        `;
-
-        // Attach Scroll Listener
-        const termContainer = document.getElementById("terminal-container");
-        termContainer.addEventListener("scroll", () => {
-            // Check if near bottom
-            if (
-                termContainer.scrollTop + termContainer.clientHeight >=
-                termContainer.scrollHeight - 50
-            ) {
-                // Throttle?
-                if (state.isLoadingMoreLogs) return;
-
-                console.log("End of logs reached, loading more...");
-                state.isLoadingMoreLogs = true;
-
-                // Show loader
-                const loader = document.getElementById("terminal-loading");
-                if (loader) loader.style.display = "block";
-
-                // Increase Limit
-                state.currentLogLimit += 50;
-
-                // Re-render (re-subscribe)
-                renderActionLogs().then(() => {
-                    state.isLoadingMoreLogs = false;
-                    if (loader) loader.style.display = "none";
-                });
-            }
-        });
-    }
-
-    const output = document.getElementById("terminal-output");
-
-    // Subscribe
-    state.actionLogUnsubscribe = FirestoreService.subscribeToActionLogs(
-        (logs) => {
-            if (!output) return; // safety
-            output.innerHTML = ""; // Clear previous (re-render all)
-
-            if (logs.length === 0) {
-                output.innerHTML =
-                    '<span style="color: #6b7280;">> No activity recorded yet.</span>';
-                return;
-            }
-
-            const formatDate = (iso) => {
-                const d = new Date(iso);
-                return (
-                    d.toLocaleTimeString("th-TH", {
-                        hour12: false,
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    }) +
-                    " " +
-                    d.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" })
-                );
-            };
-
-            logs.forEach((log) => {
-                // Color Coding
-                let color = "#d4d4d4"; // Default
-                let prefix = "[INFO]";
-
-                switch (log.category) {
-                    case "AUTH":
-                        color = "#06b6d4"; // Cyan
-                        prefix = "[AUTH]";
-                        if (log.actionType === "LOGOUT") color = "#9ca3af"; // Gray
-                        break;
-                    case "SITE":
-                    case "LOG":
-                        if (log.actionType === "ADD")
-                            color = "#10b981"; // Green
-                        else if (log.actionType === "EDIT")
-                            color = "#f59e0b"; // Orange
-                        else if (log.actionType === "DELETE") color = "#ef4444"; // Red
-                        prefix = `[${log.category}]`;
-                        break;
-                    case "BIN":
-                        prefix = "[BIN]";
-                        if (log.actionType === "DELETE")
-                            color = "#ef4444"; // Red
-                        else color = "#06b6d4"; // Restore (Cyan)
-                        break;
-                    case "USER":
-                        color = "#3b82f6"; // Blue
-                        prefix = "[USER]";
-                        break;
-                }
-
-                const dateStr = log.timestamp
-                    ? formatDate(
-                        log.timestamp.toDate
-                            ? log.timestamp.toDate()
-                            : new Date(log.createdAt),
-                    )
-                    : "-";
-                const userStr = (log.performerName || "system").toLowerCase();
-
-                // Resolve Header Text (Action + Site Name)
-                let headerText = log.description; // Fallback
-
-                let siteName = "";
-                if (log.category === "SITE") {
-                    siteName = log.metadata?.data?.name || "Unknown Site";
-                    headerText = `${log.actionType} Site: ${siteName}`;
-                } else if (log.category === "LOG") {
-                    const siteId = log.metadata?.data?.siteId;
-                    // Try to find in state first
-                    const site = siteId ? state.sites.find((s) => s.id === siteId) : null;
-                    siteName = site
-                        ? site.name
-                        : log.metadata?.data?._cachedSiteName || "Unknown Site";
-                    headerText = `${log.actionType} Log @ ${siteName}`;
-                }
-
-                // Apply Sort & Lowercase
-                prefix = prefix.toLowerCase();
-                headerText = headerText.toLowerCase();
-
-                const lineWrapper = document.createElement("div");
-                lineWrapper.style.marginBottom = "4px";
-
-                const line = document.createElement("div");
-                line.style.lineHeight = "1.4";
-                line.style.fontSize = "0.9rem";
-                line.style.cursor = "pointer"; // Make clickable
-                line.innerHTML = `
-                <span style="color: #555; margin-right: 8px;">${dateStr}</span>
-                <span style="color: ${color}; font-weight: bold; margin-right: 8px;">${prefix}</span>
-                <span style="color: #a3a3a3; margin-right: 8px;">@${userStr}:</span>
-                <span style="color: #e5e5e5;">${headerText}</span>
-                <span style="color: #666; font-size: 0.8em; margin-left: 8px;">[Click for details]</span>
-            `;
-                lineWrapper.appendChild(line);
-
-                // Metadata Detail View
-                if (log.metadata && log.metadata.data) {
-                    const detailView = document.createElement("div"); // Changed to div for easier HTML handling
-                    detailView.style.margin = "4px 0 8px 18px";
-                    detailView.style.padding = "8px";
-                    detailView.style.background = "rgba(0,0,0,0.3)";
-                    detailView.style.borderLeft = `2px solid ${color}`;
-                    detailView.style.color = "#a3a3a3";
-                    detailView.style.fontFamily = "'Courier New', monospace";
-                    detailView.style.fontSize = "0.8rem";
-                    detailView.style.display = "none";
-                    detailView.style.overflowX = "auto";
-
-                    const cleanData = { ...log.metadata.data };
-                    let htmlContent = "";
-
-                    // Fields to skip in detail view (too noisy)
-                    const skipFields = new Set([
-                        'attachments', 'attachmentsBefore', 'attachmentsAfter',
-                        'comments', 'lineItems', 'statusHistory', 'statusSignatures',
-                        'createdAt', 'updatedAt', 'timestamp', 'updatedBy',
-                        'recordedBy', 'recorderId', 'cost', 'details'
-                    ]);
-
-                    // Thai labels for readable display
-                    const fieldNames = {
-                        siteId: 'สถานที่ (ID)',
-                        _cachedSiteName: 'สถานที่',
-                        name: 'ชื่อ',
-                        date: 'วันที่',
-                        category: 'หมวดหมู่',
-                        objective: 'คำอธิบายงาน',
-                        status: 'สถานะ',
-                        responderId: 'เจ้าหน้าที่ช่างบริการ (ID)',
-                        caseId: 'รหัสเคส',
-                        responsibleAgency: 'หน่วยงาน',
-                        picName: 'ผู้ดูแล (PIC)',
-                        contactPhone: 'เบอร์โทร',
-                        province: 'จังหวัด',
-                        district: 'อำเภอ',
-                        subdistrict: 'ตำบล',
-                        description: 'รายละเอียด',
-                        locationUrl: 'Google Maps',
-                        maintenanceCycle: 'รอบ MA (วัน)',
-                        insuranceStartDate: 'ประกันเริ่ม',
-                        insuranceEndDate: 'ประกันสิ้นสุด',
-                        firstMaDate: 'MA ครั้งแรก',
-                        fullAddress: 'ที่อยู่',
-                        siteCode: 'รหัสสถานที่',
-                    };
-
-                    // Helper to format values
-                    const formatVal = (v) => {
-                        if (v === null || v === undefined || v === '') return '-';
-                        if (typeof v === "object") {
-                            if (Array.isArray(v)) return `${v.length} รายการ`;
-                            return JSON.stringify(v).substring(0, 100);
-                        }
-                        const s = String(v);
-                        return s.length > 80 ? s.substring(0, 77) + '...' : s;
-                    };
-
-                    const shouldShow = (key) => !skipFields.has(key) && !key.startsWith('_');
-                    const getLabel = (key) => fieldNames[key] || key;
-
-                    // Check if it's an EDIT action with Previous Data
-                    if (
-                        log.metadata.previousData &&
-                        Object.keys(log.metadata.previousData).length > 0
-                    ) {
-                        const prevData = log.metadata.previousData;
-                        const allKeys = new Set([
-                            ...Object.keys(prevData),
-                            ...Object.keys(cleanData),
-                        ]);
-
-                        htmlContent +=
-                            '<div style="margin-bottom: 5px; color: #fff; font-weight: bold;">CHANGES DETECTED:</div>';
-
-                        allKeys.forEach((key) => {
-                            if (!shouldShow(key)) return;
-
-                            const oldVal = prevData[key];
-                            const newVal = cleanData[key];
-
-                            if (!oldVal && !newVal) return;
-
-                            if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
-                                htmlContent += `
-                                <div style="display: flex; gap: 8px; margin-bottom: 2px;">
-                                    <span style="color: #9ca3af; min-width: 120px;">${getLabel(key)}:</span>
-                                    <span style="text-decoration: line-through; color: #ef4444; opacity: 0.8;">${formatVal(oldVal)}</span>
-                                    <span style="color: #10b981;">&rarr; ${formatVal(newVal)}</span>
-                                </div>`;
-                            }
-                        });
-                        // Fallback if no specific keys changed (e.g. only hidden fields changed)
-                        if (
-                            htmlContent ===
-                            '<div style="margin-bottom: 5px; color: #fff; font-weight: bold;">CHANGES DETECTED:</div>'
-                        ) {
-                            htmlContent +=
-                                '<div style="color: #6b7280; font-style: italic;">(No visible field changes detected)</div>';
-                        }
-                    } else {
-                        // ADD or DELETE - Show only meaningful fields
-                        htmlContent +=
-                            '<div style="display: grid; grid-template-columns: auto 1fr; gap: 4px 12px;">';
-                        for (const [key, value] of Object.entries(cleanData)) {
-                            if (!shouldShow(key)) continue;
-                            if (!value && value !== 0) continue;
-                            htmlContent += `<div style="color: #9ca3af;">${getLabel(key)}:</div>`;
-                            htmlContent += `<div style="color: #d4d4d4;">${formatVal(value)}</div>`;
-                        }
-                        htmlContent += "</div>";
-                    }
-
-                    detailView.innerHTML = htmlContent;
-                    lineWrapper.appendChild(detailView);
-
-                    // Toggle Logic
-                    line.onclick = () => {
-                        const isHidden = detailView.style.display === "none";
-                        detailView.style.display = isHidden ? "block" : "none";
-                    };
-                }
-
-                output.appendChild(lineWrapper);
-            });
-        },
-        state.currentLogLimit,
-    );
-}
-
 // --- Profile Photo Upload & Cropping Logic ---
 const profileUploadInput = document.getElementById("profile-upload-input");
 const profileImagePreview = document.getElementById("profile-image-preview");
@@ -16032,3 +13865,548 @@ document.addEventListener("DOMContentLoaded", () => {
     setupPasswordToggles();
     setupPinValidation();
 });
+
+// ============================================================
+// ANNUAL MAINTENANCE PLAN
+// ============================================================
+
+function getPlanMonthData(site, year, month) {
+    const planData = site.maintenancePlans && site.maintenancePlans[year];
+    if (!planData) return { planned: false, cycleCount: null, inputDate: null, notes: null };
+    if (Array.isArray(planData)) {
+        return { planned: planData.includes(month), cycleCount: null, inputDate: null, notes: null };
+    }
+    const monthKey = String(month);
+    const monthData = planData[monthKey];
+    if (!monthData) return { planned: false, cycleCount: null, inputDate: null, notes: null };
+    return {
+        planned: monthData.planned !== false,
+        cycleCount: monthData.cycleCount != null ? monthData.cycleCount : null,
+        inputDate: monthData.inputDate || null,
+        notes: monthData.notes || null,
+    };
+}
+
+function migratePlanToObjectFormat(existingPlan) {
+    if (Array.isArray(existingPlan)) {
+        const obj = {};
+        existingPlan.forEach(m => { obj[String(m)] = { planned: true, cycleCount: null, inputDate: null, notes: null }; });
+        return obj;
+    }
+    return existingPlan || {};
+}
+
+function renderMaintenancePlan() {
+    const yearSelect = document.getElementById('plan-year-select');
+    const headerRow = document.getElementById('plan-timeline-header');
+    const tbody = document.getElementById('plan-timeline-body');
+    const emptyState = document.getElementById('plan-empty-state');
+    if (!yearSelect || !headerRow || !tbody) return;
+
+    const currentYear = new Date().getFullYear();
+    const currentBE = currentYear + 543;
+    if (yearSelect.options.length === 0) {
+        const userLocale = navigator.language || 'th-TH';
+        const usesBE = userLocale.startsWith('th');
+        for (let y = currentBE + 1; y >= currentBE - 5; y--) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = usesBE ? `พ.ศ. ${y}` : `${y - 543}`;
+            if (y === currentBE) opt.selected = true;
+            yearSelect.appendChild(opt);
+        }
+        yearSelect.addEventListener('change', renderMaintenancePlan);
+    }
+
+    const selectedBE = String(yearSelect.value);
+    const now = new Date();
+    const currentMonth = (currentYear + 543) == parseInt(selectedBE) ? now.getMonth() : -1;
+    const userLocale = navigator.language || 'th-TH';
+    const monthNames = Array.from({length: 12}, (_, i) => new Date(2024, i, 1).toLocaleString(userLocale, { month: 'short' }));
+
+    headerRow.innerHTML = `<th style="text-align:center; padding:0.6rem 0.4rem; border:1px solid rgba(0,0,0,0.08); width:30px; background:#f5f5f5;">No.</th><th style="text-align:center; padding:0.6rem 0.4rem; border:1px solid rgba(0,0,0,0.08); width:50px; background:#f5f5f5;">รหัส</th><th style="text-align:left; padding:0.6rem 0.75rem; border:1px solid rgba(0,0,0,0.08); min-width:180px; position:sticky; left:0; background:#f5f5f5; z-index:3;">อุปกรณ์</th>`;
+    for (let m = 0; m < 12; m++) {
+        const isCurrent = m === currentMonth;
+        headerRow.innerHTML += `<th style="text-align:center; padding:0.5rem 0.4rem; border:1px solid rgba(0,0,0,0.08); min-width:80px; font-size:0.8rem; ${isCurrent ? 'background:#111; color:#fff;' : ''}">${monthNames[m]}</th>`;
+    }
+
+    if (!state.sites || state.sites.length === 0) {
+        tbody.innerHTML = '';
+        if (emptyState) emptyState.style.display = 'block';
+        return;
+    }
+    if (emptyState) emptyState.style.display = 'none';
+
+    tbody.innerHTML = state.sites.map((site, siteIndex) => {
+        const siteColor = getSiteColor(site.name);
+        const noCell = `<td style="text-align:center; padding:0.4rem; border:1px solid rgba(0,0,0,0.06); font-size:0.82rem; font-weight:600;">${siteIndex + 1}</td>`;
+        const siteIdCell = `<td style="text-align:center; padding:0.4rem; border:1px solid rgba(0,0,0,0.06); font-size:0.78rem; white-space:nowrap;">${site.siteCode || '-'}</td>`;
+        const deviceSubtle = [
+            site.brand || site.model ? [site.brand, site.model].filter(Boolean).join(' ') : '',
+            site.serialNumber ? `S/N: ${site.serialNumber}` : '',
+            site.province ? `จ.${site.province}` : '',
+        ].filter(Boolean).map(t => `<span style="display:inline-block; background:rgba(0,0,0,0.05); padding:1px 6px; border-radius:3px; font-size:0.7rem; color:#555; white-space:nowrap;">${t}</span>`).join(' ');
+        const deviceCell = `<td class="plan-device-cell" onclick="viewSiteDetails('${site.id}')" style="border-left:4px solid ${siteColor}; min-width:180px; position:sticky; left:0; background:#fff; z-index:2; cursor:pointer; padding:0.5rem 0.75rem;">
+            <div><span style="font-weight:600; font-size:0.88rem;">${site.name}</span>${deviceSubtle ? `<div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:3px;">${deviceSubtle}</div>` : ''}</div>
+        </td>`;
+
+        const monthCells = Array.from({length: 12}, (_, m) => {
+            const monthNum = m + 1;
+            const isCurrent = m === currentMonth;
+            const pd = getPlanMonthData(site, selectedBE, monthNum);
+            const { planned, cycleCount, inputDate, notes } = pd;
+            const hasData = planned || cycleCount != null;
+            const isUnplanned = !planned && cycleCount != null;
+            const bg = planned ? siteColor : (cycleCount != null ? 'rgba(0,0,0,0.03)' : (isCurrent ? 'rgba(0,0,0,0.02)' : ''));
+
+            let cellContent = '';
+            if (hasData) {
+                const chipStyle = isUnplanned
+                    ? `background:#fff; border:1.5px dashed ${siteColor}; color:${siteColor};`
+                    : `color:#fff;`;
+                const countTextColor = isUnplanned ? siteColor : '#fff';
+                const subTextColor = isUnplanned ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.85)';
+                const countHtml = cycleCount != null
+                    ? `<span style="font-size:0.78rem; font-weight:700; color:${countTextColor};">${Number(cycleCount).toLocaleString()} <small style="font-size:0.7em; opacity:0.9;">รอบ</small></span>`
+                    : `<i class="fa-solid fa-wrench" style="color:${countTextColor}; font-size:0.75rem;"></i>`;
+                const dateHtml = inputDate ? `<span style="font-size:0.65rem; color:${subTextColor}; display:block;">${inputDate}</span>` : '';
+                cellContent = `<div style="display:flex; flex-direction:column; align-items:center; padding:3px 4px; border-radius:6px; ${chipStyle}">${countHtml}${dateHtml}</div>`;
+            }
+
+            return `<td style="position:relative; text-align:center; padding:0.35rem 0.25rem; border:1px solid rgba(0,0,0,0.06); background:${bg}; min-width:80px; cursor:pointer;"
+                onmouseenter="showPlanCellMenu(this, '${site.id}','${selectedBE}',${monthNum},${hasData})"
+                onmouseleave="hidePlanCellMenu()"
+            >${cellContent}${!hasData ? `<span class="plan-cell-add-hint" style="display:none; color:#bbb; font-size:1rem; pointer-events:none;">+</span>` : ''}</td>`;
+        }).join('');
+
+        return `<tr>${noCell}${siteIdCell}${deviceCell}${monthCells}</tr>`;
+    }).join('');
+}
+
+window.renderMaintenancePlan = renderMaintenancePlan;
+
+// --- Plan cell hover menu (appended to body to escape overflow clipping) ---
+let _planMenuTimeout = null;
+
+function showPlanCellMenu(td, siteId, year, month, hasData) {
+    clearTimeout(_planMenuTimeout);
+
+    const existing = document.getElementById('plan-cell-menu');
+    if (existing) existing.remove();
+
+    const rect = td.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.id = 'plan-cell-menu';
+
+    if (!hasData) {
+        // Blank cell: simple gray + icon overlay
+        menu.style.cssText = `
+            position: fixed;
+            top: ${rect.top}px;
+            left: ${rect.left}px;
+            width: ${rect.width}px;
+            height: ${rect.height}px;
+            background: rgba(160,160,170,0.25);
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            pointer-events: auto;
+            cursor: pointer;
+        `;
+        const icon = document.createElement('span');
+        icon.textContent = '+';
+        icon.style.cssText = 'font-size:1.1rem; color:rgba(100,100,110,0.7); font-weight:300; line-height:1; pointer-events:none;';
+        menu.appendChild(icon);
+        menu.onclick = (e) => { e.stopPropagation(); hidePlanCellMenu(); openCycleCountModal(siteId, year, month); };
+    } else {
+        // Cell with data: clean white overlay with icon buttons
+        menu.style.cssText = `
+            position: fixed;
+            top: ${rect.top}px;
+            left: ${rect.left}px;
+            width: ${rect.width}px;
+            height: ${rect.height}px;
+            background: rgba(255,255,255,0.82);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            z-index: 99999;
+            pointer-events: auto;
+        `;
+
+        const editBtn = document.createElement('button');
+        editBtn.innerHTML = '<i class="fa-solid fa-pen" style="font-size:0.65rem;"></i>';
+        editBtn.title = 'แก้ไข';
+        editBtn.style.cssText = 'width:26px; height:26px; display:flex; align-items:center; justify-content:center; background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; border-radius:6px; cursor:pointer; flex-shrink:0;';
+        editBtn.onmouseenter = () => { editBtn.style.background = '#dcfce7'; };
+        editBtn.onmouseleave = () => { editBtn.style.background = '#f0fdf4'; };
+        editBtn.onclick = (e) => { e.stopPropagation(); hidePlanCellMenu(); openCycleCountModal(siteId, year, month); };
+        menu.appendChild(editBtn);
+
+        const delBtn = document.createElement('button');
+        delBtn.innerHTML = '<i class="fa-solid fa-trash-can" style="font-size:0.65rem;"></i>';
+        delBtn.title = 'ล้าง';
+        delBtn.style.cssText = 'width:26px; height:26px; display:flex; align-items:center; justify-content:center; background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; border-radius:6px; cursor:pointer; flex-shrink:0;';
+        delBtn.onmouseenter = () => { delBtn.style.background = '#ffe4e6'; };
+        delBtn.onmouseleave = () => { delBtn.style.background = '#fff1f2'; };
+        delBtn.onclick = (e) => { e.stopPropagation(); hidePlanCellMenu(); deletePlanEntry(siteId, year, month); };
+        menu.appendChild(delBtn);
+    }
+
+    menu.onmouseenter = () => clearTimeout(_planMenuTimeout);
+    menu.onmouseleave = () => { _planMenuTimeout = setTimeout(hidePlanCellMenu, 80); };
+
+    document.body.appendChild(menu);
+}
+
+function hidePlanCellMenu() {
+    _planMenuTimeout = setTimeout(() => {
+        const menu = document.getElementById('plan-cell-menu');
+        if (menu) menu.remove();
+    }, 80);
+}
+
+window.showPlanCellMenu = showPlanCellMenu;
+window.hidePlanCellMenu = hidePlanCellMenu;
+
+// --- Cycle Count Modal ---
+let _cycleModalState = { siteId: null, year: null, month: null };
+
+function openCycleCountModal(siteId, year, month) {
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site) return;
+    const modal = document.getElementById('modal-plan-cycle-count');
+    if (!modal) return;
+    const userLocale = navigator.language || 'th-TH';
+    const monthName = new Date(2024, month - 1, 1).toLocaleString(userLocale, { month: 'long' });
+    _cycleModalState = { siteId, year, month };
+    const nameEl = document.getElementById('cycle-device-name');
+    const labelEl = document.getElementById('cycle-month-label');
+    if (nameEl) nameEl.textContent = site.name || siteId;
+    if (labelEl) labelEl.textContent = `${monthName} ${year}`;
+    const pd = getPlanMonthData(site, year, month);
+    const toggleEl = document.getElementById('cycle-planned-toggle');
+    const countEl = document.getElementById('cycle-count-input');
+    const dateEl = document.getElementById('cycle-date-input');
+    const notesEl = document.getElementById('cycle-notes-input');
+    if (toggleEl) toggleEl.checked = pd.planned;
+    if (countEl) countEl.value = pd.cycleCount != null ? pd.cycleCount : '';
+    if (dateEl) dateEl.value = pd.inputDate || new Date().toISOString().split('T')[0];
+    if (notesEl) notesEl.value = pd.notes || '';
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    setTimeout(() => { if (countEl) countEl.focus(); }, 150);
+}
+window.openCycleCountModal = openCycleCountModal;
+
+function closeCycleCountModal() {
+    const modal = document.getElementById('modal-plan-cycle-count');
+    if (modal) { modal.classList.add('hidden'); modal.style.display = ''; }
+    _cycleModalState = { siteId: null, year: null, month: null };
+}
+window.closeCycleCountModal = closeCycleCountModal;
+
+async function saveCycleCount() {
+    const { siteId, year, month } = _cycleModalState;
+    if (!siteId || !year || !month) return;
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site) return;
+    const planned = document.getElementById('cycle-planned-toggle')?.checked ?? true;
+    const cycleCountVal = document.getElementById('cycle-count-input')?.value;
+    const inputDate = document.getElementById('cycle-date-input')?.value;
+    const notes = document.getElementById('cycle-notes-input')?.value.trim() || '';
+    const cycleCount = cycleCountVal !== '' ? parseInt(cycleCountVal, 10) : null;
+    if (!site.maintenancePlans) site.maintenancePlans = {};
+    if (Array.isArray(site.maintenancePlans[year])) site.maintenancePlans[year] = migratePlanToObjectFormat(site.maintenancePlans[year]);
+    if (!site.maintenancePlans[year]) site.maintenancePlans[year] = {};
+    const monthKey = String(month);
+    if (!planned && cycleCount == null && !inputDate && !notes) {
+        delete site.maintenancePlans[year][monthKey];
+        if (Object.keys(site.maintenancePlans[year]).length === 0) delete site.maintenancePlans[year];
+    } else {
+        site.maintenancePlans[year][monthKey] = { planned, cycleCount, inputDate: inputDate || new Date().toISOString().split('T')[0], notes: notes || null };
+    }
+    const saveBtn = document.getElementById('btn-cycle-save');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังบันทึก...'; }
+    try {
+        await FirestoreService.updateSite(siteId, { maintenancePlans: site.maintenancePlans });
+        closeCycleCountModal();
+        renderMaintenancePlan();
+        showToast('บันทึก Cycle Count สำเร็จ', 'success', 2000);
+    } catch (e) {
+        console.error('Failed to save cycle count:', e);
+        showToast('บันทึกไม่สำเร็จ กรุณาลองใหม่', 'error');
+    } finally {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> บันทึก'; }
+    }
+}
+window.saveCycleCount = saveCycleCount;
+
+async function clearCycleCount() {
+    if (!(await showDialog('คุณแน่ใจหรือไม่ที่จะล้างข้อมูลของเดือนนี้?', { type: 'confirm', confirmText: 'ล้างข้อมูล', cancelText: 'ยกเลิก', danger: true }))) return;
+    const countEl = document.getElementById('cycle-count-input');
+    const dateEl = document.getElementById('cycle-date-input');
+    const notesEl = document.getElementById('cycle-notes-input');
+    const toggleEl = document.getElementById('cycle-planned-toggle');
+    if (toggleEl) toggleEl.checked = false;
+    if (countEl) countEl.value = '';
+    if (dateEl) dateEl.value = '';
+    if (notesEl) notesEl.value = '';
+    await saveCycleCount();
+}
+window.clearCycleCount = clearCycleCount;
+
+async function deletePlanEntry(siteId, year, month) {
+    if (!(await showDialog('คุณแน่ใจหรือไม่ที่จะล้างข้อมูลของเดือนนี้?', { type: 'confirm', confirmText: 'ล้างข้อมูล', cancelText: 'ยกเลิก', danger: true }))) return;
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site) return;
+    if (site.maintenancePlans && site.maintenancePlans[year]) {
+        delete site.maintenancePlans[year][String(month)];
+        if (Object.keys(site.maintenancePlans[year]).length === 0) delete site.maintenancePlans[year];
+        try {
+            await FirestoreService.updateSite(siteId, { maintenancePlans: site.maintenancePlans });
+            renderMaintenancePlan();
+            showToast('ล้างข้อมูลสำเร็จ', 'success', 2000);
+        } catch (e) {
+            showToast('เกิดข้อผิดพลาด', 'error');
+        }
+    }
+}
+window.deletePlanEntry = deletePlanEntry;
+
+/** Wire up cycle count modal buttons. Called once during init. */
+function initCycleCountModal() {
+    const saveBtn = document.getElementById('btn-cycle-save');
+    const clearBtn = document.getElementById('btn-cycle-clear');
+    const cancelBtn = document.getElementById('btn-cycle-cancel');
+    const closeBtn = document.getElementById('btn-close-cycle-modal');
+    const modal = document.getElementById('modal-plan-cycle-count');
+    if (saveBtn) saveBtn.addEventListener('click', saveCycleCount);
+    if (clearBtn) clearBtn.addEventListener('click', clearCycleCount);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeCycleCountModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeCycleCountModal);
+    if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) closeCycleCountModal(); });
+    const countInput = document.getElementById('cycle-count-input');
+    if (countInput) countInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveCycleCount(); });
+}
+
+// ============================================================
+// QR CODE DEVICE FEATURE
+// ============================================================
+
+function getAppBaseUrl() {
+    return window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
+}
+
+function showDeviceQR(siteId) {
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site) { showToast('ไม่พบข้อมูลเครื่อง', 'error'); return; }
+    const modal = document.getElementById('modal-device-qr');
+    if (!modal) return;
+    const baseUrl = getAppBaseUrl();
+    const reportUrl = `${baseUrl}index.html?report=${siteId}`;
+    const nameEl = document.getElementById('qr-modal-device-name');
+    if (nameEl) nameEl.textContent = site.name || 'QR Code เครื่อง';
+    const infoEl = document.getElementById('qr-device-info');
+    if (infoEl) infoEl.innerHTML = createDeviceBannerHTML(site);
+    const urlEl = document.getElementById('qr-url-display');
+    if (urlEl) urlEl.textContent = reportUrl;
+    const canvas = document.getElementById('device-qr-canvas');
+    if (canvas && typeof QRCode !== 'undefined') {
+        const qrSize = window.innerWidth > 768 ? 300 : 220;
+        QRCode.toCanvas(canvas, reportUrl, { width: qrSize, margin: 2, color: { dark: '#0f172a', light: '#ffffff' }, errorCorrectionLevel: 'M' }, (err) => { if (err) console.error('QR error:', err); });
+    } else if (canvas) {
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => { canvas.width = img.width; canvas.height = img.height; ctx.drawImage(img, 0, 0); };
+        img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(reportUrl)}`;
+    }
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    const btnDownload = document.getElementById('btn-download-qr');
+    if (btnDownload) btnDownload.onclick = () => {
+        if (!canvas) return;
+        const link = document.createElement('a');
+        link.download = `qr-${site.siteCode || siteId}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    };
+    const btnCopy = document.getElementById('btn-copy-qr-link');
+    if (btnCopy) btnCopy.onclick = () => {
+        navigator.clipboard.writeText(reportUrl).then(() => showToast('คัดลอกลิงก์เรียบร้อย', 'success')).catch(() => {
+            const ta = document.createElement('textarea');
+            ta.value = reportUrl;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showToast('คัดลอกลิงก์เรียบร้อย', 'success');
+        });
+    };
+    const btnPrint = document.getElementById('btn-print-qr');
+    if (btnPrint) btnPrint.onclick = () => printDeviceQR(site, reportUrl, canvas);
+    const btnClose = document.getElementById('btn-close-qr-modal');
+    if (btnClose) btnClose.onclick = () => closeDeviceQRModal();
+    modal.onclick = (e) => { if (e.target === modal) closeDeviceQRModal(); };
+}
+window.showDeviceQR = showDeviceQR;
+
+function closeDeviceQRModal() {
+    const modal = document.getElementById('modal-device-qr');
+    if (modal) { modal.classList.add('hidden'); modal.style.display = ''; }
+}
+window.closeDeviceQRModal = closeDeviceQRModal;
+
+function printDeviceQR(site, reportUrl, canvas) {
+    const qrDataUrl = canvas ? canvas.toDataURL('image/png') : '';
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>QR Code - ${site.name}</title>
+<style>body{font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#fff;}.card{text-align:center;padding:24px;border:2px solid #e5e7eb;border-radius:16px;max-width:320px;}.title{font-size:1.1rem;font-weight:700;color:#1e293b;margin-bottom:4px;}.sub{font-size:0.8rem;color:#64748b;margin-bottom:16px;}.qr-img{width:200px;height:200px;border:1px solid #e5e7eb;border-radius:8px;padding:8px;}.name{font-size:0.9rem;font-weight:600;color:#1e293b;margin-top:12px;}.code{font-size:0.75rem;color:#64748b;margin-top:4px;}.badge{display:inline-block;background:#f0fdf4;color:#16a34a;font-size:0.75rem;font-weight:600;padding:4px 12px;border-radius:20px;margin-top:8px;border:1px solid #bbf7d0;}</style>
+</head><body><div class="card"><div class="title">แจ้งปัญหาเครื่อง</div><div class="sub">สแกน QR Code เพื่อแจ้งปัญหา</div>${qrDataUrl ? `<img src="${qrDataUrl}" class="qr-img" alt="QR">` : ''}<div class="name">${site.name}</div>${site.siteCode ? `<div class="code">${site.siteCode}</div>` : ''}${site.serialNumber ? `<div class="code">S/N: ${site.serialNumber}</div>` : ''}<div class="badge">CASP Maintenance System</div></div></body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); }, 400);
+}
+
+// Re-add initCycleCountModal call to setupEventListeners via init
+// (called from init() after setupEventListeners)
+
+// --- Shared PDF Preview ---
+function showPdfPreview(html, title) {
+    let pdfModal = document.getElementById('pdf-preview-modal');
+    if (!pdfModal) {
+        pdfModal = document.createElement('div');
+        pdfModal.id = 'pdf-preview-modal';
+        pdfModal.style.cssText = 'display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; padding:16px;';
+        pdfModal.innerHTML = '<div style="position:relative; width:100%; max-width:1100px; height:90vh; background:#fff; border-radius:12px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.3);">'
+            + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
+            + '<span id="pdf-preview-title" style="font-weight:700; font-size:14px; color:#333;">PDF Preview</span>'
+            + '<div style="display:flex; gap:8px;">'
+            + '<button id="pdf-btn-print" style="background:#8bc53f; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-print"></i> พิมพ์</button>'
+            + '<button id="pdf-btn-close" style="background:#ef4444; color:#fff; border:none; border-radius:6px; width:34px; height:34px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-xmark"></i></button>'
+            + '</div></div>'
+            + '<iframe id="pdf-preview-iframe" style="flex:1; border:none; width:100%; background:#fff;"></iframe>'
+            + '</div>';
+        document.body.appendChild(pdfModal);
+        document.getElementById('pdf-btn-close').onclick = () => { pdfModal.style.display = 'none'; };
+        pdfModal.onclick = (e) => { if (e.target === pdfModal) pdfModal.style.display = 'none'; };
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && pdfModal.style.display === 'flex') pdfModal.style.display = 'none'; });
+    }
+    const iframe = document.getElementById('pdf-preview-iframe');
+    const titleEl = document.getElementById('pdf-preview-title');
+    if (titleEl) titleEl.textContent = title;
+    if (iframe) iframe.srcdoc = html;
+    pdfModal.style.display = 'flex';
+    const printBtn = document.getElementById('pdf-btn-print');
+    if (printBtn) {
+        const newPrint = printBtn.cloneNode(true);
+        printBtn.parentNode.replaceChild(newPrint, printBtn);
+        newPrint.id = 'pdf-btn-print';
+        newPrint.onclick = () => { if (iframe) iframe.contentWindow.print(); };
+    }
+}
+window.showPdfPreview = showPdfPreview;
+
+// --- Annual Plan PDF Export ---
+function exportAnnualPlanPDF() {
+    const yearSelect = document.getElementById('plan-year-select');
+    const selectedBE = yearSelect ? yearSelect.value : String(new Date().getFullYear() + 543);
+    const userLocale = navigator.language || 'th-TH';
+    const usesBE = userLocale.startsWith('th');
+    const displayYear = usesBE ? `พ.ศ. ${selectedBE}` : `${parseInt(selectedBE) - 543}`;
+    const monthNames = Array.from({length: 12}, (_, i) => new Date(2024, i, 1).toLocaleString(userLocale, { month: 'short' }));
+
+    const rowsHtml = (state.sites || []).map((site, idx) => {
+        const siteColor = getSiteColor(site.name);
+        const cells = Array.from({length: 12}, (_, m) => {
+            const pd = getPlanMonthData(site, selectedBE, m + 1);
+            const { planned, cycleCount, inputDate, notes } = pd;
+            if (!planned && cycleCount == null) return `<td style="text-align:center; padding:4px 2px; border:1px solid #ddd; background:#fff;"></td>`;
+            const isUnplanned = !planned;
+            const cellBg = isUnplanned ? '#fff' : siteColor;
+            const cellBorder = isUnplanned ? `border:1px dashed ${siteColor};` : 'border:1px solid #ddd;';
+            const textColor = isUnplanned ? siteColor : '#fff';
+            const subTextColor = isUnplanned ? '#888' : 'rgba(255,255,255,0.85)';
+            const countHtml = cycleCount != null
+                ? `<div style="color:${textColor}; font-size:8px; font-weight:700; line-height:1.2;">${Number(cycleCount).toLocaleString()} <span style="font-size:6px; font-weight:400;">รอบ</span></div>`
+                : `<span style="color:${textColor}; font-size:8px;">${isUnplanned ? '○' : '✓'}</span>`;
+            const dateHtml = inputDate ? `<div style="color:${subTextColor}; font-size:6px; margin-top:1px; white-space:nowrap;">${inputDate}</div>` : '';
+            return `<td style="text-align:center; padding:3px 2px; ${cellBorder} background:${cellBg};">${countHtml}${dateHtml}</td>`;
+        }).join('');
+        const warranty = site.insuranceStartDate && site.insuranceEndDate ? `${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : '-';
+        const subtleInfo = [
+            site.brand || site.model ? '<span style="font-weight:600;">รุ่น:</span> ' + [site.brand, site.model].filter(Boolean).join(' ') : '',
+            site.serialNumber ? '<span style="font-weight:600;">S/N:</span> ' + site.serialNumber : '',
+            '<span style="font-weight:600;">ประกัน:</span> ' + warranty,
+            site.province ? '<span style="font-weight:600;">จ.</span>' + site.province : ''
+        ].filter(Boolean).join(' | ');
+        return `<tr>
+            <td style="text-align:center; padding:5px 4px; border:1px solid #ddd; font-size:9px; font-weight:600;">${idx + 1}</td>
+            <td style="text-align:center; padding:5px 4px; border:1px solid #ddd; font-size:8px; white-space:nowrap;">${site.siteCode || '-'}</td>
+            <td style="padding:5px 8px; border:1px solid #ddd; border-left:4px solid ${siteColor}; font-size:9px;"><b>${site.name}</b><div style="font-size:7px; color:#999; margin-top:1px;">${subtleInfo}</div></td>
+            ${cells}
+        </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Annual Maintenance Plan ${displayYear}</title>
+<style>
+    @page { size: A4 landscape; margin: 0; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 8mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
+    .page-content { flex: 1; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th { background: #f5f5f5 !important; font-size: 9px; padding: 5px 3px; border: 1px solid #ddd; }
+    .page-footer { margin-top: auto; }
+    .footer-line { position: relative; height: 2px; background: #ddd !important; }
+    .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
+    .footer-text { display: flex; justify-content: space-between; font-size: 8px; color: #333; padding: 4px 0; }
+    .header-line { margin-bottom: 10px; position: relative; height: 2px; background: #ddd !important; }
+    .header-line::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+</head><body>
+<div style="display:flex; align-items:center; gap:12px; padding-bottom:10px;">
+    <img src="/bioinnotech.svg" alt="Logo" style="height:55px; width:auto;">
+    <div style="flex:1; text-align:right; font-size:9px; color:#333; line-height:1.6;">
+        <b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>
+        36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>
+        โทรศัพท์ 02-152-5405 เลขประจำตัวผู้เสียภาษี 0105557108369
+    </div>
+</div>
+<div class="header-line"></div>
+<div class="page-content">
+<h1 style="text-align:center; font-size:14px; margin:0 0 8px;">แผนการบำรุงรักษาประจำปี ${displayYear}</h1>
+<p style="text-align:center; font-size:9px; color:#666; margin:0 0 10px;">Annual Maintenance Plan — จำนวนอุปกรณ์ ${(state.sites || []).length} เครื่อง</p>
+<table>
+    <thead>
+        <tr>
+            <th style="text-align:center; width:3.5%;">No.</th>
+            <th style="text-align:center; width:6.5%;">รหัส</th>
+            <th style="text-align:left; width:22%;">อุปกรณ์ (Device)</th>
+            ${monthNames.map(m => `<th style="width:5.66%; text-align:center;">${m}</th>`).join('')}
+        </tr>
+    </thead>
+    <tbody>${rowsHtml}</tbody>
+</table>
+</div>
+<div class="page-footer">
+    <div class="footer-line"></div>
+    <div class="footer-text">
+        <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
+        <span>FM-SER-04 Rev.00 Effective date : 02-02-2026</span>
+    </div>
+</div>
+</body></html>`;
+
+    showPdfPreview(html, `แผนการบำรุงรักษาประจำปี ${displayYear}`);
+}
+window.exportAnnualPlanPDF = exportAnnualPlanPDF;
