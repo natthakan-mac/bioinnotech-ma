@@ -10006,42 +10006,56 @@ function viewLogDetails(id) {
         }
     }
 
-    // Render General Attachments (from public reports or manual uploads)
+    // Render Attachments — split into all 4 sections
     const attachSection = document.getElementById("detail-attachments-section");
     const attachContent = document.getElementById("detail-attachments-content");
-    const allAttachments = [
-        ...(log.attachmentsBefore || []),
-        ...(log.attachmentsAfter || []),
-        ...(log.attachments || []),
-        ...(log.repairPhotos || []),
+
+    const attachmentsBefore = log.attachmentsBefore || [];
+    const attachmentsAfter = log.attachmentsAfter || [];
+    const descriptionAttachments = [
         ...(log.descriptionAttachments || []),
-        ...(log.installPhotos || []),
-        ...(log.preInstallPhotos || [])
+        ...(log.attachments || []),
     ];
-    
+    const repairPhotos = [
+        ...(log.repairPhotos || []),
+        ...(log.installPhotos || []),
+        ...(log.preInstallPhotos || []),
+    ];
+    const totalAttachments = attachmentsBefore.length + attachmentsAfter.length +
+        descriptionAttachments.length + repairPhotos.length;
+
     if (attachSection && attachContent) {
-        if (allAttachments.length > 0) {
+        if (totalAttachments > 0) {
             attachSection.style.display = "block";
-            let attHtml = '<div style="display:flex; gap:10px; flex-wrap:wrap;">';
-            allAttachments.forEach(att => {
-                const url = att.url || att;
-                const isVideo = (att.type && att.type.startsWith('video/')) || (typeof url === 'string' && url.includes('.mp4'));
-                
-                if (isVideo) {
-                    attHtml += `
-                        <div style="width:120px; height:90px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer; background:#000; position:relative;" onclick="window.openImageViewer('${url}', 'video')">
+
+            const renderGroup = (label, icon, items) => {
+                if (!items.length) return '';
+                const thumbs = items.map(att => {
+                    const url = att.url || att;
+                    const isVideo = (att.type && att.type.startsWith('video/')) || (typeof url === 'string' && url.includes('.mp4'));
+                    if (isVideo) {
+                        return `<div style="width:110px; height:82px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer; background:#000; position:relative; flex-shrink:0;" onclick="window.openImageViewer('${url}', 'video')">
                             <video src="${url}" style="width:100%; height:100%; object-fit:cover;"></video>
-                            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:#fff; font-size:1.5rem; text-shadow:0 2px 4px rgba(0,0,0,0.5);"><i class="fa-solid fa-play"></i></div>
+                            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-size:1.5rem;"><i class="fa-solid fa-play"></i></div>
                         </div>`;
-                } else {
-                    attHtml += `
-                        <div style="width:120px; height:90px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer;" onclick="window.openImageViewer('${url}')">
-                            <img src="${url}" style="width:100%; height:100%; object-fit:cover;" loading="lazy">
-                        </div>`;
-                }
-            });
-            attHtml += '</div>';
-            attachContent.innerHTML = attHtml;
+                    }
+                    return `<div style="width:110px; height:82px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer; flex-shrink:0;" onclick="window.openImageViewer('${url}')">
+                        <img src="${url}" style="width:100%; height:100%; object-fit:cover;" loading="lazy">
+                    </div>`;
+                }).join('');
+                return `<div style="margin-bottom:0.85rem;">
+                    <div style="font-size:0.78rem; font-weight:600; color:#555; margin-bottom:0.4rem; display:flex; align-items:center; gap:0.35rem;">
+                        <i class="${icon}" style="font-size:0.7rem; opacity:0.7;"></i>${label} <span style="font-weight:400; color:#9ca3af;">(${items.length})</span>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">${thumbs}</div>
+                </div>`;
+            };
+
+            attachContent.innerHTML =
+                renderGroup('ไฟล์ประกอบคำอธิบายงาน', 'fa-solid fa-file-lines', descriptionAttachments) +
+                renderGroup('รูปถ่ายการซ่อม', 'fa-solid fa-camera', repairPhotos) +
+                renderGroup('ก่อนซ่อม (Before)', 'fa-solid fa-arrow-right-to-bracket', attachmentsBefore) +
+                renderGroup('หลังซ่อม (After)', 'fa-solid fa-arrow-right-from-bracket', attachmentsAfter);
         } else {
             attachSection.style.display = "none";
         }
@@ -11453,7 +11467,30 @@ ${(log.installPhotos && log.installPhotos.length > 0) ? `
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
 ${log.installPhotos.map(function(img) { return '<div style="border:1px solid #eee; border-radius:4px; overflow:hidden; aspect-ratio:4/3;"><img src="' + img.url + '" style="width:100%; height:100%; display:block; object-fit:contain;"></div>'; }).join('')}
 </div>` : `<div style="padding:15px; text-align:center; color:#999; font-size:11px; border:1px solid #eee; border-radius:6px; background:#fafafa;">ไม่มีข้อมูล</div>`}
-` : ''}
+` : `
+${(() => {
+    const descAtts = [...(log.descriptionAttachments || []), ...(log.attachments || [])].filter(a => a.url && !a.type?.startsWith('video/'));
+    const repairAtts = (log.repairPhotos || []).filter(a => a.url && !a.type?.startsWith('video/'));
+    const beforeAtts = (log.attachmentsBefore || []).filter(a => a.url && !a.type?.startsWith('video/'));
+    const afterAtts = (log.attachmentsAfter || []).filter(a => a.url && !a.type?.startsWith('video/'));
+    const hasAny = descAtts.length || repairAtts.length || beforeAtts.length || afterAtts.length;
+    if (!hasAny) return '';
+    const renderPhotoSection = (title, items) => {
+        if (!items.length) return '';
+        return `<div style="margin-bottom:16px; page-break-inside:avoid;">
+<h2 style="font-size:11px; margin:0 0 6px; color:#333;">${title}</h2>
+<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+${items.map(function(img) { return '<div style="border:1px solid #eee; border-radius:4px; overflow:hidden; aspect-ratio:4/3;"><img src="' + img.url + '" style="width:100%; height:100%; display:block; object-fit:contain;"></div>'; }).join('')}
+</div></div>`;
+    };
+    return `<div style="page-break-before: always;">
+${renderPhotoSection('ไฟล์ประกอบคำอธิบายงาน', descAtts)}
+${renderPhotoSection('รูปถ่ายการซ่อม', repairAtts)}
+${renderPhotoSection('รูปถ่ายก่อนซ่อม (Before Repair)', beforeAtts)}
+${renderPhotoSection('รูปถ่ายหลังซ่อม (After Repair)', afterAtts)}
+</div>`;
+})()
+}`}
 
 <div style="page-break-inside: avoid;">
 <h2>ลายเซ็น (Signatures)</h2>
@@ -14306,16 +14343,29 @@ async function deletePlanEntry(siteId, year, month) {
     if (!(await showDialog('คุณแน่ใจหรือไม่ที่จะล้างข้อมูลของเดือนนี้?', { type: 'confirm', confirmText: 'ล้างข้อมูล', cancelText: 'ยกเลิก', danger: true }))) return;
     const site = state.sites.find(s => s.id === siteId);
     if (!site) return;
-    if (site.maintenancePlans && site.maintenancePlans[year]) {
+
+    if (!site.maintenancePlans) site.maintenancePlans = {};
+
+    // Migrate legacy array format to object format before deleting
+    if (Array.isArray(site.maintenancePlans[year])) {
+        site.maintenancePlans[year] = migratePlanToObjectFormat(site.maintenancePlans[year]);
+    }
+
+    if (site.maintenancePlans[year]) {
         delete site.maintenancePlans[year][String(month)];
-        if (Object.keys(site.maintenancePlans[year]).length === 0) delete site.maintenancePlans[year];
-        try {
-            await FirestoreService.updateSite(siteId, { maintenancePlans: site.maintenancePlans });
-            renderMaintenancePlan();
-            showToast('ล้างข้อมูลสำเร็จ', 'success', 2000);
-        } catch (e) {
-            showToast('เกิดข้อผิดพลาด', 'error');
+        // Clean up empty year
+        if (Object.keys(site.maintenancePlans[year]).length === 0) {
+            delete site.maintenancePlans[year];
         }
+    }
+
+    try {
+        await FirestoreService.updateSite(siteId, { maintenancePlans: site.maintenancePlans });
+        renderMaintenancePlan();
+        showToast('ล้างข้อมูลสำเร็จ', 'success', 2000);
+    } catch (e) {
+        console.error('deletePlanEntry failed:', e);
+        showToast('เกิดข้อผิดพลาด', 'error');
     }
 }
 window.deletePlanEntry = deletePlanEntry;
@@ -14549,3 +14599,108 @@ function exportAnnualPlanPDF() {
     showPdfPreview(html, `แผนการบำรุงรักษาประจำปี ${displayYear}`);
 }
 window.exportAnnualPlanPDF = exportAnnualPlanPDF;
+
+// --- Case History PDF Export ---
+async function exportCaseHistoryPDF(siteId) {
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site) { showToast('ไม่พบข้อมูลเครื่อง', 'error'); return; }
+
+    const siteLogs = (state.logs || [])
+        .filter(l => l.siteId === siteId)
+        .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+    const userLocale = navigator.language || 'th-TH';
+    const thaiDate = (d) => d ? new Date(d).toLocaleDateString(userLocale, { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+
+    const statusColor = (s) => {
+        if (!s) return '#6b7280';
+        if (s === 'Case Closed') return '#16a34a';
+        if (s === 'Open') return '#ef4444';
+        if (s === 'กำลังดำเนินการ') return '#f59e0b';
+        return '#6b7280';
+    };
+
+    const rowsHtml = siteLogs.length === 0
+        ? '<tr><td colspan="6" style="text-align:center; padding:1rem; color:#999; font-style:italic;">ไม่มีประวัติเคส</td></tr>'
+        : siteLogs.map((log, idx) => `
+            <tr style="background:${idx % 2 === 0 ? '#fff' : '#f9fafb'};">
+                <td style="padding:5px 8px; border:1px solid #e5e7eb; font-size:9px; text-align:center; font-weight:600; color:#555;">${idx + 1}</td>
+                <td style="padding:5px 8px; border:1px solid #e5e7eb; font-size:9px; font-family:monospace;">${log.caseId || '-'}</td>
+                <td style="padding:5px 8px; border:1px solid #e5e7eb; font-size:9px;">${thaiDate(log.date)}</td>
+                <td style="padding:5px 8px; border:1px solid #e5e7eb; font-size:9px;">${log.category || '-'}</td>
+                <td style="padding:5px 8px; border:1px solid #e5e7eb; font-size:9px; max-width:200px; word-break:break-word;">${log.objective || log.details || '-'}</td>
+                <td style="padding:5px 8px; border:1px solid #e5e7eb; font-size:9px; text-align:center;">
+                    <span style="display:inline-block; padding:2px 8px; border-radius:10px; font-size:8px; font-weight:600; background:${statusColor(log.status)}22; color:${statusColor(log.status)}; border:1px solid ${statusColor(log.status)}44;">${log.status || '-'}</span>
+                </td>
+            </tr>
+        `).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>ประวัติเคส - ${site.name}</title>
+<style>
+    @page { size: A4 landscape; margin: 0; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 8mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
+    .page-content { flex: 1; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f3f4f6 !important; font-size: 9px; padding: 6px 8px; border: 1px solid #e5e7eb; text-align: left; font-weight: 700; }
+    .header-line { margin-bottom: 10px; position: relative; height: 2px; background: #ddd !important; }
+    .header-line::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
+    .page-footer { margin-top: auto; }
+    .footer-line { position: relative; height: 2px; background: #ddd !important; }
+    .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
+    .footer-text { display: flex; justify-content: space-between; font-size: 8px; color: #333; padding: 4px 0; }
+    .device-info { display: flex; gap: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; flex-wrap: wrap; }
+    .device-info-item { display: flex; flex-direction: column; gap: 2px; }
+    .device-info-label { font-size: 7px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; }
+    .device-info-value { font-size: 9px; font-weight: 600; color: #111; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+</head><body>
+<div style="display:flex; align-items:center; gap:12px; padding-bottom:10px;">
+    <img src="/bioinnotech.svg" alt="Logo" style="height:50px; width:auto;">
+    <div style="flex:1; text-align:right; font-size:9px; color:#333; line-height:1.6;">
+        <b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>
+        36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>
+        โทรศัพท์ 02-152-5405
+    </div>
+</div>
+<div class="header-line"></div>
+<div class="page-content">
+    <h1 style="text-align:center; font-size:13px; margin:0 0 4px;">ประวัติการซ่อมบำรุง</h1>
+    <p style="text-align:center; font-size:9px; color:#666; margin:0 0 12px;">Case History Report — พิมพ์วันที่ ${new Date().toLocaleDateString(userLocale, { dateStyle: 'long' })}</p>
+
+    <div class="device-info">
+        <div class="device-info-item"><span class="device-info-label">ชื่อโรงพยาบาล</span><span class="device-info-value">${site.name}</span></div>
+        <div class="device-info-item"><span class="device-info-label">รหัส</span><span class="device-info-value">${site.siteCode || '-'}</span></div>
+        <div class="device-info-item"><span class="device-info-label">ยี่ห้อ / รุ่น</span><span class="device-info-value">${[site.brand, site.model].filter(Boolean).join(' ') || '-'}</span></div>
+        <div class="device-info-item"><span class="device-info-label">Serial No.</span><span class="device-info-value">${site.serialNumber || '-'}</span></div>
+        <div class="device-info-item"><span class="device-info-label">จำนวนเคสทั้งหมด</span><span class="device-info-value">${siteLogs.length} เคส</span></div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:4%; text-align:center;">#</th>
+                <th style="width:14%;">รหัสเคส</th>
+                <th style="width:13%;">วันที่</th>
+                <th style="width:13%;">หมวดหมู่</th>
+                <th>รายละเอียด</th>
+                <th style="width:12%; text-align:center;">สถานะ</th>
+            </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+    </table>
+</div>
+<div class="page-footer">
+    <div class="footer-line"></div>
+    <div class="footer-text">
+        <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
+        <span>FM-SER-02 Rev.00 Effective date : 02-02-2026</span>
+    </div>
+</div>
+</body></html>`;
+
+    showPdfPreview(html, `ประวัติเคส — ${site.name}`);
+}
+window.exportCaseHistoryPDF = exportCaseHistoryPDF;
