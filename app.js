@@ -10010,17 +10010,22 @@ function viewLogDetails(id) {
     const attachSection = document.getElementById("detail-attachments-section");
     const attachContent = document.getElementById("detail-attachments-content");
 
+    const _isInstallLog = log.category === 'ติดตั้ง' || log.category === 'รื้อถอน';
     const attachmentsBefore = log.attachmentsBefore || [];
     const attachmentsAfter = log.attachmentsAfter || [];
     const descriptionAttachments = [
         ...(log.descriptionAttachments || []),
         ...(log.attachments || []),
     ];
-    const repairPhotos = [
-        ...(log.repairPhotos || []),
-        ...(log.installPhotos || []),
-        ...(log.preInstallPhotos || []),
-    ];
+    // For install/remove cases, installPhotos and preInstallPhotos are shown
+    // in their own dedicated section — exclude them from the general section
+    const repairPhotos = _isInstallLog
+        ? []
+        : [
+            ...(log.repairPhotos || []),
+            ...(log.installPhotos || []),
+            ...(log.preInstallPhotos || []),
+          ];
     const totalAttachments = attachmentsBefore.length + attachmentsAfter.length +
         descriptionAttachments.length + repairPhotos.length;
 
@@ -10288,33 +10293,33 @@ function viewLogDetails(id) {
         precheckContent.innerHTML = pcHtml;
     }
 
-    // Install Photos Section - for ติดตั้ง/รื้อถอน
+    // Install Photos Section - for ติดตั้ง/รื้อถอน — split into pre/post sections
     const installPhotosSection = document.getElementById("detail-install-photos-section");
     const installPhotosContent = document.getElementById("detail-install-photos-content");
     const hasPrePhotos = log.preInstallPhotos && log.preInstallPhotos.length > 0;
     const hasPostPhotos = log.installPhotos && log.installPhotos.length > 0;
     if (installPhotosSection) installPhotosSection.style.display = (isInstallLog && (hasPrePhotos || hasPostPhotos)) ? "block" : "none";
     if (installPhotosSection && installPhotosContent && isInstallLog && (hasPrePhotos || hasPostPhotos)) {
-        let phHtml = '';
-        if (hasPrePhotos) {
-            phHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.4rem;"><i class="fa-solid fa-camera-retro"></i> รูปถ่ายก่อนติดตั้ง/รื้อถอน (${log.preInstallPhotos.length} รูป)</div>`;
-            phHtml += `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:0.75rem;">`;
-            log.preInstallPhotos.forEach(p => {
+
+        const renderInstallGroup = (label, icon, items) => {
+            if (!items || !items.length) return '';
+            const thumbs = items.map(p => {
                 const url = p.url || p;
-                phHtml += `<div style="width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer;" onclick="window.openImageViewer('${url}')"><img src="${url}" style="width:100%; height:100%; object-fit:cover;" loading="lazy"></div>`;
-            });
-            phHtml += `</div>`;
-        }
-        if (hasPostPhotos) {
-            phHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.4rem;"><i class="fa-solid fa-camera"></i> รูปถ่ายหลังติดตั้ง/รื้อถอน (${log.installPhotos.length} รูป)</div>`;
-            phHtml += `<div style="display:flex; gap:8px; flex-wrap:wrap;">`;
-            log.installPhotos.forEach(p => {
-                const url = p.url || p;
-                phHtml += `<div style="width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer;" onclick="window.openImageViewer('${url}')"><img src="${url}" style="width:100%; height:100%; object-fit:cover;" loading="lazy"></div>`;
-            });
-            phHtml += `</div>`;
-        }
-        installPhotosContent.innerHTML = phHtml;
+                return `<div style="width:110px; height:82px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer; flex-shrink:0;" onclick="window.openImageViewer('${url}')">
+                    <img src="${url}" style="width:100%; height:100%; object-fit:cover;" loading="lazy">
+                </div>`;
+            }).join('');
+            return `<div style="margin-bottom:0.85rem;">
+                <div style="font-size:0.78rem; font-weight:600; color:#555; margin-bottom:0.4rem; display:flex; align-items:center; gap:0.35rem;">
+                    <i class="${icon}" style="font-size:0.7rem; opacity:0.7;"></i>${label} <span style="font-weight:400; color:#9ca3af;">(${items.length})</span>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">${thumbs}</div>
+            </div>`;
+        };
+
+        installPhotosContent.innerHTML =
+            renderInstallGroup('รูปถ่ายก่อนติดตั้ง/รื้อถอน', 'fa-solid fa-camera-retro', log.preInstallPhotos || []) +
+            renderInstallGroup('รูปถ่ายประกอบการติดตั้ง/รื้อถอน', 'fa-solid fa-camera', log.installPhotos || []);
     }
 
     // Action Plan Section
@@ -11371,21 +11376,7 @@ async function exportCasePDF(logId) {
 </td></tr></thead>
 
 <tfoot><tr><td>
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px; margin-top:4px;">
-        <div style="display:flex; align-items:center; gap:8px; visibility: ${isBlank ? 'hidden' : 'visible'};">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`https://water-plant-maintenance.web.app?logId=${log.id}`)}" alt="QR" style="width:45px; height:45px;">
-            <div>
-                <div style="font-size:8px; font-weight:700; color:#333;">สแกนเพื่อดูรายละเอียดเคสฉบับเต็ม</div>
-                <div style="font-size:7px; color:#888;">Scan to view full case detail</div>
-            </div>
-        </div>
-        <span id="page-info" style="font-size:8px; color:#333;"></span>
-    </div>
-    <div class="footer-line"></div>
-    <div class="footer-text">
-        <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
-        <span>${pdfFooterCode} Rev.00 Effective date : 02-02-2026</span>
-    </div>
+    <div style="height: 24mm;"></div>
 </td></tr></tfoot>
 
 <tbody><tr><td>
