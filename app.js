@@ -1418,6 +1418,32 @@ const FirestoreService = {
         }
     },
 
+    // --- Company Settings Methods ---
+    async updateCompanySettings(settings) {
+        try {
+            const ref = doc(db, "settings", "company");
+            await setDoc(ref, settings, { merge: true });
+        } catch (e) {
+            console.error("Error updating company settings:", e);
+            throw e;
+        }
+    },
+
+    async getCompanySettings() {
+        try {
+            const ref = doc(db, "settings", "company");
+            const snap = await getDoc(ref);
+            return snap.exists() ? snap.data() : {
+                name: 'บริษัท ไบโอ อินโน เทค จำกัด',
+                hotline: '02-152-5405',
+                address: '36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150'
+            };
+        } catch (e) {
+            console.error("Error fetching company settings:", e);
+            return { name: 'บริษัท ไบโอ อินโน เทค จำกัด', hotline: '', address: '' };
+        }
+    },
+
     async deleteNotificationSettings() {
         try {
             const settingsRef = doc(db, "settings", "notifications");
@@ -13251,6 +13277,17 @@ async function renderProfile(userArg = null) {
         notificationSettingsTab.style.display = isAdmin ? 'flex' : 'none';
     }
 
+    // Company Settings tab - admin only
+    const companySettingsTab = document.getElementById('company-settings-tab');
+    if (companySettingsTab) {
+        companySettingsTab.style.display = isAdmin ? 'flex' : 'none';
+    }
+
+    // Setup company settings form
+    if (isAdmin) {
+        setupCompanySettingsForm();
+    }
+
     // Setup tab switching
     setupProfileTabs();
 
@@ -13452,19 +13489,24 @@ function setupProfileTabs() {
     function syncMobileNavVisibility() {
         const userMgmtTab = document.getElementById('user-management-tab');
         const notifTab = document.getElementById('notification-settings-tab');
+        const companyTab = document.getElementById('company-settings-tab');
         const pmnUserMgmt = document.getElementById('pmn-user-management');
         const pmnNotif = document.getElementById('pmn-notification-settings');
+        const pmnCompany = document.getElementById('pmn-company-settings');
         if (pmnUserMgmt && userMgmtTab) {
             pmnUserMgmt.style.display = userMgmtTab.style.display === 'none' ? 'none' : 'inline-flex';
         }
         if (pmnNotif && notifTab) {
             pmnNotif.style.display = notifTab.style.display === 'none' ? 'none' : 'inline-flex';
         }
+        if (pmnCompany && companyTab) {
+            pmnCompany.style.display = companyTab.style.display === 'none' ? 'none' : 'inline-flex';
+        }
     }
 
     // Observe desktop tab visibility changes
     const observer = new MutationObserver(syncMobileNavVisibility);
-    ['user-management-tab', 'notification-settings-tab'].forEach(id => {
+    ['user-management-tab', 'notification-settings-tab', 'company-settings-tab'].forEach(id => {
         const el = document.getElementById(id);
         if (el) observer.observe(el, { attributes: true, attributeFilter: ['style'] });
     });
@@ -14392,50 +14434,165 @@ function showDeviceQR(siteId) {
     if (!modal) return;
     const baseUrl = getAppBaseUrl();
     const reportUrl = `${baseUrl}index.html?report=${siteId}`;
+
+    // Set modal header
     const nameEl = document.getElementById('qr-modal-device-name');
     if (nameEl) nameEl.textContent = site.name || 'QR Code เครื่อง';
-    const infoEl = document.getElementById('qr-device-info');
-    if (infoEl) infoEl.innerHTML = createDeviceBannerHTML(site);
+
+    // Show URL
     const urlEl = document.getElementById('qr-url-display');
     if (urlEl) urlEl.textContent = reportUrl;
-    const canvas = document.getElementById('device-qr-canvas');
-    if (canvas && typeof QRCode !== 'undefined') {
-        const qrSize = window.innerWidth > 768 ? 300 : 220;
-        QRCode.toCanvas(canvas, reportUrl, { width: qrSize, margin: 2, color: { dark: '#0f172a', light: '#ffffff' }, errorCorrectionLevel: 'M' }, (err) => { if (err) console.error('QR error:', err); });
-    } else if (canvas) {
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => { canvas.width = img.width; canvas.height = img.height; ctx.drawImage(img, 0, 0); };
-        img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(reportUrl)}`;
-    }
-    modal.classList.remove('hidden');
-    modal.style.display = 'flex';
-    const btnDownload = document.getElementById('btn-download-qr');
-    if (btnDownload) btnDownload.onclick = () => {
-        if (!canvas) return;
-        const link = document.createElement('a');
-        link.download = `qr-${site.siteCode || siteId}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-    };
-    const btnCopy = document.getElementById('btn-copy-qr-link');
-    if (btnCopy) btnCopy.onclick = () => {
-        navigator.clipboard.writeText(reportUrl).then(() => showToast('คัดลอกลิงก์เรียบร้อย', 'success')).catch(() => {
-            const ta = document.createElement('textarea');
-            ta.value = reportUrl;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            showToast('คัดลอกลิงก์เรียบร้อย', 'success');
-        });
-    };
-    const btnPrint = document.getElementById('btn-print-qr');
-    if (btnPrint) btnPrint.onclick = () => printDeviceQR(site, reportUrl, canvas);
+
+    // Load company settings, then render everything
+    FirestoreService.getCompanySettings().then(company => {
+        const companyName = company.name || 'บริษัท ไบโอ อินโน เทค จำกัด';
+        const hotline = company.hotline || '';
+
+        // Build the unified card HTML (used for preview, print, and download)
+        const buildCardHtml = (qrSrc) => `
+            <div style="
+                font-family:'Sarabun',Arial,sans-serif;
+                width:280px;
+                background:#fff;
+                border-radius:16px;
+                border:1.5px solid #e5e7eb;
+                box-shadow:0 4px 20px rgba(0,0,0,0.10);
+                overflow:hidden;
+                margin:0 auto;
+            ">
+                <!-- Top accent -->
+                <div style="height:4px; background:linear-gradient(90deg,#8bc53f,#38bdf8);"></div>
+
+                <!-- Body -->
+                <div style="padding:20px 20px 16px; text-align:center;">
+                    <!-- Company -->
+                    <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px;">
+                        <img src="/bioinnotech.svg" alt="Logo" style="height:22px; width:auto;" onerror="this.style.display='none'">
+                        <span style="font-size:0.72rem; font-weight:700; color:#374151;">${companyName}</span>
+                    </div>
+
+                    <!-- QR Code -->
+                    <div style="display:inline-block; padding:8px; background:#fff; border:1.5px solid #e5e7eb; border-radius:10px; margin-bottom:14px;">
+                        ${qrSrc ? `<img src="${qrSrc}" style="width:180px; height:180px; display:block;">` : `<div style="width:180px;height:180px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:0.8rem;">กำลังโหลด...</div>`}
+                    </div>
+
+                    <!-- Scan hint -->
+                    <div style="font-size:0.72rem; color:#6b7280; margin-bottom:12px;">สแกนเพื่อแจ้งปัญหาเครื่อง</div>
+
+                    <!-- Device name -->
+                    <div style="font-size:0.95rem; font-weight:700; color:#111; margin-bottom:4px;">${site.name}</div>
+                    ${site.installLocation || site.villageName ? `<div style="font-size:0.75rem; color:#6b7280; margin-bottom:4px;">${site.installLocation || site.villageName}</div>` : ''}
+
+                    <!-- Badges -->
+                    <div style="display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin-bottom:${hotline ? '10px' : '4px'};">
+                        ${site.siteCode ? `<span style="background:#f3f4f6; color:#374151; font-size:0.68rem; font-weight:600; padding:2px 8px; border-radius:6px;">${site.siteCode}</span>` : ''}
+                        ${site.serialNumber ? `<span style="background:#f3f4f6; color:#374151; font-size:0.68rem; padding:2px 8px; border-radius:6px;">S/N: ${site.serialNumber}</span>` : ''}
+                    </div>
+
+                    <!-- Hotline -->
+                    ${hotline ? `<div style="font-size:0.78rem; font-weight:600; color:#000000;">สายด่วน: ${hotline}</div>` : ''}
+                </div>
+
+                <!-- Footer -->
+                <div style="background:#f9fafb; border-top:1px solid #e5e7eb; padding:7px 16px; text-align:center;">
+                    <span style="font-size:0.62rem; color:#9ca3af; letter-spacing:0.04em; text-transform:uppercase;">CASP Maintenance System</span>
+                </div>
+            </div>`;
+
+        // Render preview card in modal (replace canvas with card preview)
+        const canvas = document.getElementById('device-qr-canvas');
+        const cardPreviewEl = document.getElementById('qr-card-preview');
+
+        // Generate QR then render card
+        const renderCard = (qrDataUrl) => {
+            if (cardPreviewEl) {
+                cardPreviewEl.innerHTML = buildCardHtml(qrDataUrl);
+            }
+            // Also keep canvas updated for download
+            if (canvas && qrDataUrl) {
+                const img = new Image();
+                img.onload = () => {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    canvas.getContext('2d').drawImage(img, 0, 0);
+                };
+                img.src = qrDataUrl;
+            }
+        };
+
+        if (typeof QRCode !== 'undefined') {
+            const offscreen = document.createElement('canvas');
+            QRCode.toCanvas(offscreen, reportUrl, {
+                width: 220, margin: 2,
+                color: { dark: '#0f172a', light: '#ffffff' },
+                errorCorrectionLevel: 'M'
+            }, (err) => {
+                const qrDataUrl = err ? '' : offscreen.toDataURL('image/png');
+                renderCard(qrDataUrl);
+            });
+        } else {
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(reportUrl)}`;
+            renderCard(qrUrl);
+        }
+
+        // Download: render full card as PNG via offscreen canvas
+        const btnDownload = document.getElementById('btn-download-qr');
+        if (btnDownload) {
+            btnDownload.onclick = () => {
+                // Use print window approach for consistent card download
+                const qrSrc = canvas && canvas.width > 0 ? canvas.toDataURL('image/png') : '';
+                const cardHtml = buildCardHtml(qrSrc);
+                const printWin = window.open('', '_blank', 'width=400,height=600');
+                printWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;padding:20px;background:#fff;display:flex;justify-content:center;}</style>
+</head><body>${cardHtml}</body></html>`);
+                printWin.document.close();
+                showToast('เปิดหน้าต่างใหม่เพื่อบันทึกรูปภาพ (คลิกขวา → บันทึกรูปภาพ)', 'info', 4000);
+            };
+        }
+
+        // Copy link
+        const btnCopy = document.getElementById('btn-copy-qr-link');
+        if (btnCopy) btnCopy.onclick = () => {
+            navigator.clipboard.writeText(reportUrl).then(() => showToast('คัดลอกลิงก์เรียบร้อย', 'success')).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = reportUrl;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('คัดลอกลิงก์เรียบร้อย', 'success');
+            });
+        };
+
+        // Print
+        const btnPrint = document.getElementById('btn-print-qr');
+        if (btnPrint) btnPrint.onclick = () => {
+            const qrSrc = canvas && canvas.width > 0 ? canvas.toDataURL('image/png') : '';
+            const cardHtml = buildCardHtml(qrSrc);
+            const printWin = window.open('', '_blank');
+            printWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+@page{size:A6 portrait;margin:8mm;}
+*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+body{margin:0;padding:0;background:#fff;display:flex;justify-content:center;align-items:flex-start;}
+</style>
+</head><body>${cardHtml}</body></html>`);
+            printWin.document.close();
+            printWin.focus();
+            setTimeout(() => { printWin.print(); }, 500);
+        };
+    });
+
+    // Close handlers
     const btnClose = document.getElementById('btn-close-qr-modal');
     if (btnClose) btnClose.onclick = () => closeDeviceQRModal();
     modal.onclick = (e) => { if (e.target === modal) closeDeviceQRModal(); };
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
 }
 window.showDeviceQR = showDeviceQR;
 
@@ -14447,13 +14604,39 @@ window.closeDeviceQRModal = closeDeviceQRModal;
 
 function printDeviceQR(site, reportUrl, canvas) {
     const qrDataUrl = canvas ? canvas.toDataURL('image/png') : '';
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>QR Code - ${site.name}</title>
-<style>body{font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#fff;}.card{text-align:center;padding:24px;border:2px solid #e5e7eb;border-radius:16px;max-width:320px;}.title{font-size:1.1rem;font-weight:700;color:#1e293b;margin-bottom:4px;}.sub{font-size:0.8rem;color:#64748b;margin-bottom:16px;}.qr-img{width:200px;height:200px;border:1px solid #e5e7eb;border-radius:8px;padding:8px;}.name{font-size:0.9rem;font-weight:600;color:#1e293b;margin-top:12px;}.code{font-size:0.75rem;color:#64748b;margin-top:4px;}.badge{display:inline-block;background:#f0fdf4;color:#16a34a;font-size:0.75rem;font-weight:600;padding:4px 12px;border-radius:20px;margin-top:8px;border:1px solid #bbf7d0;}</style>
-</head><body><div class="card"><div class="title">แจ้งปัญหาเครื่อง</div><div class="sub">สแกน QR Code เพื่อแจ้งปัญหา</div>${qrDataUrl ? `<img src="${qrDataUrl}" class="qr-img" alt="QR">` : ''}<div class="name">${site.name}</div>${site.siteCode ? `<div class="code">${site.siteCode}</div>` : ''}${site.serialNumber ? `<div class="code">S/N: ${site.serialNumber}</div>` : ''}<div class="badge">CASP Maintenance System</div></div></body></html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => { printWindow.print(); }, 400);
+    // Load company settings then print
+    FirestoreService.getCompanySettings().then(company => {
+        const companyName = company.name || 'บริษัท ไบโอ อินโน เทค จำกัด';
+        const hotline = company.hotline || '';
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>QR Code - ${site.name}</title>
+<style>
+body{font-family:'Sarabun',Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#fff;}
+.card{text-align:center;padding:24px 28px;border:2px solid #e5e7eb;border-radius:16px;max-width:320px;box-shadow:0 4px 16px rgba(0,0,0,0.08);}
+.company{font-size:0.78rem;font-weight:700;color:#555;margin-bottom:2px;}
+.title{font-size:1.05rem;font-weight:700;color:#1e293b;margin:8px 0 2px;}
+.sub{font-size:0.78rem;color:#64748b;margin-bottom:14px;}
+.qr-img{width:200px;height:200px;border:1px solid #e5e7eb;border-radius:8px;padding:8px;}
+.name{font-size:0.9rem;font-weight:600;color:#1e293b;margin-top:12px;}
+.code{font-size:0.75rem;color:#64748b;margin-top:4px;}
+.hotline{font-size:0.8rem;font-weight:600;color:#000000;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:4px;}
+.badge{display:inline-block;background:#f0fdf4;color:#16a34a;font-size:0.72rem;font-weight:600;padding:3px 10px;border-radius:20px;margin-top:8px;border:1px solid #bbf7d0;}
+</style>
+</head><body><div class="card">
+<div class="company">${companyName}</div>
+<div class="title">แจ้งปัญหาเครื่อง</div>
+<div class="sub">สแกน QR Code เพื่อแจ้งปัญหา</div>
+${qrDataUrl ? `<img src="${qrDataUrl}" class="qr-img" alt="QR">` : ''}
+<div class="name">${site.name}</div>
+${site.siteCode ? `<div class="code">${site.siteCode}</div>` : ''}
+${site.serialNumber ? `<div class="code">S/N: ${site.serialNumber}</div>` : ''}
+${hotline ? `<div class="hotline">สายด่วน: ${hotline}</div>` : ''}
+<div class="badge">CASP Maintenance System</div>
+</div></body></html>`);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => { printWindow.print(); }, 400);
+    });
 }
 
 // Re-add initCycleCountModal call to setupEventListeners via init
@@ -14658,7 +14841,7 @@ async function exportCaseHistoryPDF(siteId) {
 </div>
 <div class="header-line"></div>
 <div class="page-content">
-    <h1 style="text-align:center; font-size:13px; margin:0 0 4px;">ประวัติการซ่อมบำรุง</h1>
+    <h1 style="text-align:center; font-size:13px; margin:0 0 4px;">ประวัติการซ่อมเครื่อง</h1>
     <p style="text-align:center; font-size:9px; color:#666; margin:0 0 12px;">Case History Report — พิมพ์วันที่ ${new Date().toLocaleDateString(userLocale, { dateStyle: 'long' })}</p>
 
     <div class="device-info">
@@ -14687,11 +14870,147 @@ async function exportCaseHistoryPDF(siteId) {
     <div class="footer-line"></div>
     <div class="footer-text">
         <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
-        <span>FM-SER-02 Rev.00 Effective date : 02-02-2026</span>
+        <span>FM-SER-07 Rev.00 Effective date : 02-02-2026</span>
     </div>
 </div>
 </body></html>`;
 
-    showPdfPreview(html, `ประวัติเคส — ${site.name}`);
+    showPdfPreview(html, `ประวัติการซ่อมเครื่อง — ${site.name}`);
 }
 window.exportCaseHistoryPDF = exportCaseHistoryPDF;
+
+// --- Company Settings ---
+async function setupCompanySettingsForm() {
+    // Load existing settings
+    const settings = await FirestoreService.getCompanySettings();
+    const nameEl = document.getElementById('company-name-input');
+    const hotlineEl = document.getElementById('company-hotline-input');
+    const addressEl = document.getElementById('company-address-input');
+    if (nameEl && settings.name) nameEl.value = settings.name;
+    if (hotlineEl && settings.hotline) hotlineEl.value = settings.hotline;
+    if (addressEl && settings.address) addressEl.value = settings.address;
+
+    // Save button
+    const saveBtn = document.getElementById('btn-save-company-settings');
+    if (saveBtn) {
+        const newBtn = saveBtn.cloneNode(true);
+        saveBtn.parentNode.replaceChild(newBtn, saveBtn);
+        newBtn.addEventListener('click', async () => {
+            const data = {
+                name: nameEl?.value.trim() || 'บริษัท ไบโอ อินโน เทค จำกัด',
+                hotline: hotlineEl?.value.trim() || '',
+                address: addressEl?.value.trim() || '',
+            };
+            newBtn.disabled = true;
+            newBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังบันทึก...';
+            try {
+                await FirestoreService.updateCompanySettings(data);
+                showToast('บันทึกข้อมูลบริษัทสำเร็จ', 'success');
+            } catch (e) {
+                showToast('เกิดข้อผิดพลาด', 'error');
+            } finally {
+                newBtn.disabled = false;
+                newBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูลบริษัท';
+            }
+        });
+    }
+}
+window.setupCompanySettingsForm = setupCompanySettingsForm;
+
+// --- Devices List PDF Export ---
+function exportDevicesPDF() {
+    if (!state.sites || state.sites.length === 0) {
+        showToast('ไม่มีข้อมูลเครื่อง', 'error');
+        return;
+    }
+
+    const userLocale = navigator.language || 'th-TH';
+    const thaiDate = (d) => d ? new Date(d).toLocaleDateString(userLocale, { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+
+    const rowsHtml = state.sites.map((site, idx) => {
+        const siteColor = getSiteColor(site.name);
+        const warranty = site.insuranceStartDate && site.insuranceEndDate
+            ? `${thaiDate(site.insuranceStartDate)} ~ ${thaiDate(site.insuranceEndDate)}` : '-';
+        const address = [site.subdistrict, site.district, site.province].filter(Boolean).join(', ') || '-';
+        const installLog = (state.logs || []).find(l => l.siteId === site.id && l.category === 'ติดตั้ง');
+        const installDate = installLog ? thaiDate(installLog.date) : '-';
+        return `<tr style="background:${idx % 2 === 0 ? '#fff' : '#f9fafb'};">
+            <td style="text-align:center; padding:4px 6px; border:1px solid #e5e7eb; font-size:9px; font-weight:600;">${idx + 1}</td>
+            <td style="padding:4px 6px; border:1px solid #e5e7eb; font-size:9px;">${site.siteCode || '-'}</td>
+            <td style="padding:4px 6px; border:1px solid #e5e7eb; border-left:3px solid ${siteColor}; font-size:9px;">
+                <b>${site.name}</b>
+                ${site.installLocation || site.villageName ? `<div style="font-size:8px; color:#6b7280;">${site.installLocation || site.villageName}</div>` : ''}
+                ${address !== '-' ? `<div style="font-size:8px; color:#9ca3af;">${address}</div>` : ''}
+            </td>
+            <td style="padding:4px 6px; border:1px solid #e5e7eb; font-size:9px;">${site.picName || '-'}</td>
+            <td style="padding:4px 6px; border:1px solid #e5e7eb; font-size:9px;">${site.contactPhone || '-'}</td>
+            <td style="padding:4px 6px; border:1px solid #e5e7eb; font-size:9px;">${site.deviceType || '-'}</td>
+            <td style="padding:4px 6px; border:1px solid #e5e7eb; font-size:9px;">${[site.brand, site.model].filter(Boolean).join(' ') || '-'}</td>
+            <td style="padding:4px 6px; border:1px solid #e5e7eb; font-size:9px;">${site.serialNumber || '-'}</td>
+            <td style="padding:4px 6px; border:1px solid #e5e7eb; font-size:9px;">${installDate}</td>
+            <td style="padding:4px 6px; border:1px solid #e5e7eb; font-size:9px;">${warranty}</td>
+            <td style="padding:4px 6px; border:1px solid #e5e7eb; font-size:9px;">${site.warrantyNumber || '-'}</td>
+        </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>ทะเบียนเครื่องมือ</title>
+<style>
+    @page { size: A4 landscape; margin: 0; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 8mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
+    .page-content { flex: 1; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f3f4f6 !important; font-size: 9px; padding: 5px 6px; border: 1px solid #e5e7eb; text-align: left; font-weight: 700; }
+    .header-line { margin-bottom: 10px; position: relative; height: 2px; background: #ddd !important; }
+    .header-line::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
+    .page-footer { margin-top: auto; }
+    .footer-line { position: relative; height: 2px; background: #ddd !important; }
+    .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
+    .footer-text { display: flex; justify-content: space-between; font-size: 8px; color: #333; padding: 4px 0; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+</head><body>
+<div style="display:flex; align-items:center; gap:12px; padding-bottom:10px;">
+    <img src="/bioinnotech.svg" alt="Logo" style="height:50px; width:auto;">
+    <div style="flex:1; text-align:right; font-size:9px; color:#333; line-height:1.6;">
+        <b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>
+        36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>
+        โทรศัพท์ 02-152-5405
+    </div>
+</div>
+<div class="header-line"></div>
+<div class="page-content">
+    <h1 style="text-align:center; font-size:13px; margin:0 0 4px;">ทะเบียนเครื่องมือ</h1>
+    <p style="text-align:center; font-size:9px; color:#666; margin:0 0 10px;">จำนวนทั้งหมด ${state.sites.length} เครื่อง — พิมพ์วันที่ ${new Date().toLocaleDateString(userLocale, { dateStyle: 'long' })}</p>
+    <table>
+        <thead>
+            <tr>
+                <th style="width:3%; text-align:center;">No.</th>
+                <th style="width:7%;">รหัส</th>
+                <th style="width:20%;">โรงพยาบาล</th>
+                <th style="width:9%;">ผู้ดูแล</th>
+                <th style="width:9%;">เบอร์โทร</th>
+                <th style="width:8%;">สัญญา</th>
+                <th style="width:10%;">ยี่ห้อ/รุ่น</th>
+                <th style="width:9%;">S/N</th>
+                <th style="width:8%;">วันที่ติดตั้ง</th>
+                <th style="width:10%;">ประกัน</th>
+                <th style="width:7%;">เลขที่ใบรับประกัน</th>
+            </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+    </table>
+</div>
+<div class="page-footer">
+    <div class="footer-line"></div>
+    <div class="footer-text">
+        <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
+        <span>FM-SER-03 Rev.00 Effective date : 02-02-2026</span>
+    </div>
+</div>
+</body></html>`;
+
+    showPdfPreview(html, 'ทะเบียนเครื่องมือ');
+}
+window.exportDevicesPDF = exportDevicesPDF;
