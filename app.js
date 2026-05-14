@@ -3631,6 +3631,39 @@ function initCustomerSignaturePad() {
     });
     const modal = document.getElementById("modal-log-maintenance");
     if (modal) observer.observe(modal, { attributes: true, attributeFilter: ["class"] });
+
+    // Wire up e-signature toggle
+    const toggle = document.getElementById("use-esignature-toggle");
+    const sigSection = document.getElementById("customer-signature-section");
+    const signedDocSection = document.getElementById("signed-doc-upload-section");
+    if (toggle) {
+        const applyToggle = () => {
+            // Checked = use system signature → hide manual pad, hide doc upload
+            // Unchecked = physical signing → hide manual pad, show doc upload only
+            const useSystem = toggle.checked;
+            if (sigSection) sigSection.style.display = "none";
+            if (signedDocSection) signedDocSection.style.display = useSystem ? "none" : "";
+        };
+        toggle.addEventListener("change", applyToggle);
+        applyToggle();
+    }
+
+    // Wire up signed doc file input
+    const signedDocInput = document.getElementById("signed-doc-input");
+    const btnAttachSignedDoc = document.getElementById("btn-attach-signed-doc");
+    if (btnAttachSignedDoc && signedDocInput) {
+        btnAttachSignedDoc.addEventListener("click", () => signedDocInput.click());
+        signedDocInput.addEventListener("change", () => {
+            const newFiles = Array.from(signedDocInput.files);
+            newFiles.forEach(f => {
+                if (!pendingSignedDocs.find(p => p.name === f.name && p.size === f.size)) {
+                    pendingSignedDocs.push(f);
+                }
+            });
+            signedDocInput.value = "";
+            renderSignedDocPreview();
+        });
+    }
 }
 
 function clearCustomerSignature() {
@@ -3654,6 +3687,83 @@ function getCustomerSignatureDataUrl() {
 }
 
 window.clearCustomerSignature = clearCustomerSignature;
+
+// --- Signed Document Attachments ---
+
+function renderSignedDocPreview() {
+    const preview = document.getElementById("signed-doc-preview");
+    const countEl = document.getElementById("signed-doc-count");
+    const existingInput = document.getElementById("existing-signed-docs-json");
+
+    // Combine existing (already uploaded) + pending (new files)
+    const existing = (() => {
+        try { return JSON.parse(existingInput?.value || "[]"); } catch { return []; }
+    })();
+    const total = existing.length + pendingSignedDocs.length;
+
+    if (countEl) countEl.textContent = total > 0 ? `${total} ไฟล์` : "ไม่ได้เลือกไฟล์";
+    if (!preview) return;
+
+    if (total === 0) {
+        preview.style.display = "none";
+        preview.innerHTML = "";
+        return;
+    }
+
+    preview.style.display = "flex";
+    preview.innerHTML = "";
+
+    const makeItem = (name, url, isPending, index) => {
+        const isPdf = name.toLowerCase().endsWith(".pdf");
+        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(name);
+        const item = document.createElement("div");
+        item.style.cssText = "position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; width:80px;";
+
+        if (isImage && url) {
+            const img = document.createElement("img");
+            img.src = url;
+            img.style.cssText = "width:72px; height:72px; object-fit:cover; border-radius:6px; border:1px solid rgba(0,0,0,0.1);";
+            item.appendChild(img);
+        } else {
+            const icon = document.createElement("div");
+            icon.style.cssText = "width:72px; height:72px; display:flex; align-items:center; justify-content:center; border-radius:6px; border:1px solid rgba(0,0,0,0.1); background:#f9fafb;";
+            icon.innerHTML = isPdf
+                ? '<i class="fa-solid fa-file-pdf" style="font-size:2rem; color:#ef4444;"></i>'
+                : '<i class="fa-solid fa-file" style="font-size:2rem; color:#64748b;"></i>';
+            item.appendChild(icon);
+        }
+
+        const label = document.createElement("span");
+        label.style.cssText = "font-size:0.68rem; color:#555; text-align:center; word-break:break-all; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;";
+        label.title = name;
+        label.textContent = name;
+        item.appendChild(label);
+
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.style.cssText = "position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%; background:#ef4444; color:#fff; border:none; cursor:pointer; font-size:10px; display:flex; align-items:center; justify-content:center; padding:0;";
+        removeBtn.innerHTML = "×";
+        removeBtn.onclick = () => {
+            if (isPending) {
+                pendingSignedDocs.splice(index, 1);
+            } else {
+                const updated = existing.filter((_, i) => i !== index);
+                if (existingInput) existingInput.value = JSON.stringify(updated);
+            }
+            renderSignedDocPreview();
+        };
+        item.appendChild(removeBtn);
+        preview.appendChild(item);
+    };
+
+    existing.forEach((f, i) => makeItem(f.name, f.url, false, i));
+    pendingSignedDocs.forEach((f, i) => {
+        const url = f.type.startsWith("image/") ? URL.createObjectURL(f) : null;
+        makeItem(f.name, url, true, i);
+    });
+}
+
+window.renderSignedDocPreview = renderSignedDocPreview;
 
 function buildInspectionSummary(logData) {
     const lines = [];
@@ -3867,6 +3977,14 @@ async function handleLogMaintenance(e) {
             );
         }
 
+        // Upload signed document copies
+        const signedDocAttachments = (() => {
+            try { return JSON.parse(formData.get("existingSignedDocsJSON") || "[]"); } catch { return []; }
+        })();
+        if (typeof pendingSignedDocs !== "undefined" && pendingSignedDocs.length > 0) {
+            await processUploads(pendingSignedDocs, signedDocAttachments, "upload-signed-doc-progress-");
+        }
+
         showProgress(70, 'กำลังบันทึกข้อมูล...');
 
         const logData = {
@@ -3912,6 +4030,8 @@ async function handleLogMaintenance(e) {
             customerPhone: formData.get("customerPhone") || "",
             customerPosition: formData.get("customerPosition") || "",
             customerSignature: getCustomerSignatureDataUrl() || formData.get("customerSignatureData") || "",
+            useESignature: document.getElementById("use-esignature-toggle")?.checked || false,
+            signedDocAttachments: signedDocAttachments,
             // Install/Uninstall fields
             useRamp: formData.get("useRamp") || "",
             rampWidth: formData.get("rampWidth") || "",
@@ -4802,6 +4922,7 @@ async function handleLogMaintenance(e) {
 let pendingUploadsBefore = [];
 let pendingUploadsAfter = [];
 let pendingDeletions = []; // Store paths of files to delete on save
+let pendingSignedDocs = [];
 
 // ... (renderPendingPreviews helper remains similar, just referencing context)
 
@@ -6088,6 +6209,28 @@ function resetLogForm() {
     // Clear customer fields
     clearCustomerSignature();
 
+    // Clear signed doc uploads
+    pendingSignedDocs = [];
+    const existingSignedDocsInput = document.getElementById("existing-signed-docs-json");
+    if (existingSignedDocsInput) existingSignedDocsInput.value = "[]";
+    renderSignedDocPreview();
+
+    // Reset e-signature toggle to unchecked, show signature section
+    const eSignToggle = document.getElementById("use-esignature-toggle");
+    const sigSec = document.getElementById("customer-signature-section");
+    const signedDocSec = document.getElementById("signed-doc-upload-section");
+    if (eSignToggle) eSignToggle.checked = false;
+    if (sigSec) sigSec.style.display = "none";
+    if (signedDocSec) signedDocSec.style.display = "";
+
+    // Restore site selection field for new cases
+    const siteFieldWrapper = document.querySelector('#form-log-maintenance .autocomplete-wrapper:has(#log-site-input)');
+    if (siteFieldWrapper) siteFieldWrapper.style.display = '';
+
+    // Reset header to default new-case state
+    const caseIdElReset = document.getElementById('ma-form-case-id');
+    if (caseIdElReset) caseIdElReset.textContent = '';
+
     const containerBefore = document.getElementById(
         "attachment-before-preview-container",
     );
@@ -6212,16 +6355,16 @@ function editLog(logId) {
     if (formCostContent) formCostContent.style.display = "none";
     if (formCostIcon) formCostIcon.style.transform = "";
 
-    // Update title with case ID in header
+    // Update title with case ID and device name in header
     const caseIdEl = document.getElementById('ma-form-case-id');
     const titleEl = document.getElementById('ma-form-title');
     
     if (caseIdEl && log.caseId) {
-        caseIdEl.textContent = log.caseId;
+        const site = state.sites.find((s) => s.id === log.siteId);
+        const siteName = site ? site.name : '';
+        caseIdEl.innerHTML = `${log.caseId}${siteName ? ` <span style="color: var(--text-muted); font-weight: 500;">• ${siteName}</span>` : ''}`;
     }
     if (titleEl) {
-        titleEl.textContent = 'แก้ไขบันทึก';
-    } else if (titleEl) {
         titleEl.textContent = 'แก้ไขบันทึก';
     }
 
@@ -6245,6 +6388,10 @@ function editLog(logId) {
     if (selects.logSiteHidden) selects.logSiteHidden.value = log.siteId;
     const site = state.sites.find((s) => s.id === log.siteId);
     if (selects.logSiteInput) selects.logSiteInput.value = site ? site.name : "";
+
+    // Hide site selection field when editing — device is shown in the header
+    const siteFieldWrapper = document.querySelector('#form-log-maintenance .autocomplete-wrapper:has(#log-site-input)');
+    if (siteFieldWrapper) siteFieldWrapper.style.display = 'none';
     const dateInput = form.querySelector('input[name="date"]');
     if (dateInput) {
         // datetime-local expects YYYY-MM-DDTHH:MM, old records may have just YYYY-MM-DD
@@ -6355,6 +6502,24 @@ function editLog(logId) {
     setField("customerName", log.customerName);
     setField("customerPhone", log.customerPhone);
     setField("customerPosition", log.customerPosition);
+
+    // E-signature toggle
+    const eSignToggle = document.getElementById("use-esignature-toggle");
+    const sigSection = document.getElementById("customer-signature-section");
+    const signedDocSection = document.getElementById("signed-doc-upload-section");
+    if (eSignToggle) {
+        eSignToggle.checked = !!log.useESignature;
+        if (sigSection) sigSection.style.display = "none";
+        if (signedDocSection) signedDocSection.style.display = log.useESignature ? "none" : "";
+    }
+
+    // Restore signed document attachments
+    pendingSignedDocs = [];
+    const existingSignedDocsInput = document.getElementById("existing-signed-docs-json");
+    if (existingSignedDocsInput) {
+        existingSignedDocsInput.value = JSON.stringify(log.signedDocAttachments || []);
+    }
+    renderSignedDocPreview();
 
     // Install/Uninstall fields
     if (log.useRamp) {
@@ -8436,60 +8601,6 @@ function viewSiteDetails(id) {
     }
 
     toggleModal("siteDetails", true);
-
-    // Load change history
-    loadSiteHistory(site.id);
-}
-
-function toggleSiteHistorySection() {
-    const content = document.getElementById('site-history-content');
-    const icon = document.getElementById('site-history-collapse-icon');
-    if (!content) return;
-    const isHidden = content.style.display === 'none';
-    content.style.display = isHidden ? '' : 'none';
-    if (icon) icon.style.transform = isHidden ? '' : 'rotate(-90deg)';
-}
-window.toggleSiteHistorySection = toggleSiteHistorySection;
-
-async function loadSiteHistory(siteId) {
-    const list = document.getElementById('site-history-list');
-    if (!list) return;
-
-    list.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; font-style:italic;">กำลังโหลด...</p>';
-
-    const entries = await FirestoreService.fetchSiteHistory(siteId);
-
-    if (entries.length === 0) {
-        list.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; font-style:italic;">ยังไม่มีประวัติการแก้ไข</p>';
-        return;
-    }
-
-    list.innerHTML = entries.map(entry => {
-        const dateStr = entry.changedAtISO
-            ? new Date(entry.changedAtISO).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })
-            : '-';
-
-        const changesHtml = (entry.changes || []).map(c => `
-            <div style="display:flex; align-items:baseline; gap:0.4rem; font-size:0.8rem; padding:2px 0; border-bottom:1px solid rgba(0,0,0,0.04);">
-                <span style="color:#555; font-weight:600; min-width:120px; flex-shrink:0;">${c.label}</span>
-                <span style="color:#9ca3af; text-decoration:line-through; word-break:break-word;">${c.from}</span>
-                <span style="color:#94a3b8; font-size:0.7rem; flex-shrink:0;">→</span>
-                <span style="color:#16a34a; font-weight:600; word-break:break-word;">${c.to}</span>
-            </div>
-        `).join('');
-
-        return `
-            <div style="background:rgba(0,0,0,0.02); border:1px solid rgba(0,0,0,0.06); border-radius:8px; padding:0.75rem 1rem;">
-                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
-                    <span style="font-size:0.8rem; font-weight:600; color:#111;">
-                        <i class="fa-solid fa-user" style="font-size:0.7rem; opacity:0.5; margin-right:4px;"></i>${entry.changedBy}
-                    </span>
-                    <span style="font-size:0.75rem; color:var(--text-muted);">${dateStr}</span>
-                </div>
-                <div style="display:flex; flex-direction:column; gap:2px;">${changesHtml}</div>
-            </div>
-        `;
-    }).join('');
 }
 
 // ─── Comment Helpers ─────────────────────────────────────────────────────────
@@ -9924,31 +10035,13 @@ function viewLogDetails(id) {
         caseIdEl.textContent = log.caseId || "-";
     }
 
-    // Header: case ID + site info
+    // Header: case ID
     const headerCaseIdEl = document.getElementById("detail-log-header-case-id");
     if (headerCaseIdEl) {
         headerCaseIdEl.textContent = log.caseId || "";
     }
-    const headerSiteEl = document.getElementById("detail-log-header-site");
-    if (headerSiteEl) {
-        headerSiteEl.textContent = thaiDate;
-    }
-    
-    // Title with site name (clickable to open device detail)
-    const dateEl = document.getElementById("detail-log-date");
-    if (dateEl) {
-        const siteCode = site.siteCode ? `${site.siteCode} · ` : "";
-        dateEl.textContent = `${siteCode}${site.name}`;
-        dateEl.style.cursor = "pointer";
-        dateEl.style.textDecoration = "underline";
-        dateEl.style.textDecorationColor = "rgba(0,0,0,0.2)";
-        dateEl.style.textUnderlineOffset = "3px";
-        dateEl.onclick = () => {
-            viewSiteDetails(site.id);
-        };
-    }
-    
-    // Date field (if exists)
+
+    // Date field (in job info grid)
     const dateFieldEl = document.getElementById("detail-log-date-field");
     if (dateFieldEl) {
         dateFieldEl.textContent = thaiDate;
@@ -9959,11 +10052,10 @@ function viewLogDetails(id) {
         siteEl.textContent = site.name;
     }
 
-    // Populate Unified Device Banner
+    // Device Banner in header (replaces old text title)
     const bannerContainer = document.getElementById("detail-log-banner-container");
     if (bannerContainer) {
         bannerContainer.innerHTML = createDeviceBannerHTML(site);
-        // Make the banner clickable to view site details
         bannerContainer.style.cursor = 'pointer';
         bannerContainer.onclick = () => viewSiteDetails(site.id);
     }
@@ -10497,11 +10589,15 @@ function viewLogDetails(id) {
     if (actionsContainer) {
         actionsContainer.style.display = "flex";
         actionsContainer.innerHTML = `
-            <button class="btn-icon" onclick="exportCasePDF('${log.id}')" title="ส่งออก PDF" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 0.4rem 0.75rem; font-size: 0.85rem; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 6px; cursor: pointer;">
-                <i class="fa-solid fa-file-pdf"></i> <span>PDF</span>
+            <button onclick="exportCasePDF('${log.id}')" title="ส่งออก PDF"
+                style="display:inline-flex; align-items:center; gap:6px; padding:0 14px; height:36px; background:#fff1f1; color:#dc2626; border:1.5px solid #fecaca; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; transition:all 0.15s; white-space:nowrap;"
+                onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fff1f1'">
+                <i class="fa-solid fa-file-pdf"></i> PDF
             </button>
-            <button class="btn-icon" onclick="checkEditPermission('${log.id}', '${log.status}')" title="แก้ไข" style="background: rgba(56, 189, 248, 0.1); color: var(--primary-color); padding: 0.4rem 0.75rem; font-size: 0.85rem; border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 6px; cursor: pointer;">
-                <i class="fa-solid fa-pen"></i> <span>แก้ไข</span>
+            <button onclick="checkEditPermission('${log.id}', '${log.status}')" title="แก้ไข"
+                style="display:inline-flex; align-items:center; gap:6px; padding:0 14px; height:36px; background:#f0f9ff; color:#0369a1; border:1.5px solid #bae6fd; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; transition:all 0.15s; white-space:nowrap;"
+                onmouseover="this.style.background='#e0f2fe'" onmouseout="this.style.background='#f0f9ff'">
+                <i class="fa-solid fa-pen-to-square"></i> แก้ไข
             </button>
         `;
     }
@@ -11035,7 +11131,10 @@ async function exportCasePDF(logId) {
     const sigRoleStyle = 'font-size:8px; color:#333;';
 
     const buildSigBox = (signature, thaiLabel, engLabel, name = '') => {
-        const imgHtml = signature
+        // If useESignature is true → show system signature image (or empty space if none)
+        // If useESignature is false → always blank (for physical pen signing)
+        const showSig = log.useESignature && signature;
+        const imgHtml = showSig
             ? `<img src="${signature}" style="${sigImgStyle}">`
             : `<div style="height:60px;"></div>`;
         const nameHtml = name ? `<div style="font-size:8px; color:#333; margin-top:2px;">${name}</div>` : '';
@@ -11052,7 +11151,27 @@ async function exportCasePDF(logId) {
         ${buildSigBox(responderSignature, 'เจ้าหน้าที่ช่างบริการ', 'Service Engineer')}
         ${buildSigBox(doneSignature, 'ลูกค้า', 'Customer Authorized PIC')}
         ${buildSigBox(closerSignature, 'ผู้จัดการฝ่ายช่างบริการ', 'Service Manager')}
-    </div>`;
+    </div>${(() => {
+        // When not using e-signature, show any uploaded signed document copies
+        if (log.useESignature) return '';
+        const docs = log.signedDocAttachments || [];
+        if (docs.length === 0) return '';
+        const items = docs.map(d => {
+            const isPdf = d.name && d.name.toLowerCase().endsWith('.pdf');
+            const isImg = d.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(d.name || '');
+            if (isImg) {
+                return `<div style="display:inline-block; margin:4px;">
+                    <img src="${d.url}" style="max-width:200px; max-height:160px; border:1px solid #ddd; border-radius:4px; display:block;">
+                    <div style="font-size:8px; color:#666; margin-top:2px; text-align:center;">${d.name || ''}</div>
+                </div>`;
+            }
+            return `<div style="display:inline-flex; align-items:center; gap:6px; margin:4px; padding:6px 10px; border:1px solid #ddd; border-radius:4px; background:#fafafa;">
+                <i class="fa-solid fa-file-pdf" style="color:#ef4444;"></i>
+                <a href="${d.url}" style="font-size:9px; color:#333; text-decoration:none;">${d.name || 'เอกสาร'}</a>
+            </div>`;
+        }).join('');
+        return `<div style="margin-top:10px;"><div style="font-size:10px; font-weight:700; color:#333; margin-bottom:4px; border-bottom:1px solid #eee; padding-bottom:3px;">สำเนาเอกสารที่เซ็นแล้ว (Signed Document Copy)</div><div style="display:flex; flex-wrap:wrap; gap:4px;">${items}</div></div>`;
+    })()}`;
 
     // Get initial case detail from first comment
     const initialDetail = log.comments && log.comments.length > 0 && log.comments[0].text
@@ -14504,19 +14623,11 @@ function showDeviceQR(siteId) {
         const cardPreviewEl = document.getElementById('qr-card-preview');
 
         // Generate QR then render card
+        let cachedQrDataUrl = ''; // store clean QR data URL to avoid tainted canvas
         const renderCard = (qrDataUrl) => {
+            cachedQrDataUrl = qrDataUrl;
             if (cardPreviewEl) {
                 cardPreviewEl.innerHTML = buildCardHtml(qrDataUrl);
-            }
-            // Also keep canvas updated for download
-            if (canvas && qrDataUrl) {
-                const img = new Image();
-                img.onload = () => {
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    canvas.getContext('2d').drawImage(img, 0, 0);
-                };
-                img.src = qrDataUrl;
             }
         };
 
@@ -14535,20 +14646,165 @@ function showDeviceQR(siteId) {
             renderCard(qrUrl);
         }
 
-        // Download: render full card as PNG via offscreen canvas
+        // Download: render full card as PNG using Canvas 2D API
         const btnDownload = document.getElementById('btn-download-qr');
         if (btnDownload) {
-            btnDownload.onclick = () => {
-                // Use print window approach for consistent card download
-                const qrSrc = canvas && canvas.width > 0 ? canvas.toDataURL('image/png') : '';
-                const cardHtml = buildCardHtml(qrSrc);
-                const printWin = window.open('', '_blank', 'width=400,height=600');
-                printWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
-<style>body{margin:0;padding:20px;background:#fff;display:flex;justify-content:center;}</style>
-</head><body>${cardHtml}</body></html>`);
-                printWin.document.close();
-                showToast('เปิดหน้าต่างใหม่เพื่อบันทึกรูปภาพ (คลิกขวา → บันทึกรูปภาพ)', 'info', 4000);
+            btnDownload.onclick = async () => {
+                try {
+                    const W = 560, PAD = 40;
+                    // Measure text heights
+                    const oc = document.createElement('canvas');
+                    oc.width = W;
+                    // We'll draw in passes — first calculate total height
+                    const lines = [];
+                    lines.push({ type: 'accent',   h: 8 });
+                    lines.push({ type: 'gap',       h: PAD });
+                    lines.push({ type: 'logo',      h: 44 });
+                    lines.push({ type: 'gap',       h: 24 });
+                    lines.push({ type: 'qr',        h: 360 });
+                    lines.push({ type: 'gap',       h: 24 });
+                    lines.push({ type: 'hint',      h: 28 });
+                    lines.push({ type: 'name',      h: 40 });
+                    if (site.installLocation || site.villageName) lines.push({ type: 'loc', h: 28 });
+                    if (site.siteCode || site.serialNumber)       lines.push({ type: 'badges', h: 32 });
+                    if (hotline)                                   lines.push({ type: 'hotline', h: 30 });
+                    lines.push({ type: 'gap',       h: PAD });
+                    lines.push({ type: 'footer',    h: 48 });
+
+                    const totalH = lines.reduce((s, l) => s + l.h, 0);
+                    oc.height = totalH;
+                    const ctx = oc.getContext('2d');
+
+                    // Background
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, W, totalH);
+
+                    // Rounded rect clip
+                    const r = 24;
+                    ctx.beginPath();
+                    ctx.moveTo(r, 0); ctx.lineTo(W - r, 0);
+                    ctx.quadraticCurveTo(W, 0, W, r);
+                    ctx.lineTo(W, totalH - r);
+                    ctx.quadraticCurveTo(W, totalH, W - r, totalH);
+                    ctx.lineTo(r, totalH);
+                    ctx.quadraticCurveTo(0, totalH, 0, totalH - r);
+                    ctx.lineTo(0, r);
+                    ctx.quadraticCurveTo(0, 0, r, 0);
+                    ctx.closePath();
+                    ctx.clip();
+
+                    // Draw each section
+                    let y = 0;
+                    // Polyfill roundRect for older browsers
+                    if (!ctx.roundRect) {
+                        ctx.roundRect = function(x, y, w, h, r) {
+                            this.moveTo(x + r, y);
+                            this.lineTo(x + w - r, y);
+                            this.quadraticCurveTo(x + w, y, x + w, y + r);
+                            this.lineTo(x + w, y + h - r);
+                            this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                            this.lineTo(x + r, y + h);
+                            this.quadraticCurveTo(x, y + h, x, y + h - r);
+                            this.lineTo(x, y + r);
+                            this.quadraticCurveTo(x, y, x + r, y);
+                            this.closePath();
+                        };
+                    }
+                    for (const line of lines) {
+                        if (line.type === 'accent') {
+                            const grad = ctx.createLinearGradient(0, 0, W, 0);
+                            grad.addColorStop(0, '#8bc53f');
+                            grad.addColorStop(1, '#38bdf8');
+                            ctx.fillStyle = grad;
+                            ctx.fillRect(0, y, W, line.h);
+                        } else if (line.type === 'logo') {
+                            ctx.font = 'bold 26px Sarabun, Arial, sans-serif';
+                            ctx.fillStyle = '#374151';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(companyName, W / 2, y + line.h / 2);
+                        } else if (line.type === 'qr' && cachedQrDataUrl) {
+                            await new Promise(res => {
+                                const img = new Image();
+                                img.onload = () => {
+                                    const qrSize = 320;
+                                    const qx = (W - qrSize) / 2;
+                                    // QR border box
+                                    ctx.strokeStyle = '#e5e7eb';
+                                    ctx.lineWidth = 3;
+                                    ctx.beginPath();
+                                    const br = 12;
+                                    ctx.roundRect(qx - 16, y, qrSize + 32, line.h, br);
+                                    ctx.stroke();
+                                    ctx.fillStyle = '#ffffff';
+                                    ctx.fill();
+                                    ctx.drawImage(img, qx, y + (line.h - qrSize) / 2, qrSize, qrSize);
+                                    res();
+                                };
+                                img.onerror = res;
+                                img.src = cachedQrDataUrl;
+                            });
+                        } else if (line.type === 'hint') {
+                            ctx.font = '24px Sarabun, Arial, sans-serif';
+                            ctx.fillStyle = '#6b7280';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText('สแกนเพื่อแจ้งปัญหาเครื่อง', W / 2, y + line.h / 2);
+                        } else if (line.type === 'name') {
+                            ctx.font = 'bold 32px Sarabun, Arial, sans-serif';
+                            ctx.fillStyle = '#111111';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(site.name, W / 2, y + line.h / 2);
+                        } else if (line.type === 'loc') {
+                            ctx.font = '22px Sarabun, Arial, sans-serif';
+                            ctx.fillStyle = '#6b7280';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(site.installLocation || site.villageName, W / 2, y + line.h / 2);
+                        } else if (line.type === 'badges') {
+                            ctx.font = 'bold 20px Sarabun, Arial, sans-serif';
+                            ctx.fillStyle = '#374151';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            const badgeText = [
+                                site.siteCode,
+                                site.serialNumber ? `S/N: ${site.serialNumber}` : ''
+                            ].filter(Boolean).join('   ');
+                            ctx.fillText(badgeText, W / 2, y + line.h / 2);
+                        } else if (line.type === 'hotline') {
+                            ctx.font = 'bold 24px Sarabun, Arial, sans-serif';
+                            ctx.fillStyle = '#000000';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(`สายด่วน: ${hotline}`, W / 2, y + line.h / 2);
+                        } else if (line.type === 'footer') {
+                            ctx.fillStyle = '#f9fafb';
+                            ctx.fillRect(0, y, W, line.h);
+                            ctx.strokeStyle = '#e5e7eb';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(0, y); ctx.lineTo(W, y);
+                            ctx.stroke();
+                            ctx.font = '18px Sarabun, Arial, sans-serif';
+                            ctx.fillStyle = '#9ca3af';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText('CASP Maintenance System', W / 2, y + line.h / 2);
+                        }
+                        y += line.h;
+                    }
+
+                    // Trigger download
+                    const a = document.createElement('a');
+                    a.href = oc.toDataURL('image/png');
+                    a.download = `QR-${site.name || siteId}.png`;
+                    a.click();
+                    showToast('ดาวน์โหลดรูปภาพเรียบร้อย', 'success');
+                } catch (e) {
+                    console.error('QR download error:', e);
+                    showToast('เกิดข้อผิดพลาดในการดาวน์โหลด', 'error');
+                }
             };
         }
 
@@ -14569,8 +14825,7 @@ function showDeviceQR(siteId) {
         // Print
         const btnPrint = document.getElementById('btn-print-qr');
         if (btnPrint) btnPrint.onclick = () => {
-            const qrSrc = canvas && canvas.width > 0 ? canvas.toDataURL('image/png') : '';
-            const cardHtml = buildCardHtml(qrSrc);
+            const cardHtml = buildCardHtml(cachedQrDataUrl);
             const printWin = window.open('', '_blank');
             printWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">

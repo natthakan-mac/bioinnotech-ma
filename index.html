@@ -2997,6 +2997,16 @@
                     style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
                     <i class="fa-solid fa-user-check" style="color: #111111;"></i> ข้อมูลลูกค้า (Customer Information)
                 </h4>
+                
+                <!-- E-Signature Toggle -->
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; user-select: none;">
+                        <input type="checkbox" name="useESignature" id="use-esignature-toggle" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-weight: 600; color: #111;"><i class="fa-solid fa-file-signature"></i> ใช้ลายเซ็นจากระบบ (Use System E-Signature)</span>
+                    </label>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 1.75rem;">เมื่อเปิดใช้งาน ลายเซ็นจากโปรไฟล์ผู้ใช้จะแสดงใน PDF อัตโนมัติ / เมื่อปิด ช่องลายเซ็นใน PDF จะว่างเพื่อเซ็นด้วยมือ</p>
+                </div>
+
                 <div class="form-row form-row-3col">
                     <div class="form-group">
                         <label><i class="fa-solid fa-user"></i> ชื่อลูกค้า (Customer Name)</label>
@@ -3012,7 +3022,7 @@
                         <input type="text" name="customerPosition" placeholder="ตำแหน่งงาน" autocomplete="off">
                     </div>
                 </div>
-                <div class="form-group" style="margin-top: 0.5rem;">
+                <div class="form-group" id="customer-signature-section" style="margin-top: 0.5rem;">
                     <label><i class="fa-solid fa-signature"></i> ลายเซ็นลูกค้า (Customer Signature)</label>
                     <div style="position: relative;">
                         <canvas id="customer-signature-canvas"
@@ -3023,6 +3033,24 @@
                         </button>
                     </div>
                     <input type="hidden" name="customerSignatureData" id="customer-signature-data">
+                </div>
+
+                <!-- Signed Document Upload (shown when e-signature is OFF) -->
+                <div class="form-group" id="signed-doc-upload-section" style="margin-top: 0.75rem; display: none;">
+                    <label><i class="fa-solid fa-file-arrow-up"></i> แนบสำเนาเอกสารที่เซ็นแล้ว (Signed Document Copy)</label>
+                    <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0 0 0.5rem;">รองรับ PDF และรูปภาพ (JPG, PNG)</p>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.5rem;">
+                        <input type="file" id="signed-doc-input" multiple accept="image/*,application/pdf" style="display: none;">
+                        <button type="button" id="btn-attach-signed-doc"
+                            style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.9rem; background: rgba(0,0,0,0.05); color: #555; border: 1px solid rgba(0,0,0,0.12); border-radius: 6px; font-size: 0.82rem; font-weight: 500;">
+                            <i class="fa-solid fa-paperclip"></i> เลือกไฟล์
+                        </button>
+                        <span id="signed-doc-count" style="font-size: 0.82rem; color: #888;">ไม่ได้เลือกไฟล์</span>
+                    </div>
+                    <div id="signed-doc-preview"
+                        style="display: none; gap: 8px; flex-wrap: wrap; padding: 8px; border: 2px dashed rgba(0,0,0,0.1); border-radius: 8px; background: rgba(0,0,0,0.01);">
+                    </div>
+                    <input type="hidden" name="existingSignedDocsJSON" id="existing-signed-docs-json">
                 </div>
             </div>
 
@@ -3285,51 +3313,41 @@
         <div id="detail-modal-actions">
             <!-- Dynamically injected via app.js -->
         </div>
-
-        <!-- Change History Section -->
-        <div style="margin-top: 1.5rem; border-top: 1px solid rgba(0,0,0,0.07); padding-top: 1.25rem;">
-            <h4 onclick="toggleSiteHistorySection()" style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:0.4rem; cursor:pointer; user-select:none;">
-                <i class="fa-solid fa-clock-rotate-left"></i> ประวัติการแก้ไข (Change History)
-                <i id="site-history-collapse-icon" class="fa-solid fa-chevron-down" style="font-size:0.65rem; margin-left:auto; opacity:0.5; transition:transform 0.2s;"></i>
-            </h4>
-            <div id="site-history-content">
-                <div id="site-history-list" style="display:flex; flex-direction:column; gap:0.5rem; max-height:280px; overflow-y:auto;">
-                    <p style="color:var(--text-muted); font-size:0.85rem; font-style:italic;">กำลังโหลด...</p>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 
 <!-- MODAL: Log Details -->
 <div id="modal-log-details" class="modal-overlay modal-layer-base hidden">
     <div class="modal glass-panel" style="max-width: 1100px;">
-        <!-- Header -->
+        <!-- Header — sticky, banner left, actions right -->
         <div class="modal-header"
-            style="border-bottom: 1px solid rgba(0,0,0,0.08); padding-bottom: 1rem; position: relative; padding-right: 10rem;">
-            <div>
+            style="position: sticky; top: 0; z-index: 20; background: var(--glass-bg, #fff); border-bottom: 1px solid rgba(0,0,0,0.08); padding: 0.85rem 1.25rem; display: flex; align-items: center; gap: 1rem; flex-wrap: nowrap;">
+
+            <!-- Left: case ID + device banner -->
+            <div style="flex: 1; min-width: 0;">
                 <div id="detail-log-header-case-id"
-                    style="font-size: 0.8rem; color: #888; font-family: 'Courier New', monospace; font-weight: 600; margin-bottom: 0.2rem;">
+                    style="font-size: 0.75rem; color: #888; font-family: 'Courier New', monospace; font-weight: 600; margin-bottom: 0.4rem;">
                 </div>
-                <h3 id="detail-log-date" style="color: #111; margin: 0; font-size: 1.15rem;">รายละเอียดการซ่อมบำรุง</h3>
-                <p id="detail-log-header-site" style="font-size: 0.8rem; color: #888; margin: 0.2rem 0 0 0;">Maintenance
-                    Record Details</p>
+                <div id="detail-log-banner-container"></div>
             </div>
-            <div id="log-detail-modal-actions-wrap"
-                style="display: flex; align-items: center; gap: 0.5rem; position: absolute; top: 1rem; right: 1rem; z-index: 10;">
-                <div id="log-detail-modal-actions" style="display: none; gap: 0.5rem;"></div>
-                <button class="close-modal">&times;</button>
+
+            <!-- Right: action buttons + close -->
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+                <div id="log-detail-modal-actions" style="display: none; gap: 0.5rem; align-items: center;"></div>
+                <button class="close-modal"
+                    style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; background:#f5f5f5; color:#555; border:1.5px solid #e5e5e5; border-radius:8px; font-size:1.1rem; cursor:pointer; transition:all 0.15s; flex-shrink:0;"
+                    onmouseover="this.style.background='#fee2e2';this.style.color='#dc2626';this.style.borderColor='#fecaca'"
+                    onmouseout="this.style.background='#f5f5f5';this.style.color='#555';this.style.borderColor='#e5e5e5'">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
         </div>
 
-        <!-- Case Info -->
+        <!-- Case Info (hidden, used by JS) -->
         <span id="detail-log-case-id" style="display:none;"></span>
         <span id="detail-log-site" style="display:none;"></span>
 
-        <!-- Device Banner -->
-        <div id="detail-log-banner-container" style="margin-bottom: 1.25rem;"></div>
-
-        <div class="case-detail-section" style="margin-bottom: 1.25rem;">
+        <div class="case-detail-section" style="margin-bottom: 1.25rem; margin-top: 1.5rem;">
             <div class="case-detail-section-header">
                 <i class="fa-solid fa-file-lines"></i> ข้อมูลงาน (Job Information)
             </div>

@@ -1082,22 +1082,14 @@ h2 {
         right: 0;
     }
 
-    /* Log detail modal header - stack buttons below title on mobile */
+    /* Log detail modal header - keep flex row on mobile, wrap if needed */
     #modal-log-details .modal-header {
-        padding-right: 2.5rem !important;
+        flex-wrap: wrap;
+        gap: 0.75rem;
     }
 
-    #log-detail-modal-actions-wrap {
-        position: static !important;
-        display: flex;
-        justify-content: flex-start;
-        margin-top: 0.5rem;
-    }
-
-    #modal-log-details .modal-header .close-modal {
-        position: absolute;
-        top: 0.5rem;
-        right: 0.5rem;
+    #modal-log-details .modal-header > div:last-child {
+        flex-shrink: 0;
     }
 
     /* Case detail sections - single column on mobile */
@@ -2555,6 +2547,27 @@ span.flatpickr-weekday {
 
 #modal-log-details .detail-row>span:not(:first-child) {
     font-size: 0.95rem;
+}
+
+/* Sticky header for log details modal */
+#modal-log-details .modal {
+    padding: 0;
+}
+#modal-log-details .modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--surface-card);
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+#modal-log-details .modal > *:not(.modal-header) {
+    padding: 0 2rem;
+}
+#modal-log-details .modal > *:first-child:not(.modal-header) {
+    padding-top: 1.5rem;
+}
+#modal-log-details .modal > *:last-child {
+    padding-bottom: 2rem;
 }
 
 /* Bill/Receipt Style Box for Job Details & Cost */
