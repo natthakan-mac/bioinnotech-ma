@@ -1052,6 +1052,13 @@ const FirestoreService = {
         await deleteDoc(docRef);
     },
 
+    async deleteLogsBySiteId(siteId) {
+        const q = query(collection(db, "logs"), where("siteId", "==", siteId));
+        const snap = await getDocs(q);
+        const deletions = snap.docs.map(d => deleteDoc(doc(db, "logs", d.id)));
+        await Promise.all(deletions);
+    },
+
     // --- User Methods ---
     async addUser(user) {
         try {
