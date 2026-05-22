@@ -464,9 +464,9 @@ h1 {
 
 /* Buttons */
 .btn-primary {
-    background: var(--primary-color);
+    background: #ffffff;
     color: #111111;
-    border: none;
+    border: 1.5px solid #111111;
     padding: 0.5rem 1rem;
     border-radius: var(--radius-md);
     cursor: pointer;
@@ -476,14 +476,16 @@ h1 {
 }
 
 .btn-primary:hover {
-    background: var(--primary-hover);
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.20);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .btn-secondary {
-    background: transparent;
-    border: 1px solid var(--glass-border);
+    background: #ffffff;
+    border: 1.5px solid rgba(0, 0, 0, 0.1);
     color: var(--text-muted);
     padding: 0.5rem 1rem;
     border-radius: var(--radius-md);
@@ -492,23 +494,27 @@ h1 {
 }
 
 .btn-secondary:hover {
-    border-color: var(--text-color);
+    background: #f3f4f6;
+    border-color: rgba(0, 0, 0, 0.25);
     color: var(--text-color);
 }
 
 #btn-clear-filters {
-    border-color: var(--danger-color);
-    color: var(--danger-color);
+    border-color: #111111;
+    color: #111111;
+    background: #ffffff;
 }
 
 #btn-clear-filters:hover {
-    background: rgba(239, 68, 68, 0.1);
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
 }
 
 .btn-success {
-    background: var(--success-color) !important;
-    color: #ffffff !important;
-    border: none;
+    background: #ffffff !important;
+    color: #111111 !important;
+    border: 1.5px solid #111111 !important;
     padding: 0 0.75rem;
     /* Match other filter buttons */
     border-radius: var(--radius-md);
@@ -519,14 +525,13 @@ h1 {
     align-items: center;
     gap: 0.5rem;
     font-size: 0.9rem;
-    box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.4);
 }
 
 .btn-success:hover {
-    background: #16a34a;
-    /* Darker green */
+    background: #111111 !important;
+    color: #ffffff !important;
+    border-color: #111111 !important;
     transform: translateY(-1px);
-    box-shadow: 0 6px 8px -1px rgba(34, 197, 94, 0.5);
 }
 
 .btn-success:active {
@@ -542,34 +547,39 @@ h1 {
 }
 
 #btn-export-excel {
-    border-color: var(--success-color);
-    color: var(--success-color);
+    border-color: #111111;
+    color: #111111;
+    background: #ffffff;
 }
 
 #btn-export-excel:hover {
-    background: rgba(34, 197, 94, 0.1);
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
 }
 
 .btn-outline-danger {
-    border-color: var(--danger-color) !important;
-    color: var(--danger-color) !important;
+    border-color: #111111 !important;
+    color: #111111 !important;
+    background: #ffffff !important;
 }
 
 .btn-outline-danger:hover {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: var(--danger-color) !important;
-    color: var(--danger-color) !important;
+    background: #111111 !important;
+    border-color: #111111 !important;
+    color: #ffffff !important;
 }
 
 .btn-outline-success {
-    border-color: var(--success-color) !important;
-    color: var(--success-color) !important;
+    border-color: #111111 !important;
+    color: #111111 !important;
+    background: #ffffff !important;
 }
 
 .btn-outline-success:hover {
-    background: rgba(34, 197, 94, 0.1);
-    border-color: var(--success-color) !important;
-    color: var(--success-color) !important;
+    background: #111111 !important;
+    border-color: #111111 !important;
+    color: #ffffff !important;
 }
 
 .card-actions {
@@ -585,7 +595,9 @@ h1 {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    border: 1px solid var(--glass-border);
+    border: 1.5px solid #111111;
+    background: #ffffff;
+    color: #111111;
     cursor: pointer;
     transition: all 0.2s ease;
     text-decoration: none;
@@ -598,6 +610,12 @@ h1 {
 
 .card-btn-action:hover i {
     transform: scale(1.2);
+}
+
+.card-btn-action:hover {
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
 }
 
 /* Labeled pill variant (for modals) */
@@ -621,79 +639,27 @@ h1 {
     font-weight: 600;
 }
 
-.card-btn-maps {
-    background: rgba(0,0,0,0.10);
-    color: var(--primary-color);
-    border-color: rgba(0,0,0,0.20);
-}
-
-.card-btn-maps:hover {
-    background: rgba(0,0,0,0.22);
-    border-color: var(--primary-color);
-    box-shadow: 0 0 8px rgba(0,0,0,0.1);
-    color: var(--primary-color);
-}
-
-.card-btn-log {
-    background: rgba(100, 116, 139, 0.15);
-    color: #444444;
-    border-color: rgba(100, 116, 139, 0.3);
-}
-
-.card-btn-log:hover {
-    background: rgba(100, 116, 139, 0.3);
-    border-color: #444444;
-    color: #111111;
-    box-shadow: 0 0 10px rgba(100, 116, 139, 0.4);
-}
-
-.card-btn-edit {
-    background: rgba(251, 146, 60, 0.1);
-    color: #fb923c;
-    border-color: rgba(251, 146, 60, 0.25);
-}
-
-.card-btn-edit:hover {
-    background: rgba(251, 146, 60, 0.25);
-    border-color: #fb923c;
-    color: #fb923c;
-    box-shadow: 0 0 10px rgba(251, 146, 60, 0.3);
-}
-
-.card-btn-delete {
-    background: rgba(239, 68, 68, 0.08);
-    color: var(--danger-color);
-    border-color: rgba(239, 68, 68, 0.2);
-}
-
-.card-btn-delete:hover {
-    background: rgba(239, 68, 68, 0.22);
-    border-color: var(--danger-color);
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
-}
-
-.card-btn-call {
-    background: rgba(34, 197, 94, 0.1);
-    color: var(--success-color);
-    border-color: rgba(34, 197, 94, 0.2);
-}
-
-.card-btn-call:hover {
-    background: rgba(34, 197, 94, 0.25);
-    border-color: var(--success-color);
-    box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
-}
-
+.card-btn-maps,
+.card-btn-log,
+.card-btn-edit,
+.card-btn-delete,
+.card-btn-call,
 .card-btn-case {
-    background: rgba(139, 92, 246, 0.1);
-    color: #8b5cf6;
-    border-color: rgba(139, 92, 246, 0.2);
+    background: #ffffff !important;
+    color: #111111 !important;
+    border: 1.5px solid #111111 !important;
 }
 
+.card-btn-maps:hover,
+.card-btn-log:hover,
+.card-btn-edit:hover,
+.card-btn-delete:hover,
+.card-btn-call:hover,
 .card-btn-case:hover {
-    background: rgba(139, 92, 246, 0.25);
-    border-color: #8b5cf6;
-    box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+    background: #111111 !important;
+    color: #ffffff !important;
+    border-color: #111111 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
 .btn-icon {
@@ -1519,15 +1485,27 @@ option {
         width: 72px !important;
         height: 72px !important;
         border-radius: 50% !important;
-        border: none !important;
+        border: 1.5px solid #111111 !important;
         display: flex !important;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 6px 16px rgba(56, 189, 248, 0.4);
+        background: #111111 !important;
+        color: #ffffff !important;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
         z-index: 2000;
         padding: 0 !important;
         margin: 0 !important;
         animation: popIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .fab-btn:hover, .fab-btn:active {
+        background: #ffffff !important;
+        color: #111111 !important;
+        border-color: #111111 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
     }
 
     .fab-btn i {
@@ -2568,6 +2546,11 @@ span.flatpickr-weekday {
 }
 #modal-log-details .modal > *:last-child {
     padding-bottom: 2rem;
+}
+#modal-log-details .modal > .case-detail-section {
+    margin-left: 2rem !important;
+    margin-right: 2rem !important;
+    padding: 1.25rem 1.5rem !important;
 }
 
 /* Bill/Receipt Style Box for Job Details & Cost */
@@ -4164,16 +4147,16 @@ span.flatpickr-weekday {
 /* Polished Logout Button */
 .btn-logout-polished {
     width: 100%;
-    padding: 0.25rem;
-    background: transparent;
+    padding: 0.5rem;
+    background: #ffffff;
     color: #111111;
     /* #ef4444 */
-    border: 1px solid white;
+    border: 1.5px solid #111111;
     /* Explicit Red Border */
     border-radius: 8px;
     /* Consistent with cards */
     font-size: 1rem;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
@@ -4184,10 +4167,10 @@ span.flatpickr-weekday {
 }
 
 .btn-logout-polished:hover {
-    background: #fef2f2;
-    color: #ef4444;
-    border-color: #fecaca;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* ... existing hover ... */
@@ -4195,13 +4178,13 @@ span.flatpickr-weekday {
 /* Polished Sync Button */
 /* Polished Sync Button */
 .btn-sync-polished {
-    background: transparent;
-    color: var(--primary-color);
-    border: 1px solid var(--primary-color);
+    background: #ffffff;
+    color: #111111;
+    border: 1.5px solid #111111;
     border-radius: 8px;
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -4213,9 +4196,9 @@ span.flatpickr-weekday {
 }
 
 .btn-sync-polished:hover {
-    background: var(--primary-color);
-    color: #111111;
-    border-color: var(--primary-color);
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
 }
 
 .btn-sync-polished i {
@@ -4226,12 +4209,12 @@ span.flatpickr-weekday {
 /* Polished LINE Button */
 .btn-line-polished {
     padding: 0.5rem 1rem;
-    background: transparent;
-    color: #06c755;
-    border: 1px solid #06c755;
+    background: #ffffff;
+    color: #111111;
+    border: 1.5px solid #111111;
     border-radius: 8px;
     font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
@@ -4252,24 +4235,25 @@ span.flatpickr-weekday {
 
 /* Orange Disconnect Button */
 .btn-line-polished.linked {
-    color: #f97316;
-    border: 1px solid #f97316 !important;
+    color: #111111;
+    border: 1.5px solid #111111 !important;
+    background: #ffffff;
 }
 
 .btn-line-polished.linked:hover {
-    background: #f97316;
-    color: #111111;
-    border-color: #ea580c;
-    box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4);
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
     transform: translateY(-1px);
 }
 
 .btn-line-polished:hover {
-    background: #f0fdf4;
-    /* Light green bg */
-    border-color: #bbf7d0;
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(6, 199, 85, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .btn-line-polished:active {
@@ -4883,8 +4867,8 @@ span.flatpickr-weekday {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    /* Vertical Center */
+    justify-content: flex-start;
+    /* Align to Top */
     text-align: center;
     border-right: 1px solid rgba(0,0,0,0.08);
     padding-right: 2rem;
@@ -5557,39 +5541,44 @@ summary:focus-visible {
 }
 
 .btn-link-action.connect {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
+    border-color: #111111;
+    color: #111111;
+    background: #ffffff;
 }
 
 .btn-link-action.connect:hover {
-    background: rgba(0,0,0,0.08);
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
 }
 
 .btn-link-action.disconnect {
-    border-color: #f97316;
-    /* Orange */
-    color: #f97316;
-    background: rgba(249, 115, 22, 0.05);
+    border-color: #111111;
+    color: #111111;
+    background: #ffffff;
 }
 
 .btn-link-action.disconnect:hover {
-    background: rgba(249, 115, 22, 0.15);
-    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
-    color: #ea580c;
+    background: #111111;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    color: #ffffff;
+    border-color: #111111;
 }
 
 .sync-line-btn {
     top: 5px;
     right: 45px;
-    background: rgba(255, 255, 255, 0.9);
-    color: #06C755;
-    border: 1px solid rgba(6, 199, 85, 0.3);
+    background: #ffffff;
+    color: #111111;
+    border: 1.5px solid #111111;
 }
 
 .sync-line-btn:hover {
-    background: #fff;
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
     transform: scale(1.1);
-    box-shadow: 0 4px 12px rgba(6, 199, 85, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* FAB Visibility Logic - Mobile Only */
@@ -5625,11 +5614,9 @@ summary:focus-visible {
     height: 24px;
     border-radius: 50%;
 
-    /* Theme Change: Subtle Glassy Blue instead of Bright Green */
-    background: rgba(0,0,0,0.08);
-    /* Matches primary-color fade */
-    color: var(--primary-color);
-    border: 1px solid rgba(0,0,0,0.16);
+    background: #ffffff;
+    color: #111111;
+    border: 1.5px solid #111111;
 
     display: flex;
     align-items: center;
@@ -5640,16 +5627,14 @@ summary:focus-visible {
     z-index: 10;
     padding: 0;
     font-size: 0.7rem;
-    /* Remove shadow unless hovered for flatter look */
 }
 
 .btn-calendar-add:hover {
-    background: var(--primary-color);
-    color: #fff;
-    /* White icon on hover */
-    border-color: var(--primary-color);
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.24);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .cal-day:hover .btn-calendar-add {
@@ -7312,23 +7297,26 @@ input::placeholder, textarea::placeholder {
 
 /* Buttons */
 .btn-primary {
+    background: #ffffff !important;
+    color: #111111 !important;
+    border: 1.5px solid #111111 !important;
+}
+
+.btn-primary:hover {
     background: #111111 !important;
     color: #ffffff !important;
     border-color: #111111 !important;
 }
 
-.btn-primary:hover {
-    background: #333333 !important;
-}
-
 .btn-secondary {
     background: #ffffff !important;
-    color: #111111 !important;
-    border-color: rgba(0,0,0,0.2) !important;
+    color: #555555 !important;
+    border: 1.5px solid rgba(0,0,0,0.15) !important;
 }
 
 .btn-secondary:hover {
-    background: #f0f0f0 !important;
+    background: #f3f4f6 !important;
+    color: #111111 !important;
     border-color: rgba(0,0,0,0.3) !important;
 }
 

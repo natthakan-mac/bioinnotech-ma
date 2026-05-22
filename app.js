@@ -81,20 +81,61 @@ function isMaCategory(cat) {
  * Unified helper to generate a standardized device information banner.
  * Used across Dashboard (Site Details), QR Modal, and Public Report Portal.
  */
-function createDeviceBannerHTML(site) {
+function createDeviceBannerHTML(site, caseId = '', actionsHTML = '') {
     if (!site) return '';
+    if (actionsHTML) {
+        return `
+            <div class="report-device-loaded" style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 1.5rem; flex-wrap: nowrap; border-radius: 0 !important; margin-bottom: 0 !important; border: none !important; background: #ffffff !important; border-bottom: 1.5px solid #e5e5e5 !important; padding: 1rem 1.5rem !important;">
+                <div style="display: flex; align-items: center; gap: 1rem; min-width: 0; flex: 1; cursor: pointer;" onclick="event.stopPropagation(); viewSiteDetails('${site.id}')" title="ดูรายละเอียดสถานที่">
+                    <div class="report-device-icon" style="width: 52px; height: 52px; border-radius: 14px; background: #111111 !important; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 1.45rem; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;"><i class="fa-solid fa-microchip"></i></div>
+                    <div class="report-device-details" style="min-width: 0; flex: 1;">
+                        <div class="report-device-name" style="font-size: 1.35rem; font-weight: 800; color: #111111 !important; letter-spacing: -0.025em !important; line-height: 1.25 !important; margin-bottom: 0.15rem;">${site.name || 'เครื่อง'}</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.35rem;">
+                            ${caseId ? `
+                                <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04) !important; color: #111111 !important; border: 1.2px solid rgba(0, 0, 0, 0.08) !important; font-size: 0.75rem !important; font-weight: 700 !important; padding: 3px 10px !important; border-radius: 10px !important; text-transform: uppercase; letter-spacing: 0.03em;">
+                                    <i class="fa-solid fa-folder-open" style="font-size: 0.7rem; color: #555555;"></i> Case: ${caseId}
+                                </span>
+                            ` : ''}
+                            ${site.siteCode ? `
+                                <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04) !important; color: #111111 !important; border: 1.2px solid rgba(0, 0, 0, 0.08) !important; font-size: 0.75rem !important; font-weight: 700 !important; padding: 3px 10px !important; border-radius: 10px !important; text-transform: uppercase; letter-spacing: 0.03em;">
+                                    <i class="fa-solid fa-location-dot" style="font-size: 0.7rem; color: #555555;"></i> Site: ${site.siteCode}
+                                </span>
+                            ` : ''}
+                            ${site.serialNumber ? `
+                                <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04) !important; color: #111111 !important; border: 1.2px solid rgba(0, 0, 0, 0.08) !important; font-size: 0.75rem !important; font-weight: 700 !important; padding: 3px 10px !important; border-radius: 10px !important; text-transform: uppercase; letter-spacing: 0.03em;">
+                                    <i class="fa-solid fa-barcode" style="font-size: 0.7rem; color: #555555;"></i> S/N: ${site.serialNumber}
+                                </span>
+                            ` : ''}
+                            ${(site.brand || site.model) ? `
+                                <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04) !important; color: #111111 !important; border: 1.2px solid rgba(0, 0, 0, 0.08) !important; font-size: 0.75rem !important; font-weight: 700 !important; padding: 3px 10px !important; border-radius: 10px !important; text-transform: uppercase; letter-spacing: 0.03em;">
+                                    <i class="fa-solid fa-cube" style="font-size: 0.7rem; color: #555555;"></i> Model: ${[site.brand, site.model].filter(Boolean).join(' / ')}
+                                </span>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0;" onclick="event.stopPropagation();">
+                    ${actionsHTML}
+                    <button class="close-modal" onclick="const m=document.getElementById('modal-log-details'); m.classList.add('hidden'); m.style.display='none';"
+                        style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; background:#ffffff; color:#111111; border:1.5px solid #e5e5e5; border-radius:10px; font-size:1.1rem; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink:0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                        onmouseover="this.style.background='#f3f4f6';this.style.color='#111111';this.style.borderColor='#d1d5db';this.style.transform='scale(1.05)';"
+                        onmouseout="this.style.background='#ffffff';this.style.color='#111111';this.style.borderColor='#e5e5e5';this.style.transform='none';">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
     return `
         <div class="report-device-loaded">
             <div class="report-device-icon"><i class="fa-solid fa-microchip"></i></div>
             <div class="report-device-details">
                 <div class="report-device-name">${site.name || 'เครื่อง'}</div>
                 <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.35rem;">
+                    ${caseId ? `<span class="report-device-code">${caseId}</span>` : ''}
                     ${site.siteCode ? `<span class="report-device-code">${site.siteCode}</span>` : ''}
-                    ${site.serialNumber ? `<span class="report-device-code" style="background: rgba(0,0,0,0.05); color: #666;"><i class="fa-solid fa-barcode"></i> ${site.serialNumber}</span>` : ''}
-                    ${(site.brand || site.model) ? `
-                        <span style="font-size: 0.75rem; color: #555; font-weight: 600; display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.02); padding: 3px 10px; border-radius: 20px; border: 1px solid rgba(0,0,0,0.05);">
-                            <i class="fa-solid fa-industry"></i> ${[site.brand, site.model].filter(Boolean).join(' / ')}
-                        </span>` : ''}
+                    ${site.serialNumber ? `<span class="report-device-code">${site.serialNumber}</span>` : ''}
+                    ${(site.brand || site.model) ? `<span class="report-device-code">${[site.brand, site.model].filter(Boolean).join(' / ')}</span>` : ''}
                 </div>
             </div>
         </div>
@@ -3831,6 +3872,32 @@ async function handleLogMaintenance(e) {
         const formData = new FormData(e.target);
 
         const logId = formData.get("logId");
+        
+        // early check: status Done and system E-Signature is unchecked -> require signed doc
+        const checkStatus = formData.get("status") || (logId ? (state.logs.find(l => l.id === logId)?.status || "Open") : "Open");
+        const useESignature = document.getElementById("use-esignature-toggle")?.checked || false;
+        if (checkStatus === 'Done' && !useESignature) {
+            const existingSignedJSON = formData.get("existingSignedDocsJSON");
+            let existingSignedCount = 0;
+            if (existingSignedJSON) {
+                try {
+                    const parsed = JSON.parse(existingSignedJSON);
+                    if (Array.isArray(parsed)) existingSignedCount = parsed.length;
+                } catch (e) {
+                    console.error("Error parsing existing signed docs", e);
+                }
+            }
+            const totalSignedDocs = existingSignedCount + (pendingSignedDocs ? pendingSignedDocs.length : 0);
+            if (totalSignedDocs === 0) {
+                btn.textContent = originalText;
+                btn.disabled = false;
+                hideProgress();
+                await showDialog("กรุณาอัปโหลดสำเนาเอกสารที่เซ็นแล้ว (Signed Document Copy) ก่อนเปลี่ยนสถานะเป็นเสร็จสิ้น", {
+                    title: "จำเป็นต้องมีเอกสาร",
+                });
+                return;
+            }
+        }
         console.log('[handleLogMaintenance] logId from form:', logId, 'Type:', typeof logId, 'Falsy?', !logId);
         const user = auth.currentUser;
         const paramUser = user
@@ -5793,6 +5860,11 @@ function setupEventListeners() {
             
             modal.classList.add("hidden");
             modal.style.display = "none";
+
+            // Reset log form if closing the maintenance log modal
+            if (modal.id === "modal-log-maintenance") {
+                resetLogForm();
+            }
         });
     });
 
@@ -5818,6 +5890,11 @@ function setupEventListeners() {
                 
                 overlay.classList.add("hidden");
                 overlay.style.display = "none";
+
+                // Reset log form if closing the maintenance log modal
+                if (overlay.id === "modal-log-maintenance") {
+                    resetLogForm();
+                }
             }
         });
     });
@@ -6203,6 +6280,7 @@ function resetLogForm() {
 
     // Clear description attachments
     descriptionAttachments = [];
+    window.descriptionAttachments = descriptionAttachments;
     updateDescriptionAttachmentPreview();
 
     // Clear pending uploads & deletions
@@ -6284,6 +6362,39 @@ function resetLogForm() {
     if (formCostIcon) formCostIcon.style.transform = "";
     recalcLineItemTotal();
     populateResponderDropdown();
+
+    // Reset additional edit state variables and dynamic layouts
+    returnProductData = [];
+    window.returnProductData = returnProductData;
+    if (typeof renderReturnProductList === 'function') renderReturnProductList();
+
+    installPhotoPending = [];
+    window.installPhotoPending = installPhotoPending;
+    if (typeof renderInstallPhotoPreview === 'function') renderInstallPhotoPreview();
+
+    preInstallPhotoPending = [];
+    window.preInstallPhotoPending = preInstallPhotoPending;
+    if (typeof renderPreInstallPhotoPreview === 'function') renderPreInstallPhotoPreview();
+
+    repairChecklistData = [];
+    window.repairChecklistData = repairChecklistData;
+    if (typeof renderRepairChecklist === 'function') renderRepairChecklist();
+
+    const rampField = document.getElementById('ramp-width-field');
+    if (rampField) rampField.style.display = 'none';
+
+    const elevField = document.getElementById('elevator-detail-fields');
+    if (elevField) elevField.style.display = 'none';
+
+    const doorCountInput = document.getElementById('install-door-count');
+    const doorCountDisplay = document.getElementById('install-door-count-display');
+    if (doorCountInput) doorCountInput.value = 1;
+    if (doorCountDisplay) doorCountDisplay.textContent = 1;
+    if (typeof renderDoorSizeFields === 'function') renderDoorSizeFields(1);
+
+    if (typeof toggleMaRoundSections === 'function') {
+        toggleMaRoundSections('บำรุงรักษาตามรอบ');
+    }
 }
 
 function openLogModalForDate(dateStr) {
@@ -7631,7 +7742,7 @@ function recalcLineItemTotal() {
         footerRow.className = "line-items-footer-row";
         footerRow.innerHTML = `
             <div class="line-items-footer-btn">
-                <button type="button" id="btn-add-line-item" style="width: 100%; height: 100%; padding: 0.65rem 0.75rem; border-radius: 6px; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.3); color: var(--primary-color); font-weight: 500; transition: all 0.2s; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer;">
+                <button type="button" id="btn-add-line-item" style="width: 100%; height: 100%; padding: 0.65rem 0.75rem; border-radius: 6px; background: #ffffff; border: 1.5px solid #111111; color: #111111; font-weight: 600; transition: all 0.2s; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer;" onmouseover="this.style.background='#111111';this.style.color='#ffffff';" onmouseout="this.style.background='#ffffff';this.style.color='#111111';">
                     <i class="fa-solid fa-plus"></i>
                     <span>เพิ่มรายการ</span>
                 </button>
@@ -8026,6 +8137,95 @@ function renderSites() {
 
         return isSearchMatch && isProvinceMatch && isContractMatch;
     });
+
+    // Update Dashboard Stats dynamically
+    const totalDevicesEl = document.getElementById("dash-total-devices");
+    const dueMaEl = document.getElementById("dash-due-ma");
+    const contractTypesEl = document.getElementById("dash-contract-types");
+    const totalProvincesEl = document.getElementById("dash-total-provinces");
+    const dueIconEl = document.getElementById("dash-due-icon");
+
+    if (totalDevicesEl) {
+        totalDevicesEl.textContent = sitesToRender.length;
+    }
+
+    let dueCount = 0;
+    const contractCounts = {};
+    const provinces = new Set();
+
+    const nowVal = new Date();
+    nowVal.setHours(0, 0, 0, 0);
+
+    sitesToRender.forEach((site) => {
+        // 1. Contract Breakdown
+        if (site.deviceType) {
+            contractCounts[site.deviceType] = (contractCounts[site.deviceType] || 0) + 1;
+        }
+
+        // 2. Provinces
+        if (site.province) {
+            provinces.add(site.province.trim());
+        }
+
+        // 3. Maintenance Due Calculation
+        if (site.maintenanceCycle && site.firstMaDate) {
+            const firstMa = new Date(site.firstMaDate);
+            let nextMa = new Date(firstMa);
+
+            const siteLogs = state.logs.filter(
+                (l) => l.siteId === site.id && isMaCategory(l.category),
+            );
+            if (siteLogs.length > 0) {
+                siteLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+                nextMa = new Date(siteLogs[0].date);
+                nextMa.setDate(nextMa.getDate() + site.maintenanceCycle);
+            } else {
+                while (nextMa < nowVal) {
+                    nextMa.setDate(nextMa.getDate() + site.maintenanceCycle);
+                }
+            }
+
+            // Define "due" as past nextMa or within 30 days
+            const limitDate = new Date(nowVal);
+            limitDate.setDate(limitDate.getDate() + 30);
+            
+            if (nextMa <= limitDate) {
+                dueCount++;
+            }
+        }
+    });
+
+    if (dueMaEl) {
+        dueMaEl.textContent = dueCount;
+        if (dueIconEl) {
+            if (dueCount > 0) {
+                dueIconEl.style.background = 'rgba(239, 68, 68, 0.1)';
+                dueIconEl.style.color = '#ef4444';
+                dueIconEl.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+                dueIconEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            } else {
+                dueIconEl.style.background = 'rgba(22, 163, 74, 0.1)';
+                dueIconEl.style.color = '#16a34a';
+                dueIconEl.style.borderColor = 'rgba(22, 163, 74, 0.2)';
+                dueIconEl.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+            }
+        }
+    }
+
+    if (totalProvincesEl) {
+        totalProvincesEl.innerHTML = `${provinces.size} <span style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">จังหวัด</span>`;
+    }
+
+    if (contractTypesEl) {
+        const sortedContracts = Object.entries(contractCounts).sort((a, b) => b[1] - a[1]);
+        if (sortedContracts.length > 0) {
+            contractTypesEl.innerHTML = sortedContracts.map(([type, count]) => {
+                return `<span style="background: rgba(147, 51, 234, 0.1); color: #9333ea; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; border: 1px solid rgba(147, 51, 234, 0.15); display: inline-flex; align-items: center; font-weight: 500;">${type}: ${count}</span>`;
+            }).join("");
+        } else {
+            contractTypesEl.innerHTML = `<span style="font-size: 0.75rem; color: var(--text-muted);">ไม่มีข้อมูล</span>`;
+        }
+    }
 
     // Sort logic (optional, keep if exists)
     // ...
@@ -8620,7 +8820,7 @@ function renderLogComments(logId, comments) {
     const gotoLatestBtn = document.getElementById("btn-goto-latest-comment");
     if (!list) return;
 
-    if (!comments || comments.length === 0) {
+    if (!Array.isArray(comments) || comments.length === 0) {
         list.innerHTML = `<div class="empty-comments">
             <i class="fa-regular fa-comments" style="font-size:2rem; color:var(--text-muted); opacity:0.5; margin-bottom:0.5rem;"></i>
             <p style="color:var(--text-muted); font-size:0.9rem; margin:0;">ยังไม่มีความคิดเห็น</p>
@@ -9483,97 +9683,9 @@ function initSignatureCanvas() {
 
 function clearSignatureCanvas() {
     if (signaturePad) signaturePad.clear();
-    // Also clear uploaded signature
-    var preview = document.getElementById('signature-upload-preview');
-    var img = document.getElementById('signature-upload-img');
-    if (preview) preview.style.display = 'none';
-    if (img) img.src = '';
-    window._uploadedSignatureData = null;
 }
 
-// Upload signature image
-var sigUploadInput = document.getElementById('signature-upload-input');
-if (sigUploadInput) {
-    sigUploadInput.addEventListener('change', function(e) {
-        var file = e.target.files[0];
-        if (!file) return;
-        var reader = new FileReader();
-        reader.onload = function(ev) {
-            // Draw on canvas
-            var img = new Image();
-            img.onload = function() {
-                if (signaturePad) signaturePad.clear();
-                var canvas = document.getElementById('signature-canvas');
-                var ctx = canvas.getContext('2d');
-                var scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
-                var x = (canvas.width - img.width * scale) / 2;
-                var y = (canvas.height - img.height * scale) / 2;
-                ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-                // Store as data URL
-                window._uploadedSignatureData = canvas.toDataURL();
-                // Show preview
-                var previewEl = document.getElementById('signature-upload-preview');
-                var previewImg = document.getElementById('signature-upload-img');
-                if (previewEl && previewImg) {
-                    previewImg.src = window._uploadedSignatureData;
-                    previewEl.style.display = 'block';
-                }
-            };
-            img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
-        e.target.value = '';
-    });
-}
 
-// Share signature link
-// Track active signature listener
-var _signatureListenerUnsub = null;
-
-function shareSignatureLink() {
-    if (!pendingStatusChange) {
-        showToast('กรุณาเลือกเคสก่อน', 'error');
-        return;
-    }
-    var logId = pendingStatusChange.logId;
-    var newStatus = pendingStatusChange.newStatus;
-    var baseUrl = window.location.origin;
-    var signUrl = baseUrl + '?sign=' + logId;
-
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(signUrl).then(function() {
-            showToast('คัดลอกลิงก์แล้ว — รอลูกค้าลงลายเซ็น...', 'success', 5000);
-        });
-    } else {
-        prompt('คัดลอกลิงก์นี้ส่งให้ลูกค้า:', signUrl);
-    }
-
-    // Start real-time listener for remote signature
-    if (_signatureListenerUnsub) _signatureListenerUnsub();
-    _signatureListenerUnsub = onSnapshot(doc(db, 'logs', logId), function(docSnap) {
-        if (!docSnap.exists()) return;
-        var data = docSnap.data();
-        if (data.customerSignature && data.customerName) {
-            // Customer has signed — update local state
-            var log = state.logs.find(function(l) { return l.id === logId; });
-            if (log) {
-                log.customerName = data.customerName;
-                log.customerPhone = data.customerPhone || '';
-                log.customerPosition = data.customerPosition || '';
-                log.customerSignature = data.customerSignature;
-                if (data.statusSignatures) log.statusSignatures = data.statusSignatures;
-            }
-            // Stop listening
-            if (_signatureListenerUnsub) { _signatureListenerUnsub(); _signatureListenerUnsub = null; }
-            // Close signature modal
-            closeSignatureModal();
-            // Notify and auto-update status
-            showToast('ลูกค้าลงลายเซ็นแล้ว — อัปเดตสถานะอัตโนมัติ', 'success', 5000);
-            executeStatusUpdate(logId, newStatus, data.customerSignature, data.customerName, data.customerPhone || '', data.customerPosition || '');
-        }
-    });
-}
-window.shareSignatureLink = shareSignatureLink;
 
 function openSignatureModal(logId, newStatus) {
     pendingStatusChange = { logId, newStatus };
@@ -9613,8 +9725,6 @@ function closeSignatureModal() {
     }
     pendingStatusChange = null;
     window._profileSignatureMode = false;
-    // Stop remote signature listener if active
-    if (_signatureListenerUnsub) { _signatureListenerUnsub(); _signatureListenerUnsub = null; }
 }
 
 function getSignatureDataUrl() {
@@ -9632,13 +9742,12 @@ function getSignatureDataUrl() {
 }
 
 async function confirmSignature() {
-    var hasUpload = !!window._uploadedSignatureData;
-    if (!hasUpload && (!signaturePad || signaturePad.isEmpty())) {
+    if (!signaturePad || signaturePad.isEmpty()) {
         showToast("กรุณาลงลายเซ็นก่อนยืนยัน", "error");
         return;
     }
 
-    const signatureData = hasUpload ? window._uploadedSignatureData : getSignatureDataUrl();
+    const signatureData = getSignatureDataUrl();
     const isProfileMode = !!window._profileSignatureMode;
     const pending = pendingStatusChange;
 
@@ -9675,9 +9784,29 @@ window.confirmSignature = confirmSignature;
 async function updateLogStatus(logId, newStatus) {
     if (newStatus === 'Done') {
         var log = state.logs.find(function(l) { return l.id === logId; });
-        if (log && (!log.customerName || !log.customerPhone || !log.customerSignature)) {
-            openSignatureModal(logId, newStatus);
-            return;
+        if (log) {
+            const useESignature = log.useESignature ?? false;
+            if (useESignature) {
+                if (!log.customerName || !log.customerPhone || !log.customerSignature) {
+                    openSignatureModal(logId, newStatus);
+                    return;
+                }
+            } else {
+                const hasSignedDocs = log.signedDocAttachments && log.signedDocAttachments.length > 0;
+                if (!hasSignedDocs) {
+                    showToast("กรุณาอัปโหลดสำเนาเอกสารที่เซ็นแล้วก่อนเปลี่ยนสถานะเป็นเสร็จสิ้น", "error");
+                    
+                    // Close details modal to ensure a clean transition to edit modal
+                    const detailsModal = document.getElementById("modal-log-details");
+                    if (detailsModal) {
+                        detailsModal.classList.add("hidden");
+                        detailsModal.style.display = "none";
+                    }
+                    
+                    editLog(logId);
+                    return;
+                }
+            }
         }
     }
     await executeStatusUpdate(logId, newStatus, null);
@@ -9999,24 +10128,29 @@ window.updateLogStatus = updateLogStatus;
 // ─────────────────────────────────────────────────────────────────────────────
 
 function viewLogDetails(id) {
-    const log = state.logs.find((l) => l.id === id);
-    if (!log) return;
-    
-    // Reset Cost section to collapsed by default
-    const costContent = document.getElementById("cost-section-content");
-    const costIcon = document.getElementById("cost-collapse-icon");
-    if (costContent) costContent.style.display = "none";
-    if (costIcon) costIcon.style.transform = "";
+    try {
+        const log = state.logs.find((l) => l.id === id);
+        if (!log) return;
+        
+        // Reset Cost section to collapsed by default
+        const costContent = document.getElementById("cost-section-content");
+        const costIcon = document.getElementById("cost-collapse-icon");
+        if (costContent) costContent.style.display = "none";
+        if (costIcon) costIcon.style.transform = "";
 
-    // Refresh users data to ensure we have latest profile info for comments
-    FirestoreService.fetchUsers().then((users) => {
-        state.users = users;
-        console.log('[viewLogDetails] Refreshed users data:', Object.keys(users).length, 'users');
-        // Re-render comments with updated user data
-        renderLogComments(log.id, log.comments || []);
-    }).catch(err => {
-        console.warn("Failed to refresh users for comments:", err);
-    });
+        // Refresh users data to ensure we have latest profile info for comments
+        FirestoreService.fetchUsers().then((users) => {
+            state.users = users;
+            console.log('[viewLogDetails] Refreshed users data:', Object.keys(users).length, 'users');
+            // Re-render comments with updated user data
+            try {
+                renderLogComments(log.id, log.comments || []);
+            } catch (innerErr) {
+                console.error("Failed to render comments after fetch:", innerErr);
+            }
+        }).catch(err => {
+            console.warn("Failed to refresh users for comments:", err);
+        });
 
     const site = state.sites.find((s) => s.id === log.siteId) || {
         name: "ไม่พบข้อมูลสถานที่",
@@ -10062,9 +10196,23 @@ function viewLogDetails(id) {
     // Device Banner in header (replaces old text title)
     const bannerContainer = document.getElementById("detail-log-banner-container");
     if (bannerContainer) {
-        bannerContainer.innerHTML = createDeviceBannerHTML(site);
-        bannerContainer.style.cursor = 'pointer';
-        bannerContainer.onclick = () => viewSiteDetails(site.id);
+        const actionsHTML = `
+            <button onclick="exportCasePDF('${log.id}')" title="ส่งออก PDF"
+                style="display:inline-flex; align-items:center; gap:6px; padding:0 14px; height:36px; background:#ffffff; color:#111111; border:1.5px solid #111111; border-radius:10px; font-size:0.82rem; font-weight:600; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1); white-space:nowrap; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);"
+                onmouseover="this.style.background='#111111';this.style.color='#ffffff';this.style.transform='scale(1.03)';" 
+                onmouseout="this.style.background='#ffffff';this.style.color='#111111';this.style.transform='none';">
+                <i class="fa-solid fa-file-pdf"></i> PDF
+            </button>
+            <button id="detail-log-edit-btn" onclick="checkEditPermission('${log.id}', '${log.status}')" title="แก้ไข"
+                style="display:inline-flex; align-items:center; gap:6px; padding:0 14px; height:36px; background:#ffffff; color:#111111; border:1.5px solid #111111; border-radius:10px; font-size:0.82rem; font-weight:600; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1); white-space:nowrap; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);"
+                onmouseover="this.style.background='#111111';this.style.color='#ffffff';this.style.transform='scale(1.03)';" 
+                onmouseout="this.style.background='#ffffff';this.style.color='#111111';this.style.transform='none';">
+                <i class="fa-solid fa-pen-to-square"></i> แก้ไข
+            </button>
+        `;
+        bannerContainer.innerHTML = createDeviceBannerHTML(site, log.caseId, actionsHTML);
+        bannerContainer.style.cursor = 'default';
+        bannerContainer.onclick = null;
     }
 
     // Responder
@@ -10203,7 +10351,7 @@ function viewLogDetails(id) {
 
     // Cost (total of lineItems, or legacy)
     const totalCost =
-        log.lineItems && log.lineItems.length > 0
+        Array.isArray(log.lineItems) && log.lineItems.length > 0
             ? log.lineItems.reduce((s, li) => s + (li.cost || 0), 0)
             : log.cost || 0;
     const costEl = document.getElementById("detail-log-cost");
@@ -10217,7 +10365,7 @@ function viewLogDetails(id) {
     // Details as line-items table
     const detailsEl = document.getElementById("detail-log-details");
     if (detailsEl) {
-        if (log.lineItems && log.lineItems.length > 0) {
+        if (Array.isArray(log.lineItems) && log.lineItems.length > 0) {
             const fmt = (v) =>
                 new Intl.NumberFormat(undefined, {
                     minimumFractionDigits: 2,
@@ -10292,7 +10440,8 @@ function viewLogDetails(id) {
         const inspBadge = (val) => {
             if (!val) return `<span style="color:#ccc;">-</span>`;
             const config = { check: { full: 'Check', short: 'C', bg: '#22c55e' }, service: { full: 'Service', short: 'S', bg: '#f59e0b' }, replace: { full: 'Replace', short: 'R', bg: '#ef4444' } };
-            const c = config[val] || { full: val, short: val.charAt(0), bg: '#111' };
+            const valStr = String(val);
+            const c = config[valStr] || { full: valStr, short: valStr.charAt(0), bg: '#111' };
             return `<span class="detail-pill" style="background:${c.bg};"><span class="insp-full">${c.full}</span><span class="insp-short">${c.short}</span></span>`;
         };
 
@@ -10351,7 +10500,7 @@ function viewLogDetails(id) {
         iHtml += gridRow('มีลิฟต์หรือไม่', yesNo(log.useElevator), log.useElevator === 'yes' ? [log.elevatorCapacity ? log.elevatorCapacity + ' kg' : '', log.elevatorDoorWidth && log.elevatorDoorHeight ? 'ประตู ' + log.elevatorDoorWidth + '×' + log.elevatorDoorHeight + ' ม.' : ''].filter(Boolean).join(' / ') : '');
         iHtml += valRow('ช่องทางเดิน (ที่แคบที่สุด)', `${log.walkwayWidth ? 'กว้าง ' + log.walkwayWidth + ' ม.' : '-'} / ${log.walkwayHeight ? 'สูง ' + log.walkwayHeight + ' ม.' : '-'}`);
         iHtml += valRow('จำนวนประตูที่ต้องผ่าน', log.doorCount ? log.doorCount + ' ประตู' : '-');
-        if (log.doorSizes && log.doorSizes.length > 0) {
+        if (Array.isArray(log.doorSizes) && log.doorSizes.length > 0) {
             log.doorSizes.forEach(function(door, i) {
                 iHtml += valRow('ขนาดประตูที่ ' + (i + 1), (door.width ? 'กว้าง ' + door.width + ' ม.' : '-') + ' / ' + (door.height ? 'สูง ' + door.height + ' ม.' : '-'));
             });
@@ -10464,7 +10613,7 @@ function viewLogDetails(id) {
         let rHtml = '';
 
         // Repair checklist
-        if (log.repairChecklist && log.repairChecklist.length > 0) {
+        if (Array.isArray(log.repairChecklist) && log.repairChecklist.length > 0) {
             rHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.4rem;"><i class="fa-solid fa-list-check"></i> รายการที่ซ่อม</div>`;
             rHtml += `<div style="display:flex; flex-direction:column; margin-bottom:0.75rem;">`;
             log.repairChecklist.forEach((item, i) => {
@@ -10496,13 +10645,13 @@ function viewLogDetails(id) {
         }
 
         // Return product
-        if (log.returnProductNote || (log.returnProducts && log.returnProducts.length > 0)) {
+        if (log.returnProductNote || (Array.isArray(log.returnProducts) && log.returnProducts.length > 0)) {
             rHtml += `<div style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid rgba(0,0,0,0.08);">`;
             rHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.4rem;"><i class="fa-solid fa-box-archive"></i> กรณีรับสินค้ากลับ</div>`;
             if (log.returnProductNote) {
                 rHtml += `<div style="font-size:0.85rem; color:#333; margin-bottom:0.5rem; padding:0.5rem; border:1px solid rgba(0,0,0,0.06); border-radius:6px; background:rgba(0,0,0,0.02);">${log.returnProductNote}</div>`;
             }
-            if (log.returnProducts && log.returnProducts.length > 0) {
+            if (Array.isArray(log.returnProducts) && log.returnProducts.length > 0) {
                 rHtml += `<div style="font-size:0.82rem; font-weight:600; color:#555; margin-bottom:0.25rem;">รายการสินค้า:</div>`;
                 log.returnProducts.forEach((prod, i) => {
                     rHtml += `<div style="display:flex; align-items:center; gap:0.5rem; padding:0.3rem 0; border-bottom:1px solid rgba(0,0,0,0.04); font-size:0.85rem;">`;
@@ -10591,34 +10740,15 @@ function viewLogDetails(id) {
         timestampEl.textContent = timestampStr;
     }
 
-    // Inject Action Buttons to header (top-right)
-    const actionsContainer = document.getElementById("log-detail-modal-actions");
-    if (actionsContainer) {
-        actionsContainer.style.display = "flex";
-        actionsContainer.innerHTML = `
-            <button onclick="exportCasePDF('${log.id}')" title="ส่งออก PDF"
-                style="display:inline-flex; align-items:center; gap:6px; padding:0 14px; height:36px; background:#fff1f1; color:#dc2626; border:1.5px solid #fecaca; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; transition:all 0.15s; white-space:nowrap;"
-                onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fff1f1'">
-                <i class="fa-solid fa-file-pdf"></i> PDF
-            </button>
-            <button onclick="checkEditPermission('${log.id}', '${log.status}')" title="แก้ไข"
-                style="display:inline-flex; align-items:center; gap:6px; padding:0 14px; height:36px; background:#f0f9ff; color:#0369a1; border:1.5px solid #bae6fd; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; transition:all 0.15s; white-space:nowrap;"
-                onmouseover="this.style.background='#e0f2fe'" onmouseout="this.style.background='#f0f9ff'">
-                <i class="fa-solid fa-pen-to-square"></i> แก้ไข
-            </button>
-        `;
-    }
-    
     // Check if user can edit (admin can always edit, regular users can't edit closed cases)
     const user = auth.currentUser;
-    let canEdit = true;
     
     if (log.status === 'Case Closed' && user) {
         // For closed cases, check if user is admin
         FirestoreService.getUser(user.uid).then(userDoc => {
             const isAdmin = userDoc?.role === 'admin';
-            if (!isAdmin && actionsContainer) {
-                const editBtn = actionsContainer.querySelector('[title="แก้ไข"]');
+            if (!isAdmin) {
+                const editBtn = document.getElementById("detail-log-edit-btn");
                 if (editBtn) editBtn.style.display = 'none';
             }
         });
@@ -10651,6 +10781,10 @@ function viewLogDetails(id) {
     }
 
     toggleModal("logDetails", true);
+    } catch (error) {
+        console.error("Error in viewLogDetails:", error);
+        alert("เกิดข้อผิดพลาดในการเปิดรายละเอียดเคส:\n" + error.message + "\n\n" + error.stack);
+    }
 }
 
 function viewSiteLogs(siteId) {
@@ -11698,8 +11832,8 @@ window.onload = function() {
             + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
             + '<span id="pdf-preview-title" style="font-weight:700; font-size:14px; color:#333;">PDF Preview</span>'
             + '<div style="display:flex; gap:8px;">'
-            + '<button id="pdf-btn-print" title="พิมพ์" style="background:#8bc53f; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-print"></i> พิมพ์</button>'
-            + '<button id="pdf-btn-close" title="ปิด" style="background:#ef4444; color:#fff; border:none; border-radius:6px; width:34px; height:34px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-xmark"></i></button>'
+            + '<button id="pdf-btn-print" title="พิมพ์" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; background:#ffffff; color:#111111; border:1.5px solid #111111; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1); white-space:nowrap;" onmouseover="this.style.background=\'#111111\';this.style.color=\'#ffffff\';this.style.transform=\'scale(1.03)\';" onmouseout="this.style.background=\'#ffffff\';this.style.color=\'#111111\';this.style.transform=\'none\';"><i class="fa-solid fa-print"></i> พิมพ์</button>'
+            + '<button id="pdf-btn-close" title="ปิด" style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; background:#ffffff; color:#111111; border:1.5px solid #e5e5e5; border-radius:8px; font-size:16px; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1);" onmouseover="this.style.background=\'#f3f4f6\';this.style.borderColor=\'#d1d5db\';this.style.transform=\'scale(1.05)\';" onmouseout="this.style.background=\'#ffffff\';this.style.borderColor=\'#e5e5e5\';this.style.transform=\'none\';"><i class="fa-solid fa-xmark"></i></button>'
             + '</div></div>'
             + '<iframe id="pdf-preview-iframe" style="flex:1; border:none; width:100%; background:#fff;"></iframe>'
             + '</div>';
@@ -14915,8 +15049,8 @@ function showPdfPreview(html, title) {
             + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
             + '<span id="pdf-preview-title" style="font-weight:700; font-size:14px; color:#333;">PDF Preview</span>'
             + '<div style="display:flex; gap:8px;">'
-            + '<button id="pdf-btn-print" style="background:#8bc53f; color:#fff; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-print"></i> พิมพ์</button>'
-            + '<button id="pdf-btn-close" style="background:#ef4444; color:#fff; border:none; border-radius:6px; width:34px; height:34px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-xmark"></i></button>'
+            + '<button id="pdf-btn-print" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; background:#ffffff; color:#111111; border:1.5px solid #111111; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1); white-space:nowrap;" onmouseover="this.style.background=\'#111111\';this.style.color=\'#ffffff\';this.style.transform=\'scale(1.03)\';" onmouseout="this.style.background=\'#ffffff\';this.style.color=\'#111111\';this.style.transform=\'none\';"><i class="fa-solid fa-print"></i> พิมพ์</button>'
+            + '<button id="pdf-btn-close" style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; background:#ffffff; color:#111111; border:1.5px solid #e5e5e5; border-radius:8px; font-size:16px; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1);" onmouseover="this.style.background=\'#f3f4f6\';this.style.borderColor=\'#d1d5db\';this.style.transform=\'scale(1.05)\';" onmouseout="this.style.background=\'#ffffff\';this.style.borderColor=\'#e5e5e5\';this.style.transform=\'none\';"><i class="fa-solid fa-xmark"></i></button>'
             + '</div></div>'
             + '<iframe id="pdf-preview-iframe" style="flex:1; border:none; width:100%; background:#fff;"></iframe>'
             + '</div>';

@@ -141,34 +141,42 @@
         }
 
         .glass-btn-secondary {
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            border: 1.5px solid #e2e8f0;
+            color: #555555;
         }
 
         .glass-btn-secondary:hover {
-            background: #e2e8f0;
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            color: #111111;
             transform: translateY(-1px);
         }
 
         .glass-btn-primary {
-            background: #111;
-            color: #fff;
+            background: #ffffff;
+            color: #111111;
+            border: 1.5px solid #111111;
         }
 
         .glass-btn-primary:hover {
-            background: #333;
+            background: #111111;
+            color: #ffffff;
+            border-color: #111111;
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         .glass-btn-danger {
-            color: #ef4444;
-            background: #fef2f2;
-            border: 1px solid #fee2e2;
+            background: #ffffff;
+            color: #111111;
+            border: 1.5px solid #111111;
         }
 
         .glass-btn-danger:hover {
-            background: #fee2e2;
+            background: #111111;
+            color: #ffffff;
+            border-color: #111111;
             transform: translateY(-1px);
         }
 
@@ -177,13 +185,15 @@
             height: 40px;
             padding: 0;
             justify-content: center;
-            background: #f1f5f9;
+            background: #ffffff;
             color: #64748b;
+            border: 1.5px solid #e2e8f0;
             border-radius: 10px;
         }
 
         .glass-btn-close:hover {
-            background: #e2e8f0;
+            background: #f1f5f9;
+            border-color: #cbd5e1;
             color: #1e293b;
         }
 
@@ -714,74 +724,7 @@
     <script src="hospital-data.js"></script>
     <script type="module" src="app.js"></script>
 
-    <!-- PUBLIC SIGNING PAGE -->
-    <section id="public-sign-view" style="display:none; min-height:100vh; background:#f5f5f5; padding:1rem;">
-        <div
-            style="max-width:500px; margin:2rem auto; background:#fff; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); overflow:hidden;">
-            <div style="background:#8bc53f; padding:1.25rem 1.5rem; color:#fff;">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <img src="/bioinnotech.svg" alt="Logo" style="height:40px; filter:brightness(10);">
-                    <div>
-                        <div style="font-size:1.1rem; font-weight:700;">ลงลายเซ็นลูกค้า</div>
-                        <div style="font-size:0.8rem; opacity:0.9;">Customer Signature</div>
-                    </div>
-                </div>
-            </div>
-            <div style="padding:1.5rem;">
-                <div id="sign-case-info"
-                    style="background:#f9fafb; border-radius:8px; padding:0.75rem; margin-bottom:1rem; font-size:0.85rem; color:#555;">
-                </div>
-                <div style="margin-bottom:0.75rem;">
-                    <label
-                        style="display:block; font-size:0.85rem; margin-bottom:0.25rem; font-weight:600;">ชื่อ-นามสกุล
-                        <span style="color:#ef4444;">*</span></label>
-                    <input type="text" id="sign-name" placeholder="ชื่อผู้ลงลายเซ็น"
-                        style="width:100%; padding:0.6rem; border:1px solid #ddd; border-radius:8px; font-size:0.9rem; box-sizing:border-box;">
-                </div>
-                <div style="margin-bottom:0.75rem;">
-                    <label style="display:block; font-size:0.85rem; margin-bottom:0.25rem; font-weight:600;">เบอร์โทร
-                        <span style="color:#ef4444;">*</span></label>
-                    <input type="tel" id="sign-tel" placeholder="08XXXXXXXX"
-                        style="width:100%; padding:0.6rem; border:1px solid #ddd; border-radius:8px; font-size:0.9rem; box-sizing:border-box;">
-                </div>
-                <div style="margin-bottom:0.75rem;">
-                    <label
-                        style="display:block; font-size:0.85rem; margin-bottom:0.25rem; font-weight:600;">ตำแหน่ง</label>
-                    <input type="text" id="sign-position" placeholder="ตำแหน่ง (ถ้ามี)"
-                        style="width:100%; padding:0.6rem; border:1px solid #ddd; border-radius:8px; font-size:0.9rem; box-sizing:border-box;">
-                </div>
-                <label style="display:block; font-size:0.85rem; margin-bottom:0.25rem; font-weight:600;">ลายเซ็น <span
-                        style="color:#ef4444;">*</span></label>
-                <div
-                    style="border:2px dashed #ddd; border-radius:8px; overflow:hidden; background:#fff; position:relative;">
-                    <canvas id="public-sign-canvas" width="460" height="200"
-                        style="width:100%; cursor:crosshair; touch-action:none;"></canvas>
-                    <button onclick="publicSignPad && publicSignPad.clear()"
-                        style="position:absolute; top:6px; right:6px; background:rgba(0,0,0,0.06); border:1px solid rgba(0,0,0,0.1); border-radius:6px; padding:4px 10px; font-size:0.75rem; cursor:pointer; color:#666;">
-                        <i class="fa-solid fa-eraser"></i> ล้าง
-                    </button>
-                </div>
-                <div style="margin-top:0.5rem;">
-                    <input type="file" id="public-sign-upload" accept="image/*" style="display:none;">
-                    <button onclick="document.getElementById('public-sign-upload').click()"
-                        style="background:none; border:1px solid #ddd; border-radius:6px; padding:0.4rem 0.8rem; font-size:0.8rem; cursor:pointer; color:#666;">
-                        <i class="fa-solid fa-upload"></i> อัปโหลดรูปลายเซ็น
-                    </button>
-                </div>
-                <button id="btn-public-sign-submit"
-                    style="width:100%; margin-top:1rem; padding:0.75rem; background:#8bc53f; color:#fff; border:none; border-radius:8px; font-size:1rem; font-weight:700; cursor:pointer;">
-                    <i class="fa-solid fa-check"></i> ยืนยันลายเซ็น
-                </button>
-                <div id="sign-success-msg" style="display:none; text-align:center; padding:2rem 1rem;">
-                    <i class="fa-solid fa-circle-check"
-                        style="font-size:3rem; color:#22c55e; margin-bottom:0.75rem;"></i>
-                    <div style="font-size:1.1rem; font-weight:700; color:#333;">ลงลายเซ็นสำเร็จ</div>
-                    <div style="font-size:0.85rem; color:#888; margin-top:0.25rem;">ขอบคุณที่ลงลายเซ็น
-                        คุณสามารถปิดหน้านี้ได้</div>
-                </div>
-            </div>
-        </div>
-    </section>
+
 
     <!-- PUBLIC INCIDENT REPORT PAGE (shown when ?report=DEVICE_ID) -->
     <section id="public-report-view" class="public-report-page" style="display:none;">
@@ -882,7 +825,6 @@
         </div>
     </section>
 
-</body>
 <!-- LOGIN VIEW -->
 <section id="login-view" class="login-container hidden">
     <div class="login-card glass-panel">
@@ -1484,24 +1426,77 @@
                     <div class="filter-group actions-filter">
                         <label>ตัวเลือก</label>
                         <div class="filter-actions-row">
-                            <button class="desktop-only" id="btn-add-site" title="เพิ่มเครื่องใหม่"
-                                style="width: 40px; padding: 0; justify-content: center; background: #38bdf8; color: #ffffff; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; font-size: 1.1rem; flex-shrink: 0;">
+                            <button class="desktop-only btn-primary" id="btn-add-site" title="เพิ่มเครื่องใหม่"
+                                style="width: 40px; padding: 0; justify-content: center; display: flex; align-items: center; font-size: 1.1rem; flex-shrink: 0; height: 38px;">
                                 <i class="fa-solid fa-plus"></i>
                             </button>
                             <button id="btn-export-sites" class="btn-secondary" title="ส่งออก Excel"
-                                style="width: 40px; padding: 0; justify-content: center; border-color: #16a34a; background: rgba(22, 163, 74, 0.05); font-size: 1.1rem; flex-shrink: 0;">
-                                <i class="fa-solid fa-file-excel" style="color: #16a34a;"></i>
+                                style="width: 40px; padding: 0; justify-content: center; display: flex; align-items: center; font-size: 1.1rem; flex-shrink: 0; height: 38px;">
+                                <i class="fa-solid fa-file-excel"></i>
                             </button>
                             <button onclick="exportDevicesPDF()" class="btn-secondary" title="ส่งออก PDF"
-                                style="width: 40px; padding: 0; justify-content: center; border-color: #dc2626; background: rgba(220, 38, 38, 0.05); font-size: 1.1rem; flex-shrink: 0;">
-                                <i class="fa-solid fa-file-pdf" style="color: #dc2626;"></i>
+                                style="width: 40px; padding: 0; justify-content: center; display: flex; align-items: center; font-size: 1.1rem; flex-shrink: 0; height: 38px;">
+                                <i class="fa-solid fa-file-pdf"></i>
                             </button>
                             <button id="btn-clear-site-filters" class="btn-secondary" title="ล้างตัวกรอง"
-                                style="flex: 1; min-width: 80px; justify-content: center; color: #4b5563; border-color: #d1d5db; background: rgba(243, 244, 246, 0.5);">
+                                style="flex: 1; min-width: 80px; justify-content: center; display: flex; align-items: center; gap: 0.5rem; height: 38px;">
                                 <i class="fa-solid fa-rotate-left"></i> ล้าง
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Device Dashboard Section -->
+            <div id="device-dashboard" class="device-dashboard-container" style="margin-bottom: 1.5rem; width: 100%;">
+                <div class="dashboard-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; width: 100%;">
+                    
+                    <!-- Card 1: Total Devices -->
+                    <div class="dashboard-card" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s;">
+                        <div class="dashboard-card-icon" style="background: rgba(56, 189, 248, 0.1); color: var(--primary-color); border: 1px solid rgba(56, 189, 248, 0.2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-microchip"></i>
+                        </div>
+                        <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
+                            <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500;">เครื่องทั้งหมด</span>
+                            <span id="dash-total-devices" style="font-size: 1.75rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: Due for Maintenance -->
+                    <div class="dashboard-card" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s;">
+                        <div class="dashboard-card-icon" id="dash-due-icon" style="background: rgba(22, 163, 74, 0.1); color: #16a34a; border: 1px solid rgba(22, 163, 74, 0.2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                        <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
+                            <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500;">ถึงรอบบำรุงรักษา</span>
+                            <span id="dash-due-ma" style="font-size: 1.75rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Contract Breakdown -->
+                    <div class="dashboard-card" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s; min-height: 78px;">
+                        <div class="dashboard-card-icon" style="background: rgba(147, 51, 234, 0.1); color: #9333ea; border: 1px solid rgba(147, 51, 234, 0.2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-file-contract"></i>
+                        </div>
+                        <div class="dashboard-card-content" style="display: flex; flex-direction: column; width: calc(100% - 64px);">
+                            <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500;">รูปแบบสัญญา (หลัก)</span>
+                            <div id="dash-contract-types" style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 4px;">
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">ไม่มีข้อมูล</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 4: Provinces Count -->
+                    <div class="dashboard-card" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s;">
+                        <div class="dashboard-card-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-earth-asia"></i>
+                        </div>
+                        <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
+                            <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500;">พื้นที่ติดตั้ง</span>
+                            <span id="dash-total-provinces" style="font-size: 1.75rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0 <span style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">จังหวัด</span></span>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -1537,20 +1532,20 @@
                 <div class="filter-group actions-filter">
                     <label>ตัวเลือก</label>
                     <div class="filter-actions-row">
-                        <button class="mobile-only hidden" id="btn-add-site-mobile" title="เพิ่มเครื่องใหม่"
-                            style="width: 40px; padding: 0; justify-content: center; background: #38bdf8; color: #ffffff; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; font-size: 1.1rem; flex-shrink: 0;">
+                        <button class="mobile-only hidden btn-primary" id="btn-add-site-mobile" title="เพิ่มเครื่องใหม่"
+                            style="width: 40px; padding: 0; justify-content: center; display: flex; align-items: center; font-size: 1.1rem; flex-shrink: 0; height: 38px;">
                             <i class="fa-solid fa-plus"></i>
                         </button>
                         <button id="btn-export-sites-mobile" class="btn-secondary" title="Export as Excel"
-                            style="width: 40px; padding: 0; justify-content: center; border-color: #16a34a; background: rgba(22, 163, 74, 0.05); font-size: 1.1rem; flex-shrink: 0;">
-                            <i class="fa-solid fa-file-excel" style="color: #16a34a;"></i>
+                            style="width: 40px; padding: 0; justify-content: center; display: flex; align-items: center; font-size: 1.1rem; flex-shrink: 0; height: 38px;">
+                            <i class="fa-solid fa-file-excel"></i>
                         </button>
                         <button onclick="exportDevicesPDF()" class="btn-secondary mobile-only" title="ส่งออก PDF"
-                            style="width: 40px; padding: 0; justify-content: center; border-color: #dc2626; background: rgba(220, 38, 38, 0.05); font-size: 1.1rem; flex-shrink: 0;">
-                            <i class="fa-solid fa-file-pdf" style="color: #dc2626;"></i>
+                            style="width: 40px; padding: 0; justify-content: center; display: flex; align-items: center; font-size: 1.1rem; flex-shrink: 0; height: 38px;">
+                            <i class="fa-solid fa-file-pdf"></i>
                         </button>
                         <button id="btn-clear-site-filters-mobile" class="btn-secondary" title="ล้างตัวกรอง"
-                            style="flex: 1; min-width: 80px; justify-content: center; color: #4b5563; border-color: #d1d5db; background: rgba(243, 244, 246, 0.5);">
+                            style="flex: 1; min-width: 80px; justify-content: center; display: flex; align-items: center; gap: 0.5rem; height: 38px;">
                             <i class="fa-solid fa-rotate-left"></i> ล้าง
                         </button>
                     </div>
@@ -1745,11 +1740,11 @@
     <!-- FABs (Floating Action Buttons) - Root Level -->
     <!-- FABs (Floating Action Buttons) - Root Level -->
     <button class="mobile-only fab-btn hidden" id="btn-add-site-fab" aria-label="เพิ่มเครื่องใหม่"
-        title="เพิ่มเครื่องใหม่" style="background: #38bdf8 !important; color: #fff !important;">
+        title="เพิ่มเครื่องใหม่">
         <i class="fa-solid fa-plus" aria-hidden="true"></i>
     </button>
     <button class="mobile-only fab-btn hidden" id="btn-log-maintenance-fab" aria-label="บันทึกงานซ่อมบำรุง"
-        title="บันทึกงานซ่อมบำรุง" style="background: #38bdf8 !important; color: #fff;">
+        title="บันทึกงานซ่อมบำรุง">
         <i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i>
     </button>
 </div>
@@ -3121,20 +3116,6 @@
                     style="width: 100%; cursor: crosshair; touch-action: none;"></canvas>
             </div>
             <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
-                <input type="file" id="signature-upload-input" accept="image/*" style="display: none;">
-                <button class="btn-secondary" onclick="document.getElementById('signature-upload-input').click()"
-                    style="flex: 1; font-size: 0.82rem;">
-                    <i class="fa-solid fa-upload"></i> อัปโหลดลายเซ็น
-                </button>
-                <button class="btn-secondary" onclick="shareSignatureLink()" style="flex: 1; font-size: 0.82rem;">
-                    <i class="fa-solid fa-share-nodes"></i> ส่งลิงก์ให้ลูกค้า
-                </button>
-            </div>
-            <div id="signature-upload-preview" style="display:none; margin-top:0.5rem; text-align:center;">
-                <img id="signature-upload-img"
-                    style="max-height:100px; max-width:250px; object-fit:contain; border:1px solid rgba(0,0,0,0.1); border-radius:6px;">
-            </div>
-            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
                 <button class="btn-secondary" onclick="clearSignatureCanvas()" style="flex: 1;">
                     <i class="fa-solid fa-eraser"></i> ล้าง
                 </button>
@@ -3321,26 +3302,10 @@
     <div class="modal glass-panel" style="max-width: 1100px;">
         <!-- Header — sticky, banner left, actions right -->
         <div class="modal-header"
-            style="position: sticky; top: 0; z-index: 20; background: var(--glass-bg, #fff); border-bottom: 1px solid rgba(0,0,0,0.08); padding: 0.85rem 1.25rem; display: flex; align-items: center; gap: 1rem; flex-wrap: nowrap;">
-
-            <!-- Left: case ID + device banner -->
-            <div style="flex: 1; min-width: 0;">
-                <div id="detail-log-header-case-id"
-                    style="font-size: 0.75rem; color: #888; font-family: 'Courier New', monospace; font-weight: 600; margin-bottom: 0.4rem;">
-                </div>
-                <div id="detail-log-banner-container"></div>
-            </div>
-
-            <!-- Right: action buttons + close -->
-            <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
-                <div id="log-detail-modal-actions" style="display: none; gap: 0.5rem; align-items: center;"></div>
-                <button class="close-modal"
-                    style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; background:#f5f5f5; color:#555; border:1.5px solid #e5e5e5; border-radius:8px; font-size:1.1rem; cursor:pointer; transition:all 0.15s; flex-shrink:0;"
-                    onmouseover="this.style.background='#fee2e2';this.style.color='#dc2626';this.style.borderColor='#fecaca'"
-                    onmouseout="this.style.background='#f5f5f5';this.style.color='#555';this.style.borderColor='#e5e5e5'">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
+            style="position: sticky; top: 0; z-index: 20; background: var(--glass-bg, #fff); border-bottom: 1px solid rgba(0,0,0,0.08); padding: 0; display: flex; align-items: center; width: 100%;">
+            <div id="detail-log-banner-container" style="width: 100%;"></div>
+            <div id="detail-log-header-case-id" style="display: none;"></div>
+            <div id="log-detail-modal-actions" style="display: none;"></div>
         </div>
 
         <!-- Case Info (hidden, used by JS) -->
@@ -3703,7 +3668,7 @@
             </div>
         </div>
         <div class="modal-actions" style="margin-top: 0; padding: 1.25rem 1.5rem; border-top: 1px solid rgba(0,0,0,0.07); display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
-            <button type="button" class="btn-secondary" id="btn-cycle-clear" style="margin-right: auto; background:#fef2f2; color:#ef4444; border: 1px solid #fee2e2; height: 44px; border-radius: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0 1.25rem;">
+            <button type="button" class="btn-secondary" id="btn-cycle-clear" style="margin-right: auto; height: 44px; border-radius: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0 1.25rem; background: #ffffff; border: 1.5px solid #111111; color: #111111; transition: all 0.2s;" onmouseover="this.style.background='#111111';this.style.color='#ffffff';" onmouseout="this.style.background='#ffffff';this.style.color='#111111';">
                 <i class="fa-solid fa-trash-can"></i> ล้างข้อมูล
             </button>
             <button type="button" class="btn-secondary" id="btn-cycle-cancel" style="height: 44px; border-radius: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0 1.5rem;">
