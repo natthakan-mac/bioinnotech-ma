@@ -1,117 +1,169 @@
-# 💧 BIO Water Plant Maintenance System
-> **A Professional Maintenance Management Solution for BIO Water Tank Infrastructure**
+# 💧 BIO Innotech - Device & Maintenance Management System
 
-![Firebase](https://img.shields.io/badge/Firebase-039BE5?style=for-the-badge&logo=Firebase&logoColor=white)
-![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E)
-![Mobile Friendly](https://img.shields.io/badge/Responsive-Yes-success?style=for-the-badge)
+> **A premium, high-performance, and high-contrast enterprise platform for managing industrial device life cycles and maintenance logs.**
+
+[![Framework](https://img.shields.io/badge/Architecture-Vanilla_JS_/_HTML5_/_CSS3-black?style=for-the-badge)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![Database](https://img.shields.io/badge/Database-Firebase_Firestore-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
+[![Style](https://img.shields.io/badge/Design_Language-High_Contrast_Monochrome-000000?style=for-the-badge)](style.css)
+[![Responsive](https://img.shields.io/badge/Responsive-Mobile_/_Desktop-success?style=for-the-badge)](#mobile--responsive-layouts)
+
+---
+
+## 📋 Table of Contents
+1. [Overview](#-overview)
+2. [Key Architecture & Features](#-key-architecture--features)
+3. [Design System & Aesthetics](#-design-system--aesthetics)
+4. [E-Signature & Compliance Rules](#-e-signature--compliance-rules)
+5. [Database Schema (Firestore)](#-database-schema-firestore)
+6. [Local Development & Setup](#-local-development--setup)
+7. [Deployment Guide](#-deployment-guide)
 
 ---
 
 ## 📋 Overview
 
-**BIO Water Plant Maintenance** is a comprehensive, cloud-based platform designed to streamline the management of water plant maintenance operations. It bridges the gap between Field Engineers and Operations Managers, providing real-time data synchronization and robust auditing capabilities.
+The **BIO Innotech Device & Maintenance Management System** is a mission-critical platform engineered for field technicians, operations managers, and administrators. The system streamlines tracking of industrial machinery, schedules preventive maintenance (PM), validates field operations, and hosts a robust audit trail. 
 
-The system features a **Modern Glassmorphism Design Language**, ensuring high visual clarity and a premium user experience across both Desktop and Mobile devices.
-
----
-
-## ✨ Key Features
-
-### 🏭 Infrastructure Management
-- **Site Catalog**: Centralized database for all BIO Water Tank installations.
-- **Thai Address Intelligence**: Automated geolocation and address population using `thai_address_data`.
-- **Warranty Tracking**: Real-time monitoring of insurance and protection period status.
-
-### 🛠️ Maintenance & Logistics
-- **Smart Logging**: Rapid data entry with autocomplete for common tasks and recurring maintenance types.
-- **Infinite Scrolling**: High-performance log feed with automatic data loading for seamless browsing of large datasets.
-- **Hybrid View**: Toggle between a **Detail List View** (with sticky headers) and a **Calendar View** for scheduling oversight.
-- **Dynamic Costing**: Real-time financial summaries based on filtered maintenance logs.
-
-### 🛡️ Security & Enterprise Audit
-- **Activity Log & Diff Engine**: A terminal-style audit trail recording all CRUD operations with precise value comparisons (Old vs New).
-- **Recycle Bin**: Fail-safe deletion system allowing for data restoration and prevention of accidental data loss.
-- **Session Protection**: Automatic session termination after 30 minutes of inactivity with themed notification dialogs.
-
-### 📲 Connectivity & Attachments
-- **Advanced Attachments**: Support for images and all major document formats (.pdf, .doc, .xls, .ppt, etc.) with a **25MB per-file limit**.
-- **LINE Integration**: Seamless account binding for rapid authentication via the LINE Internal Browser.
-- **Full-Data Export**: Reliable Excel (`.xlsx`) generation that exports entire filtered datasets, bypassing pagination limits for complete reporting.
+Built with pure vanilla web tech (JS/HTML/CSS) combined with Firebase, it delivers sub-millisecond data reactivity, rich interactive grids, calendar interfaces, and responsive workflows.
 
 ---
 
-## 🛠️ Technology Stack
+## ✨ Key Architecture & Features
 
-### **Frontend Architecture**
-- **Language**: Vanilla JavaScript (ES6+), HTML5, CSS3.
-- **UI Library**: Custom Glassmorphism Framework.
-- **Icons**: Font Awesome 6 Pro.
-- **Components**: 
-  - `Flatpickr` (Localized for Thai Date/Time).
-  - `SheetJS` (Excel Processing).
-  - `Google Fonts` (Outfit & Prompt).
+### 1. Device Catalog & Inventory
+* **Thai Address Auto-Complete**: Integrates a client-side localized search utilizing `thai_address_data` to automatically resolve provinces, districts, and postal codes.
+* **Warranty Tracking**: Visual indicator tags for insurance status (Active vs Expired) based on server-time comparisons.
+* **Dynamic Search & Filtering**: Multi-column client-side search indexing that responds instantly as you type.
 
-### **Backend & DevOps (Firebase)**
-- **Firestore**: Real-time NoSQL document database.
-- **Authentication**: Multi-provider (Email/Password & LINE OIDC).
-- **Storage**: Secure asset management for blueprints and field photos.
-- **Hosting**: Global CDN via Firebase Hosting.
+### 2. Maintenance Logging & Scheduler
+* **Infinite Scroll Grid**: Custom high-performance data loader that dynamically renders cards as the user scrolls, avoiding DOM performance bottlenecks.
+* **Dual View Mode**: Toggle seamlessly between a dynamic **Detail List View** (with sticky chronological headers) and a comprehensive **Calendar View** for project timelines.
+* **Live Cost Calculation**: Dynamic costing engines summarize financial totals automatically as filter metrics shift.
 
----
+### 3. Session & Security Systems
+* **Session Protection**: Automatic inactivity tracker that logs users out after **30 minutes of idle time**, showing a clean dialog notification before redirecting.
+* **LINE Integration**: Supports seamless LINE Login and single-sign-on (SSO) using the LINE Internal Browser, instantly binding profiles with Firebase users.
 
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js (for local server usage)
-- Firebase Account (for database/auth services)
-
-### Installation
-
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/bioinnotech/water-plant-maintenance.git
-   ```
-
-2. **Configuration**
-   Edit `app.js` and update the `firebaseConfig` object with your project credentials:
-   ```javascript
-   const firebaseConfig = {
-     apiKey: "YOUR_API_KEY",
-     authDomain: "YOUR_PROJECT.firebaseapp.com",
-     projectId: "YOUR_PROJECT",
-     storageBucket: "YOUR_PROJECT.appspot.com",
-     messagingSenderId: "ID",
-     appId: "APP_ID"
-   };
-   ```
-
-3. **Development Server**
-   Run via any standard web server (e.g., Live Server in VS Code):
-   ```bash
-   # Or using basic python server
-   python -m http.server 8000
-   ```
+### 4. Safety-Net & Auditing
+* **Terminal-style Audit Trail**: Tracks all CRUD actions performed by users, generating exact state comparisons (Diffs) of modified attributes.
+* **Recycle Bin (Soft-Delete)**: Safeguards accidental deletions by moving files and records to `deleted_items` where admins can audit or instantly restore them.
+* **25MB Enterprise File Limits**: Allows rich media attachments, schematics, and invoices up to 25MB per file.
 
 ---
 
-## 📂 Database Architecture (Firestore)
+## 🖤 Design System & Aesthetics
+
+The application adheres strictly to a **High-Contrast Monochrome Design Language** (Black, White, and Muted Greys) to deliver a highly legible, premium, and clean user interface. 
+
+### Core Theme Tokens
+```css
+:root {
+    --primary-color: #111111;       /* Deep High-Contrast Black */
+    --secondary-color: #ffffff;     /* Pure White */
+    --text-color: #111111;          /* High-legibility text */
+    --text-muted: #6b7280;          /* Subtle Gray for secondary info */
+    --border-color: #e5e7eb;        /* Soft borders */
+    --radius-md: 8px;               /* Standard button and input rounding */
+    --radius-lg: 12px;              /* Card panel rounding */
+}
+```
+
+### Visual Features
+* **Hover Micro-Animations**: Buttons transition with clean micro-lifts (`translateY(-1px)`) and swap backgrounds/borders dynamically.
+* **Monochrome Buttons**: 
+  * `.btn-primary`: Pure white background, bold black border. Inverts to filled black on hover.
+  * `.btn-secondary`: Thin light grey border, muted text. Deepens border/text color on hover.
+* **Responsive Layouts**: On mobile displays, native filters slide out via a toggle header, and action rows shift to optimized circular Floating Action Buttons (FABs) positioned out of active touch zones.
+
+---
+
+## 🔒 E-Signature & Compliance Rules
+
+To maintain high data integrity, the system implements **strict multi-level status validation** for cases transitioning to **Done (เสร็จสิ้น)**:
+
+```mermaid
+graph TD
+    A[User Sets Status to Done] --> B{Use System E-Signature?}
+    B -- Yes --> C[Display Canvas Signature Pad]
+    B -- No --> D{Any Files Uploaded in Signed Documents?}
+    C --> E[Submit Form & Transmit Status]
+    D -- Staged or Uploaded --> E
+    D -- Empty --> F[Block Action & Open File Input Modal]
+```
+
+### Implementation Details:
+1. **Form Validation**: If a technician changes a case status to **เสร็จสิ้น (Done)** and unchecks **ใช้ลายเซ็นจากระบบ (Use System E-Signature)**, saving is blocked until a physical signed document is uploaded.
+2. **Timeline Validation**: If a status dot is clicked on the timeline to mark it complete, the system verifies `useESignature` and document attachments. If empty, the transaction is rejected, a warning toast is fired, and the edit modal automatically focuses the document uploader.
+
+---
+
+## 🗄️ Database Schema (Firestore)
+
+The Firestore backend uses a flattened NoSQL architecture for maximum speed and indexing optimization:
 
 | Collection | Description | Primary Fields |
 | :--- | :--- | :--- |
-| `users` | Identity management | `uid`, `displayName`, `role`, `photoURL` |
-| `sites` | Physical locations | `name`, `province`, `insuranceEndDate`, `attachments` |
-| `logs` | Maintenance history | `siteId`, `category`, `cost`, `timestamp` |
-| `action_logs` | Audit trail | `performerId`, `actionType`, `metadata`, `diff` |
-| `deleted_items` | Soft-delete store | `originalCollection`, `originalId`, `deletedAt` |
+| `users` | User credentials and RBAC | `uid`, `displayName`, `role`, `lineUserId`, `photoURL` |
+| `sites` | Physical installation locations | `name`, `province`, `amphoe`, `contractType`, `insuranceEndDate` |
+| `logs` | Chronicled maintenance records | `siteId`, `category`, `cost`, `timestamp`, `useESignature`, `signedDocAttachments` |
+| `action_logs` | Audit trail with full object diffs | `performerId`, `actionType`, `timestamp`, `metadata`, `diff` |
+| `deleted_items` | Soft-deleted storage logs | `originalCollection`, `originalId`, `deletedAt`, `deletedBy`, `data` |
 
 ---
 
-## 📞 Support & Contact
+## 🚀 Local Development & Setup
 
-Developed by **BIO Innotech Co., Ltd.**
+### Prerequisites
+* **Node.js** (v18+ recommended)
+* A modern web browser supporting ES6 modules
 
-- **Technical Support**: [it@bioinnotech.co.th](mailto:it@bioinnotech.co.th)
-- **Official Website**: [www.bioinnotech.co.th](https://www.bioinnotech.co.th)
+### Setup Steps
+
+1. **Clone & Enter Project**:
+   ```bash
+   git clone https://github.com/natthakan-mac/bioinnotech-ma.git
+   cd bioinnotech-ma
+   ```
+
+2. **Configure Firebase**:
+   Open `app.js` and input your development project configurations:
+   ```javascript
+   const firebaseConfig = {
+       apiKey: "AIzaSy...",
+       authDomain: "bioinnotech-ma.firebaseapp.com",
+       projectId: "bioinnotech-ma",
+       storageBucket: "bioinnotech-ma.appspot.com",
+       messagingSenderId: "123456789",
+       appId: "1:1234..."
+   };
+   ```
+
+3. **Start Local Server**:
+   Launch the project using a simple static file server. For example, using Python or local Node tools:
+   ```bash
+   # Python 3
+   python -m http.server 8000
+   
+   # Node.js (via serve)
+   npx serve .
+   ```
+   Open your browser and navigate to `http://localhost:8000`.
 
 ---
-*© 2026 BIO Thailand Group. All rights reserved. Intellectual Property of BIO Innotech Co., Ltd.*
+
+## 📦 Deployment Guide
+
+To deploy the application live, refer to the exhaustive [DEPLOYMENT_GUIDE.md](file:///c:/Users/salmonasaservice/Desktop/bioinnotech-ma/DEPLOYMENT_GUIDE.md) located in the repository root.
+
+### Quick Deploy commands:
+Ensure the Firebase CLI is installed and configured, then run:
+```bash
+# Authenticate
+firebase login
+
+# Deploy all Hosting, Firestore Rules, and Functions
+firebase deploy
+```
+
+---
+*© 2026 BIO Thailand Group. All rights reserved. Proprietary software developed by BIO Innotech Co., Ltd.*
