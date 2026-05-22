@@ -1,4 +1,4 @@
-# 💧 BIO Innotech - Device & Maintenance Management System
+# 💧 CASP Device - Maintenance & Management System
 
 > **A premium, high-performance, and high-contrast enterprise platform for managing industrial device life cycles and maintenance logs.**
 
@@ -22,7 +22,7 @@
 
 ## 📋 Overview
 
-The **BIO Innotech Device & Maintenance Management System** is a mission-critical platform engineered for field technicians, operations managers, and administrators. The system streamlines tracking of industrial machinery, schedules preventive maintenance (PM), validates field operations, and hosts a robust audit trail. 
+The **CASP Device - Maintenance & Management System** is a mission-critical platform engineered for field technicians, operations managers, and administrators. The system streamlines tracking of industrial machinery, schedules preventive maintenance (PM), validates field operations, and hosts a robust audit trail. 
 
 Built with pure vanilla web tech (JS/HTML/CSS) combined with Firebase, it delivers sub-millisecond data reactivity, rich interactive grids, calendar interfaces, and responsive workflows.
 
