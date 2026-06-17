@@ -14294,6 +14294,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupPasswordToggles();
     setupPinValidation();
     initPublicReportPage();
+    initStaffCycleUpload();
 });
 
 // ============================================================
@@ -14302,18 +14303,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function getPlanMonthData(site, year, month) {
     const planData = site.maintenancePlans && site.maintenancePlans[year];
-    if (!planData) return { planned: false, cycleCount: null, inputDate: null, notes: null };
+    if (!planData) return { planned: false, cycleCount: null, inputDate: null, notes: null, attachments: [], history: [], source: null };
     if (Array.isArray(planData)) {
-        return { planned: planData.includes(month), cycleCount: null, inputDate: null, notes: null };
+        return { planned: planData.includes(month), cycleCount: null, inputDate: null, notes: null, attachments: [], history: [], source: null };
     }
     const monthKey = String(month);
     const monthData = planData[monthKey];
-    if (!monthData) return { planned: false, cycleCount: null, inputDate: null, notes: null };
+    if (!monthData) return { planned: false, cycleCount: null, inputDate: null, notes: null, attachments: [], history: [], source: null };
     return {
         planned: monthData.planned !== false,
         cycleCount: monthData.cycleCount != null ? monthData.cycleCount : null,
         inputDate: monthData.inputDate || null,
         notes: monthData.notes || null,
+        attachments: monthData.attachments || [],
+        history: monthData.history || [],
+        source: monthData.source || null
     };
 }
 
@@ -14507,6 +14511,126 @@ window.showPlanCellMenu = showPlanCellMenu;
 window.hidePlanCellMenu = hidePlanCellMenu;
 
 // --- Cycle Count Modal ---
+let staffCycleMedia = [];
+
+function updateStaffCyclePreview() {
+    const previewDiv = document.getElementById('cycle-form-preview');
+    const statusText = document.getElementById('cycle-upload-status');
+    if (!previewDiv || !statusText) return;
+    
+    previewDiv.innerHTML = '';
+    if (staffCycleMedia.length === 0) {
+        previewDiv.style.display = 'none';
+        statusText.textContent = 'ยังไม่ได้เลือกไฟล์';
+        return;
+    }
+    
+    statusText.textContent = `เลือกแล้ว ${staffCycleMedia.length} ไฟล์`;
+    previewDiv.style.display = 'flex';
+    
+    staffCycleMedia.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = 'position:relative; width:50px; height:50px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); flex-shrink:0;';
+            
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.style.cssText = 'width:100%; height:100%; object-fit:cover;';
+            wrapper.appendChild(img);
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+            removeBtn.style.cssText = 'position:absolute; top:-1px; right:-1px; background:none; border:none; color:#ef4444; font-size:13px; cursor:pointer; padding:0; line-height:1; z-index:10;';
+            removeBtn.onclick = (event) => {
+                event.stopPropagation();
+                staffCycleMedia.splice(index, 1);
+                updateStaffCyclePreview();
+            };
+            wrapper.appendChild(removeBtn);
+            previewDiv.appendChild(wrapper);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function initStaffCycleUpload() {
+    const fileInput = document.getElementById('cycle-file-input');
+    if (!fileInput) return;
+    
+    const newFileInput = fileInput.cloneNode(true);
+    fileInput.parentNode.replaceChild(newFileInput, fileInput);
+    
+    newFileInput.addEventListener('change', function(e) {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+        staffCycleMedia = [...staffCycleMedia, ...files];
+        updateStaffCyclePreview();
+    });
+}
+window.initStaffCycleUpload = initStaffCycleUpload;
+
+async function deleteCycleRecord(siteId, year, month, isLatest, historyIndex) {
+    if (!(await showDialog('คุณแน่ใจหรือไม่ที่จะลบรายการบันทึกรอบเครื่องนี้?', {
+        type: 'confirm',
+        confirmText: 'ลบข้อมูล',
+        cancelText: 'ยกเลิก',
+        danger: true
+    }))) return;
+
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site || !site.maintenancePlans || !site.maintenancePlans[year]) return;
+
+    const monthKey = String(month);
+    const plan = site.maintenancePlans[year][monthKey];
+    if (!plan) return;
+
+    const history = plan.history || [];
+
+    if (isLatest) {
+        if (history.length > 0) {
+            const nextActive = history.pop();
+            plan.cycleCount = nextActive.cycleCount;
+            plan.inputDate = nextActive.inputDate;
+            plan.notes = nextActive.notes || null;
+            plan.attachments = nextActive.attachments || [];
+            plan.source = nextActive.source || 'staff';
+            plan.history = history;
+        } else {
+            plan.cycleCount = null;
+            plan.inputDate = null;
+            plan.notes = null;
+            plan.attachments = [];
+            plan.source = null;
+            plan.history = [];
+        }
+    } else {
+        if (historyIndex >= 0 && historyIndex < history.length) {
+            history.splice(historyIndex, 1);
+            plan.history = history;
+        }
+    }
+
+    if (!plan.planned && plan.cycleCount == null && history.length === 0) {
+        delete site.maintenancePlans[year][monthKey];
+        if (Object.keys(site.maintenancePlans[year]).length === 0) {
+            delete site.maintenancePlans[year];
+        }
+    }
+
+    try {
+        await FirestoreService.updateSite(siteId, { maintenancePlans: site.maintenancePlans });
+        showToast('ลบรายการบันทึกสำเร็จ', 'success', 2000);
+        renderMaintenancePlan();
+        openCycleCountModal(siteId, year, month);
+    } catch (e) {
+        console.error('Failed to delete cycle record:', e);
+        showToast('เกิดข้อผิดพลาดในการลบข้อมูล', 'error');
+    }
+}
+window.deleteCycleRecord = deleteCycleRecord;
+
 let _cycleModalState = { siteId: null, year: null, month: null };
 
 function openCycleCountModal(siteId, year, month) {
@@ -14522,14 +14646,118 @@ function openCycleCountModal(siteId, year, month) {
     if (nameEl) nameEl.textContent = site.name || siteId;
     if (labelEl) labelEl.textContent = `${monthName} ${year}`;
     const pd = getPlanMonthData(site, year, month);
+
+    // Render source badge
+    const sourceEl = document.getElementById('cycle-source-badge');
+    if (sourceEl) {
+        if (pd.source === 'customer') {
+            sourceEl.innerHTML = `<span style="background:rgba(29,78,216,0.08); color:#1d4ed8; padding:4px 8px; border-radius:8px; font-size:0.7rem; font-weight:700; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-qrcode"></i> ลูกค้าบันทึก (QR)</span>`;
+            sourceEl.style.display = 'block';
+        } else if (pd.cycleCount != null) {
+            sourceEl.innerHTML = `<span style="background:rgba(16,185,129,0.08); color:#10b981; padding:4px 8px; border-radius:8px; font-size:0.7rem; font-weight:700; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-user-shield"></i> เจ้าหน้าที่บันทึก (Staff)</span>`;
+            sourceEl.style.display = 'block';
+        } else {
+            sourceEl.style.display = 'none';
+        }
+    }
+
     const toggleEl = document.getElementById('cycle-planned-toggle');
     const countEl = document.getElementById('cycle-count-input');
     const dateEl = document.getElementById('cycle-date-input');
     const notesEl = document.getElementById('cycle-notes-input');
     if (toggleEl) toggleEl.checked = pd.planned;
-    if (countEl) countEl.value = pd.cycleCount != null ? pd.cycleCount : '';
-    if (dateEl) dateEl.value = pd.inputDate || new Date().toISOString().split('T')[0];
-    if (notesEl) notesEl.value = pd.notes || '';
+    if (countEl) countEl.value = ''; // Clean for new entry
+    if (dateEl) dateEl.value = new Date().toISOString().split('T')[0]; // Default to today
+    if (notesEl) notesEl.value = ''; // Clean for new entry notes
+
+    // Reset staff upload media
+    staffCycleMedia = [];
+    updateStaffCyclePreview();
+    const fileInput = document.getElementById('cycle-file-input');
+    if (fileInput) fileInput.value = '';
+
+    // Render list of all records (active + history)
+    const historyContainer = document.getElementById('cycle-history-container');
+    const historyList = document.getElementById('cycle-history-list');
+    if (historyContainer && historyList) {
+        historyList.innerHTML = '';
+        
+        const allRecords = [];
+        if (pd.cycleCount != null) {
+            allRecords.push({
+                cycleCount: pd.cycleCount,
+                inputDate: pd.inputDate,
+                notes: pd.notes,
+                attachments: pd.attachments || [],
+                source: pd.source || 'staff',
+                isLatest: true,
+                historyIndex: -1
+            });
+        }
+        if (pd.history && pd.history.length > 0) {
+            pd.history.forEach((item, histIdx) => {
+                allRecords.push({
+                    ...item,
+                    isLatest: false,
+                    historyIndex: histIdx
+                });
+            });
+        }
+
+        if (allRecords.length > 0) {
+            allRecords.forEach(item => {
+                const tr = document.createElement('tr');
+                let rowBg = '';
+                if (item.isLatest) {
+                    rowBg = 'background:rgba(17,17,17,0.03); font-weight:600; border-left:3px solid #111111;';
+                } else {
+                    rowBg = 'border-bottom:1px solid rgba(0,0,0,0.05);';
+                }
+                tr.style.cssText = `${rowBg} transition:background 0.15s ease;`;
+                tr.onmouseenter = () => { tr.style.background = 'rgba(0,0,0,0.04)'; };
+                tr.onmouseleave = () => { tr.style.background = item.isLatest ? 'rgba(17,17,17,0.03)' : ''; };
+
+                const isCustomerItem = item.source === 'customer';
+                const itemBadge = isCustomerItem 
+                    ? `<span style="color:#1d4ed8; background:rgba(29,78,216,0.06); padding:2px 6px; border-radius:4px; font-size:0.65rem; font-weight:700; display:inline-flex; align-items:center; gap:2px;"><i class="fa-solid fa-qrcode"></i> QR</span>` 
+                    : `<span style="color:#10b981; background:rgba(16,185,129,0.06); padding:2px 6px; border-radius:4px; font-size:0.65rem; font-weight:700; display:inline-flex; align-items:center; gap:2px;"><i class="fa-solid fa-user-shield"></i> Staff</span>`;
+
+                // Photo cell
+                let photoHtml = '-';
+                if (item.attachments && item.attachments.length > 0) {
+                    const firstUrl = item.attachments[0].url || item.attachments[0];
+                    photoHtml = `<div style="width:30px; height:30px; border-radius:4px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer; margin:0 auto; display:flex;" onclick="window.openImageViewer('${firstUrl}')">
+                        <img src="${firstUrl}" style="width:100%; height:100%; object-fit:cover;">
+                    </div>`;
+                }
+
+                const notesText = item.notes || '-';
+
+                const deleteBtnHtml = `<button type="button" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:4px 8px; font-size:0.85rem; transition:transform 0.15s ease;" onclick="deleteCycleRecord('${siteId}', ${year}, ${month}, ${item.isLatest}, ${item.historyIndex})" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='none'">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>`;
+
+                tr.innerHTML = `
+                    <td style="padding:0.45rem 0.5rem; vertical-align:middle; color:#4b5563; font-size:0.75rem;">${item.inputDate || '-'}</td>
+                    <td style="padding:0.45rem 0.5rem; vertical-align:middle;">
+                        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                            <span style="font-weight:800; color:#111; font-size:0.85rem;">${item.cycleCount ? Number(item.cycleCount).toLocaleString() : '-'}</span>
+                            ${item.isLatest ? '<span style="color:#ffffff; background:#111111; padding:1px 4px; border-radius:3px; font-size:0.58rem; font-weight:700;">ล่าสุด</span>' : ''}
+                        </div>
+                    </td>
+                    <td style="padding:0.45rem 0.5rem; vertical-align:middle; text-align:center;">${itemBadge}</td>
+                    <td style="padding:0.45rem 0.5rem; vertical-align:middle; color:#4b5563; font-size:0.75rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${notesText.replace(/"/g, '&quot;')}">${notesText}</td>
+                    <td style="padding:0.45rem 0.5rem; vertical-align:middle; text-align:center;">${photoHtml}</td>
+                    <td style="padding:0.45rem 0.5rem; vertical-align:middle; text-align:center;">${deleteBtnHtml}</td>
+                `;
+                historyList.appendChild(tr);
+            });
+            historyContainer.style.display = 'flex';
+        } else {
+            historyContainer.style.display = 'none';
+        }
+    }
+
     modal.classList.remove('hidden');
     modal.style.display = 'flex';
     setTimeout(() => { if (countEl) countEl.focus(); }, 150);
@@ -14557,16 +14785,54 @@ async function saveCycleCount() {
     if (Array.isArray(site.maintenancePlans[year])) site.maintenancePlans[year] = migratePlanToObjectFormat(site.maintenancePlans[year]);
     if (!site.maintenancePlans[year]) site.maintenancePlans[year] = {};
     const monthKey = String(month);
-    if (!planned && cycleCount == null && !inputDate && !notes) {
-        delete site.maintenancePlans[year][monthKey];
-        if (Object.keys(site.maintenancePlans[year]).length === 0) delete site.maintenancePlans[year];
-    } else {
-        site.maintenancePlans[year][monthKey] = { planned, cycleCount, inputDate: inputDate || new Date().toISOString().split('T')[0], notes: notes || null };
+
+    // Preserve existing attachments & history if any
+    const existingPlan = site.maintenancePlans[year][monthKey] || {};
+    const attachments = existingPlan.attachments || [];
+    const history = existingPlan.history || [];
+
+    // Push previous count to history if it has changed
+    if (existingPlan.cycleCount != null) {
+        history.push({
+            cycleCount: existingPlan.cycleCount,
+            inputDate: existingPlan.inputDate,
+            notes: existingPlan.notes,
+            attachments: existingPlan.attachments || [],
+            source: existingPlan.source || 'staff'
+        });
     }
+
     const saveBtn = document.getElementById('btn-cycle-save');
     if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังบันทึก...'; }
     try {
+        let uploadedAttachments = [];
+        if (staffCycleMedia.length > 0) {
+            uploadedAttachments = await uploadMediaFiles(staffCycleMedia, 'cycle-count');
+        }
+
+        if (!planned && cycleCount == null && !inputDate && !notes && uploadedAttachments.length === 0) {
+            delete site.maintenancePlans[year][monthKey];
+            if (Object.keys(site.maintenancePlans[year]).length === 0) delete site.maintenancePlans[year];
+        } else {
+            site.maintenancePlans[year][monthKey] = {
+                planned,
+                cycleCount,
+                inputDate: inputDate || new Date().toISOString().split('T')[0],
+                notes: notes || null,
+                attachments: uploadedAttachments,
+                history: history,
+                source: 'staff'
+            };
+        }
+
         await FirestoreService.updateSite(siteId, { maintenancePlans: site.maintenancePlans });
+        
+        // Reset staff upload variables
+        staffCycleMedia = [];
+        updateStaffCyclePreview();
+        const fileInput = document.getElementById('cycle-file-input');
+        if (fileInput) fileInput.value = '';
+
         closeCycleCountModal();
         renderMaintenancePlan();
         showToast('บันทึก Cycle Count สำเร็จ', 'success', 2000);
@@ -14589,6 +14855,10 @@ async function clearCycleCount() {
     if (countEl) countEl.value = '';
     if (dateEl) dateEl.value = '';
     if (notesEl) notesEl.value = '';
+    
+    staffCycleMedia = [];
+    updateStaffCyclePreview();
+    
     await saveCycleCount();
 }
 window.clearCycleCount = clearCycleCount;
@@ -15114,6 +15384,25 @@ function showPortalMode(mode) {
     }
 }
 
+async function uploadMediaFiles(files, folder) {
+    const uploaded = [];
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const filename = `${Date.now()}_${file.name}`;
+        const storageRef = ref(storage, `logs/${folder}/${filename}`);
+        const uploadTask = await uploadBytes(storageRef, file);
+        const downloadUrl = await getDownloadURL(uploadTask.ref);
+        uploaded.push({
+            name: file.name,
+            url: downloadUrl,
+            type: file.type,
+            path: storageRef.fullPath
+        });
+    }
+    return uploaded;
+}
+window.uploadMediaFiles = uploadMediaFiles;
+
 function initPublicReportPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const reportSiteId = urlParams.get('report');
@@ -15226,24 +15515,7 @@ function initPublicReportPage() {
                 };
             }
 
-            // Helper: upload files to storage
-            async function uploadMediaFiles(files, folder) {
-                const uploaded = [];
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    const filename = `${Date.now()}_${file.name}`;
-                    const storageRef = ref(storage, `logs/${folder}/${filename}`);
-                    const uploadTask = await uploadBytes(storageRef, file);
-                    const downloadUrl = await getDownloadURL(uploadTask.ref);
-                    uploaded.push({
-                        name: file.name,
-                        url: downloadUrl,
-                        type: file.type,
-                        path: storageRef.fullPath
-                    });
-                }
-                return uploaded;
-            }
+
 
             // Helper: show success message
             function showSuccessMessage(title, text, caseId) {
