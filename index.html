@@ -881,8 +881,10 @@
             <div class="logo-icon">
                 <img src="app-ico.svg" alt="CASP" style="width: 2.75rem; height: 2.75rem;">
             </div>
-            <h1 class="desktop-only-text">CASP Maintenance System</h1>
-            <span class="mobile-only-text">CASP Maintenance System</span>
+            <div class="brand-text">
+                <h1 class="brand-title">CASP</h1>
+                <span class="brand-sub">Maintenance System</span>
+            </div>
         </div>
 
         <!-- Mobile Search Bar (Mid) -->
@@ -1461,38 +1463,27 @@
                         </div>
                     </div>
 
-                    <!-- Card 2: Due for Maintenance -->
+                    <!-- Card 2: Provinces Count -->
                     <div class="dashboard-card" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s;">
-                        <div class="dashboard-card-icon" id="dash-due-icon" style="background: rgba(22, 163, 74, 0.1); color: #16a34a; border: 1px solid rgba(22, 163, 74, 0.2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
-                            <i class="fa-solid fa-circle-check"></i>
-                        </div>
-                        <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
-                            <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500;">ถึงรอบบำรุงรักษา</span>
-                            <span id="dash-due-ma" style="font-size: 1.75rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0</span>
-                        </div>
-                    </div>
-
-                    <!-- Card 3: Contract Breakdown -->
-                    <div class="dashboard-card" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s; min-height: 78px;">
-                        <div class="dashboard-card-icon" style="background: rgba(147, 51, 234, 0.1); color: #9333ea; border: 1px solid rgba(147, 51, 234, 0.2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
-                            <i class="fa-solid fa-file-contract"></i>
-                        </div>
-                        <div class="dashboard-card-content" style="display: flex; flex-direction: column; width: calc(100% - 64px);">
-                            <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500;">รูปแบบสัญญา (หลัก)</span>
-                            <div id="dash-contract-types" style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 4px;">
-                                <span style="font-size: 0.75rem; color: var(--text-muted);">ไม่มีข้อมูล</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Card 4: Provinces Count -->
-                    <div class="dashboard-card" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s;">
-                        <div class="dashboard-card-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+                        <div class="dashboard-card-icon" id="dash-provinces-icon" style="background: rgba(22, 163, 74, 0.1); color: #16a34a; border: 1px solid rgba(22, 163, 74, 0.2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
                             <i class="fa-solid fa-earth-asia"></i>
                         </div>
                         <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
                             <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500;">พื้นที่ติดตั้ง</span>
                             <span id="dash-total-provinces" style="font-size: 1.75rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0 <span style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">จังหวัด</span></span>
+                        </div>
+                    </div>
+
+
+
+                    <!-- Card 4: Clients Count -->
+                    <div class="dashboard-card" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s;">
+                        <div class="dashboard-card-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-building-user"></i>
+                        </div>
+                        <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
+                            <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500;">ลูกค้าทั้งหมด</span>
+                            <span id="dash-total-clients" style="font-size: 1.75rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0 <span style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">ราย</span></span>
                         </div>
                     </div>
 

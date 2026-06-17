@@ -5761,7 +5761,7 @@ function setupEventListeners() {
 
     // Brand Logo Redirect (Desktop & Mobile)
     const brandIcons = document.querySelectorAll(
-        ".brand .logo-icon, .mobile-only-text",
+        ".brand",
     );
     brandIcons.forEach((el) => {
         el.style.cursor = "pointer";
@@ -8140,92 +8140,43 @@ function renderSites() {
 
     // Update Dashboard Stats dynamically
     const totalDevicesEl = document.getElementById("dash-total-devices");
-    const dueMaEl = document.getElementById("dash-due-ma");
-    const contractTypesEl = document.getElementById("dash-contract-types");
     const totalProvincesEl = document.getElementById("dash-total-provinces");
-    const dueIconEl = document.getElementById("dash-due-icon");
+    const totalClientsEl = document.getElementById("dash-total-clients");
 
     if (totalDevicesEl) {
         totalDevicesEl.textContent = sitesToRender.length;
     }
 
-    let dueCount = 0;
-    const contractCounts = {};
     const provinces = new Set();
+    const clients = new Set();
 
     const nowVal = new Date();
     nowVal.setHours(0, 0, 0, 0);
 
     sitesToRender.forEach((site) => {
-        // 1. Contract Breakdown
-        if (site.deviceType) {
-            contractCounts[site.deviceType] = (contractCounts[site.deviceType] || 0) + 1;
-        }
-
-        // 2. Provinces
+        // 1. Provinces
         if (site.province) {
             provinces.add(site.province.trim());
         }
 
-        // 3. Maintenance Due Calculation
-        if (site.maintenanceCycle && site.firstMaDate) {
-            const firstMa = new Date(site.firstMaDate);
-            let nextMa = new Date(firstMa);
-
-            const siteLogs = state.logs.filter(
-                (l) => l.siteId === site.id && isMaCategory(l.category),
-            );
-            if (siteLogs.length > 0) {
-                siteLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
-                nextMa = new Date(siteLogs[0].date);
-                nextMa.setDate(nextMa.getDate() + site.maintenanceCycle);
-            } else {
-                while (nextMa < nowVal) {
-                    nextMa.setDate(nextMa.getDate() + site.maintenanceCycle);
-                }
-            }
-
-            // Define "due" as past nextMa or within 30 days
-            const limitDate = new Date(nowVal);
-            limitDate.setDate(limitDate.getDate() + 30);
-            
-            if (nextMa <= limitDate) {
-                dueCount++;
-            }
+        // 2. Clients
+        const clientName = (site.hospital || site.name || "").trim();
+        if (clientName) {
+            clients.add(clientName);
         }
+
+
     });
-
-    if (dueMaEl) {
-        dueMaEl.textContent = dueCount;
-        if (dueIconEl) {
-            if (dueCount > 0) {
-                dueIconEl.style.background = 'rgba(239, 68, 68, 0.1)';
-                dueIconEl.style.color = '#ef4444';
-                dueIconEl.style.borderColor = 'rgba(239, 68, 68, 0.2)';
-                dueIconEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
-            } else {
-                dueIconEl.style.background = 'rgba(22, 163, 74, 0.1)';
-                dueIconEl.style.color = '#16a34a';
-                dueIconEl.style.borderColor = 'rgba(22, 163, 74, 0.2)';
-                dueIconEl.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
-            }
-        }
-    }
 
     if (totalProvincesEl) {
         totalProvincesEl.innerHTML = `${provinces.size} <span style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">จังหวัด</span>`;
     }
 
-    if (contractTypesEl) {
-        const sortedContracts = Object.entries(contractCounts).sort((a, b) => b[1] - a[1]);
-        if (sortedContracts.length > 0) {
-            contractTypesEl.innerHTML = sortedContracts.map(([type, count]) => {
-                return `<span style="background: rgba(147, 51, 234, 0.1); color: #9333ea; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; border: 1px solid rgba(147, 51, 234, 0.15); display: inline-flex; align-items: center; font-weight: 500;">${type}: ${count}</span>`;
-            }).join("");
-        } else {
-            contractTypesEl.innerHTML = `<span style="font-size: 0.75rem; color: var(--text-muted);">ไม่มีข้อมูล</span>`;
-        }
+    if (totalClientsEl) {
+        totalClientsEl.innerHTML = `${clients.size} <span style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">ราย</span>`;
     }
+
+
 
     // Sort logic (optional, keep if exists)
     // ...

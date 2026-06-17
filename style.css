@@ -644,6 +644,7 @@ h1 {
 .card-btn-edit,
 .card-btn-delete,
 .card-btn-call,
+.card-btn-qr,
 .card-btn-case {
     background: #ffffff !important;
     color: #111111 !important;
@@ -655,6 +656,7 @@ h1 {
 .card-btn-edit:hover,
 .card-btn-delete:hover,
 .card-btn-call:hover,
+.card-btn-qr:hover,
 .card-btn-case:hover {
     background: #111111 !important;
     color: #ffffff !important;
@@ -7724,22 +7726,7 @@ input::placeholder, textarea::placeholder {
 .dropdown-toggle { display: flex; align-items: center; gap: 8px; }
 
 
-/* ============================================================
-   QR CODE BUTTON ON DEVICE CARD
-   ============================================================ */
-.card-btn-qr {
-    background: rgba(99, 102, 241, 0.12);
-    color: #6366f1;
-    border-color: rgba(99, 102, 241, 0.25);
-    transition: all 0.2s ease;
-}
-.card-btn-qr:hover {
-    background: rgba(99, 102, 241, 0.28);
-    border-color: #6366f1;
-    color: #6366f1;
-    box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
-    transform: scale(1.08);
-}
+
 
 /* ============================================================
    QR CODE MODAL STYLES
@@ -7880,4 +7867,46 @@ input::placeholder, textarea::placeholder {
 
 .login-container #btn-line-login i {
     font-size: 1.35rem !important;
+}
+
+/* Brand Logo Text Styling */
+.brand {
+    cursor: pointer !important;
+}
+
+.brand-text {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    line-height: 1.1 !important;
+    text-align: left !important;
+}
+
+.brand-text h1.brand-title {
+    font-size: 1.35rem !important;
+    font-weight: 800 !important;
+    color: #111111 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    letter-spacing: -0.025em !important;
+}
+
+.brand-text .brand-sub {
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    color: var(--text-muted) !important;
+    margin: 1px 0 0 0 !important;
+    padding: 0 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    opacity: 0.85 !important;
+}
+
+@media (max-width: 768px) {
+    .brand-text h1.brand-title {
+        font-size: 1.15rem !important;
+    }
+    .brand-text .brand-sub {
+        font-size: 0.65rem !important;
+    }
 }
