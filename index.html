@@ -401,6 +401,164 @@
             pointer-events: none;
         }
 
+        /* Portal Mode Selector */
+        .portal-mode-selector {
+            padding: 1.5rem;
+        }
+
+        .portal-mode-prompt {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #374151;
+            margin: 0 0 1rem;
+            text-align: center;
+        }
+
+        .portal-mode-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .portal-mode-card {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+            padding: 1rem 1.25rem;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 16px;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: inherit;
+            text-align: left;
+        }
+
+        .portal-mode-card:hover {
+            border-color: #111;
+            background: #fafafa;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        .portal-mode-card:active {
+            transform: scale(0.98);
+        }
+
+        .portal-mode-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+
+        .portal-mode-card:hover .portal-mode-icon {
+            transform: scale(1.08);
+        }
+
+        .portal-mode-icon--report {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            color: #b45309;
+        }
+
+        .portal-mode-icon--cycle {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            color: #1d4ed8;
+        }
+
+        .portal-mode-text {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .portal-mode-card-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.3;
+        }
+
+        .portal-mode-card-desc {
+            font-size: 0.78rem;
+            color: #64748b;
+            line-height: 1.3;
+        }
+
+        .portal-mode-arrow {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+            transition: transform 0.2s, color 0.2s;
+        }
+
+        .portal-mode-card:hover .portal-mode-arrow {
+            color: #111;
+            transform: translateX(3px);
+        }
+
+        /* Portal Back Button */
+        .portal-back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: none;
+            border: none;
+            padding: 0.4rem 0;
+            color: #64748b;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: color 0.2s;
+            margin-bottom: 0.25rem;
+        }
+
+        .portal-back-btn:hover {
+            color: #111;
+        }
+
+        .portal-back-btn i {
+            font-size: 0.75rem;
+        }
+
+        /* Portal Form Heading */
+        .portal-form-heading {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .portal-form-heading i {
+            font-size: 1rem;
+            color: #6366f1;
+        }
+
+        /* Animation for form slide-in */
+        @keyframes portalSlideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .public-report-form[style*="display: flex"],
+        .public-report-form:not([style*="display: none"]):not([style*="display:none"]) {
+            animation: portalSlideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         @media (max-width: 768px) {
             .glass-action-bar {
                 padding: 1rem;
@@ -734,8 +892,8 @@
             <div class="public-report-header">
                 <img src="app-ico.svg" alt="CASP Logo" class="public-report-logo">
                 <div>
-                    <h1 class="public-report-title">แจ้งปัญหาเครื่อง</h1>
-                    <p class="public-report-subtitle">Report Device Issue</p>
+                    <h1 class="public-report-title">CASP Service</h1>
+                    <p class="public-report-subtitle">ระบบบริการอุปกรณ์</p>
                 </div>
             </div>
 
@@ -747,8 +905,43 @@
                 </div>
             </div>
 
-            <!-- Form -->
-            <form id="public-report-form" class="public-report-form" autocomplete="off">
+            <!-- Mode Selector (choose between report issue / cycle count) -->
+            <div id="portal-mode-selector" class="portal-mode-selector">
+                <p class="portal-mode-prompt">เลือกรายการที่ต้องการ</p>
+                <div class="portal-mode-cards">
+                    <button type="button" class="portal-mode-card" id="btn-mode-report" data-mode="report">
+                        <div class="portal-mode-icon portal-mode-icon--report">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                        <div class="portal-mode-text">
+                            <span class="portal-mode-card-title">แจ้งปัญหา</span>
+                            <span class="portal-mode-card-desc">แจ้งซ่อม / รายงานเครื่องมีปัญหา</span>
+                        </div>
+                        <i class="fa-solid fa-chevron-right portal-mode-arrow"></i>
+                    </button>
+                    <button type="button" class="portal-mode-card" id="btn-mode-cycle" data-mode="cycle">
+                        <div class="portal-mode-icon portal-mode-icon--cycle">
+                            <i class="fa-solid fa-gauge-high"></i>
+                        </div>
+                        <div class="portal-mode-text">
+                            <span class="portal-mode-card-title">บันทึก Cycle Count</span>
+                            <span class="portal-mode-card-desc">บันทึกรอบเครื่องพร้อมรูปถ่าย</span>
+                        </div>
+                        <i class="fa-solid fa-chevron-right portal-mode-arrow"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ===== MODE: Report Issue Form ===== -->
+            <form id="public-report-form" class="public-report-form" autocomplete="off" style="display:none;">
+                <button type="button" class="portal-back-btn" id="btn-back-from-report">
+                    <i class="fa-solid fa-arrow-left"></i> กลับ
+                </button>
+                <div class="portal-form-heading">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>แจ้งปัญหาเครื่อง</span>
+                </div>
+
                 <div class="public-report-field">
                     <label class="public-report-label">
                         <i class="fa-solid fa-user"></i>
@@ -794,7 +987,6 @@
                     <div class="media-upload-container">
                         <input type="file" id="report-media" multiple accept="image/*,video/*" style="display:none;">
                         <div class="media-preview-grid" id="report-media-preview">
-                            <!-- Previews will appear here -->
                             <button type="button" class="add-media-btn" id="btn-add-media" title="เพิ่มสื่อ">
                                 <i class="fa-solid fa-plus"></i>
                                 <span>เพิ่มสื่อ</span>
@@ -809,13 +1001,72 @@
                 </button>
             </form>
 
+            <!-- ===== MODE: Cycle Count Form ===== -->
+            <form id="public-cycle-form" class="public-report-form" autocomplete="off" style="display:none;">
+                <button type="button" class="portal-back-btn" id="btn-back-from-cycle">
+                    <i class="fa-solid fa-arrow-left"></i> กลับ
+                </button>
+                <div class="portal-form-heading">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    <span>บันทึก Cycle Count</span>
+                </div>
+
+                <div class="public-report-field">
+                    <label class="public-report-label">
+                        <i class="fa-solid fa-user"></i>
+                        ชื่อ-นามสกุล <span class="required-star">*</span>
+                    </label>
+                    <input type="text" id="cycle-reporter-name" class="public-report-input" placeholder="กรอกชื่อ-นามสกุลของคุณ"
+                        required>
+                </div>
+
+                <div class="public-report-field">
+                    <label class="public-report-label">
+                        <i class="fa-solid fa-gauge-high"></i>
+                        จำนวนรอบเครื่อง (Cycle Count) <span class="required-star">*</span>
+                    </label>
+                    <input type="number" id="cycle-count-value" class="public-report-input"
+                        placeholder="กรอกจำนวนรอบปัจจุบันของเครื่อง" inputmode="numeric" required>
+                </div>
+
+                <div class="public-report-field">
+                    <label class="public-report-label">
+                        <i class="fa-solid fa-comment"></i>
+                        หมายเหตุ
+                    </label>
+                    <textarea id="cycle-note" class="public-report-input public-report-textarea"
+                        placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)" rows="3"></textarea>
+                </div>
+
+                <div class="public-report-field">
+                    <label class="public-report-label">
+                        <i class="fa-solid fa-camera"></i>
+                        ถ่ายรูปหน้าจอ Cycle Count <span class="required-star">*</span>
+                    </label>
+                    <div class="media-upload-container">
+                        <input type="file" id="cycle-media" multiple accept="image/*" style="display:none;">
+                        <div class="media-preview-grid" id="cycle-media-preview">
+                            <button type="button" class="add-media-btn" id="btn-add-cycle-media" title="เพิ่มรูปภาพ">
+                                <i class="fa-solid fa-camera"></i>
+                                <span>เพิ่มรูป</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-public-cycle-submit" class="public-report-submit-btn">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span>บันทึก Cycle Count</span>
+                </button>
+            </form>
+
             <!-- Success Message -->
             <div id="report-success-msg" class="public-report-success" style="display:none;">
                 <div class="report-success-icon">
                     <i class="fa-solid fa-circle-check"></i>
                 </div>
-                <h2>ส่งคำร้องสำเร็จ!</h2>
-                <p>ทีมงานได้รับคำร้องของคุณแล้ว<br>และจะติดต่อกลับโดยเร็วที่สุด</p>
+                <h2 id="report-success-title">ส่งคำร้องสำเร็จ!</h2>
+                <p id="report-success-text">ทีมงานได้รับคำร้องของคุณแล้ว<br>และจะติดต่อกลับโดยเร็วที่สุด</p>
                 <div id="report-case-id-display" class="report-case-id"></div>
             </div>
 

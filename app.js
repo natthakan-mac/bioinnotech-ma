@@ -615,15 +615,24 @@ function setupAuthStateListener() {
         try {
             if (user) {
                 console.log("Auth State Changed: User Logged In", user.uid);
+
+                if (user.isAnonymous) {
+                    console.log("Anonymous user detected.");
+                    const urlParams = new URLSearchParams(window.location.search);
+                    if (!urlParams.get('report')) {
+                        console.log("No report parameter, signing out anonymous user...");
+                        await signOut(auth);
+                    } else {
+                        const splash = document.getElementById("loading-splash");
+                        if (splash) splash.classList.add("hidden");
+                    }
+                    return;
+                }
+
                 let userDoc = await FirestoreService.getUser(user.uid);
 
                 // Auto-Register New Users (Except LINE)
                 if (!userDoc) {
-                    // Skip anonymous users — they should not be registered
-                    if (user.isAnonymous) {
-                        console.log("Anonymous user detected, skipping registration.");
-                        return;
-                    }
 
                     // Check if user authenticated via LINE
                     const isLineUser = user.providerData.some(
@@ -14280,10 +14289,11 @@ function setupPinValidation() {
     });
 }
 
-// Initialize Password Toggles & PIN Validation
+// Initialize Password Toggles, PIN Validation & Public Report Page
 document.addEventListener("DOMContentLoaded", () => {
     setupPasswordToggles();
     setupPinValidation();
+    initPublicReportPage();
 });
 
 // ============================================================
@@ -14984,6 +14994,438 @@ ${hotline ? `<div class="hotline">สายด่วน: ${hotline}</div>` : ''}
         printWindow.focus();
         setTimeout(() => { printWindow.print(); }, 400);
     });
+}
+
+// ============================================================
+// PUBLIC INCIDENT REPORT PAGE (?report=DEVICE_ID)
+// ============================================================
+
+let publicReportMedia = [];
+let publicCycleMedia = [];
+
+function updatePublicReportMediaPreview() {
+    const preview = document.getElementById('report-media-preview');
+    if (!preview) return;
+    
+    const addButton = document.getElementById('btn-add-media');
+    preview.innerHTML = '';
+    if (addButton) preview.appendChild(addButton);
+    
+    publicReportMedia.forEach((file, index) => {
+        const isImage = file.type && file.type.startsWith('image/');
+        const isVideo = file.type && file.type.startsWith('video/');
+        
+        const card = document.createElement('div');
+        card.className = 'media-preview-item';
+        
+        if (isImage) {
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            card.appendChild(img);
+        } else if (isVideo) {
+            const video = document.createElement('video');
+            video.src = URL.createObjectURL(file);
+            video.muted = true;
+            card.appendChild(video);
+            
+            const badge = document.createElement('span');
+            badge.className = 'video-badge';
+            badge.innerHTML = '<i class="fa-solid fa-video"></i>';
+            card.appendChild(badge);
+        } else {
+            const docIcon = document.createElement('div');
+            docIcon.style.cssText = 'width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #64748b;';
+            docIcon.innerHTML = '<i class="fa-solid fa-file-invoice" style="font-size: 1.5rem;"></i>';
+            card.appendChild(docIcon);
+        }
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'media-remove-btn';
+        removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        removeBtn.onclick = (e) => {
+            e.stopPropagation();
+            publicReportMedia.splice(index, 1);
+            updatePublicReportMediaPreview();
+        };
+        card.appendChild(removeBtn);
+        
+        if (addButton) {
+            preview.insertBefore(card, addButton);
+        } else {
+            preview.appendChild(card);
+        }
+    });
+}
+
+function updatePublicCycleMediaPreview() {
+    const preview = document.getElementById('cycle-media-preview');
+    if (!preview) return;
+    
+    const addButton = document.getElementById('btn-add-cycle-media');
+    preview.innerHTML = '';
+    if (addButton) preview.appendChild(addButton);
+    
+    publicCycleMedia.forEach((file, index) => {
+        const card = document.createElement('div');
+        card.className = 'media-preview-item';
+        
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        card.appendChild(img);
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'media-remove-btn';
+        removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        removeBtn.onclick = (e) => {
+            e.stopPropagation();
+            publicCycleMedia.splice(index, 1);
+            updatePublicCycleMediaPreview();
+        };
+        card.appendChild(removeBtn);
+        
+        if (addButton) {
+            preview.insertBefore(card, addButton);
+        } else {
+            preview.appendChild(card);
+        }
+    });
+}
+
+function showPortalMode(mode) {
+    const selector = document.getElementById('portal-mode-selector');
+    const reportForm = document.getElementById('public-report-form');
+    const cycleForm = document.getElementById('public-cycle-form');
+    const successMsg = document.getElementById('report-success-msg');
+
+    // Hide everything first
+    if (selector) selector.style.display = 'none';
+    if (reportForm) reportForm.style.display = 'none';
+    if (cycleForm) cycleForm.style.display = 'none';
+    if (successMsg) successMsg.style.display = 'none';
+
+    if (mode === 'selector') {
+        if (selector) selector.style.display = 'block';
+    } else if (mode === 'report') {
+        if (reportForm) reportForm.style.display = 'flex';
+    } else if (mode === 'cycle') {
+        if (cycleForm) cycleForm.style.display = 'flex';
+    }
+}
+
+function initPublicReportPage() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const reportSiteId = urlParams.get('report');
+    if (!reportSiteId) return;
+
+    // This is a public page - hide login, main app views, and loaders
+    document.querySelectorAll('.app-container, #login-view, #loading-splash').forEach(el => {
+        el.style.display = 'none';
+        el.classList.add('hidden');
+    });
+    
+    const reportView = document.getElementById('public-report-view');
+    if (reportView) {
+        reportView.style.display = 'flex';
+        reportView.classList.remove('hidden');
+    }
+
+    // Show mode selector by default
+    showPortalMode('selector');
+
+    // Mode selector buttons
+    const btnReport = document.getElementById('btn-mode-report');
+    const btnCycle = document.getElementById('btn-mode-cycle');
+    if (btnReport) btnReport.onclick = () => showPortalMode('report');
+    if (btnCycle) btnCycle.onclick = () => showPortalMode('cycle');
+
+    // Back buttons
+    const btnBackReport = document.getElementById('btn-back-from-report');
+    const btnBackCycle = document.getElementById('btn-back-from-cycle');
+    if (btnBackReport) btnBackReport.onclick = () => showPortalMode('selector');
+    if (btnBackCycle) btnBackCycle.onclick = () => showPortalMode('selector');
+
+    // Load device info anonymously
+    (async function() {
+        try {
+            // Sign in anonymously to access Firestore
+            try {
+                if (!auth.currentUser) {
+                    await signInAnonymously(auth);
+                }
+            } catch (e) {
+                console.warn('Anonymous auth failed:', e);
+            }
+
+            const deviceInfoEl = document.getElementById('report-device-info');
+            try {
+                const docSnap = await getDoc(doc(db, 'sites', reportSiteId));
+                if (docSnap.exists()) {
+                    const site = { id: docSnap.id, ...docSnap.data() };
+                    if (deviceInfoEl) {
+                        deviceInfoEl.innerHTML = `
+                            <div class="report-device-loaded" style="display: flex; align-items: center; gap: 0.85rem; width: 100%;">
+                                <div class="report-device-icon" style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #6366f1 0%, #38bdf8 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.25rem; flex-shrink: 0; box-shadow: 0 4px 12px rgba(99,102,241,0.4);"><i class="fa-solid fa-microchip"></i></div>
+                                <div class="report-device-details" style="flex: 1; min-width: 0; text-align: left;">
+                                    ${site.siteCode ? `<span class="report-device-code" style="display: inline-block; background: rgba(99,102,241,0.12); color: #6366f1; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-bottom: 3px; border: 1px solid rgba(99,102,241,0.2);">${site.siteCode}</span>` : ''}
+                                    <div class="report-device-name" style="font-size: 0.95rem; font-weight: 700; color: #1e293b; line-height: 1.3; margin-bottom: 2px;">${site.name || 'เครื่อง'}</div>
+                                    ${site.serialNumber ? `<div class="report-device-serial" style="font-size: 0.75rem; color: #64748b; display: flex; align-items: center; gap: 4px; margin-top: 1px;"><i class="fa-solid fa-barcode"></i> S/N: ${site.serialNumber}</div>` : ''}
+                                    ${site.hospital || site.villageName ? `<div class="report-device-hospital" style="font-size: 0.75rem; color: #64748b; display: flex; align-items: center; gap: 4px; margin-top: 1px;"><i class="fa-solid fa-hospital"></i> ${site.hospital || site.villageName}</div>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    if (deviceInfoEl) {
+                        deviceInfoEl.innerHTML = `<div class="report-device-not-found" style="display: flex; align-items: center; gap: 0.5rem; color: #ef4444; font-size: 0.85rem; font-weight: 600; width: 100%; justify-content: center;"><i class="fa-solid fa-triangle-exclamation"></i> ไม่พบข้อมูลเครื่องในระบบ</div>`;
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not load device info:', e);
+                if (deviceInfoEl) {
+                    deviceInfoEl.innerHTML = `<div class="report-device-spinner" style="display: flex; align-items: center; gap: 0.6rem; color: #ef4444; font-size: 0.85rem; width: 100%; justify-content: center;"><i class="fa-solid fa-circle-exclamation"></i> ไม่สามารถโหลดข้อมูลได้</div>`;
+                }
+            }
+
+            // ===== REPORT MODE: Bind media picker =====
+            const mediaInput = document.getElementById('report-media');
+            const addMediaBtn = document.getElementById('btn-add-media');
+            if (mediaInput && addMediaBtn) {
+                addMediaBtn.onclick = () => mediaInput.click();
+                mediaInput.onchange = (e) => {
+                    const files = Array.from(e.target.files);
+                    if (files.length > 0) {
+                        const validFiles = files.filter(f => f.size <= 20 * 1024 * 1024);
+                        if (validFiles.length < files.length) {
+                            alert('บางไฟล์มีขนาดเกิน 20MB และถูกข้าม');
+                        }
+                        publicReportMedia.push(...validFiles);
+                        updatePublicReportMediaPreview();
+                    }
+                    e.target.value = '';
+                };
+            }
+
+            // ===== CYCLE MODE: Bind media picker =====
+            const cycleMediaInput = document.getElementById('cycle-media');
+            const addCycleMediaBtn = document.getElementById('btn-add-cycle-media');
+            if (cycleMediaInput && addCycleMediaBtn) {
+                addCycleMediaBtn.onclick = () => cycleMediaInput.click();
+                cycleMediaInput.onchange = (e) => {
+                    const files = Array.from(e.target.files);
+                    if (files.length > 0) {
+                        const validFiles = files.filter(f => f.size <= 20 * 1024 * 1024);
+                        if (validFiles.length < files.length) {
+                            alert('บางไฟล์มีขนาดเกิน 20MB และถูกข้าม');
+                        }
+                        publicCycleMedia.push(...validFiles);
+                        updatePublicCycleMediaPreview();
+                    }
+                    e.target.value = '';
+                };
+            }
+
+            // Helper: upload files to storage
+            async function uploadMediaFiles(files, folder) {
+                const uploaded = [];
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const filename = `${Date.now()}_${file.name}`;
+                    const storageRef = ref(storage, `logs/${folder}/${filename}`);
+                    const uploadTask = await uploadBytes(storageRef, file);
+                    const downloadUrl = await getDownloadURL(uploadTask.ref);
+                    uploaded.push({
+                        name: file.name,
+                        url: downloadUrl,
+                        type: file.type,
+                        path: storageRef.fullPath
+                    });
+                }
+                return uploaded;
+            }
+
+            // Helper: show success message
+            function showSuccessMessage(title, text, caseId) {
+                const reportForm = document.getElementById('public-report-form');
+                const cycleForm = document.getElementById('public-cycle-form');
+                if (reportForm) reportForm.style.display = 'none';
+                if (cycleForm) cycleForm.style.display = 'none';
+
+                const successEl = document.getElementById('report-success-msg');
+                const titleEl = document.getElementById('report-success-title');
+                const textEl = document.getElementById('report-success-text');
+                const caseIdDisplay = document.getElementById('report-case-id-display');
+
+                if (titleEl) titleEl.textContent = title;
+                if (textEl) textEl.innerHTML = text;
+                if (caseIdDisplay) {
+                    if (caseId) {
+                        caseIdDisplay.innerHTML = `<i class="fa-solid fa-ticket"></i> รหัสเคส: <strong>${caseId}</strong>`;
+                        caseIdDisplay.style.display = 'flex';
+                    } else {
+                        caseIdDisplay.style.display = 'none';
+                    }
+                }
+                if (successEl) successEl.style.display = 'flex';
+            }
+
+            // ===== REPORT FORM SUBMISSION =====
+            const form = document.getElementById('public-report-form');
+            const submitBtn = document.getElementById('btn-public-report-submit');
+            if (form && submitBtn) {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+
+                    const name = document.getElementById('report-name')?.value.trim();
+                    const tel = document.getElementById('report-tel')?.value.trim();
+                    const description = document.getElementById('report-description')?.value.trim();
+                    const cycleCountVal = document.getElementById('report-cycle-count')?.value.trim();
+
+                    if (!name || !tel || !description) {
+                        alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+                        return;
+                    }
+
+                    submitBtn.disabled = true;
+                    const btnIcon = submitBtn.querySelector('i');
+                    const btnText = submitBtn.querySelector('span');
+                    if (btnIcon) btnIcon.className = 'fa-solid fa-circle-notch fa-spin';
+                    if (btnText) btnText.textContent = 'กำลังส่ง...';
+
+                    try {
+                        if (!auth.currentUser) await signInAnonymously(auth);
+
+                        const uploadedAttachments = await uploadMediaFiles(publicReportMedia, 'public');
+
+                        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                        let caseId = 'RPT-';
+                        for (let i = 0; i < 5; i++) {
+                            caseId += chars.charAt(Math.floor(Math.random() * chars.length));
+                        }
+                        
+                        const now = new Date();
+                        const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+                        const logData = {
+                            siteId: reportSiteId,
+                            caseId: caseId,
+                            category: 'แจ้งซ่อม',
+                            status: 'Open',
+                            objective: description,
+                            details: description,
+                            date: dateStr,
+                            timestamp: now.toISOString(),
+                            recordedBy: name,
+                            recorderId: 'public',
+                            customerName: name,
+                            customerPhone: tel,
+                            isPublicReport: true,
+                            cycleCount: cycleCountVal ? parseInt(cycleCountVal, 10) : null,
+                            lineItems: [],
+                            attachments: uploadedAttachments,
+                            attachmentsBefore: uploadedAttachments,
+                            attachmentsAfter: [],
+                            statusHistory: { 'Open': now.toISOString() }
+                        };
+
+                        await addDoc(collection(db, 'logs'), logData);
+                        showSuccessMessage(
+                            'ส่งคำร้องสำเร็จ!',
+                            'ทีมงานได้รับคำร้องของคุณแล้ว<br>และจะติดต่อกลับโดยเร็วที่สุด',
+                            caseId
+                        );
+                    } catch (err) {
+                        console.error('Public report submission failed:', err);
+                        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง\n' + err.message);
+                        submitBtn.disabled = false;
+                        if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
+                        if (btnText) btnText.textContent = 'ส่งคำร้อง';
+                    }
+                });
+            }
+
+            // ===== CYCLE COUNT FORM SUBMISSION =====
+            const cycleForm = document.getElementById('public-cycle-form');
+            const cycleSubmitBtn = document.getElementById('btn-public-cycle-submit');
+            if (cycleForm && cycleSubmitBtn) {
+                cycleForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+
+                    const name = document.getElementById('cycle-reporter-name')?.value.trim();
+                    const cycleVal = document.getElementById('cycle-count-value')?.value.trim();
+                    const note = document.getElementById('cycle-note')?.value.trim();
+
+                    if (!name || !cycleVal) {
+                        alert('กรุณากรอกชื่อและจำนวนรอบเครื่อง');
+                        return;
+                    }
+
+                    if (publicCycleMedia.length === 0) {
+                        alert('กรุณาถ่ายรูปหน้าจอ Cycle Count อย่างน้อย 1 รูป');
+                        return;
+                    }
+
+                    cycleSubmitBtn.disabled = true;
+                    const btnIcon = cycleSubmitBtn.querySelector('i');
+                    const btnText = cycleSubmitBtn.querySelector('span');
+                    if (btnIcon) btnIcon.className = 'fa-solid fa-circle-notch fa-spin';
+                    if (btnText) btnText.textContent = 'กำลังบันทึก...';
+
+                    try {
+                        if (!auth.currentUser) await signInAnonymously(auth);
+
+                        const uploadedAttachments = await uploadMediaFiles(publicCycleMedia, 'public-cycle');
+
+                        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                        let caseId = 'CYC-';
+                        for (let i = 0; i < 5; i++) {
+                            caseId += chars.charAt(Math.floor(Math.random() * chars.length));
+                        }
+
+                        const now = new Date();
+                        const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+                        const logData = {
+                            siteId: reportSiteId,
+                            caseId: caseId,
+                            category: 'Cycle Count',
+                            status: 'Completed',
+                            objective: `บันทึก Cycle Count: ${cycleVal}`,
+                            details: note || `Cycle Count: ${cycleVal}`,
+                            date: dateStr,
+                            timestamp: now.toISOString(),
+                            recordedBy: name,
+                            recorderId: 'public',
+                            isPublicReport: true,
+                            isPublicCycleCount: true,
+                            cycleCount: parseInt(cycleVal, 10),
+                            lineItems: [],
+                            attachments: uploadedAttachments,
+                            attachmentsBefore: uploadedAttachments,
+                            attachmentsAfter: [],
+                            statusHistory: { 'Completed': now.toISOString() }
+                        };
+
+                        await addDoc(collection(db, 'logs'), logData);
+                        showSuccessMessage(
+                            'บันทึก Cycle Count สำเร็จ!',
+                            `รอบเครื่อง: <strong>${parseInt(cycleVal, 10).toLocaleString()}</strong> รอบ<br>ข้อมูลถูกบันทึกเรียบร้อยแล้ว`,
+                            caseId
+                        );
+                    } catch (err) {
+                        console.error('Public cycle count submission failed:', err);
+                        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง\n' + err.message);
+                        cycleSubmitBtn.disabled = false;
+                        if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
+                        if (btnText) btnText.textContent = 'บันทึก Cycle Count';
+                    }
+                });
+            }
+        } catch (err) {
+            console.error('Public report page init error:', err);
+        }
+    })();
 }
 
 // Re-add initCycleCountModal call to setupEventListeners via init
