@@ -223,43 +223,179 @@
             border-radius: 28px;
         }
 
-        .public-report-header {
+        .public-report-header-unified {
+            position: relative;
+            padding: 2.25rem 2rem;
             background: #ffffff;
-            color: #111;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            padding: 2rem;
+            color: #111111;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            overflow: hidden;
+            border-bottom: 1.5px solid var(--border-color);
         }
 
-        .public-report-logo {
-            filter: none;
-            /* Show original logo colors */
+        .header-brand-row {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 1.15rem;
+        }
+
+        .brand-logo-container {
+            width: 52px;
+            height: 52px;
+            background: #ffffff;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            flex-shrink: 0;
+            border: 1.5px solid var(--border-color);
+        }
+
+        .brand-logo-container img {
+            width: 38px;
+            height: 38px;
+            object-fit: contain;
         }
 
         .public-report-title {
-            color: #111;
-            font-weight: 700;
+            font-size: 1.5rem !important;
+            font-weight: 800;
+            margin: 0;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            color: #111111 !important;
         }
 
         .public-report-subtitle {
-            color: #64748b;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin: 0.25rem 0 0;
+            font-weight: 500;
         }
 
-        .public-report-device-info {
-            background: rgba(0, 0, 0, 0.03);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            margin: 1.5rem;
-            border-radius: 16px;
+        /* Clean Light Device Info Card inside Header */
+        .header-device-info-container {
+            position: relative;
+            z-index: 2;
+            width: 100%;
         }
 
-        .report-device-icon {
-            background: #111;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        .report-device-loaded-unified {
+            display: flex;
+            align-items: center;
+            gap: 1.15rem;
+            background: var(--surface-ground);
+            border: 1.5px solid var(--border-color);
+            border-radius: 18px;
+            padding: 1.25rem;
+            box-shadow: none;
         }
 
-        .report-device-code {
-            background: #111;
-            color: #fff;
-            border: none;
+        .report-device-icon-unified {
+            width: 48px;
+            height: 48px;
+            background: var(--primary-color);
+            color: #ffffff;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            flex-shrink: 0;
+        }
+
+        .report-device-details-unified {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            min-width: 0;
+        }
+
+        .report-device-code-unified {
+            display: inline-block;
+            align-self: flex-start;
+            background: #ffffff;
+            color: var(--text-color);
+            border: 1.5px solid var(--border-color);
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .report-device-name-unified {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+        }
+
+        .report-device-meta-unified {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 0.1rem;
+        }
+
+        .report-device-meta-item {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .report-device-meta-item i {
+            font-size: 0.72rem;
+            color: #8bc53f; /* Brand Green Accent */
+            width: 12px;
+            text-align: center;
+        }
+
+        /* Spinner and Error styles inside header */
+        .report-device-spinner-unified {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            font-weight: 500;
+            padding: 1.5rem;
+            background: var(--surface-ground);
+            border: 1.5px dashed var(--border-color);
+            border-radius: 18px;
+        }
+
+        .report-device-spinner-unified i {
+            font-size: 1.1rem;
+            color: var(--primary-color);
+        }
+
+        .report-device-error-unified {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            color: var(--danger-color);
+            font-size: 0.88rem;
+            font-weight: 600;
+            padding: 1.5rem;
+            background: rgba(192, 57, 43, 0.05);
+            border: 1.5px solid var(--danger-color);
+            border-radius: 18px;
         }
 
         .public-report-form {
@@ -712,42 +848,56 @@
             }
         }
 
-        /* Unified Device Banner Styles */
-        .report-device-loaded,
+        /* Unified Device Banner — QR Modal version (card-in-card) */
         .qr-device-info-banner {
             display: flex;
             align-items: center;
             gap: 1.25rem;
-            background: rgba(0, 0, 0, 0.03) !important;
-            border: 1px solid rgba(0, 0, 0, 0.05) !important;
+            background: var(--surface-card) !important;
+            border: 1.5px solid var(--border-color) !important;
             padding: 1.25rem;
-            border-radius: 16px;
+            border-radius: var(--radius-lg);
             width: 100%;
             margin-bottom: 1rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Report portal — inner loaded row (flat, no extra card) */
+        .public-report-device-info .report-device-loaded {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+            background: none !important;
+            border: none !important;
+            padding: 0;
+            border-radius: 0;
+            box-shadow: none;
+            margin-bottom: 0;
         }
 
         .qr-info-badge {
-            background: rgba(0, 0, 0, 0.08) !important;
-            color: #111 !important;
-            border: 1px solid rgba(0, 0, 0, 0.1) !important;
+            background: var(--surface-ground) !important;
+            color: var(--text-color) !important;
+            border: 1px solid var(--border-color) !important;
         }
 
         .qr-info-code {
-            background: #111 !important;
+            background: var(--primary-color) !important;
             color: #fff !important;
             border: none !important;
         }
 
         .report-device-icon {
-            width: 48px;
-            height: 48px;
-            background: #111;
+            width: 44px;
+            height: 44px;
+            background: var(--primary-color);
             color: #fff;
-            border-radius: 12px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             flex-shrink: 0;
         }
 
@@ -755,44 +905,70 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 0.25rem;
+            gap: 0.2rem;
             min-width: 0;
         }
 
         .report-device-code {
-            background: #111;
-            color: #fff;
-            font-size: 0.7rem;
+            display: inline-block;
+            background: var(--surface-ground);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            font-size: 0.65rem;
             font-weight: 700;
-            padding: 2px 8px;
+            padding: 1px 7px;
             border-radius: 4px;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.06em;
+            margin-bottom: 2px;
         }
 
         .report-device-name {
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 700;
-            color: #111;
+            color: var(--text-color);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            line-height: 1.3;
         }
 
-        .report-device-hospital {
-            font-size: 0.82rem;
-            color: #64748b;
+        .report-device-hospital,
+        .report-device-serial {
+            font-size: 0.78rem;
+            color: var(--text-muted);
             display: flex;
             align-items: center;
-            gap: 0.4rem;
+            gap: 0.35rem;
+            margin-top: 1px;
+        }
+
+        .report-device-hospital i,
+        .report-device-serial i {
+            font-size: 0.7rem;
+            width: 12px;
+            text-align: center;
+        }
+
+        .report-device-meta {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 2px;
+        }
+
+        .report-device-meta .report-device-serial,
+        .report-device-meta .report-device-hospital {
+            margin-top: 0;
         }
 
         .qr-info-badge {
             display: inline-flex;
             align-items: center;
             gap: 0.3rem;
-            background: rgba(0, 0, 0, 0.05);
-            color: #475569;
+            background: var(--surface-ground);
+            color: var(--text-muted);
             font-size: 0.75rem;
             font-weight: 600;
             padding: 4px 10px;
@@ -888,20 +1064,23 @@
     <section id="public-report-view" class="public-report-page" style="display:none;">
         <div class="public-report-bg"></div>
         <div class="public-report-card">
-            <!-- Header -->
-            <div class="public-report-header">
-                <img src="app-ico.svg" alt="CASP Logo" class="public-report-logo">
-                <div>
-                    <h1 class="public-report-title">CASP Service</h1>
-                    <p class="public-report-subtitle">ระบบบริการอุปกรณ์</p>
+            <!-- Unified Header & Device Info Banner -->
+            <div class="public-report-header-unified">
+                <div class="header-brand-row">
+                    <div class="brand-logo-container">
+                        <img src="app-ico.svg" alt="CASP Logo" class="public-report-logo">
+                    </div>
+                    <div class="brand-text-container">
+                        <h1 class="public-report-title">CASP Service</h1>
+                        <p class="public-report-subtitle">ระบบบริการอุปกรณ์</p>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Device Info Banner -->
-            <div class="public-report-device-info" id="report-device-info">
-                <div class="report-device-spinner">
-                    <i class="fa-solid fa-circle-notch fa-spin"></i>
-                    <span>กำลังโหลดข้อมูลเครื่อง...</span>
+                <div class="header-device-info-container" id="report-device-info">
+                    <div class="report-device-spinner-unified">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                        <span>กำลังโหลดข้อมูลเครื่อง...</span>
+                    </div>
                 </div>
             </div>
 
@@ -974,6 +1153,7 @@
                     <label class="public-report-label">
                         <i class="fa-solid fa-gauge-high"></i>
                         จำนวนรอบเครื่อง (Cycle Count)
+                        <span id="report-cycle-warning-msg" style="color: var(--danger-color); font-size: 0.78rem; font-weight: 600; margin-left: 0.5rem; display: none;"></span>
                     </label>
                     <input type="number" id="report-cycle-count" class="public-report-input"
                         placeholder="จำนวนรอบปัจจุบันของเครื่อง (ถ้ามี)" inputmode="numeric">
@@ -1033,6 +1213,7 @@
                     <label class="public-report-label">
                         <i class="fa-solid fa-gauge-high"></i>
                         จำนวนรอบเครื่อง (Cycle Count) <span class="required-star">*</span>
+                        <span id="cycle-warning-msg" style="color: var(--danger-color); font-size: 0.78rem; font-weight: 600; margin-left: 0.5rem; display: none;"></span>
                     </label>
                     <input type="number" id="cycle-count-value" class="public-report-input"
                         placeholder="กรอกจำนวนรอบปัจจุบันของเครื่อง" inputmode="numeric" required>
@@ -3867,8 +4048,8 @@
 </div>
 
 <!-- MODAL: Cycle Count Input for Annual Plan -->
-<div id="modal-plan-cycle-count" class="modal-overlay modal-layer-top hidden" style="z-index:1100;">
-    <div class="modal glass-panel" style="max-width:650px; width:92vw;">
+<div id="modal-plan-cycle-count" class="modal-overlay modal-layer-form hidden">
+    <div class="modal glass-panel" style="max-width:750px; width:92vw;">
         <div class="modal-header">
             <div>
                 <h3 id="cycle-modal-title" style="margin:0;">บันทึก Cycle Count</h3>
@@ -3895,14 +4076,6 @@
                 <span>บันทึกรอบเครื่องใหม่โดยเจ้าหน้าที่ (New Staff Entry)</span>
             </div>
 
-            <!-- Planned Toggle -->
-            <div style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; background:rgba(0,0,0,0.02); border-radius:10px; border:1px solid rgba(0,0,0,0.06);">
-                <label style="font-size:0.9rem; font-weight:600; flex:1; margin:0;">เพิ่มเป็นแผนซ่อมบำรุงประจำปี</label>
-                <label class="toggle-switch" style="position:relative; display:inline-block; width:46px; height:26px; flex-shrink:0;">
-                    <input type="checkbox" id="cycle-planned-toggle" style="opacity:0; width:0; height:0;">
-                    <span class="toggle-slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; border-radius:26px; transition:background 0.3s;"></span>
-                </label>
-            </div>
 
             <!-- Cycle Count Input -->
             <div class="form-group" style="margin:0;">
@@ -3963,11 +4136,11 @@
                         <thead style="position:sticky; top:0; background:#f8fafc; z-index:10; box-shadow:0 1px 0 rgba(0,0,0,0.08);">
                             <tr>
                                 <th style="padding:0.5rem; font-weight:700; color:#475569; width:16%;">วันที่บันทึก</th>
-                                <th style="padding:0.5rem; font-weight:700; color:#475569; width:16%;">จำนวนรอบ</th>
-                                <th style="padding:0.5rem; font-weight:700; color:#475569; width:12%; text-align:center;">ผู้บันทึก</th>
+                                <th style="padding:0.5rem; font-weight:700; color:#475569; width:20%;">จำนวนรอบ</th>
+                                <th style="padding:0.5rem; font-weight:700; color:#475569; width:10%; text-align:center;">ผู้บันทึก</th>
                                 <th style="padding:0.5rem; font-weight:700; color:#475569; width:38%;">หมายเหตุ</th>
                                 <th style="padding:0.5rem; font-weight:700; color:#475569; width:10%; text-align:center;">รูปถ่าย</th>
-                                <th style="padding:0.5rem; font-weight:700; color:#475569; width:8%; text-align:center;">ลบ</th>
+                                <th style="padding:0.5rem; font-weight:700; color:#475569; width:6%; text-align:center;">ลบ</th>
                             </tr>
                         </thead>
                         <tbody id="cycle-history-list">
@@ -3989,6 +4162,27 @@
         </div>
     </div>
 </div>
+
+<!-- MODAL: Plan Date Input -->
+<div id="modal-plan-date" class="modal-overlay modal-layer-form hidden">
+    <div class="modal glass-panel" style="max-width:400px; width:90vw;">
+        <div class="modal-header">
+            <h3 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;"><i class="fa-regular fa-calendar-check" style="color:#111;"></i> กำหนดวันที่ซ่อมบำรุง</h3>
+            <button class="close-modal" id="btn-close-plan-date-modal">&times;</button>
+        </div>
+        <div class="modal-body" style="padding:1.5rem; display:flex; flex-direction:column; gap:1.25rem;">
+            <div class="form-group" style="margin:0;">
+                <label for="plan-date-input" style="font-weight:600; color:#374151; font-size:0.88rem; display:block; margin-bottom:8px;">วันที่ในแผนซ่อมบำรุง (Plan Date)</label>
+                <input type="date" id="plan-date-input" style="width:100%; padding:0.65rem 0.85rem; border:1.5px solid #e2e8f0; border-radius:10px; font-size:1rem; box-sizing:border-box;">
+            </div>
+            <div style="display:flex; justify-content:end; gap:0.5rem; margin-top:0.5rem;">
+                <button type="button" id="btn-plan-date-cancel" class="btn-secondary" style="height:38px; border-radius:8px; font-weight:600; font-size:0.85rem; padding:0 1rem; border:1.5px solid #e2e8f0; background:#fff; color:#374151; cursor:pointer;">ยกเลิก</button>
+                <button type="button" id="btn-plan-date-save" class="btn-primary" style="height:38px; border-radius:8px; font-weight:600; font-size:0.85rem; padding:0 1.25rem; background:#111; color:#fff; border:none; cursor:pointer;">บันทึก</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <style>
     .toggle-slider { background: #ccc; }

@@ -5767,6 +5767,7 @@ function setupMaDateAutoCalculation() {
 function setupEventListeners() {
     // Initialize Cycle Count Modal for Annual Plan
     initCycleCountModal();
+    initPlanDateModal();
 
     // Brand Logo Redirect (Desktop & Mobile)
     const brandIcons = document.querySelectorAll(
@@ -14303,21 +14304,82 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function getPlanMonthData(site, year, month) {
     const planData = site.maintenancePlans && site.maintenancePlans[year];
-    if (!planData) return { planned: false, cycleCount: null, inputDate: null, notes: null, attachments: [], history: [], source: null };
+    if (!planData) return { planned: false, cycleCount: null, inputDate: null, planDate: null, notes: null, attachments: [], history: [], source: null };
     if (Array.isArray(planData)) {
-        return { planned: planData.includes(month), cycleCount: null, inputDate: null, notes: null, attachments: [], history: [], source: null };
+        return { planned: planData.includes(month), cycleCount: null, inputDate: null, planDate: null, notes: null, attachments: [], history: [], source: null };
     }
     const monthKey = String(month);
     const monthData = planData[monthKey];
-    if (!monthData) return { planned: false, cycleCount: null, inputDate: null, notes: null, attachments: [], history: [], source: null };
+    if (!monthData) return { planned: false, cycleCount: null, inputDate: null, planDate: null, notes: null, attachments: [], history: [], source: null };
+
+    // Collect all entries with their metadata and original index
+    const allEntries = [];
+    if (monthData.cycleCount != null) {
+        allEntries.push({
+            cycleCount: monthData.cycleCount,
+            inputDate: monthData.inputDate,
+            notes: monthData.notes,
+            attachments: monthData.attachments || [],
+            source: monthData.source || 'staff',
+            dbIsLatest: true,
+            dbHistoryIndex: -1
+        });
+    }
+
+    if (monthData.history && Array.isArray(monthData.history)) {
+        monthData.history.forEach((item, index) => {
+            if (item.cycleCount != null) {
+                allEntries.push({
+                    ...item,
+                    dbIsLatest: false,
+                    dbHistoryIndex: index
+                });
+            }
+        });
+    }
+
+    // Sort allEntries by date descending (latest day first), then cycleCount descending (latest count first)
+    allEntries.sort((a, b) => {
+        const dateA = a.inputDate ? new Date(a.inputDate) : new Date(0);
+        const dateB = b.inputDate ? new Date(b.inputDate) : new Date(0);
+        if (dateB - dateA !== 0) {
+            return dateB - dateA;
+        }
+        const valA = parseInt(a.cycleCount, 10) || 0;
+        const valB = parseInt(b.cycleCount, 10) || 0;
+        return valB - valA;
+    });
+
+    if (allEntries.length === 0) {
+        return {
+            planned: monthData.planned !== false,
+            cycleCount: null,
+            inputDate: null,
+            planDate: monthData.planDate || null,
+            notes: monthData.notes || null,
+            attachments: [],
+            history: [],
+            source: monthData.source || null
+        };
+    }
+
+    // The latest entry overall is allEntries[0]
+    const latestEntry = allEntries[0];
+
+    // The history consists of the remaining entries (allowing multiple per day)
+    const historyEntries = allEntries.slice(1);
+
     return {
         planned: monthData.planned !== false,
-        cycleCount: monthData.cycleCount != null ? monthData.cycleCount : null,
-        inputDate: monthData.inputDate || null,
-        notes: monthData.notes || null,
-        attachments: monthData.attachments || [],
-        history: monthData.history || [],
-        source: monthData.source || null
+        cycleCount: latestEntry.cycleCount,
+        inputDate: latestEntry.inputDate,
+        planDate: monthData.planDate || latestEntry.inputDate || null,
+        notes: latestEntry.notes || null,
+        attachments: latestEntry.attachments || [],
+        history: historyEntries,
+        source: latestEntry.source || null,
+        dbIsLatest: latestEntry.dbIsLatest,
+        dbHistoryIndex: latestEntry.dbHistoryIndex
     };
 }
 
@@ -14388,29 +14450,30 @@ function renderMaintenancePlan() {
             const monthNum = m + 1;
             const isCurrent = m === currentMonth;
             const pd = getPlanMonthData(site, selectedBE, monthNum);
-            const { planned, cycleCount, inputDate, notes } = pd;
+            const { planned, cycleCount, inputDate, planDate } = pd;
             const hasData = planned || cycleCount != null;
-            const isUnplanned = !planned && cycleCount != null;
-            const bg = planned ? siteColor : (cycleCount != null ? 'rgba(0,0,0,0.03)' : (isCurrent ? 'rgba(0,0,0,0.02)' : ''));
+            const bg = planned ? `${siteColor}0d` : (cycleCount != null ? 'rgba(0,0,0,0.015)' : (isCurrent ? 'rgba(0,0,0,0.02)' : ''));
 
             let cellContent = '';
             if (hasData) {
-                const chipStyle = isUnplanned
-                    ? `background:#fff; border:1.5px dashed ${siteColor}; color:${siteColor};`
-                    : `color:#fff;`;
-                const countTextColor = isUnplanned ? siteColor : '#fff';
-                const subTextColor = isUnplanned ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.85)';
-                const countHtml = cycleCount != null
-                    ? `<span style="font-size:0.78rem; font-weight:700; color:${countTextColor};">${Number(cycleCount).toLocaleString()} <small style="font-size:0.7em; opacity:0.9;">รอบ</small></span>`
-                    : `<i class="fa-solid fa-wrench" style="color:${countTextColor}; font-size:0.75rem;"></i>`;
-                const dateHtml = inputDate ? `<span style="font-size:0.65rem; color:${subTextColor}; display:block;">${inputDate}</span>` : '';
-                cellContent = `<div style="display:flex; flex-direction:column; align-items:center; padding:3px 4px; border-radius:6px; ${chipStyle}">${countHtml}${dateHtml}</div>`;
+                let planBadgeHtml = '';
+                if (planned) {
+                    planBadgeHtml = `<span style="background:${siteColor}15; color:${siteColor}; border:1px solid ${siteColor}35; font-size:0.7rem; font-weight:700; padding:4px 8px; border-radius:4px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.15; white-space:nowrap;"><i class="fa-solid fa-wrench" style="font-size:0.75rem;"></i>${planDate ? `<span style="font-size:0.58rem; font-weight:600; margin-top:2px; opacity:0.85;">${planDate}</span>` : ''}</span>`;
+                }
+
+                let cycleBadgeHtml = '';
+                if (cycleCount != null) {
+                    const dateHtml = inputDate ? `<span style="font-size:0.58rem; color:${siteColor}; opacity:0.8; display:block; margin-top:2px; font-weight:600;">${inputDate}</span>` : '';
+                    cycleBadgeHtml = `<span style="background:#fff; color:${siteColor}; border:1.5px dashed ${siteColor}60; font-size:0.7rem; font-weight:700; padding:4px 8px; border-radius:4px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.15; white-space:nowrap;"><span style="font-size:0.72rem; font-weight:700;">${Number(cycleCount).toLocaleString()}</span>${dateHtml}</span>`;
+                }
+
+                cellContent = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; width:100%; box-sizing:border-box; padding:4px 0 2px 0; min-height:42px;">${planBadgeHtml}${cycleBadgeHtml}</div>`;
             }
 
-            return `<td style="position:relative; text-align:center; padding:0.35rem 0.25rem; border:1px solid rgba(0,0,0,0.06); background:${bg}; min-width:80px; cursor:pointer;"
+            return `<td style="position:relative; text-align:center; padding:0.35rem 0.25rem; border:1px solid rgba(0,0,0,0.06); background:${bg}; min-width:85px; cursor:pointer; vertical-align:middle;"
                 onmouseenter="showPlanCellMenu(this, '${site.id}','${selectedBE}',${monthNum},${hasData})"
                 onmouseleave="hidePlanCellMenu()"
-            >${cellContent}${!hasData ? `<span class="plan-cell-add-hint" style="display:none; color:#bbb; font-size:1rem; pointer-events:none;">+</span>` : ''}</td>`;
+            >${cellContent}${!hasData ? `<span class="plan-cell-add-hint" style="display:none; color:#bbb; font-size:1.1rem; pointer-events:none;">+</span>` : ''}</td>`;
         }).join('');
 
         return `<tr>${noCell}${siteIdCell}${deviceCell}${monthCells}</tr>`;
@@ -14432,67 +14495,78 @@ function showPlanCellMenu(td, siteId, year, month, hasData) {
     const menu = document.createElement('div');
     menu.id = 'plan-cell-menu';
 
-    if (!hasData) {
-        // Blank cell: simple gray + icon overlay
-        menu.style.cssText = `
-            position: fixed;
-            top: ${rect.top}px;
-            left: ${rect.left}px;
-            width: ${rect.width}px;
-            height: ${rect.height}px;
-            background: rgba(160,160,170,0.25);
-            backdrop-filter: blur(3px);
-            -webkit-backdrop-filter: blur(3px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 99999;
-            pointer-events: auto;
-            cursor: pointer;
-        `;
-        const icon = document.createElement('span');
-        icon.textContent = '+';
-        icon.style.cssText = 'font-size:1.1rem; color:rgba(100,100,110,0.7); font-weight:300; line-height:1; pointer-events:none;';
-        menu.appendChild(icon);
-        menu.onclick = (e) => { e.stopPropagation(); hidePlanCellMenu(); openCycleCountModal(siteId, year, month); };
+    // Unify overlay container styling
+    menu.style.cssText = `
+        position: fixed;
+        top: ${rect.top}px;
+        left: ${rect.left}px;
+        width: ${rect.width}px;
+        height: ${rect.height}px;
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        z-index: 99999;
+        pointer-events: auto;
+    `;
+
+    // Fetch site and plan data to determine current state
+    const site = state.sites.find(s => s.id === siteId);
+    const pd = site ? getPlanMonthData(site, year, month) : { planned: false, cycleCount: null };
+    const isPlanned = pd.planned;
+    const hasCycle = pd.cycleCount != null;
+
+    // 1. Plan Toggle Button (Calendar icon)
+    const planBtn = document.createElement('button');
+    planBtn.type = 'button';
+    planBtn.innerHTML = '<i class="fa-solid fa-calendar-check" style="font-size:0.75rem;"></i>';
+    planBtn.title = isPlanned ? 'ยกเลิกแผนซ่อมบำรุงประจำปี' : 'เพิ่มเป็นแผนซ่อมบำรุงประจำปี';
+    
+    // Premium theme styles based on active/inactive status
+    if (isPlanned) {
+        planBtn.style.cssText = 'width:26px; height:26px; display:flex; align-items:center; justify-content:center; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; border-radius:6px; cursor:pointer; flex-shrink:0; transition:all 0.15s ease;';
+        planBtn.onmouseenter = () => { planBtn.style.background = '#bae6fd'; planBtn.style.transform = 'scale(1.05)'; };
+        planBtn.onmouseleave = () => { planBtn.style.background = '#e0f2fe'; planBtn.style.transform = 'none'; };
     } else {
-        // Cell with data: clean white overlay with icon buttons
-        menu.style.cssText = `
-            position: fixed;
-            top: ${rect.top}px;
-            left: ${rect.left}px;
-            width: ${rect.width}px;
-            height: ${rect.height}px;
-            background: rgba(255,255,255,0.82);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-            z-index: 99999;
-            pointer-events: auto;
-        `;
-
-        const editBtn = document.createElement('button');
-        editBtn.innerHTML = '<i class="fa-solid fa-pen" style="font-size:0.65rem;"></i>';
-        editBtn.title = 'แก้ไข';
-        editBtn.style.cssText = 'width:26px; height:26px; display:flex; align-items:center; justify-content:center; background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; border-radius:6px; cursor:pointer; flex-shrink:0;';
-        editBtn.onmouseenter = () => { editBtn.style.background = '#dcfce7'; };
-        editBtn.onmouseleave = () => { editBtn.style.background = '#f0fdf4'; };
-        editBtn.onclick = (e) => { e.stopPropagation(); hidePlanCellMenu(); openCycleCountModal(siteId, year, month); };
-        menu.appendChild(editBtn);
-
-        const delBtn = document.createElement('button');
-        delBtn.innerHTML = '<i class="fa-solid fa-trash-can" style="font-size:0.65rem;"></i>';
-        delBtn.title = 'ล้าง';
-        delBtn.style.cssText = 'width:26px; height:26px; display:flex; align-items:center; justify-content:center; background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; border-radius:6px; cursor:pointer; flex-shrink:0;';
-        delBtn.onmouseenter = () => { delBtn.style.background = '#ffe4e6'; };
-        delBtn.onmouseleave = () => { delBtn.style.background = '#fff1f2'; };
-        delBtn.onclick = (e) => { e.stopPropagation(); hidePlanCellMenu(); deletePlanEntry(siteId, year, month); };
-        menu.appendChild(delBtn);
+        planBtn.style.cssText = 'width:26px; height:26px; display:flex; align-items:center; justify-content:center; background:#f3f4f6; color:#9ca3af; border:1px solid #e5e7eb; border-radius:6px; cursor:pointer; flex-shrink:0; transition:all 0.15s ease;';
+        planBtn.onmouseenter = () => { planBtn.style.background = '#e5e7eb'; planBtn.style.color = '#4b5563'; planBtn.style.transform = 'scale(1.05)'; };
+        planBtn.onmouseleave = () => { planBtn.style.background = '#f3f4f6'; planBtn.style.color = '#9ca3af'; planBtn.style.transform = 'none'; };
     }
+    
+    planBtn.onclick = (e) => {
+        e.stopPropagation();
+        hidePlanCellMenu();
+        togglePlanStatus(siteId, year, month);
+    };
+    menu.appendChild(planBtn);
+
+    // 2. Cycle Count Button (Eye or Plus icon)
+    const cycleBtn = document.createElement('button');
+    cycleBtn.type = 'button';
+    cycleBtn.title = hasCycle ? 'ดูรายละเอียด / บันทึกรอบเครื่อง' : 'บันทึกรอบเครื่องใหม่';
+    
+    if (hasCycle) {
+        cycleBtn.innerHTML = '<i class="fa-solid fa-eye" style="font-size:0.75rem;"></i>';
+        cycleBtn.style.cssText = 'width:26px; height:26px; display:flex; align-items:center; justify-content:center; background:#f3f4f6; color:#4b5563; border:1px solid #d1d5db; border-radius:6px; cursor:pointer; flex-shrink:0; transition:all 0.15s ease;';
+        cycleBtn.onmouseenter = () => { cycleBtn.style.background = '#e5e7eb'; cycleBtn.style.transform = 'scale(1.05)'; };
+        cycleBtn.onmouseleave = () => { cycleBtn.style.background = '#f3f4f6'; cycleBtn.style.transform = 'none'; };
+    } else {
+        cycleBtn.innerHTML = '<i class="fa-solid fa-plus" style="font-size:0.75rem;"></i>';
+        cycleBtn.style.cssText = 'width:26px; height:26px; display:flex; align-items:center; justify-content:center; background:#ffffff; color:#4b5563; border:1px solid #d1d5db; border-radius:6px; cursor:pointer; flex-shrink:0; transition:all 0.15s ease;';
+        cycleBtn.onmouseenter = () => { cycleBtn.style.background = '#f3f4f6'; cycleBtn.style.transform = 'scale(1.05)'; };
+        cycleBtn.onmouseleave = () => { cycleBtn.style.background = '#ffffff'; cycleBtn.style.transform = 'none'; };
+    }
+
+    cycleBtn.onclick = (e) => {
+        e.stopPropagation();
+        hidePlanCellMenu();
+        openCycleCountModal(siteId, year, month);
+    };
+    menu.appendChild(cycleBtn);
 
     menu.onmouseenter = () => clearTimeout(_planMenuTimeout);
     menu.onmouseleave = () => { _planMenuTimeout = setTimeout(hidePlanCellMenu, 80); };
@@ -14631,6 +14705,167 @@ async function deleteCycleRecord(siteId, year, month, isLatest, historyIndex) {
 }
 window.deleteCycleRecord = deleteCycleRecord;
 
+function parseDateToTimelineCoords(dateStr) {
+    if (!dateStr) return null;
+    const parts = dateStr.split('-');
+    if (parts.length < 2) return null;
+    const yearAD = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    if (isNaN(yearAD) || isNaN(month)) return null;
+    return {
+        yearBE: yearAD + 543,
+        month: month
+    };
+}
+
+function isBeforeTimeline(a, b) {
+    if (!a || !b) return false;
+    if (a.yearBE < b.yearBE) return true;
+    if (a.yearBE === b.yearBE && a.month < b.month) return true;
+    return false;
+}
+
+function isAfterTimeline(a, b) {
+    if (!a || !b) return false;
+    if (a.yearBE > b.yearBE) return true;
+    if (a.yearBE === b.yearBE && a.month > b.month) return true;
+    return false;
+}
+
+function getPreviousCycleCount(site, currentYear, currentMonth) {
+    const currentCoords = { yearBE: parseInt(currentYear, 10), month: parseInt(currentMonth, 10) };
+    const records = [];
+
+    // 1. Collect from logs
+    const siteLogs = state.logs.filter(l => l.siteId === site.id);
+    siteLogs.forEach(log => {
+        if (log.cycleCount != null) {
+            const val = parseInt(log.cycleCount, 10);
+            if (!isNaN(val)) {
+                const logCoords = parseDateToTimelineCoords(log.date);
+                if (logCoords && isBeforeTimeline(logCoords, currentCoords)) {
+                    records.push({ val: val, date: log.date, yearBE: logCoords.yearBE, month: logCoords.month });
+                }
+            }
+        }
+    });
+
+    // 2. Collect from maintenancePlans
+    if (site.maintenancePlans) {
+        Object.keys(site.maintenancePlans).forEach(yStr => {
+            const planData = site.maintenancePlans[yStr];
+            if (planData && !Array.isArray(planData)) {
+                Object.keys(planData).forEach(mKey => {
+                    const yearBE = parseInt(yStr, 10);
+                    const month = parseInt(mKey, 10);
+                    const cellCoords = { yearBE, month };
+
+                    if (isBeforeTimeline(cellCoords, currentCoords)) {
+                        const pd = getPlanMonthData(site, yStr, mKey);
+                        if (pd.cycleCount != null) {
+                            const val = parseInt(pd.cycleCount, 10);
+                            if (!isNaN(val)) {
+                                records.push({ val: val, date: pd.inputDate || `${yearBE - 543}-${String(month).padStart(2, '0')}-01`, yearBE, month });
+                            }
+                        }
+                        if (pd.history && Array.isArray(pd.history)) {
+                            pd.history.forEach(item => {
+                                if (item.cycleCount != null) {
+                                    const val = parseInt(item.cycleCount, 10);
+                                    if (!isNaN(val)) {
+                                        records.push({ val: val, date: item.inputDate || `${yearBE - 543}-${String(month).padStart(2, '0')}-01`, yearBE, month });
+                                    }
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    if (records.length === 0) return { val: 0, date: '1970-01-01', yearBE: 0, month: 0 };
+
+    // Sort by date descending, then value descending to find the latest previous reading
+    records.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        if (dateB - dateA !== 0) {
+            return dateB - dateA;
+        }
+        return b.val - a.val;
+    });
+
+    return records[0];
+}
+
+function getNextCycleCount(site, currentYear, currentMonth) {
+    const currentCoords = { yearBE: parseInt(currentYear, 10), month: parseInt(currentMonth, 10) };
+    const records = [];
+
+    // 1. Collect from logs
+    const siteLogs = state.logs.filter(l => l.siteId === site.id);
+    siteLogs.forEach(log => {
+        if (log.cycleCount != null) {
+            const val = parseInt(log.cycleCount, 10);
+            if (!isNaN(val)) {
+                const logCoords = parseDateToTimelineCoords(log.date);
+                if (logCoords && isAfterTimeline(logCoords, currentCoords)) {
+                    records.push({ val: val, date: log.date, yearBE: logCoords.yearBE, month: logCoords.month });
+                }
+            }
+        }
+    });
+
+    // 2. Collect from maintenancePlans
+    if (site.maintenancePlans) {
+        Object.keys(site.maintenancePlans).forEach(yStr => {
+            const planData = site.maintenancePlans[yStr];
+            if (planData && !Array.isArray(planData)) {
+                Object.keys(planData).forEach(mKey => {
+                    const yearBE = parseInt(yStr, 10);
+                    const month = parseInt(mKey, 10);
+                    const cellCoords = { yearBE, month };
+
+                    if (isAfterTimeline(cellCoords, currentCoords)) {
+                        const pd = getPlanMonthData(site, yStr, mKey);
+                        if (pd.cycleCount != null) {
+                            const val = parseInt(pd.cycleCount, 10);
+                            if (!isNaN(val)) {
+                                records.push({ val: val, date: pd.inputDate || `${yearBE - 543}-${String(month).padStart(2, '0')}-01`, yearBE, month });
+                            }
+                        }
+                        if (pd.history && Array.isArray(pd.history)) {
+                            pd.history.forEach(item => {
+                                if (item.cycleCount != null) {
+                                    const val = parseInt(item.cycleCount, 10);
+                                    if (!isNaN(val)) {
+                                        records.push({ val: val, date: item.inputDate || `${yearBE - 543}-${String(month).padStart(2, '0')}-01`, yearBE, month });
+                                    }
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    if (records.length === 0) return null;
+
+    // Sort by date ascending (earliest first), then value ascending
+    records.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        if (dateA - dateB !== 0) {
+            return dateA - dateB;
+        }
+        return a.val - b.val;
+    });
+
+    return records[0];
+}
+
 let _cycleModalState = { siteId: null, year: null, month: null };
 
 function openCycleCountModal(siteId, year, month) {
@@ -14653,21 +14888,64 @@ function openCycleCountModal(siteId, year, month) {
         if (pd.source === 'customer') {
             sourceEl.innerHTML = `<span style="background:rgba(29,78,216,0.08); color:#1d4ed8; padding:4px 8px; border-radius:8px; font-size:0.7rem; font-weight:700; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-qrcode"></i> ลูกค้าบันทึก (QR)</span>`;
             sourceEl.style.display = 'block';
-        } else if (pd.cycleCount != null) {
-            sourceEl.innerHTML = `<span style="background:rgba(16,185,129,0.08); color:#10b981; padding:4px 8px; border-radius:8px; font-size:0.7rem; font-weight:700; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-user-shield"></i> เจ้าหน้าที่บันทึก (Staff)</span>`;
-            sourceEl.style.display = 'block';
         } else {
             sourceEl.style.display = 'none';
         }
     }
 
-    const toggleEl = document.getElementById('cycle-planned-toggle');
+    const prevCycleObj = getPreviousCycleCount(site, year, month);
+    const prevCycle = prevCycleObj.val;
+    const activeCycle = pd.cycleCount != null ? parseInt(pd.cycleCount, 10) : null;
+    const latestCycle = activeCycle != null && activeCycle > prevCycle ? activeCycle : prevCycle;
+    const nextRecord = getNextCycleCount(site, year, month);
+
+    // Set dynamic label with latest cycle count
+    const label = document.querySelector('label[for="cycle-count-input"]');
+    if (label) {
+        if (latestCycle > 0) {
+            label.innerHTML = `<i class="fa-solid fa-arrows-spin" style="color:#111;"></i> จำนวนรอบ (Cycle Count) <span style="color:#64748b; font-weight:normal; margin-left:4px;">(ล่าสุด: ${latestCycle.toLocaleString()})</span>`;
+        } else {
+            label.innerHTML = `<i class="fa-solid fa-arrows-spin" style="color:#111;"></i> จำนวนรอบ (Cycle Count)`;
+        }
+    }
+
     const countEl = document.getElementById('cycle-count-input');
     const dateEl = document.getElementById('cycle-date-input');
     const notesEl = document.getElementById('cycle-notes-input');
-    if (toggleEl) toggleEl.checked = pd.planned;
-    if (countEl) countEl.value = ''; // Clean for new entry
-    if (dateEl) dateEl.value = new Date().toISOString().split('T')[0]; // Default to today
+    
+    if (countEl) {
+        countEl.value = ''; // Clean for new entry
+        if (latestCycle > 0) {
+            countEl.min = latestCycle;
+            if (nextRecord) {
+                countEl.max = nextRecord.val;
+                countEl.placeholder = `ต้องมีค่าระหว่าง ${latestCycle.toLocaleString()} ถึง ${nextRecord.val.toLocaleString()} รอบ`;
+            } else {
+                countEl.removeAttribute('max');
+                countEl.placeholder = `ต้องมีค่าอย่างน้อย ${latestCycle.toLocaleString()} รอบ`;
+            }
+        } else {
+            countEl.removeAttribute('min');
+            if (nextRecord) {
+                countEl.max = nextRecord.val;
+                countEl.placeholder = `ต้องมีค่าไม่เกิน ${nextRecord.val.toLocaleString()} รอบ`;
+            } else {
+                countEl.removeAttribute('max');
+                countEl.placeholder = `ระบุจำนวนรอบ เช่น 12500`;
+            }
+        }
+    }
+    
+    if (dateEl) {
+        const yearAD = parseInt(year) - 543;
+        const monthStr = String(month).padStart(2, '0');
+        const today = new Date();
+        if (today.getFullYear() === yearAD && (today.getMonth() + 1) === parseInt(month)) {
+            dateEl.value = today.toISOString().split('T')[0];
+        } else {
+            dateEl.value = `${yearAD}-${monthStr}-01`;
+        }
+    }
     if (notesEl) notesEl.value = ''; // Clean for new entry notes
 
     // Reset staff upload media
@@ -14690,50 +14968,55 @@ function openCycleCountModal(siteId, year, month) {
                 notes: pd.notes,
                 attachments: pd.attachments || [],
                 source: pd.source || 'staff',
-                isLatest: true,
-                historyIndex: -1
+                dbIsLatest: pd.dbIsLatest !== undefined ? pd.dbIsLatest : true,
+                dbHistoryIndex: pd.dbHistoryIndex !== undefined ? pd.dbHistoryIndex : -1
             });
         }
         if (pd.history && pd.history.length > 0) {
-            pd.history.forEach((item, histIdx) => {
+            pd.history.forEach((item) => {
                 allRecords.push({
                     ...item,
-                    isLatest: false,
-                    historyIndex: histIdx
+                    dbIsLatest: item.dbIsLatest !== undefined ? item.dbIsLatest : false,
+                    dbHistoryIndex: item.dbHistoryIndex !== undefined ? item.dbHistoryIndex : -1
                 });
             });
         }
 
         if (allRecords.length > 0) {
-            allRecords.forEach(item => {
+            allRecords.forEach((item, index) => {
                 const tr = document.createElement('tr');
                 let rowBg = '';
-                if (item.isLatest) {
+                const isVisualLatest = index === 0;
+                if (isVisualLatest) {
                     rowBg = 'background:rgba(17,17,17,0.03); font-weight:600; border-left:3px solid #111111;';
                 } else {
                     rowBg = 'border-bottom:1px solid rgba(0,0,0,0.05);';
                 }
                 tr.style.cssText = `${rowBg} transition:background 0.15s ease;`;
                 tr.onmouseenter = () => { tr.style.background = 'rgba(0,0,0,0.04)'; };
-                tr.onmouseleave = () => { tr.style.background = item.isLatest ? 'rgba(17,17,17,0.03)' : ''; };
+                tr.onmouseleave = () => { tr.style.background = isVisualLatest ? 'rgba(17,17,17,0.03)' : ''; };
 
                 const isCustomerItem = item.source === 'customer';
                 const itemBadge = isCustomerItem 
-                    ? `<span style="color:#1d4ed8; background:rgba(29,78,216,0.06); padding:2px 6px; border-radius:4px; font-size:0.65rem; font-weight:700; display:inline-flex; align-items:center; gap:2px;"><i class="fa-solid fa-qrcode"></i> QR</span>` 
-                    : `<span style="color:#10b981; background:rgba(16,185,129,0.06); padding:2px 6px; border-radius:4px; font-size:0.65rem; font-weight:700; display:inline-flex; align-items:center; gap:2px;"><i class="fa-solid fa-user-shield"></i> Staff</span>`;
+                    ? `<i class="fa-solid fa-qrcode" style="color:#1d4ed8; font-size:1.1rem;" title="ลูกค้าบันทึก (QR)"></i>` 
+                    : `<i class="fa-solid fa-user-shield" style="color:#10b981; font-size:1.1rem;" title="เจ้าหน้าที่ (Staff)"></i>`;
 
                 // Photo cell
                 let photoHtml = '-';
                 if (item.attachments && item.attachments.length > 0) {
                     const firstUrl = item.attachments[0].url || item.attachments[0];
                     photoHtml = `<div style="width:30px; height:30px; border-radius:4px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer; margin:0 auto; display:flex;" onclick="window.openImageViewer('${firstUrl}')">
-                        <img src="${firstUrl}" style="width:100%; height:100%; object-fit:cover;">
+                         <img src="${firstUrl}" style="width:100%; height:100%; object-fit:cover;">
                     </div>`;
                 }
 
-                const notesText = item.notes || '-';
+                let notesText = item.notes || '-';
+                if (notesText && typeof notesText === 'string') {
+                    notesText = notesText.replace(/บันทึกโดยลูกค้า:\.?\s*/g, '').trim();
+                    if (!notesText) notesText = '-';
+                }
 
-                const deleteBtnHtml = `<button type="button" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:4px 8px; font-size:0.85rem; transition:transform 0.15s ease;" onclick="deleteCycleRecord('${siteId}', ${year}, ${month}, ${item.isLatest}, ${item.historyIndex})" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='none'">
+                const deleteBtnHtml = `<button type="button" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:4px 8px; font-size:0.85rem; transition:transform 0.15s ease;" onclick="deleteCycleRecord('${siteId}', ${year}, ${month}, ${item.dbIsLatest}, ${item.dbHistoryIndex})" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='none'">
                     <i class="fa-solid fa-trash-can"></i>
                 </button>`;
 
@@ -14742,11 +15025,10 @@ function openCycleCountModal(siteId, year, month) {
                     <td style="padding:0.45rem 0.5rem; vertical-align:middle;">
                         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                             <span style="font-weight:800; color:#111; font-size:0.85rem;">${item.cycleCount ? Number(item.cycleCount).toLocaleString() : '-'}</span>
-                            ${item.isLatest ? '<span style="color:#ffffff; background:#111111; padding:1px 4px; border-radius:3px; font-size:0.58rem; font-weight:700;">ล่าสุด</span>' : ''}
                         </div>
                     </td>
                     <td style="padding:0.45rem 0.5rem; vertical-align:middle; text-align:center;">${itemBadge}</td>
-                    <td style="padding:0.45rem 0.5rem; vertical-align:middle; color:#4b5563; font-size:0.75rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${notesText.replace(/"/g, '&quot;')}">${notesText}</td>
+                    <td style="padding:0.45rem 0.5rem; vertical-align:middle; color:#4b5563; font-size:0.75rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${notesText.replace(/"/g, '&quot;')}">${notesText}</td>
                     <td style="padding:0.45rem 0.5rem; vertical-align:middle; text-align:center;">${photoHtml}</td>
                     <td style="padding:0.45rem 0.5rem; vertical-align:middle; text-align:center;">${deleteBtnHtml}</td>
                 `;
@@ -14776,11 +15058,11 @@ async function saveCycleCount() {
     if (!siteId || !year || !month) return;
     const site = state.sites.find(s => s.id === siteId);
     if (!site) return;
-    const planned = document.getElementById('cycle-planned-toggle')?.checked ?? true;
     const cycleCountVal = document.getElementById('cycle-count-input')?.value;
     const inputDate = document.getElementById('cycle-date-input')?.value;
     const notes = document.getElementById('cycle-notes-input')?.value.trim() || '';
     const cycleCount = cycleCountVal !== '' ? parseInt(cycleCountVal, 10) : null;
+
     if (!site.maintenancePlans) site.maintenancePlans = {};
     if (Array.isArray(site.maintenancePlans[year])) site.maintenancePlans[year] = migratePlanToObjectFormat(site.maintenancePlans[year]);
     if (!site.maintenancePlans[year]) site.maintenancePlans[year] = {};
@@ -14788,8 +15070,32 @@ async function saveCycleCount() {
 
     // Preserve existing attachments & history if any
     const existingPlan = site.maintenancePlans[year][monthKey] || {};
+    const planned = existingPlan.planned ?? false;
     const attachments = existingPlan.attachments || [];
     const history = existingPlan.history || [];
+
+    const prevRecord = getPreviousCycleCount(site, year, month);
+    const nextRecord = getNextCycleCount(site, year, month);
+
+    if (cycleCount != null && !inputDate) {
+        showToast('กรุณาระบุวันที่บันทึก', 'error');
+        return;
+    }
+
+    if (cycleCount != null) {
+        if (prevRecord.val > 0 && cycleCount < prevRecord.val) {
+            const userLocale = navigator.language || 'th-TH';
+            const monthName = new Date(2024, prevRecord.month - 1, 1).toLocaleString(userLocale, { month: 'long' });
+            showToast(`จำนวนรอบต้องไม่น้อยกว่าค่าก่อนหน้า (${prevRecord.val.toLocaleString()} รอบ ในเดือน${monthName} พ.ศ. ${prevRecord.yearBE})`, 'error');
+            return;
+        }
+        if (nextRecord && cycleCount > nextRecord.val) {
+            const userLocale = navigator.language || 'th-TH';
+            const monthName = new Date(2024, nextRecord.month - 1, 1).toLocaleString(userLocale, { month: 'long' });
+            showToast(`จำนวนรอบต้องไม่มากกว่าค่าถัดไป (${nextRecord.val.toLocaleString()} รอบ ในเดือน${monthName} พ.ศ. ${nextRecord.yearBE})`, 'error');
+            return;
+        }
+    }
 
     // Push previous count to history if it has changed
     if (existingPlan.cycleCount != null) {
@@ -14818,6 +15124,7 @@ async function saveCycleCount() {
                 planned,
                 cycleCount,
                 inputDate: inputDate || new Date().toISOString().split('T')[0],
+                planDate: existingPlan.planDate || null,
                 notes: notes || null,
                 attachments: uploadedAttachments,
                 history: history,
@@ -14850,8 +15157,6 @@ async function clearCycleCount() {
     const countEl = document.getElementById('cycle-count-input');
     const dateEl = document.getElementById('cycle-date-input');
     const notesEl = document.getElementById('cycle-notes-input');
-    const toggleEl = document.getElementById('cycle-planned-toggle');
-    if (toggleEl) toggleEl.checked = false;
     if (countEl) countEl.value = '';
     if (dateEl) dateEl.value = '';
     if (notesEl) notesEl.value = '';
@@ -14893,6 +15198,158 @@ async function deletePlanEntry(siteId, year, month) {
     }
 }
 window.deletePlanEntry = deletePlanEntry;
+
+let _planDateModalState = { siteId: null, year: null, month: null };
+
+function openPlanDateModal(siteId, year, month) {
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site) return;
+    const monthKey = String(month);
+    const existingPlan = (site.maintenancePlans && site.maintenancePlans[year] && site.maintenancePlans[year][monthKey]) || {};
+    
+    _planDateModalState = { siteId, year, month };
+    const modal = document.getElementById('modal-plan-date');
+    const dateInput = document.getElementById('plan-date-input');
+    if (!modal || !dateInput) return;
+
+    // Pre-fill date
+    if (existingPlan.inputDate) {
+        dateInput.value = existingPlan.inputDate;
+    } else {
+        const yearAD = parseInt(year) - 543;
+        const monthStr = String(month).padStart(2, '0');
+        dateInput.value = `${yearAD}-${monthStr}-01`;
+    }
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+}
+
+function closePlanDateModal() {
+    const modal = document.getElementById('modal-plan-date');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = '';
+    }
+    _planDateModalState = { siteId: null, year: null, month: null };
+}
+
+async function savePlanDate() {
+    const { siteId, year, month } = _planDateModalState;
+    if (!siteId || !year || !month) return;
+    const dateInput = document.getElementById('plan-date-input');
+    const dateVal = dateInput ? dateInput.value : '';
+    if (!dateVal) {
+        showToast('กรุณาระบุวันที่ซ่อมบำรุง', 'error');
+        return;
+    }
+
+    // Validate that the date matches the selected month and year
+    const dateObj = new Date(dateVal);
+    const dateYear = dateObj.getFullYear();
+    const dateMonth = dateObj.getMonth() + 1; // 1-indexed
+    const cellYearAD = parseInt(year) - 543;
+    const cellMonth = parseInt(month);
+
+    if (dateYear !== cellYearAD || dateMonth !== cellMonth) {
+        const userLocale = navigator.language || 'th-TH';
+        const monthName = new Date(2024, cellMonth - 1, 1).toLocaleString(userLocale, { month: 'long' });
+        showToast(`วันที่ต้องอยู่ในเดือน ${monthName} พ.ศ. ${year}`, 'error');
+        return;
+    }
+
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site) return;
+
+    if (!site.maintenancePlans) site.maintenancePlans = {};
+    if (Array.isArray(site.maintenancePlans[year])) {
+        site.maintenancePlans[year] = migratePlanToObjectFormat(site.maintenancePlans[year]);
+    }
+    if (!site.maintenancePlans[year]) site.maintenancePlans[year] = {};
+    
+    const monthKey = String(month);
+    const existingPlan = site.maintenancePlans[year][monthKey] || {};
+
+    site.maintenancePlans[year][monthKey] = {
+        ...existingPlan,
+        planned: true,
+        planDate: dateVal,
+        inputDate: existingPlan.inputDate || dateVal
+    };
+
+    const saveBtn = document.getElementById('btn-plan-date-save');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังบันทึก...';
+    }
+
+    try {
+        await FirestoreService.updateSite(siteId, { maintenancePlans: site.maintenancePlans });
+        showToast('เพิ่มแผนซ่อมบำรุงประจำปีสำเร็จ', 'success', 1500);
+        closePlanDateModal();
+        renderMaintenancePlan();
+    } catch (e) {
+        console.error('Failed to save plan date:', e);
+        showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = 'บันทึก';
+        }
+    }
+}
+
+function initPlanDateModal() {
+    const saveBtn = document.getElementById('btn-plan-date-save');
+    const cancelBtn = document.getElementById('btn-plan-date-cancel');
+    const closeBtn = document.getElementById('btn-close-plan-date-modal');
+    const modal = document.getElementById('modal-plan-date');
+    if (saveBtn) saveBtn.onclick = savePlanDate;
+    if (cancelBtn) cancelBtn.onclick = closePlanDateModal;
+    if (closeBtn) closeBtn.onclick = closePlanDateModal;
+    if (modal) modal.onclick = (e) => { if (e.target === modal) closePlanDateModal(); };
+}
+
+async function togglePlanStatus(siteId, year, month) {
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site) return;
+    const monthKey = String(month);
+    
+    if (!site.maintenancePlans) site.maintenancePlans = {};
+    if (Array.isArray(site.maintenancePlans[year])) {
+        site.maintenancePlans[year] = migratePlanToObjectFormat(site.maintenancePlans[year]);
+    }
+    if (!site.maintenancePlans[year]) site.maintenancePlans[year] = {};
+
+    const existingPlan = site.maintenancePlans[year][monthKey] || {};
+    const newPlanned = !existingPlan.planned;
+
+    if (newPlanned) {
+        openPlanDateModal(siteId, year, month);
+    } else {
+        if (existingPlan.cycleCount == null && (!existingPlan.history || existingPlan.history.length === 0)) {
+            delete site.maintenancePlans[year][monthKey];
+            if (Object.keys(site.maintenancePlans[year]).length === 0) {
+                delete site.maintenancePlans[year];
+            }
+        } else {
+            site.maintenancePlans[year][monthKey] = {
+                ...existingPlan,
+                planned: false
+            };
+        }
+
+        try {
+            await FirestoreService.updateSite(siteId, { maintenancePlans: site.maintenancePlans });
+            showToast('ยกเลิกแผนซ่อมบำรุงประจำปีสำเร็จ', 'success', 1500);
+            renderMaintenancePlan();
+        } catch (e) {
+            console.error('Failed to toggle plan status:', e);
+            showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
+        }
+    }
+}
+window.togglePlanStatus = togglePlanStatus;
 
 /** Wire up cycle count modal buttons. Called once during init. */
 function initCycleCountModal() {
@@ -15454,26 +15911,38 @@ function initPublicReportPage() {
                     const site = { id: docSnap.id, ...docSnap.data() };
                     if (deviceInfoEl) {
                         deviceInfoEl.innerHTML = `
-                            <div class="report-device-loaded" style="display: flex; align-items: center; gap: 0.85rem; width: 100%;">
-                                <div class="report-device-icon" style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #6366f1 0%, #38bdf8 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.25rem; flex-shrink: 0; box-shadow: 0 4px 12px rgba(99,102,241,0.4);"><i class="fa-solid fa-microchip"></i></div>
-                                <div class="report-device-details" style="flex: 1; min-width: 0; text-align: left;">
-                                    ${site.siteCode ? `<span class="report-device-code" style="display: inline-block; background: rgba(99,102,241,0.12); color: #6366f1; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-bottom: 3px; border: 1px solid rgba(99,102,241,0.2);">${site.siteCode}</span>` : ''}
-                                    <div class="report-device-name" style="font-size: 0.95rem; font-weight: 700; color: #1e293b; line-height: 1.3; margin-bottom: 2px;">${site.name || 'เครื่อง'}</div>
-                                    ${site.serialNumber ? `<div class="report-device-serial" style="font-size: 0.75rem; color: #64748b; display: flex; align-items: center; gap: 4px; margin-top: 1px;"><i class="fa-solid fa-barcode"></i> S/N: ${site.serialNumber}</div>` : ''}
-                                    ${site.hospital || site.villageName ? `<div class="report-device-hospital" style="font-size: 0.75rem; color: #64748b; display: flex; align-items: center; gap: 4px; margin-top: 1px;"><i class="fa-solid fa-hospital"></i> ${site.hospital || site.villageName}</div>` : ''}
+                            <div class="report-device-loaded-unified">
+                                <div class="report-device-icon-unified"><i class="fa-solid fa-microchip"></i></div>
+                                <div class="report-device-details-unified">
+                                    ${site.siteCode ? `<span class="report-device-code-unified">${site.siteCode}</span>` : ''}
+                                    <div class="report-device-name-unified">${site.name || 'เครื่อง'}</div>
+                                    <div class="report-device-meta-unified">
+                                        ${site.serialNumber ? `<span class="report-device-meta-item"><i class="fa-solid fa-barcode"></i> S/N: ${site.serialNumber}</span>` : ''}
+                                        ${site.hospital || site.villageName ? `<span class="report-device-meta-item"><i class="fa-solid fa-location-dot"></i> ${site.hospital || site.villageName}</span>` : ''}
+                                    </div>
                                 </div>
                             </div>
                         `;
                     }
                 } else {
                     if (deviceInfoEl) {
-                        deviceInfoEl.innerHTML = `<div class="report-device-not-found" style="display: flex; align-items: center; gap: 0.5rem; color: #ef4444; font-size: 0.85rem; font-weight: 600; width: 100%; justify-content: center;"><i class="fa-solid fa-triangle-exclamation"></i> ไม่พบข้อมูลเครื่องในระบบ</div>`;
+                        deviceInfoEl.innerHTML = `
+                            <div class="report-device-error-unified">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                <span>ไม่พบข้อมูลเครื่องในระบบ</span>
+                            </div>
+                        `;
                     }
                 }
             } catch (e) {
                 console.warn('Could not load device info:', e);
                 if (deviceInfoEl) {
-                    deviceInfoEl.innerHTML = `<div class="report-device-spinner" style="display: flex; align-items: center; gap: 0.6rem; color: #ef4444; font-size: 0.85rem; width: 100%; justify-content: center;"><i class="fa-solid fa-circle-exclamation"></i> ไม่สามารถโหลดข้อมูลได้</div>`;
+                    deviceInfoEl.innerHTML = `
+                        <div class="report-device-error-unified">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span>ไม่สามารถโหลดข้อมูลเครื่องได้</span>
+                        </div>
+                    `;
                 }
             }
 
@@ -15513,6 +15982,22 @@ function initPublicReportPage() {
                     }
                     e.target.value = '';
                 };
+            }
+
+            // Clear warning labels on input
+            const reportCycleInput = document.getElementById('report-cycle-count');
+            if (reportCycleInput) {
+                reportCycleInput.addEventListener('input', () => {
+                    const warningEl = document.getElementById('report-cycle-warning-msg');
+                    if (warningEl) warningEl.style.display = 'none';
+                });
+            }
+            const cycleInput = document.getElementById('cycle-count-value');
+            if (cycleInput) {
+                cycleInput.addEventListener('input', () => {
+                    const warningEl = document.getElementById('cycle-warning-msg');
+                    if (warningEl) warningEl.style.display = 'none';
+                });
             }
 
 
@@ -15559,6 +16044,11 @@ function initPublicReportPage() {
                         return;
                     }
 
+                    let cycleCountNum = null;
+                    if (cycleCountVal) {
+                        cycleCountNum = parseInt(cycleCountVal, 10);
+                    }
+
                     submitBtn.disabled = true;
                     const btnIcon = submitBtn.querySelector('i');
                     const btnText = submitBtn.querySelector('span');
@@ -15567,6 +16057,36 @@ function initPublicReportPage() {
 
                     try {
                         if (!auth.currentUser) await signInAnonymously(auth);
+
+                        // Validate cycle count if provided
+                        if (cycleCountNum !== null && !isNaN(cycleCountNum)) {
+                            const siteSnap = await getDoc(doc(db, 'sites', reportSiteId));
+                            if (siteSnap.exists()) {
+                                const site = { id: siteSnap.id, ...siteSnap.data() };
+                                const nowVal = new Date();
+                                const yearBE = String(nowVal.getFullYear() + 543);
+                                const monthKey = String(nowVal.getMonth() + 1);
+                                const prevRecord = getPreviousCycleCount(site, yearBE, monthKey);
+                                const warningEl = document.getElementById('report-cycle-warning-msg');
+
+                                if (prevRecord.val > 0 && cycleCountNum < prevRecord.val) {
+                                    const userLocale = navigator.language || 'th-TH';
+                                    const monthName = new Date(2024, prevRecord.month - 1, 1).toLocaleString(userLocale, { month: 'long' });
+                                    const errMsg = `(ไม่ต่ำกว่า ${prevRecord.val.toLocaleString()} รอบ)`;
+                                    if (warningEl) {
+                                        warningEl.textContent = errMsg;
+                                        warningEl.style.display = 'inline-block';
+                                    }
+                                    alert(`จำนวนรอบเครื่องต้องไม่น้อยกว่าค่าก่อนหน้า (${prevRecord.val.toLocaleString()} รอบ ในเดือน${monthName} พ.ศ. ${prevRecord.yearBE})`);
+                                    submitBtn.disabled = false;
+                                    if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
+                                    if (btnText) btnText.textContent = 'ส่งคำร้อง';
+                                    return;
+                                } else {
+                                    if (warningEl) warningEl.style.display = 'none';
+                                }
+                            }
+                        }
 
                         const uploadedAttachments = await uploadMediaFiles(publicReportMedia, 'public');
 
@@ -15647,43 +16167,95 @@ function initPublicReportPage() {
                     try {
                         if (!auth.currentUser) await signInAnonymously(auth);
 
-                        const uploadedAttachments = await uploadMediaFiles(publicCycleMedia, 'public-cycle');
-
-                        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-                        let caseId = 'CYC-';
-                        for (let i = 0; i < 5; i++) {
-                            caseId += chars.charAt(Math.floor(Math.random() * chars.length));
+                        const siteSnap = await getDoc(doc(db, 'sites', reportSiteId));
+                        if (!siteSnap.exists()) {
+                            alert('ไม่พบข้อมูลเครื่องในระบบ');
+                            cycleSubmitBtn.disabled = false;
+                            if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
+                            if (btnText) btnText.textContent = 'บันทึก Cycle Count';
+                            return;
                         }
+                        const site = { id: siteSnap.id, ...siteSnap.data() };
 
                         const now = new Date();
+                        const currentYear = now.getFullYear();
+                        const yearBE = String(currentYear + 543);
+                        const monthKey = String(now.getMonth() + 1);
+                        const cycleCountNum = parseInt(cycleVal, 10);
+
+                        // Validate that cycle count is not less than the previous recorded count
+                        const prevRecord = getPreviousCycleCount(site, yearBE, monthKey);
+                        const warningEl = document.getElementById('cycle-warning-msg');
+                        if (prevRecord.val > 0 && cycleCountNum < prevRecord.val) {
+                            const userLocale = navigator.language || 'th-TH';
+                            const monthName = new Date(2024, prevRecord.month - 1, 1).toLocaleString(userLocale, { month: 'long' });
+                            const errMsg = `(ไม่ต่ำกว่า ${prevRecord.val.toLocaleString()} รอบ)`;
+                            if (warningEl) {
+                                warningEl.textContent = errMsg;
+                                warningEl.style.display = 'inline-block';
+                            }
+                            alert(`จำนวนรอบต้องไม่น้อยกว่าค่าก่อนหน้า (${prevRecord.val.toLocaleString()} รอบ ในเดือน${monthName} พ.ศ. ${prevRecord.yearBE})`);
+                            cycleSubmitBtn.disabled = false;
+                            if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
+                            if (btnText) btnText.textContent = 'บันทึก Cycle Count';
+                            return;
+                        } else {
+                            if (warningEl) warningEl.style.display = 'none';
+                        }
+
+                        const uploadedAttachments = await uploadMediaFiles(publicCycleMedia, 'public-cycle');
+
                         const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
-                        const logData = {
-                            siteId: reportSiteId,
-                            caseId: caseId,
-                            category: 'Cycle Count',
-                            status: 'Completed',
-                            objective: `บันทึก Cycle Count: ${cycleVal}`,
-                            details: note || `Cycle Count: ${cycleVal}`,
-                            date: dateStr,
-                            timestamp: now.toISOString(),
-                            recordedBy: name,
-                            recorderId: 'public',
-                            isPublicReport: true,
-                            isPublicCycleCount: true,
+                        if (!site.maintenancePlans) site.maintenancePlans = {};
+                        if (Array.isArray(site.maintenancePlans[yearBE])) {
+                            const migratePlanToObjectFormat = (existingPlan) => {
+                                if (Array.isArray(existingPlan)) {
+                                    const obj = {};
+                                    existingPlan.forEach(m => { obj[String(m)] = { planned: true, cycleCount: null, inputDate: null, notes: null }; });
+                                    return obj;
+                                }
+                                return existingPlan || {};
+                            };
+                            site.maintenancePlans[yearBE] = migratePlanToObjectFormat(site.maintenancePlans[yearBE]);
+                        }
+                        if (!site.maintenancePlans[yearBE]) site.maintenancePlans[yearBE] = {};
+
+                        const existingPlan = site.maintenancePlans[yearBE][monthKey] || {};
+                        const planned = existingPlan.planned ?? false;
+                        const history = existingPlan.history || [];
+
+                        // Push previous count to history if it has changed
+                        if (existingPlan.cycleCount != null) {
+                            history.push({
+                                cycleCount: existingPlan.cycleCount,
+                                inputDate: existingPlan.inputDate,
+                                notes: existingPlan.notes,
+                                attachments: existingPlan.attachments || [],
+                                source: existingPlan.source || 'staff'
+                            });
+                        }
+
+                        site.maintenancePlans[yearBE][monthKey] = {
+                            planned: planned,
                             cycleCount: parseInt(cycleVal, 10),
-                            lineItems: [],
+                            inputDate: dateStr,
+                            planDate: existingPlan.planDate || null,
+                            notes: note || existingPlan.notes || null,
                             attachments: uploadedAttachments,
-                            attachmentsBefore: uploadedAttachments,
-                            attachmentsAfter: [],
-                            statusHistory: { 'Completed': now.toISOString() }
+                            history: history,
+                            source: 'public'
                         };
 
-                        await addDoc(collection(db, 'logs'), logData);
+                        await FirestoreService.updateSite(reportSiteId, {
+                            name: site.name,
+                            maintenancePlans: site.maintenancePlans
+                        });
+
                         showSuccessMessage(
                             'บันทึก Cycle Count สำเร็จ!',
                             `รอบเครื่อง: <strong>${parseInt(cycleVal, 10).toLocaleString()}</strong> รอบ<br>ข้อมูลถูกบันทึกเรียบร้อยแล้ว`,
-                            caseId
+                            null
                         );
                     } catch (err) {
                         console.error('Public cycle count submission failed:', err);
@@ -15752,18 +16324,29 @@ function exportAnnualPlanPDF() {
         const siteColor = getSiteColor(site.name);
         const cells = Array.from({length: 12}, (_, m) => {
             const pd = getPlanMonthData(site, selectedBE, m + 1);
-            const { planned, cycleCount, inputDate, notes } = pd;
+            const { planned, cycleCount, inputDate, planDate } = pd;
             if (!planned && cycleCount == null) return `<td style="text-align:center; padding:4px 2px; border:1px solid #ddd; background:#fff;"></td>`;
-            const isUnplanned = !planned;
-            const cellBg = isUnplanned ? '#fff' : siteColor;
-            const cellBorder = isUnplanned ? `border:1px dashed ${siteColor};` : 'border:1px solid #ddd;';
-            const textColor = isUnplanned ? siteColor : '#fff';
-            const subTextColor = isUnplanned ? '#888' : 'rgba(255,255,255,0.85)';
-            const countHtml = cycleCount != null
-                ? `<div style="color:${textColor}; font-size:8px; font-weight:700; line-height:1.2;">${Number(cycleCount).toLocaleString()} <span style="font-size:6px; font-weight:400;">รอบ</span></div>`
-                : `<span style="color:${textColor}; font-size:8px;">${isUnplanned ? '○' : '✓'}</span>`;
-            const dateHtml = inputDate ? `<div style="color:${subTextColor}; font-size:6px; margin-top:1px; white-space:nowrap;">${inputDate}</div>` : '';
-            return `<td style="text-align:center; padding:3px 2px; ${cellBorder} background:${cellBg};">${countHtml}${dateHtml}</td>`;
+            
+            const cellBg = planned ? `${siteColor}0d` : '#fff';
+            const cellBorder = 'border:1px solid #ddd;';
+            
+            let planHtml = '';
+            if (planned) {
+                planHtml = `<span style="background:${siteColor}15; color:${siteColor}; border:1px solid ${siteColor}35; font-size:6px; font-weight:700; padding:2px 5px; border-radius:2px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; white-space:nowrap;"><i class="fa-solid fa-wrench" style="font-size:6.5px;"></i>${planDate ? `<span style="font-size:5px; font-weight:500; margin-top:1px; opacity:0.85;">${planDate}</span>` : ''}</span>`;
+            }
+
+            let cycleHtml = '';
+            if (cycleCount != null) {
+                const dateHtml = inputDate ? `<span style="font-size:5px; color:${siteColor}; opacity:0.8; display:block; margin-top:1px; font-weight:normal;">${inputDate}</span>` : '';
+                cycleHtml = `<span style="background:#fff; color:${siteColor}; border:1px dashed ${siteColor}50; font-size:6px; font-weight:700; padding:2px 5px; border-radius:2px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; white-space:nowrap;"><span style="font-size:6px; font-weight:700;">${Number(cycleCount).toLocaleString()}</span>${dateHtml}</span>`;
+            }
+
+            return `<td style="position:relative; text-align:center; padding:3px 2px; ${cellBorder} background:${cellBg}; vertical-align:middle;">
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
+                    ${planHtml}
+                    ${cycleHtml}
+                </div>
+            </td>`;
         }).join('');
         const warranty = site.insuranceStartDate && site.insuranceEndDate ? `${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : '-';
         const subtleInfo = [
