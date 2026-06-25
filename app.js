@@ -8617,6 +8617,10 @@ function viewSiteDetails(id) {
                         <i class="fa-solid fa-clipboard-list"></i>
                         <span>ดูเคส</span>
                     </button>
+                    <button class="glass-btn glass-btn-secondary" onclick="showDeviceQR('${site.id}');">
+                        <i class="fa-solid fa-qrcode"></i>
+                        <span>QR Code</span>
+                    </button>
                 </div>
                 
                 <div class="action-divider"></div>
