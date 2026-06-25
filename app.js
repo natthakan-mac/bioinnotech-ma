@@ -14469,7 +14469,8 @@ function renderMaintenancePlan() {
 
                 let cycleBadgeHtml = '';
                 if (cycleCount != null) {
-                    const dateHtml = inputDate ? `<span style="font-size:0.58rem; color:${siteColor}; opacity:0.8; display:block; margin-top:2px; font-weight:600;">${inputDate}</span>` : '';
+                    const datePart = inputDate ? inputDate.split('T')[0] : '';
+                    const dateHtml = datePart ? `<span style="font-size:0.58rem; color:${siteColor}; opacity:0.8; display:block; margin-top:2px; font-weight:600;">${datePart}</span>` : '';
                     cycleBadgeHtml = `<span style="background:#fff; color:${siteColor}; border:1.5px dashed ${siteColor}60; font-size:0.7rem; font-weight:700; padding:4px 8px; border-radius:4px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.15; white-space:nowrap;"><span style="font-size:0.72rem; font-weight:700;">${Number(cycleCount).toLocaleString()}</span>${dateHtml}</span>`;
                 }
 
@@ -14976,10 +14977,13 @@ function openCycleCountModal(siteId, year, month) {
         const yearAD = parseInt(year) - 543;
         const monthStr = String(month).padStart(2, '0');
         const today = new Date();
+        const hrsStr = String(today.getHours()).padStart(2, '0');
+        const minsStr = String(today.getMinutes()).padStart(2, '0');
         if (today.getFullYear() === yearAD && (today.getMonth() + 1) === parseInt(month)) {
-            dateEl.value = today.toISOString().split('T')[0];
+            const localISO = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            dateEl.value = localISO;
         } else {
-            dateEl.value = `${yearAD}-${monthStr}-01`;
+            dateEl.value = `${yearAD}-${monthStr}-01T${hrsStr}:${minsStr}`;
         }
     }
     if (notesEl) notesEl.value = ''; // Clean for new entry notes
@@ -15037,8 +15041,8 @@ function openCycleCountModal(siteId, year, month) {
 
                 const isCustomerItem = item.source === 'customer' || item.source === 'public';
                 const itemBadge = isCustomerItem 
-                    ? `<span style="font-size:12px; font-weight:600; color:#1d4ed8; background:rgba(29,78,216,0.08); padding:1px 4px; border-radius:4px; display:inline-block; white-space:nowrap;">ลูกค้า</span>` 
-                    : `<span style="font-size:12px; font-weight:600; color:#10b981; background:rgba(16,185,129,0.08); padding:1px 4px; border-radius:4px; display:inline-block; white-space:nowrap;">เจ้าหน้าที่</span>`;
+                    ? `<span style="font-size:12px; font-weight:600; color:#1d4ed8; display:inline-block; white-space:nowrap;">ลูกค้า</span>` 
+                    : `<span style="font-size:12px; font-weight:600; color:#10b981; display:inline-block; white-space:nowrap;">เจ้าหน้าที่</span>`;
 
                 // Photo cell
                 let photoHtml = '-';
@@ -15074,8 +15078,30 @@ function openCycleCountModal(siteId, year, month) {
                     <i class="fa-solid fa-trash-can"></i>
                 </button>`;
 
+                let displayDate = '-';
+                if (item.inputDate) {
+                    try {
+                        const d = new Date(item.inputDate);
+                        if (!isNaN(d.getTime())) {
+                            const userLocale = navigator.language || 'th-TH';
+                            displayDate = d.toLocaleString(userLocale, {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: false
+                            });
+                        } else {
+                            displayDate = item.inputDate;
+                        }
+                    } catch (e) {
+                        displayDate = item.inputDate;
+                    }
+                }
+
                 tr.innerHTML = `
-                    <td style="padding:10px 8px; vertical-align:middle; color:#4b5563; font-size:12px; white-space:nowrap; min-width:90px;">${item.inputDate || '-'}</td>
+                    <td style="padding:10px 8px; vertical-align:middle; color:#4b5563; font-size:12px; white-space:nowrap; min-width:120px;">${displayDate}</td>
                     <td style="padding:10px 8px; vertical-align:middle; font-size:12px; white-space:nowrap; min-width:80px;">
                         <div style="display:flex; align-items:center; gap:3px;">
                             <span style="font-weight:700; color:#111; font-size:12px;">${item.cycleCount ? Number(item.cycleCount).toLocaleString() : '-'}</span>
@@ -16323,7 +16349,7 @@ function initPublicReportPage() {
 
                         const uploadedAttachments = await uploadMediaFiles(publicCycleMedia, 'public-cycle');
 
-                        const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+                        const dateStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
                         if (!site.maintenancePlans) site.maintenancePlans = {};
                         if (Array.isArray(site.maintenancePlans[yearBE])) {
@@ -16459,7 +16485,8 @@ function exportAnnualPlanPDF() {
 
             let cycleHtml = '';
             if (cycleCount != null) {
-                const dateHtml = inputDate ? `<span style="font-size:5px; color:${siteColor}; opacity:0.8; display:block; margin-top:1px; font-weight:normal;">${inputDate}</span>` : '';
+                const datePart = inputDate ? inputDate.split('T')[0] : '';
+                const dateHtml = datePart ? `<span style="font-size:5px; color:${siteColor}; opacity:0.8; display:block; margin-top:1px; font-weight:normal;">${datePart}</span>` : '';
                 cycleHtml = `<span style="background:#fff; color:${siteColor}; border:1px dashed ${siteColor}50; font-size:6px; font-weight:700; padding:2px 5px; border-radius:2px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; white-space:nowrap;"><span style="font-size:6px; font-weight:700;">${Number(cycleCount).toLocaleString()}</span>${dateHtml}</span>`;
             }
 
