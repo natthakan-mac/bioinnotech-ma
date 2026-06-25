@@ -11791,7 +11791,7 @@ window.onload = function() {
         pdfModal.style.cssText = 'display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; padding:16px;';
         pdfModal.innerHTML = '<div id="pdf-preview-inner" style="position:relative; width:100%; max-width:900px; height:90vh; background:#fff; border-radius:12px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.3);">'
             + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
-            + '<span id="pdf-preview-title" style="font-weight:700; font-size:14px; color:#333;">PDF Preview</span>'
+            + '<span id="pdf-preview-title" style="font-weight:700; font-size:12px; color:#333;">PDF Preview</span>'
             + '<div style="display:flex; gap:8px;">'
             + '<button id="pdf-btn-print" title="พิมพ์" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; background:#ffffff; color:#111111; border:1.5px solid #111111; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1); white-space:nowrap;" onmouseover="this.style.background=\'#111111\';this.style.color=\'#ffffff\';this.style.transform=\'scale(1.03)\';" onmouseout="this.style.background=\'#ffffff\';this.style.color=\'#111111\';this.style.transform=\'none\';"><i class="fa-solid fa-print"></i> พิมพ์</button>'
             + '<button id="pdf-btn-close" title="ปิด" style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; background:#ffffff; color:#111111; border:1.5px solid #e5e5e5; border-radius:8px; font-size:16px; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1);" onmouseover="this.style.background=\'#f3f4f6\';this.style.borderColor=\'#d1d5db\';this.style.transform=\'scale(1.05)\';" onmouseout="this.style.background=\'#ffffff\';this.style.borderColor=\'#e5e5e5\';this.style.transform=\'none\';"><i class="fa-solid fa-xmark"></i></button>'
@@ -14310,7 +14310,7 @@ function getPlanMonthData(site, year, month) {
     }
     const monthKey = String(month);
     const monthData = planData[monthKey];
-    if (!monthData) return { planned: false, cycleCount: null, inputDate: null, planDate: null, notes: null, attachments: [], history: [], source: null };
+    if (!monthData) return { planned: false, cycleCount: null, inputDate: null, planDate: null, notes: null, attachments: [], history: [], source: null, reporterName: null, reporterPhone: null };
 
     // Collect all entries with their metadata and original index
     const allEntries = [];
@@ -14321,6 +14321,8 @@ function getPlanMonthData(site, year, month) {
             notes: monthData.notes,
             attachments: monthData.attachments || [],
             source: monthData.source || 'staff',
+            reporterName: monthData.reporterName || null,
+            reporterPhone: monthData.reporterPhone || null,
             dbIsLatest: true,
             dbHistoryIndex: -1
         });
@@ -14359,7 +14361,9 @@ function getPlanMonthData(site, year, month) {
             notes: monthData.notes || null,
             attachments: [],
             history: [],
-            source: monthData.source || null
+            source: monthData.source || null,
+            reporterName: monthData.reporterName || null,
+            reporterPhone: monthData.reporterPhone || null
         };
     }
 
@@ -14378,6 +14382,8 @@ function getPlanMonthData(site, year, month) {
         attachments: latestEntry.attachments || [],
         history: historyEntries,
         source: latestEntry.source || null,
+        reporterName: latestEntry.reporterName || null,
+        reporterPhone: latestEntry.reporterPhone || null,
         dbIsLatest: latestEntry.dbIsLatest,
         dbHistoryIndex: latestEntry.dbHistoryIndex
     };
@@ -14732,6 +14738,36 @@ function isAfterTimeline(a, b) {
     return false;
 }
 
+function getLatestCycleCountFromPlans(site) {
+    if (!site || !site.maintenancePlans) return 0;
+    let maxVal = 0;
+    Object.keys(site.maintenancePlans).forEach(yStr => {
+        const planData = site.maintenancePlans[yStr];
+        if (planData && !Array.isArray(planData)) {
+            Object.keys(planData).forEach(mKey => {
+                const pd = planData[mKey];
+                if (pd && pd.cycleCount != null) {
+                    const val = parseInt(pd.cycleCount, 10);
+                    if (!isNaN(val) && val > maxVal) {
+                        maxVal = val;
+                    }
+                }
+                if (pd && pd.history && Array.isArray(pd.history)) {
+                    pd.history.forEach(item => {
+                        if (item.cycleCount != null) {
+                            const val = parseInt(item.cycleCount, 10);
+                            if (!isNaN(val) && val > maxVal) {
+                                maxVal = val;
+                            }
+                        }
+                    });
+                }
+            });
+        }
+    });
+    return maxVal;
+}
+
 function getPreviousCycleCount(site, currentYear, currentMonth) {
     const currentCoords = { yearBE: parseInt(currentYear, 10), month: parseInt(currentMonth, 10) };
     const records = [];
@@ -14968,6 +15004,9 @@ function openCycleCountModal(siteId, year, month) {
                 notes: pd.notes,
                 attachments: pd.attachments || [],
                 source: pd.source || 'staff',
+                reporterName: pd.reporterName || null,
+                reporterPhone: pd.reporterPhone || null,
+                reporterId: pd.reporterId || null,
                 dbIsLatest: pd.dbIsLatest !== undefined ? pd.dbIsLatest : true,
                 dbHistoryIndex: pd.dbHistoryIndex !== undefined ? pd.dbHistoryIndex : -1
             });
@@ -14996,41 +15035,56 @@ function openCycleCountModal(siteId, year, month) {
                 tr.onmouseenter = () => { tr.style.background = 'rgba(0,0,0,0.04)'; };
                 tr.onmouseleave = () => { tr.style.background = isVisualLatest ? 'rgba(17,17,17,0.03)' : ''; };
 
-                const isCustomerItem = item.source === 'customer';
+                const isCustomerItem = item.source === 'customer' || item.source === 'public';
                 const itemBadge = isCustomerItem 
-                    ? `<i class="fa-solid fa-qrcode" style="color:#1d4ed8; font-size:1.1rem;" title="ลูกค้าบันทึก (QR)"></i>` 
-                    : `<i class="fa-solid fa-user-shield" style="color:#10b981; font-size:1.1rem;" title="เจ้าหน้าที่ (Staff)"></i>`;
+                    ? `<span style="font-size:12px; font-weight:600; color:#1d4ed8; background:rgba(29,78,216,0.08); padding:1px 4px; border-radius:4px; display:inline-block; white-space:nowrap;">ลูกค้า</span>` 
+                    : `<span style="font-size:12px; font-weight:600; color:#10b981; background:rgba(16,185,129,0.08); padding:1px 4px; border-radius:4px; display:inline-block; white-space:nowrap;">เจ้าหน้าที่</span>`;
 
                 // Photo cell
                 let photoHtml = '-';
                 if (item.attachments && item.attachments.length > 0) {
                     const firstUrl = item.attachments[0].url || item.attachments[0];
-                    photoHtml = `<div style="width:30px; height:30px; border-radius:4px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer; margin:0 auto; display:flex;" onclick="window.openImageViewer('${firstUrl}')">
+                    photoHtml = `<div style="width:48px; height:48px; border-radius:5px; overflow:hidden; border:1px solid rgba(0,0,0,0.12); cursor:pointer; margin:0 auto; display:flex;" onclick="window.openImageViewer('${firstUrl}')">
                          <img src="${firstUrl}" style="width:100%; height:100%; object-fit:cover;">
                     </div>`;
                 }
 
+                let reporterNameText = item.reporterName || (isCustomerItem ? '-' : 'เจ้าหน้าที่');
+                let reporterPhoneText = item.reporterPhone || '-';
+                if (!isCustomerItem && item.reporterId && state.users && state.users[item.reporterId]) {
+                    const uProfile = state.users[item.reporterId];
+                    if (uProfile.displayName) reporterNameText = uProfile.displayName;
+                    if (uProfile.phone) reporterPhoneText = uProfile.phone;
+                }
                 let notesText = item.notes || '-';
                 if (notesText && typeof notesText === 'string') {
                     notesText = notesText.replace(/บันทึกโดยลูกค้า:\.?\s*/g, '').trim();
                     if (!notesText) notesText = '-';
                 }
 
-                const deleteBtnHtml = `<button type="button" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:4px 8px; font-size:0.85rem; transition:transform 0.15s ease;" onclick="deleteCycleRecord('${siteId}', ${year}, ${month}, ${item.dbIsLatest}, ${item.dbHistoryIndex})" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='none'">
+                const detailsHtml = `
+                    <div style="display:flex; flex-direction:column; gap:2px; line-height:1.3; color:#64748b; word-break:break-word; font-size:10px;">
+                        <div><span style="color:#94a3b8; font-size:10px;">ชื่อ:</span> <span style="color:#4b5563; font-weight:500; font-size:10px;">${reporterNameText}</span></div>
+                        <div><span style="color:#94a3b8; font-size:10px;">เบอร์โทร:</span> <span style="color:#4b5563; font-weight:500; font-size:10px;">${reporterPhoneText}</span></div>
+                        <div title="${notesText.replace(/"/g, '&quot;')}"><span style="color:#94a3b8; font-size:10px;">หมายเหตุ:</span> <span style="color:#64748b; font-size:10px;">${notesText}</span></div>
+                    </div>
+                `;
+
+                const deleteBtnHtml = `<button type="button" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:2px 4px; font-size:12px; transition:transform 0.15s ease;" onclick="deleteCycleRecord('${siteId}', ${year}, ${month}, ${item.dbIsLatest}, ${item.dbHistoryIndex})" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='none'">
                     <i class="fa-solid fa-trash-can"></i>
                 </button>`;
 
                 tr.innerHTML = `
-                    <td style="padding:0.45rem 0.5rem; vertical-align:middle; color:#4b5563; font-size:0.75rem;">${item.inputDate || '-'}</td>
-                    <td style="padding:0.45rem 0.5rem; vertical-align:middle;">
-                        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                            <span style="font-weight:800; color:#111; font-size:0.85rem;">${item.cycleCount ? Number(item.cycleCount).toLocaleString() : '-'}</span>
+                    <td style="padding:10px 8px; vertical-align:middle; color:#4b5563; font-size:12px; white-space:nowrap; min-width:90px;">${item.inputDate || '-'}</td>
+                    <td style="padding:10px 8px; vertical-align:middle; font-size:12px; white-space:nowrap; min-width:80px;">
+                        <div style="display:flex; align-items:center; gap:3px;">
+                            <span style="font-weight:700; color:#111; font-size:12px;">${item.cycleCount ? Number(item.cycleCount).toLocaleString() : '-'}</span>
                         </div>
                     </td>
-                    <td style="padding:0.45rem 0.5rem; vertical-align:middle; text-align:center;">${itemBadge}</td>
-                    <td style="padding:0.45rem 0.5rem; vertical-align:middle; color:#4b5563; font-size:0.75rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${notesText.replace(/"/g, '&quot;')}">${notesText}</td>
-                    <td style="padding:0.45rem 0.5rem; vertical-align:middle; text-align:center;">${photoHtml}</td>
-                    <td style="padding:0.45rem 0.5rem; vertical-align:middle; text-align:center;">${deleteBtnHtml}</td>
+                    <td style="padding:10px 8px; vertical-align:middle; text-align:center; font-size:12px; white-space:nowrap; min-width:70px;">${itemBadge}</td>
+                    <td style="padding:10px 8px; vertical-align:middle; color:#4b5563; font-size:10px; word-break:break-word; width:100%;">${detailsHtml}</td>
+                    <td style="padding:10px 8px; vertical-align:middle; text-align:center; white-space:nowrap; min-width:60px;">${photoHtml}</td>
+                    <td style="padding:10px 8px; vertical-align:middle; text-align:center; font-size:12px; white-space:nowrap; min-width:40px;">${deleteBtnHtml}</td>
                 `;
                 historyList.appendChild(tr);
             });
@@ -15104,7 +15158,10 @@ async function saveCycleCount() {
             inputDate: existingPlan.inputDate,
             notes: existingPlan.notes,
             attachments: existingPlan.attachments || [],
-            source: existingPlan.source || 'staff'
+            source: existingPlan.source || 'staff',
+            reporterName: existingPlan.reporterName || null,
+            reporterPhone: existingPlan.reporterPhone || null,
+            reporterId: existingPlan.reporterId || null
         });
     }
 
@@ -15114,6 +15171,29 @@ async function saveCycleCount() {
         let uploadedAttachments = [];
         if (staffCycleMedia.length > 0) {
             uploadedAttachments = await uploadMediaFiles(staffCycleMedia, 'cycle-count');
+        }
+
+        // Fetch staff profile info
+        let reporterName = 'เจ้าหน้าที่';
+        let reporterPhone = '';
+        const user = auth.currentUser;
+        if (user) {
+            reporterName = user.displayName || user.email || 'เจ้าหน้าที่';
+            if (state.users && state.users[user.uid]) {
+                const uData = state.users[user.uid];
+                if (uData.displayName) reporterName = uData.displayName;
+                if (uData.phone) reporterPhone = uData.phone;
+            } else {
+                try {
+                    const userDoc = await FirestoreService.getUser(user.uid);
+                    if (userDoc) {
+                        if (userDoc.displayName) reporterName = userDoc.displayName;
+                        if (userDoc.phone) reporterPhone = userDoc.phone;
+                    }
+                } catch (e) {
+                    console.error('Failed to get staff user profile:', e);
+                }
+            }
         }
 
         if (!planned && cycleCount == null && !inputDate && !notes && uploadedAttachments.length === 0) {
@@ -15128,7 +15208,10 @@ async function saveCycleCount() {
                 notes: notes || null,
                 attachments: uploadedAttachments,
                 history: history,
-                source: 'staff'
+                source: 'staff',
+                reporterName: reporterName,
+                reporterPhone: reporterPhone,
+                reporterId: user ? user.uid : null
             };
         }
 
@@ -15918,11 +16001,35 @@ function initPublicReportPage() {
                                     <div class="report-device-name-unified">${site.name || 'เครื่อง'}</div>
                                     <div class="report-device-meta-unified">
                                         ${site.serialNumber ? `<span class="report-device-meta-item"><i class="fa-solid fa-barcode"></i> S/N: ${site.serialNumber}</span>` : ''}
-                                        ${site.hospital || site.villageName ? `<span class="report-device-meta-item"><i class="fa-solid fa-location-dot"></i> ${site.hospital || site.villageName}</span>` : ''}
+                                        <span class="report-device-meta-item"><i class="fa-solid fa-tag"></i> ยี่ห้อ/รุ่น: ${[site.brand, site.model].filter(Boolean).join(' ') || '-'}</span>
                                     </div>
                                 </div>
                             </div>
                         `;
+                    }
+
+                    // Calculate and render latest cycle count dynamically
+                    const maxVal = getLatestCycleCountFromPlans(site);
+                    if (maxVal > 0) {
+                        const reportDescEl = document.getElementById('report-cycle-latest-desc');
+                        if (reportDescEl) {
+                            reportDescEl.textContent = `(ล่าสุด: ${maxVal.toLocaleString()} รอบ)`;
+                        }
+                        const reportInput = document.getElementById('report-cycle-count');
+                        if (reportInput) {
+                            reportInput.min = maxVal;
+                            reportInput.placeholder = `ต้องมีค่าอย่างน้อย ${maxVal.toLocaleString()} รอบ`;
+                        }
+
+                        const cycleDescEl = document.getElementById('cycle-latest-desc');
+                        if (cycleDescEl) {
+                            cycleDescEl.textContent = `(ล่าสุด: ${maxVal.toLocaleString()} รอบ)`;
+                        }
+                        const cycleInput = document.getElementById('cycle-count-value');
+                        if (cycleInput) {
+                            cycleInput.min = maxVal;
+                            cycleInput.placeholder = `ต้องมีค่าอย่างน้อย ${maxVal.toLocaleString()} รอบ`;
+                        }
                     }
                 } else {
                     if (deviceInfoEl) {
@@ -15982,6 +16089,20 @@ function initPublicReportPage() {
                     }
                     e.target.value = '';
                 };
+            }
+
+            // Phone input validations: allow numbers only
+            const reportTelInput = document.getElementById('report-tel');
+            if (reportTelInput) {
+                reportTelInput.addEventListener('input', (e) => {
+                    e.target.value = e.target.value.replace(/\D/g, '');
+                });
+            }
+            const cycleTelInput = document.getElementById('cycle-reporter-tel');
+            if (cycleTelInput) {
+                cycleTelInput.addEventListener('input', (e) => {
+                    e.target.value = e.target.value.replace(/\D/g, '');
+                });
             }
 
             // Clear warning labels on input
@@ -16066,18 +16187,16 @@ function initPublicReportPage() {
                                 const nowVal = new Date();
                                 const yearBE = String(nowVal.getFullYear() + 543);
                                 const monthKey = String(nowVal.getMonth() + 1);
-                                const prevRecord = getPreviousCycleCount(site, yearBE, monthKey);
+                                const maxVal = getLatestCycleCountFromPlans(site);
                                 const warningEl = document.getElementById('report-cycle-warning-msg');
 
-                                if (prevRecord.val > 0 && cycleCountNum < prevRecord.val) {
-                                    const userLocale = navigator.language || 'th-TH';
-                                    const monthName = new Date(2024, prevRecord.month - 1, 1).toLocaleString(userLocale, { month: 'long' });
-                                    const errMsg = `(ไม่ต่ำกว่า ${prevRecord.val.toLocaleString()} รอบ)`;
+                                if (maxVal > 0 && cycleCountNum < maxVal) {
+                                    const errMsg = `(ไม่ต่ำกว่า ${maxVal.toLocaleString()} รอบ)`;
                                     if (warningEl) {
                                         warningEl.textContent = errMsg;
                                         warningEl.style.display = 'inline-block';
                                     }
-                                    alert(`จำนวนรอบเครื่องต้องไม่น้อยกว่าค่าก่อนหน้า (${prevRecord.val.toLocaleString()} รอบ ในเดือน${monthName} พ.ศ. ${prevRecord.yearBE})`);
+                                    alert(`จำนวนรอบเครื่องต้องไม่น้อยกว่าค่าก่อนหน้า (${maxVal.toLocaleString()} รอบ)`);
                                     submitBtn.disabled = false;
                                     if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
                                     if (btnText) btnText.textContent = 'ส่งคำร้อง';
@@ -16145,11 +16264,12 @@ function initPublicReportPage() {
                     e.preventDefault();
 
                     const name = document.getElementById('cycle-reporter-name')?.value.trim();
+                    const tel = document.getElementById('cycle-reporter-tel')?.value.trim();
                     const cycleVal = document.getElementById('cycle-count-value')?.value.trim();
                     const note = document.getElementById('cycle-note')?.value.trim();
 
-                    if (!name || !cycleVal) {
-                        alert('กรุณากรอกชื่อและจำนวนรอบเครื่อง');
+                    if (!name || !tel || !cycleVal) {
+                        alert('กรุณากรอกชื่อ เบอร์โทร และจำนวนรอบเครื่องให้ครบถ้วน');
                         return;
                     }
 
@@ -16184,17 +16304,15 @@ function initPublicReportPage() {
                         const cycleCountNum = parseInt(cycleVal, 10);
 
                         // Validate that cycle count is not less than the previous recorded count
-                        const prevRecord = getPreviousCycleCount(site, yearBE, monthKey);
+                        const maxVal = getLatestCycleCountFromPlans(site);
                         const warningEl = document.getElementById('cycle-warning-msg');
-                        if (prevRecord.val > 0 && cycleCountNum < prevRecord.val) {
-                            const userLocale = navigator.language || 'th-TH';
-                            const monthName = new Date(2024, prevRecord.month - 1, 1).toLocaleString(userLocale, { month: 'long' });
-                            const errMsg = `(ไม่ต่ำกว่า ${prevRecord.val.toLocaleString()} รอบ)`;
+                        if (maxVal > 0 && cycleCountNum < maxVal) {
+                            const errMsg = `(ไม่ต่ำกว่า ${maxVal.toLocaleString()} รอบ)`;
                             if (warningEl) {
                                 warningEl.textContent = errMsg;
                                 warningEl.style.display = 'inline-block';
                             }
-                            alert(`จำนวนรอบต้องไม่น้อยกว่าค่าก่อนหน้า (${prevRecord.val.toLocaleString()} รอบ ในเดือน${monthName} พ.ศ. ${prevRecord.yearBE})`);
+                            alert(`จำนวนรอบต้องไม่น้อยกว่าค่าก่อนหน้า (${maxVal.toLocaleString()} รอบ)`);
                             cycleSubmitBtn.disabled = false;
                             if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
                             if (btnText) btnText.textContent = 'บันทึก Cycle Count';
@@ -16232,7 +16350,9 @@ function initPublicReportPage() {
                                 inputDate: existingPlan.inputDate,
                                 notes: existingPlan.notes,
                                 attachments: existingPlan.attachments || [],
-                                source: existingPlan.source || 'staff'
+                                source: existingPlan.source || 'staff',
+                                reporterName: existingPlan.reporterName || null,
+                                reporterPhone: existingPlan.reporterPhone || null
                             });
                         }
 
@@ -16244,7 +16364,9 @@ function initPublicReportPage() {
                             notes: note || existingPlan.notes || null,
                             attachments: uploadedAttachments,
                             history: history,
-                            source: 'public'
+                            source: 'public',
+                            reporterName: name,
+                            reporterPhone: tel
                         };
 
                         await FirestoreService.updateSite(reportSiteId, {
@@ -16284,7 +16406,7 @@ function showPdfPreview(html, title) {
         pdfModal.style.cssText = 'display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; padding:16px;';
         pdfModal.innerHTML = '<div style="position:relative; width:100%; max-width:1100px; height:90vh; background:#fff; border-radius:12px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.3);">'
             + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
-            + '<span id="pdf-preview-title" style="font-weight:700; font-size:14px; color:#333;">PDF Preview</span>'
+            + '<span id="pdf-preview-title" style="font-weight:700; font-size:12px; color:#333;">PDF Preview</span>'
             + '<div style="display:flex; gap:8px;">'
             + '<button id="pdf-btn-print" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; background:#ffffff; color:#111111; border:1.5px solid #111111; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1); white-space:nowrap;" onmouseover="this.style.background=\'#111111\';this.style.color=\'#ffffff\';this.style.transform=\'scale(1.03)\';" onmouseout="this.style.background=\'#ffffff\';this.style.color=\'#111111\';this.style.transform=\'none\';"><i class="fa-solid fa-print"></i> พิมพ์</button>'
             + '<button id="pdf-btn-close" style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; background:#ffffff; color:#111111; border:1.5px solid #e5e5e5; border-radius:8px; font-size:16px; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1);" onmouseover="this.style.background=\'#f3f4f6\';this.style.borderColor=\'#d1d5db\';this.style.transform=\'scale(1.05)\';" onmouseout="this.style.background=\'#ffffff\';this.style.borderColor=\'#e5e5e5\';this.style.transform=\'none\';"><i class="fa-solid fa-xmark"></i></button>'
@@ -16391,7 +16513,7 @@ function exportAnnualPlanPDF() {
 </div>
 <div class="header-line"></div>
 <div class="page-content">
-<h1 style="text-align:center; font-size:14px; margin:0 0 8px;">แผนการบำรุงรักษาประจำปี ${displayYear}</h1>
+<h1 style="text-align:center; font-size:12px; margin:0 0 8px;">แผนการบำรุงรักษาประจำปี ${displayYear}</h1>
 <p style="text-align:center; font-size:9px; color:#666; margin:0 0 10px;">Annual Maintenance Plan — จำนวนอุปกรณ์ ${(state.sites || []).length} เครื่อง</p>
 <table>
     <thead>

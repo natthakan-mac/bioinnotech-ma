@@ -288,11 +288,10 @@
         .report-device-loaded-unified {
             display: flex;
             align-items: center;
-            gap: 1.15rem;
             background: var(--surface-ground);
             border: 1.5px solid var(--border-color);
-            border-radius: 18px;
-            padding: 1.25rem;
+            border-radius: 14px;
+            padding: 0.85rem 1.15rem;
             box-shadow: none;
         }
 
@@ -359,7 +358,7 @@
 
         .report-device-meta-item i {
             font-size: 0.72rem;
-            color: #8bc53f; /* Brand Green Accent */
+            color: #64748b; /* Neutral Gray */
             width: 12px;
             text-align: center;
         }
@@ -1112,7 +1111,7 @@
             </div>
 
             <!-- ===== MODE: Report Issue Form ===== -->
-            <form id="public-report-form" class="public-report-form" autocomplete="off" style="display:none;">
+            <form id="public-report-form" class="public-report-form" autocomplete="off" style="display:none;" novalidate>
                 <button type="button" class="portal-back-btn" id="btn-back-from-report">
                     <i class="fa-solid fa-arrow-left"></i> กลับ
                 </button>
@@ -1153,6 +1152,7 @@
                     <label class="public-report-label">
                         <i class="fa-solid fa-gauge-high"></i>
                         จำนวนรอบเครื่อง (Cycle Count)
+                        <span id="report-cycle-latest-desc" style="color: #64748b; font-size: 0.82rem; font-weight: normal; margin-left: 0.25rem;"></span>
                         <span id="report-cycle-warning-msg" style="color: var(--danger-color); font-size: 0.78rem; font-weight: 600; margin-left: 0.5rem; display: none;"></span>
                     </label>
                     <input type="number" id="report-cycle-count" class="public-report-input"
@@ -1182,7 +1182,7 @@
             </form>
 
             <!-- ===== MODE: Cycle Count Form ===== -->
-            <form id="public-cycle-form" class="public-report-form" autocomplete="off" style="display:none;">
+            <form id="public-cycle-form" class="public-report-form" autocomplete="off" style="display:none;" novalidate>
                 <button type="button" class="portal-back-btn" id="btn-back-from-cycle">
                     <i class="fa-solid fa-arrow-left"></i> กลับ
                 </button>
@@ -1213,6 +1213,7 @@
                     <label class="public-report-label">
                         <i class="fa-solid fa-gauge-high"></i>
                         จำนวนรอบเครื่อง (Cycle Count) <span class="required-star">*</span>
+                        <span id="cycle-latest-desc" style="color: #64748b; font-size: 0.82rem; font-weight: normal; margin-left: 0.25rem;"></span>
                         <span id="cycle-warning-msg" style="color: var(--danger-color); font-size: 0.78rem; font-weight: 600; margin-left: 0.5rem; display: none;"></span>
                     </label>
                     <input type="number" id="cycle-count-value" class="public-report-input"
@@ -4132,15 +4133,15 @@
                     <span>รายการบันทึกรอบเครื่องทั้งหมด (All Records)</span>
                 </label>
                 <div style="max-height:200px; overflow-y:auto; border:1px solid rgba(0,0,0,0.08); border-radius:8px; background:#fff;">
-                    <table style="width:100%; border-collapse:collapse; font-size:0.8rem; text-align:left;">
+                    <table style="width:100%; border-collapse:collapse; font-size:12px; text-align:left; table-layout:auto;">
                         <thead style="position:sticky; top:0; background:#f8fafc; z-index:10; box-shadow:0 1px 0 rgba(0,0,0,0.08);">
                             <tr>
-                                <th style="padding:0.5rem; font-weight:700; color:#475569; width:16%;">วันที่บันทึก</th>
-                                <th style="padding:0.5rem; font-weight:700; color:#475569; width:20%;">จำนวนรอบ</th>
-                                <th style="padding:0.5rem; font-weight:700; color:#475569; width:10%; text-align:center;">ผู้บันทึก</th>
-                                <th style="padding:0.5rem; font-weight:700; color:#475569; width:38%;">หมายเหตุ</th>
-                                <th style="padding:0.5rem; font-weight:700; color:#475569; width:10%; text-align:center;">รูปถ่าย</th>
-                                <th style="padding:0.5rem; font-weight:700; color:#475569; width:6%; text-align:center;">ลบ</th>
+                                <th style="padding:4px 8px; font-weight:700; color:#374151; white-space:nowrap; font-size:12px; min-width:90px;">วันที่บันทึก</th>
+                                <th style="padding:4px 8px; font-weight:700; color:#374151; white-space:nowrap; font-size:12px; min-width:80px;">จำนวนรอบ</th>
+                                <th style="padding:4px 8px; font-weight:700; color:#374151; white-space:nowrap; text-align:center; font-size:12px; min-width:70px;">ผู้บันทึก</th>
+                                <th style="padding:4px 8px; font-weight:700; color:#374151; width:100%; font-size:12px;">รายละเอียด</th>
+                                <th style="padding:4px 8px; font-weight:700; color:#374151; white-space:nowrap; text-align:center; font-size:12px; min-width:60px;">รูปถ่าย</th>
+                                <th style="padding:4px 8px; font-weight:700; color:#374151; white-space:nowrap; text-align:center; font-size:12px; min-width:40px;">ลบ</th>
                             </tr>
                         </thead>
                         <tbody id="cycle-history-list">

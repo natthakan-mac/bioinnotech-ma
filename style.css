@@ -1031,7 +1031,7 @@ h2 {
    - .modal-layer-form    (2100) — Edit/create form modals
    - .modal-layer-action  (2200) — Action modals (signature, confirm inline)
    - .modal-layer-confirm (2300) — Delete confirm, destructive actions
-   - .modal-layer-top     (9999) — System dialogs (alert/confirm)
+   - .modal-layer-top     (10050) — System dialogs (alert/confirm)
    
    Any new modal just needs the right class. No need to add CSS per ID.
 */
@@ -1039,7 +1039,7 @@ h2 {
 .modal-layer-form    { z-index: 2100 !important; }
 .modal-layer-action  { z-index: 2200 !important; }
 .modal-layer-confirm { z-index: 2300 !important; }
-.modal-layer-top     { z-index: 9999 !important; }
+.modal-layer-top     { z-index: 10050 !important; }
 
 .modal-overlay.hidden {
     opacity: 0;
