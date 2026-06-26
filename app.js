@@ -71,6 +71,12 @@ import {
     signInAnonymously,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+import {
+    getFunctions,
+    httpsCallable,
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
+
+
 
 // Helper: check if category is a maintenance-type category
 function isMaCategory(cat) {
@@ -315,6 +321,8 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
 const auth = getAuth(app);
+const functions = getFunctions(app, "asia-southeast1");
+
 
 // --- Auth Workflow Initialization ---
 const initAuthWorkflow = async () => {
@@ -976,11 +984,17 @@ const FirestoreService = {
         siteData.updatedAt = serverTimestamp();
         siteData.createdAt = serverTimestamp();
         const docRef = await addDoc(collection(db, "sites"), siteData);
+        const siteId = docRef.id;
         await this.logAction("SITE", "ADD", `Added new site: ${siteData.name}`, {
-            siteId: docRef.id,
+            siteId: siteId,
             data: siteData,
         });
-        return docRef.id;
+        // Fire notification asynchronously (non-blocking)
+        try {
+            const notifyNewSite = httpsCallable(functions, 'notifyNewSite');
+            notifyNewSite({ siteId: siteId, siteData: siteData }).catch(e => console.warn('notifyNewSite error:', e));
+        } catch (e) { console.warn('notifyNewSite init error:', e); }
+        return siteId;
     },
 
     async updateSite(id, siteData) {
@@ -1340,18 +1354,24 @@ const FirestoreService = {
             logData.caseId = this.generateCaseId();
         }
         const docRef = await addDoc(collection(db, "logs"), logData);
+        const logId = docRef.id;
         await this.logAction("LOG", "ADD", `Added logs: ${logData.objective}`, {
-            logId: docRef.id,
+            logId: logId,
             caseId: logData.caseId,
             data: { ...logData, _cachedSiteName: (state.sites.find(s => s.id === logData.siteId) || {}).name || '-' },
         });
-        return docRef.id;
+        // Fire notification asynchronously (non-blocking)
+        try {
+            const notifyNewMARecord = httpsCallable(functions, 'notifyNewMARecord');
+            notifyNewMARecord({ logId: logId, logData: logData }).catch(e => console.warn('notifyNewMARecord error:', e));
+        } catch (e) { console.warn('notifyNewMARecord init error:', e); }
+        return logId;
     },
 
     async updateLog(id, logData) {
         const logRef = doc(db, "logs", id);
 
-        // Fetch previous data for logging
+        // Fetch previous data for logging and status-change notification
         let previousData = null;
         try {
             const docSnap = await getDoc(logRef);
@@ -1359,6 +1379,7 @@ const FirestoreService = {
         } catch (e) {
             console.warn("Could not fetch previous log data", e);
         }
+        const beforeStatus = previousData ? previousData.status : undefined;
 
         // Overwrite Recorder with Current User
         if (auth.currentUser) {
@@ -1373,6 +1394,11 @@ const FirestoreService = {
             data: { ...logData, _cachedSiteName: (state.sites.find(s => s.id === logData.siteId) || {}).name || '-' },
             previousData: previousData,
         });
+        // Fire status-change notification asynchronously (non-blocking)
+        try {
+            const notifyMAStatusUpdate = httpsCallable(functions, 'notifyMAStatusUpdate');
+            notifyMAStatusUpdate({ logId: id, beforeStatus: beforeStatus, afterData: logData }).catch(e => console.warn('notifyMAStatusUpdate error:', e));
+        } catch (e) { console.warn('notifyMAStatusUpdate init error:', e); }
     },
 
     async deleteLog(id) {
@@ -15538,7 +15564,7 @@ function showDeviceQR(siteId) {
                     </div>
 
                     <!-- Scan hint -->
-                    <div style="font-size:0.72rem; color:#6b7280; margin-bottom:12px;">สแกนเพื่อแจ้งปัญหาเครื่อง</div>
+                    <div style="font-size:0.72rem; color:#6b7280; margin-bottom:12px;">สแกนเพื่อแจ้งปัญหาเครื่อง<br>หรือ บันทึก Cycle Count</div>
 
                     <!-- Device name -->
                     <div style="font-size:0.95rem; font-weight:700; color:#111; margin-bottom:4px;">${site.name}</div>
@@ -15584,158 +15610,259 @@ function showDeviceQR(siteId) {
                 renderCard(qrDataUrl);
             });
         } else {
+            // Fetch external QR image as blob and convert to data URL to avoid tainted canvas
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(reportUrl)}`;
-            renderCard(qrUrl);
+            fetch(qrUrl)
+                .then(res => res.blob())
+                .then(blob => {
+                    const reader = new FileReader();
+                    reader.onload = () => renderCard(reader.result);
+                    reader.onerror = () => renderCard(qrUrl); // fallback: show img but can't download
+                    reader.readAsDataURL(blob);
+                })
+                .catch(() => renderCard(qrUrl));
         }
 
-        // Download: render full card as PNG using Canvas 2D API
+
+        // Download: render card PNG matching buildCardHtml exactly (2× scale)
         const btnDownload = document.getElementById('btn-download-qr');
         if (btnDownload) {
             btnDownload.onclick = async () => {
                 try {
-                    const W = 560, PAD = 40;
-                    // Measure text heights
-                    const oc = document.createElement('canvas');
-                    oc.width = W;
-                    // We'll draw in passes — first calculate total height
-                    const lines = [];
-                    lines.push({ type: 'accent',   h: 8 });
-                    lines.push({ type: 'gap',       h: PAD });
-                    lines.push({ type: 'logo',      h: 44 });
-                    lines.push({ type: 'gap',       h: 24 });
-                    lines.push({ type: 'qr',        h: 360 });
-                    lines.push({ type: 'gap',       h: 24 });
-                    lines.push({ type: 'hint',      h: 28 });
-                    lines.push({ type: 'name',      h: 40 });
-                    if (site.installLocation || site.villageName) lines.push({ type: 'loc', h: 28 });
-                    if (site.siteCode || site.serialNumber)       lines.push({ type: 'badges', h: 32 });
-                    if (hotline)                                   lines.push({ type: 'hotline', h: 30 });
-                    lines.push({ type: 'gap',       h: PAD });
-                    lines.push({ type: 'footer',    h: 48 });
+                    const S = 2; // 2× retina scale
+                    const CW = 280 * S; // card width = 560px
 
-                    const totalH = lines.reduce((s, l) => s + l.h, 0);
+                    // Helper: fetch any URL → blob → data URL (avoids tainted canvas)
+                    const toDataUrl = async (src) => {
+                        try {
+                            const blob = await fetch(src).then(r => r.blob());
+                            return await new Promise((res, rej) => {
+                                const fr = new FileReader();
+                                fr.onload = () => res(fr.result);
+                                fr.onerror = rej;
+                                fr.readAsDataURL(blob);
+                            });
+                        } catch { return null; }
+                    };
+
+                    const loadImg = (src) => new Promise(res => {
+                        if (!src) return res(null);
+                        const img = new Image();
+                        img.onload = () => res(img);
+                        img.onerror = () => res(null);
+                        img.src = src;
+                    });
+
+                    // Pre-load logo and QR in parallel
+                    const [logoDataUrl, qrImg] = await Promise.all([
+                        toDataUrl('/bioinnotech.svg'),
+                        loadImg(cachedQrDataUrl),
+                    ]);
+                    const logoImg = await loadImg(logoDataUrl);
+
+                    // ── Layout constants mirroring buildCardHtml (scaled × S) ──
+                    const accentH    = 4  * S;
+                    const bPadT      = 20 * S;   // body top padding
+                    const bPadH      = 20 * S;   // body horizontal padding (not used for clip, just reference)
+                    const bPadB      = 16 * S;   // body bottom padding
+                    const logoH      = 22 * S;   // logo image height (html: 22px)
+                    const logoGap    = 8  * S;   // gap between logo and company name
+                    const afterLogoRow = 12 * S; // margin-bottom on company row
+                    const qrBorder   = 1.5* S;
+                    const qrPad      = 8  * S;
+                    const qrSize     = 180 * S;
+                    const qrBoxR     = 10 * S;
+                    const qrBoxW     = qrSize + qrPad * 2;
+                    const qrBoxH     = qrSize + qrPad * 2;
+                    const afterQrBox = 14 * S;   // margin-bottom on QR box
+                    const hintPx     = Math.round(0.72 * 16 * S);
+                    const afterHint  = 12 * S;
+                    const namePx     = Math.round(0.95 * 16 * S);
+                    const locPx      = Math.round(0.75 * 16 * S);
+                    const badgePx    = Math.round(0.68 * 16 * S);
+                    const badgePadH  = 8  * S;
+                    const badgePadV  = 2  * S;
+                    const badgeR     = 6  * S;
+                    const badgeGap   = 6  * S;
+                    const hotlinePx  = Math.round(0.78 * 16 * S);
+                    const footerPadV = 7  * S;
+                    const footerPx   = Math.round(0.62 * 16 * S);
+
+                    // Calculate total height
+                    const hintH = hintPx * 2 + 2 * S;
+                    let bodyH = bPadT + logoH + afterLogoRow + qrBoxH + afterQrBox + hintH + afterHint + namePx;
+                    if (site.installLocation || site.villageName) bodyH += 4 * S + locPx;
+                    const badges = [site.siteCode, site.serialNumber ? `S/N: ${site.serialNumber}` : ''].filter(Boolean);
+                    if (badges.length) bodyH += 6 * S + badgePx + badgePadV * 2;
+                    if (hotline)       bodyH += 10 * S + hotlinePx;
+                    bodyH += bPadB;
+                    const footerH = footerPadV + footerPx + footerPadV;
+                    const totalH  = accentH + bodyH + footerH;
+
+                    // ── Canvas setup ──
+                    const oc = document.createElement('canvas');
+                    oc.width  = CW;
                     oc.height = totalH;
                     const ctx = oc.getContext('2d');
 
-                    // Background
+                    // White background + rounded-rect clip (border-radius: 16px)
                     ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, W, totalH);
-
-                    // Rounded rect clip
-                    const r = 24;
+                    ctx.fillRect(0, 0, CW, totalH);
+                    const cardR = 16 * S;
+                    ctx.save();
                     ctx.beginPath();
-                    ctx.moveTo(r, 0); ctx.lineTo(W - r, 0);
-                    ctx.quadraticCurveTo(W, 0, W, r);
-                    ctx.lineTo(W, totalH - r);
-                    ctx.quadraticCurveTo(W, totalH, W - r, totalH);
-                    ctx.lineTo(r, totalH);
-                    ctx.quadraticCurveTo(0, totalH, 0, totalH - r);
-                    ctx.lineTo(0, r);
-                    ctx.quadraticCurveTo(0, 0, r, 0);
+                    ctx.moveTo(cardR, 0); ctx.lineTo(CW - cardR, 0);
+                    ctx.arcTo(CW, 0, CW, cardR, cardR);
+                    ctx.lineTo(CW, totalH - cardR);
+                    ctx.arcTo(CW, totalH, CW - cardR, totalH, cardR);
+                    ctx.lineTo(cardR, totalH);
+                    ctx.arcTo(0, totalH, 0, totalH - cardR, cardR);
+                    ctx.lineTo(0, cardR);
+                    ctx.arcTo(0, 0, cardR, 0, cardR);
                     ctx.closePath();
                     ctx.clip();
 
-                    // Draw each section
-                    let y = 0;
-                    // Polyfill roundRect for older browsers
-                    if (!ctx.roundRect) {
-                        ctx.roundRect = function(x, y, w, h, r) {
-                            this.moveTo(x + r, y);
-                            this.lineTo(x + w - r, y);
-                            this.quadraticCurveTo(x + w, y, x + w, y + r);
-                            this.lineTo(x + w, y + h - r);
-                            this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-                            this.lineTo(x + r, y + h);
-                            this.quadraticCurveTo(x, y + h, x, y + h - r);
-                            this.lineTo(x, y + r);
-                            this.quadraticCurveTo(x, y, x + r, y);
-                            this.closePath();
-                        };
-                    }
-                    for (const line of lines) {
-                        if (line.type === 'accent') {
-                            const grad = ctx.createLinearGradient(0, 0, W, 0);
-                            grad.addColorStop(0, '#8bc53f');
-                            grad.addColorStop(1, '#38bdf8');
-                            ctx.fillStyle = grad;
-                            ctx.fillRect(0, y, W, line.h);
-                        } else if (line.type === 'logo') {
-                            ctx.font = 'bold 26px Sarabun, Arial, sans-serif';
-                            ctx.fillStyle = '#374151';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            ctx.fillText(companyName, W / 2, y + line.h / 2);
-                        } else if (line.type === 'qr' && cachedQrDataUrl) {
-                            await new Promise(res => {
-                                const img = new Image();
-                                img.onload = () => {
-                                    const qrSize = 320;
-                                    const qx = (W - qrSize) / 2;
-                                    // QR border box
-                                    ctx.strokeStyle = '#e5e7eb';
-                                    ctx.lineWidth = 3;
-                                    ctx.beginPath();
-                                    const br = 12;
-                                    ctx.roundRect(qx - 16, y, qrSize + 32, line.h, br);
-                                    ctx.stroke();
-                                    ctx.fillStyle = '#ffffff';
-                                    ctx.fill();
-                                    ctx.drawImage(img, qx, y + (line.h - qrSize) / 2, qrSize, qrSize);
-                                    res();
-                                };
-                                img.onerror = res;
-                                img.src = cachedQrDataUrl;
-                            });
-                        } else if (line.type === 'hint') {
-                            ctx.font = '24px Sarabun, Arial, sans-serif';
-                            ctx.fillStyle = '#6b7280';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            ctx.fillText('สแกนเพื่อแจ้งปัญหาเครื่อง', W / 2, y + line.h / 2);
-                        } else if (line.type === 'name') {
-                            ctx.font = 'bold 32px Sarabun, Arial, sans-serif';
-                            ctx.fillStyle = '#111111';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            ctx.fillText(site.name, W / 2, y + line.h / 2);
-                        } else if (line.type === 'loc') {
-                            ctx.font = '22px Sarabun, Arial, sans-serif';
-                            ctx.fillStyle = '#6b7280';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            ctx.fillText(site.installLocation || site.villageName, W / 2, y + line.h / 2);
-                        } else if (line.type === 'badges') {
-                            ctx.font = 'bold 20px Sarabun, Arial, sans-serif';
-                            ctx.fillStyle = '#374151';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            const badgeText = [
-                                site.siteCode,
-                                site.serialNumber ? `S/N: ${site.serialNumber}` : ''
-                            ].filter(Boolean).join('   ');
-                            ctx.fillText(badgeText, W / 2, y + line.h / 2);
-                        } else if (line.type === 'hotline') {
-                            ctx.font = 'bold 24px Sarabun, Arial, sans-serif';
-                            ctx.fillStyle = '#000000';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            ctx.fillText(`สายด่วน: ${hotline}`, W / 2, y + line.h / 2);
-                        } else if (line.type === 'footer') {
-                            ctx.fillStyle = '#f9fafb';
-                            ctx.fillRect(0, y, W, line.h);
-                            ctx.strokeStyle = '#e5e7eb';
-                            ctx.lineWidth = 1;
-                            ctx.beginPath();
-                            ctx.moveTo(0, y); ctx.lineTo(W, y);
-                            ctx.stroke();
-                            ctx.font = '18px Sarabun, Arial, sans-serif';
-                            ctx.fillStyle = '#9ca3af';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            ctx.fillText('CASP Maintenance System', W / 2, y + line.h / 2);
+                    // ── Accent bar ──
+                    const accentGrad = ctx.createLinearGradient(0, 0, CW, 0);
+                    accentGrad.addColorStop(0, '#8bc53f');
+                    accentGrad.addColorStop(1, '#38bdf8');
+                    ctx.fillStyle = accentGrad;
+                    ctx.fillRect(0, 0, CW, accentH);
+
+                    let y = accentH + bPadT;
+
+                    // ── Company row: logo img + gap + name (centered) ──
+                    {
+                        ctx.font = `700 ${Math.round(0.72 * 16 * S)}px Sarabun, Arial, sans-serif`;
+                        const textW = ctx.measureText(companyName).width;
+                        const logoDrawW = logoImg ? Math.round(logoH * (logoImg.width / logoImg.height)) : 0;
+                        const rowW = logoDrawW + (logoImg ? logoGap : 0) + textW;
+                        let rx = (CW - rowW) / 2;
+                        if (logoImg) {
+                            ctx.drawImage(logoImg, rx, y + (logoH - logoH) / 2, logoDrawW, logoH);
+                            rx += logoDrawW + logoGap;
                         }
-                        y += line.h;
+                        ctx.fillStyle = '#374151';
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(companyName, rx, y + logoH / 2);
                     }
+                    y += logoH + afterLogoRow;
+
+                    // ── QR box ──
+                    {
+                        const bx = (CW - qrBoxW) / 2;
+                        // Draw rounded box (border + fill)
+                        ctx.beginPath();
+                        ctx.moveTo(bx + qrBoxR, y);
+                        ctx.lineTo(bx + qrBoxW - qrBoxR, y);
+                        ctx.arcTo(bx + qrBoxW, y, bx + qrBoxW, y + qrBoxR, qrBoxR);
+                        ctx.lineTo(bx + qrBoxW, y + qrBoxH - qrBoxR);
+                        ctx.arcTo(bx + qrBoxW, y + qrBoxH, bx + qrBoxW - qrBoxR, y + qrBoxH, qrBoxR);
+                        ctx.lineTo(bx + qrBoxR, y + qrBoxH);
+                        ctx.arcTo(bx, y + qrBoxH, bx, y + qrBoxH - qrBoxR, qrBoxR);
+                        ctx.lineTo(bx, y + qrBoxR);
+                        ctx.arcTo(bx, y, bx + qrBoxR, y, qrBoxR);
+                        ctx.closePath();
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fill();
+                        ctx.strokeStyle = '#e5e7eb';
+                        ctx.lineWidth = qrBorder;
+                        ctx.stroke();
+                        if (qrImg) ctx.drawImage(qrImg, bx + qrPad, y + qrPad, qrSize, qrSize);
+                    }
+                    y += qrBoxH + afterQrBox;
+
+                    // ── Scan hint ──
+                    ctx.font = `${hintPx}px Sarabun, Arial, sans-serif`;
+                    ctx.fillStyle = '#6b7280';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('สแกนเพื่อแจ้งปัญหาเครื่อง', CW / 2, y + hintPx / 2);
+                    ctx.fillText('หรือ บันทึก Cycle Count', CW / 2, y + hintPx * 1.5 + 2 * S);
+                    y += (hintPx * 2 + 2 * S) + afterHint;
+
+                    // ── Device name ──
+                    ctx.font = `700 ${namePx}px Sarabun, Arial, sans-serif`;
+                    ctx.fillStyle = '#111111';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(site.name || '', CW / 2, y + namePx / 2);
+                    y += namePx;
+
+                    // ── Location ──
+                    if (site.installLocation || site.villageName) {
+                        y += 4 * S;
+                        ctx.font = `${locPx}px Sarabun, Arial, sans-serif`;
+                        ctx.fillStyle = '#6b7280';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(site.installLocation || site.villageName, CW / 2, y + locPx / 2);
+                        y += locPx;
+                    }
+
+                    // ── Badges (pill-shaped, same as HTML) ──
+                    if (badges.length) {
+                        y += 6 * S;
+                        ctx.font = `600 ${badgePx}px Sarabun, Arial, sans-serif`;
+                        const bWs = badges.map(b => ctx.measureText(b).width + badgePadH * 2);
+                        const totalBW = bWs.reduce((a, b) => a + b, 0) + (badges.length - 1) * badgeGap;
+                        const bh = badgePx + badgePadV * 2;
+                        let bx = (CW - totalBW) / 2;
+                        badges.forEach((badge, i) => {
+                            const bw = bWs[i];
+                            ctx.beginPath();
+                            ctx.moveTo(bx + badgeR, y);
+                            ctx.lineTo(bx + bw - badgeR, y);
+                            ctx.arcTo(bx + bw, y, bx + bw, y + badgeR, badgeR);
+                            ctx.lineTo(bx + bw, y + bh - badgeR);
+                            ctx.arcTo(bx + bw, y + bh, bx + bw - badgeR, y + bh, badgeR);
+                            ctx.lineTo(bx + badgeR, y + bh);
+                            ctx.arcTo(bx, y + bh, bx, y + bh - badgeR, badgeR);
+                            ctx.lineTo(bx, y + badgeR);
+                            ctx.arcTo(bx, y, bx + badgeR, y, badgeR);
+                            ctx.closePath();
+                            ctx.fillStyle = '#f3f4f6';
+                            ctx.fill();
+                            ctx.fillStyle = '#374151';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(badge, bx + bw / 2, y + bh / 2);
+                            bx += bw + badgeGap;
+                        });
+                        y += bh;
+                    }
+
+                    // ── Hotline ──
+                    if (hotline) {
+                        y += 10 * S;
+                        ctx.font = `600 ${hotlinePx}px Sarabun, Arial, sans-serif`;
+                        ctx.fillStyle = '#000000';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(`สายด่วน: ${hotline}`, CW / 2, y + hotlinePx / 2);
+                        y += hotlinePx;
+                    }
+
+                    y += bPadB;
+
+                    // ── Footer ──
+                    ctx.fillStyle = '#f9fafb';
+                    ctx.fillRect(0, y, CW, footerH);
+                    ctx.strokeStyle = '#e5e7eb';
+                    ctx.lineWidth = 1 * S;
+                    ctx.beginPath();
+                    ctx.moveTo(0, y); ctx.lineTo(CW, y);
+                    ctx.stroke();
+                    ctx.font = `${footerPx}px Sarabun, Arial, sans-serif`;
+                    ctx.fillStyle = '#9ca3af';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.letterSpacing = `${0.04 * footerPx}px`;
+                    ctx.fillText('CASP MAINTENANCE SYSTEM', CW / 2, y + footerH / 2);
+                    ctx.letterSpacing = '0px';
+
+                    ctx.restore(); // end clip
 
                     // Trigger download
                     const a = document.createElement('a');
@@ -15749,6 +15876,7 @@ function showDeviceQR(siteId) {
                 }
             };
         }
+
 
         // Copy link
         const btnCopy = document.getElementById('btn-copy-qr-link');

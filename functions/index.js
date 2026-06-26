@@ -1,4 +1,8 @@
 const functions = require("firebase-functions");
+const { onCall } = require("firebase-functions/v2/https");
+const { setGlobalOptions } = require("firebase-functions/v2");
+
+setGlobalOptions({ region: "asia-southeast1" });
 const admin = require("firebase-admin");
 const axios = require("axios");
 const nodemailer = require("nodemailer");
@@ -625,228 +629,174 @@ async function sendLineMANotification(channelAccessToken, userId, maInfo, isNew 
     }
 }
 
-exports.onNewSiteAdded = functions.region("asia-southeast1").firestore
-    .document("sites/{siteId}")
-    .onCreate(async (snap, context) => {
-        const siteData = snap.data();
-        const siteId = context.params.siteId;
+// ─── HTTPS Callable Notification Functions ───────────────────────────────────
+// These replace Firestore triggers because asia-southeast3 (Bangkok) does not
+// yet support Eventarc-based Firestore triggers. The client calls these
+// functions directly after successful Firestore writes.
 
-        // Prevent notifications for old documents (created more than 5 minutes ago)
-        // This prevents re-triggering notifications if functions are redeployed
-        const createdAt = siteData.createdAt?.toDate?.() || new Date();
-        const now = new Date();
-        const ageInMinutes = (now - createdAt) / 1000 / 60;
-        
-        if (ageInMinutes > 5) {
-            console.log(`Skipping notification for old site (${ageInMinutes.toFixed(1)} minutes old):`, siteData.name);
-            return { success: true, message: "Skipped old document" };
+exports.notifyNewSite = onCall({ cors: true }, async (request) => {
+    // Only authenticated users may call this
+    if (!request.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
+    }
+
+    const { siteId, siteData } = request.data;
+    if (!siteId || !siteData) {
+        throw new functions.https.HttpsError('invalid-argument', 'siteId and siteData are required');
+    }
+
+    // Get notification settings
+    const settings = await getNotificationSettings();
+    if (!settings) {
+        console.log("No notification settings found, skipping notifications");
+        return { success: true, message: "No notification settings configured" };
+    }
+
+    const siteInfo = {
+        id: siteId,
+        siteCode: siteData.siteCode || "-",
+        name: siteData.name || "-",
+        description: siteData.description || "-",
+        fullAddress: buildFullAddress(siteData),
+        agency: siteData.responsibleAgency || "-",
+        contactPhone: siteData.contactPhone || "-",
+        locationUrl: siteData.locationUrl || "",
+        province: siteData.province || "-",
+        district: siteData.district || "-",
+        subdistrict: siteData.subdistrict || "-",
+        insuranceStartDate: siteData.insuranceStartDate || "-",
+        insuranceEndDate: siteData.insuranceEndDate || "-",
+        maintenanceCycle: siteData.maintenanceCycle ? `${siteData.maintenanceCycle} วัน` : "-",
+        firstMaDate: siteData.firstMaDate || "-",
+        timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
+    };
+
+    const notifications = [];
+
+    if (settings.telegram && settings.telegram.enabled && settings.telegram.botToken && settings.telegram.chatId) {
+        notifications.push(sendTelegramNotification(settings.telegram.botToken, settings.telegram.chatId, siteInfo));
+    }
+    if (settings.line && settings.line.enabled && settings.line.channelAccessToken && settings.line.userId) {
+        notifications.push(sendLineNotification(settings.line.channelAccessToken, settings.line.userId, siteInfo));
+    }
+    if (settings.smtp && settings.smtp.enabled && settings.smtp.host && settings.smtp.user) {
+        notifications.push(sendEmailNotification(settings.smtp, siteInfo));
+    }
+
+    await Promise.allSettled(notifications);
+    return { success: true, message: "Site notifications processed" };
+});
+
+exports.notifyNewMARecord = onCall({ cors: true }, async (request) => {
+    if (!request.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
+    }
+
+    const { logId, logData } = request.data;
+    if (!logId || !logData) {
+        throw new functions.https.HttpsError('invalid-argument', 'logId and logData are required');
+    }
+
+    const settings = await getNotificationSettings();
+    if (!settings) {
+        console.log("No notification settings found, skipping notifications");
+        return { success: true, message: "No notification settings configured" };
+    }
+
+    // Get site name
+    let siteName = "-";
+    if (logData.siteId) {
+        try {
+            const siteDoc = await db.collection('sites').doc(logData.siteId).get();
+            if (siteDoc.exists) siteName = siteDoc.data().name || "-";
+        } catch (e) {
+            console.error("Error fetching site:", e);
         }
+    }
 
-        // Get notification settings
-        const settings = await getNotificationSettings();
+    const maInfo = {
+        logId: logId,
+        caseId: logData.caseId || logId,
+        siteName: siteName,
+        category: logData.category || "-",
+        status: getThaiStatus(logData.status),
+        date: logData.date ? new Date(logData.date).toLocaleDateString('th-TH') : "-",
+        objective: logData.objective || "",
+        timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
+    };
 
-        // If no settings configured, skip all notifications
-        if (!settings) {
-            console.log("No notification settings found, skipping notifications");
-            return { success: true, message: "No notification settings configured" };
+    const notifications = [];
+
+    if (settings.telegram && settings.telegram.enabled && settings.telegram.botToken && settings.telegram.chatId) {
+        notifications.push(sendTelegramMANotification(settings.telegram.botToken, settings.telegram.chatId, maInfo, true));
+    }
+    if (settings.line && settings.line.enabled && settings.line.channelAccessToken && settings.line.userId) {
+        notifications.push(sendLineMANotification(settings.line.channelAccessToken, settings.line.userId, maInfo, true));
+    }
+    if (settings.smtp && settings.smtp.enabled && settings.smtp.host && settings.smtp.user && settings.smtp.recipients && settings.smtp.recipients.length > 0) {
+        notifications.push(sendEmailMANotification(settings.smtp, maInfo, true));
+    }
+
+    await Promise.allSettled(notifications);
+    return { success: true, message: "MA record notifications processed" };
+});
+
+exports.notifyMAStatusUpdate = onCall({ cors: true }, async (request) => {
+    if (!request.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
+    }
+
+    const { logId, beforeStatus, afterData } = request.data;
+    if (!logId || !afterData) {
+        throw new functions.https.HttpsError('invalid-argument', 'logId and afterData are required');
+    }
+
+    // Only notify if status actually changed
+    if (beforeStatus === afterData.status) {
+        console.log("Status unchanged, skipping notification");
+        return { success: true, message: "Status unchanged" };
+    }
+
+    const settings = await getNotificationSettings();
+    if (!settings) {
+        console.log("No notification settings found, skipping notifications");
+        return { success: true, message: "No notification settings configured" };
+    }
+
+    let siteName = "-";
+    if (afterData.siteId) {
+        try {
+            const siteDoc = await db.collection('sites').doc(afterData.siteId).get();
+            if (siteDoc.exists) siteName = siteDoc.data().name || "-";
+        } catch (e) {
+            console.error("Error fetching site:", e);
         }
+    }
 
-        // Prepare standardized notification data
-        const siteInfo = {
-            id: siteId,
-            siteCode: siteData.siteCode || "-",
-            name: siteData.name || "-",
-            description: siteData.description || "-",
-            fullAddress: buildFullAddress(siteData),
-            agency: siteData.responsibleAgency || "-",
-            contactPhone: siteData.contactPhone || "-",
-            locationUrl: siteData.locationUrl || "",
-            province: siteData.province || "-",
-            district: siteData.district || "-",
-            subdistrict: siteData.subdistrict || "-",
-            insuranceStartDate: siteData.insuranceStartDate || "-",
-            insuranceEndDate: siteData.insuranceEndDate || "-",
-            maintenanceCycle: siteData.maintenanceCycle ? `${siteData.maintenanceCycle} วัน` : "-",
-            firstMaDate: siteData.firstMaDate || "-",
-            timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
-        };
+    const maInfo = {
+        logId: logId,
+        caseId: afterData.caseId || logId,
+        siteName: siteName,
+        category: afterData.category || "-",
+        status: getThaiStatus(afterData.status),
+        date: afterData.date ? new Date(afterData.date).toLocaleDateString('th-TH') : "-",
+        objective: afterData.objective || "",
+        timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
+    };
 
-        // Send notifications to enabled channels
-        const notifications = [];
+    const notifications = [];
 
-        if (settings.telegram && settings.telegram.enabled && settings.telegram.botToken && settings.telegram.chatId) {
-            notifications.push(sendTelegramNotification(settings.telegram.botToken, settings.telegram.chatId, siteInfo));
-        } else {
-            console.log("Telegram notifications disabled or not configured");
-        }
+    if (settings.telegram && settings.telegram.enabled && settings.telegram.botToken && settings.telegram.chatId) {
+        notifications.push(sendTelegramMANotification(settings.telegram.botToken, settings.telegram.chatId, maInfo, false));
+    }
+    if (settings.line && settings.line.enabled && settings.line.channelAccessToken && settings.line.userId) {
+        notifications.push(sendLineMANotification(settings.line.channelAccessToken, settings.line.userId, maInfo, false));
+    }
+    if (settings.smtp && settings.smtp.enabled && settings.smtp.host && settings.smtp.user && settings.smtp.recipients && settings.smtp.recipients.length > 0) {
+        notifications.push(sendEmailMANotification(settings.smtp, maInfo, false));
+    }
 
-        if (settings.line && settings.line.enabled && settings.line.channelAccessToken && settings.line.userId) {
-            notifications.push(sendLineNotification(settings.line.channelAccessToken, settings.line.userId, siteInfo));
-        } else {
-            console.log("LINE notifications disabled or not configured");
-        }
+    await Promise.allSettled(notifications);
+    return { success: true, message: "MA status update notifications processed" };
+});
 
-        if (settings.smtp && settings.smtp.enabled && settings.smtp.host && settings.smtp.user) {
-            notifications.push(sendEmailNotification(settings.smtp, siteInfo));
-        } else {
-            console.log("Email notifications disabled or not configured");
-        }
-
-        // Wait for all notifications to complete
-        await Promise.allSettled(notifications);
-
-        return { success: true, message: "Notifications processed" };
-    });
-
-// Trigger when a new MA record is created
-exports.onNewMARecord = functions.region("asia-southeast1").firestore
-    .document("logs/{logId}")
-    .onCreate(async (snap, context) => {
-        const logData = snap.data();
-        const logId = context.params.logId;
-
-        // Prevent notifications for old documents (created more than 5 minutes ago)
-        const createdAt = logData.createdAt?.toDate?.() || new Date();
-        const now = new Date();
-        const ageInMinutes = (now - createdAt) / 1000 / 60;
-        
-        if (ageInMinutes > 5) {
-            console.log(`Skipping notification for old MA record (${ageInMinutes.toFixed(1)} minutes old):`, logData.caseId);
-            return { success: true, message: "Skipped old document" };
-        }
-
-        // Get notification settings
-        const settings = await getNotificationSettings();
-
-        // If no settings configured, skip all notifications
-        if (!settings) {
-            console.log("No notification settings found, skipping notifications");
-            return { success: true, message: "No notification settings configured" };
-        }
-
-        // Get site information
-        let siteName = "-";
-        if (logData.siteId) {
-            try {
-                const siteDoc = await db.collection('sites').doc(logData.siteId).get();
-                if (siteDoc.exists) {
-                    siteName = siteDoc.data().name || "-";
-                }
-            } catch (error) {
-                console.error("Error fetching site:", error);
-            }
-        }
-
-        // Prepare standardized notification data
-        const maInfo = {
-            logId: logId,
-            caseId: logData.caseId || logId,
-            siteName: siteName,
-            category: logData.category || "-",
-            status: getThaiStatus(logData.status),
-            date: logData.date ? new Date(logData.date).toLocaleDateString('th-TH') : "-",
-            objective: logData.objective || "",
-            timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
-        };
-
-        // Send notifications to enabled channels
-        const notifications = [];
-
-        if (settings.telegram && settings.telegram.enabled && settings.telegram.botToken && settings.telegram.chatId) {
-            notifications.push(sendTelegramMANotification(settings.telegram.botToken, settings.telegram.chatId, maInfo, true));
-        } else {
-            console.log("Telegram notifications disabled or not configured");
-        }
-
-        if (settings.line && settings.line.enabled && settings.line.channelAccessToken && settings.line.userId) {
-            notifications.push(sendLineMANotification(settings.line.channelAccessToken, settings.line.userId, maInfo, true));
-        } else {
-            console.log("LINE notifications disabled or not configured");
-        }
-
-        if (settings.smtp && settings.smtp.enabled && settings.smtp.host && settings.smtp.user && settings.smtp.recipients && settings.smtp.recipients.length > 0) {
-            notifications.push(sendEmailMANotification(settings.smtp, maInfo, true));
-        } else {
-            console.log("Email notifications disabled or not configured");
-        }
-
-        // Wait for all notifications to complete
-        await Promise.allSettled(notifications);
-
-        return { success: true, message: "MA record notifications processed" };
-    });
-
-// Trigger when MA record status is updated
-exports.onMAStatusUpdate = functions.region("asia-southeast1").firestore
-    .document("logs/{logId}")
-    .onUpdate(async (change, context) => {
-        const beforeData = change.before.data();
-        const afterData = change.after.data();
-        const logId = context.params.logId;
-
-        // Only trigger if status changed
-        if (beforeData.status === afterData.status) {
-            console.log("Status unchanged, skipping notification");
-            return { success: true, message: "Status unchanged" };
-        }
-
-        // Get notification settings
-        const settings = await getNotificationSettings();
-
-        // If no settings configured, skip all notifications
-        if (!settings) {
-            console.log("No notification settings found, skipping notifications");
-            return { success: true, message: "No notification settings configured" };
-        }
-
-        // Get site information
-        let siteName = "-";
-        if (afterData.siteId) {
-            try {
-                const siteDoc = await db.collection('sites').doc(afterData.siteId).get();
-                if (siteDoc.exists) {
-                    siteName = siteDoc.data().name || "-";
-                }
-            } catch (error) {
-                console.error("Error fetching site:", error);
-            }
-        }
-
-        // Prepare standardized notification data
-        const maInfo = {
-            logId: logId,
-            caseId: afterData.caseId || logId,
-            siteName: siteName,
-            category: afterData.category || "-",
-            status: getThaiStatus(afterData.status),
-            date: afterData.date ? new Date(afterData.date).toLocaleDateString('th-TH') : "-",
-            objective: afterData.objective || "",
-            timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
-        };
-
-        // Send notifications to enabled channels
-        const notifications = [];
-
-        if (settings.telegram && settings.telegram.enabled && settings.telegram.botToken && settings.telegram.chatId) {
-            notifications.push(sendTelegramMANotification(settings.telegram.botToken, settings.telegram.chatId, maInfo, false));
-        } else {
-            console.log("Telegram notifications disabled or not configured");
-        }
-
-        if (settings.line && settings.line.enabled && settings.line.channelAccessToken && settings.line.userId) {
-            notifications.push(sendLineMANotification(settings.line.channelAccessToken, settings.line.userId, maInfo, false));
-        } else {
-            console.log("LINE notifications disabled or not configured");
-        }
-
-        if (settings.smtp && settings.smtp.enabled && settings.smtp.host && settings.smtp.user && settings.smtp.recipients && settings.smtp.recipients.length > 0) {
-            notifications.push(sendEmailMANotification(settings.smtp, maInfo, false));
-        } else {
-            console.log("Email notifications disabled or not configured");
-        }
-
-        // Wait for all notifications to complete
-        await Promise.allSettled(notifications);
-
-        return { success: true, message: "MA status update notifications processed" };
-    });
