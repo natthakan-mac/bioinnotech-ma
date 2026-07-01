@@ -4104,14 +4104,10 @@ async function handleLogMaintenance(e) {
             category: formData.get("category") || "อื่นๆ",
             status: formData.get("status") || (logId ? (state.logs.find(l => l.id === logId)?.status || "Open") : "Open"),
             responderId: formData.get("responderId") || "",
-            lineItems: getLineItems(),
-            details:
-                getLineItems()
-                    .map((li) => li.item)
-                    .filter(Boolean)
-                    .join(", ") || "-",
+            lineItems: [],
+            details: formData.get("objective") || "",
             objective: formData.get("objective"),
-            cost: getLineItems().reduce((s, li) => s + (li.cost || 0), 0),
+            cost: 0,
             attachments: attachments,
             attachmentsBefore: attachmentsBefore,
             attachmentsAfter: attachmentsAfter,
@@ -6563,23 +6559,9 @@ function editLog(logId) {
     const descriptionTextarea = document.getElementById('log-description');
     if (descriptionTextarea && log.comments && log.comments.length > 0) {
         const firstComment = log.comments[0];
-        descriptionTextarea.value = firstComment.text || "";
-        
-        // Restore description attachments from first comment
-        if (firstComment.attachments && firstComment.attachments.length > 0) {
-            // Store attachments for preview (we'll need to handle these specially)
-            // Note: These are already uploaded, so we just show them in preview
-            descriptionAttachments = firstComment.attachments.map(att => ({
-                name: att.name,
-                url: att.url,
-                type: att.type,
-                size: att.size,
-                isExisting: true // Mark as existing so we don't re-upload
-            }));
-            updateDescriptionAttachmentPreview();
-        }
+        descriptionTextarea.value = firstComment.text || log.objective || log.details || "";
     } else if (descriptionTextarea) {
-        descriptionTextarea.value = "";
+        descriptionTextarea.value = log.objective || log.details || "";
         descriptionAttachments = [];
         updateDescriptionAttachmentPreview();
     }
@@ -6612,7 +6594,8 @@ function editLog(logId) {
     const detailsInput = form.querySelector('input[name="details"]');
     if (detailsInput) detailsInput.value = log.details || "";
 
-    form.querySelector('input[name="cost"]').value = formatCurrency(log.cost);
+    const costInput = form.querySelector('input[name="cost"]');
+    if (costInput) costInput.value = formatCurrency(log.cost);
     // form.querySelector('textarea[name="notes"]').value = log.notes || ''; // Removed
 
     // Attachments (Process Before, After, and Legacy)
@@ -6653,9 +6636,10 @@ function editLog(logId) {
     inspKeys.forEach(key => checkRadios(key, log[key]));
 
     // Customer fields
-    setField("customerName", log.customerName);
-    setField("customerPhone", log.customerPhone);
-    setField("customerPosition", log.customerPosition);
+    // When editing, completed-customer fields must be entered anew and not pre-filled from CASP Service reporter data.
+    setField("customerName", "");
+    setField("customerPhone", "");
+    setField("customerPosition", "");
 
     // E-signature toggle
     const eSignToggle = document.getElementById("use-esignature-toggle");
@@ -6766,7 +6750,25 @@ function editLog(logId) {
     repairPhotoPending = (log.repairPhotos || []).slice();
     window.repairPhotoPending = repairPhotoPending;
     renderRepairPhotoPreview();
-    descriptionAttachments = (log.descriptionAttachments || []).slice();
+    const descriptionAttachmentSources = [
+        ...(log.descriptionAttachments || []),
+        ...((log.comments && log.comments[0] && log.comments[0].attachments) || []),
+    ];
+    if (log.category === 'ซ่อม') {
+        descriptionAttachmentSources.push(...(log.attachments || []));
+    }
+    const seenDescriptionAttachments = new Set();
+    descriptionAttachments = descriptionAttachmentSources
+        .map((att) => ({
+            ...att,
+            isExisting: true,
+        }))
+        .filter((att) => {
+            const key = att.url || `${att.name || ''}|${att.type || ''}|${att.size || ''}`;
+            if (seenDescriptionAttachments.has(key)) return false;
+            seenDescriptionAttachments.add(key);
+            return !!key;
+        });
     window.descriptionAttachments = descriptionAttachments;
     updateDescriptionAttachmentPreview();
 
@@ -10290,8 +10292,7 @@ function viewLogDetails(id) {
             ...(log.installPhotos || []),
             ...(log.preInstallPhotos || []),
           ];
-    const totalAttachments = attachmentsBefore.length + attachmentsAfter.length +
-        descriptionAttachments.length + repairPhotos.length;
+    const totalAttachments = descriptionAttachments.length + repairPhotos.length;
 
     if (attachSection && attachContent) {
         if (totalAttachments > 0) {
@@ -10322,9 +10323,7 @@ function viewLogDetails(id) {
 
             attachContent.innerHTML =
                 renderGroup('ไฟล์ประกอบคำอธิบายงาน', 'fa-solid fa-file-lines', descriptionAttachments) +
-                renderGroup('รูปถ่ายการซ่อม', 'fa-solid fa-camera', repairPhotos) +
-                renderGroup('ก่อนซ่อม (Before)', 'fa-solid fa-arrow-right-to-bracket', attachmentsBefore) +
-                renderGroup('หลังซ่อม (After)', 'fa-solid fa-arrow-right-from-bracket', attachmentsAfter);
+                renderGroup('รูปหลังซ่อม', 'fa-solid fa-camera', repairPhotos);
         } else {
             attachSection.style.display = "none";
         }
@@ -10659,29 +10658,49 @@ function viewLogDetails(id) {
         repairContent.innerHTML = rHtml;
     }
 
-    // Customer Information Section
+    // Completed Customer Information Section
     const custSection = document.getElementById("detail-customer-section");
     const custContent = document.getElementById("detail-customer-content");
     if (custSection && custContent) {
+        const reporterName = log.reporterName || log.recordedBy || (log.customerName && !log.customerSignature ? log.customerName : '');
+        const reporterPhone = log.reporterPhone || (log.customerPhone && !log.customerSignature ? log.customerPhone : '');
+        const reporterPosition = log.reporterPosition || '';
+        const hasReporterInfo = reporterName || reporterPhone || reporterPosition;
+        custSection.style.display = hasReporterInfo ? "block" : "none";
+        let custHtml = '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem 1.5rem;">';
+        const custRow = (label, value) => `<div style="display:flex; flex-direction:column; padding:0.4rem 0;"><span style="font-size:0.8rem; color:#888;">${label}</span><span style="font-size:0.9rem; font-weight:500; color:#111;">${value || '-'}</span></div>`;
+        custHtml += custRow('ชื่อผู้แจ้ง', reporterName || '-');
+        custHtml += custRow('เบอร์โทร', reporterPhone || '-');
+        custHtml += custRow('ตำแหน่ง', reporterPosition || '-');
+        custHtml += '</div>';
+        custContent.innerHTML = custHtml;
+    }
+
+    const finishedSection = document.getElementById("detail-customer-completed-section");
+    const finishedContent = document.getElementById("detail-customer-completed-content");
+    if (finishedSection && finishedContent) {
         const custName = log.customerName || '';
         const custPhone = log.customerPhone || '';
         const custPos = log.customerPosition || '';
         const custSig = log.customerSignature || '';
-        custSection.style.display = "block";
+        const hasFinishedInfo = custSig || log.status === 'Done' ||
+            (log.statusSignatures && log.statusSignatures['Done']) ||
+            (Array.isArray(log.signedDocAttachments) && log.signedDocAttachments.length > 0);
+        finishedSection.style.display = hasFinishedInfo ? "block" : "none";
         let custHtml = '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem 1.5rem;">';
         const custRow = (label, value) => `<div style="display:flex; flex-direction:column; padding:0.4rem 0;"><span style="font-size:0.8rem; color:#888;">${label}</span><span style="font-size:0.9rem; font-weight:500; color:#111;">${value || '-'}</span></div>`;
-        custHtml += custRow('ชื่อลูกค้า', custName);
+        custHtml += custRow('ชื่อผู้จบงาน', custName);
         custHtml += custRow('เบอร์โทร', custPhone);
         custHtml += custRow('ตำแหน่ง', custPos);
         custHtml += '</div>';
         if (custSig) {
             custHtml += '<div style="margin-top:0.75rem;">';
-            custHtml += '<span style="font-size:0.8rem; color:#888; display:block; margin-bottom:0.35rem;">ลายเซ็นลูกค้า</span>';
+            custHtml += '<span style="font-size:0.8rem; color:#888; display:block; margin-bottom:0.35rem;">ลายเซ็นผู้จบงาน</span>';
             custHtml += '<div style="border:1px solid rgba(0,0,0,0.08); border-radius:8px; padding:0.5rem; background:#fafafa; display:inline-block;">';
             custHtml += '<img src="' + custSig + '" style="max-height:80px; max-width:200px; object-fit:contain; display:block;" alt="Customer Signature">';
             custHtml += '</div></div>';
         }
-        custContent.innerHTML = custHtml;
+        finishedContent.innerHTML = custHtml;
     }
 
     const postBtn = document.getElementById("btn-post-comment");
@@ -11175,6 +11194,10 @@ async function exportCasePDF(logId) {
     const responderSignature = responderUser?.signature || '';
 
     // Get Done signature — prefer customer fields (always synced), fallback to statusSignatures
+    const reporterName = log.reporterName || log.recordedBy || log.customerName || '-';
+    const reporterPhone = log.reporterPhone || log.customerPhone || '-';
+    const reporterPosition = log.reporterPosition || log.customerPosition || '-';
+
     let doneSignature = log.customerSignature || '';
     let doneName = log.customerName || '-';
     let customerTel = log.customerPhone || '-';
@@ -11671,7 +11694,8 @@ ${isRepairPdf ? `
 <h2>ข้อมูลผู้แจ้ง</h2>
 <div style="font-size:10px; line-height:1.8; padding:4px 0;">
     <span class="label">โรงพยาบาล:</span> ${site.name} &nbsp;&nbsp; <span class="label">หน่วยงาน:</span> ${site.installLocation || site.villageName || '-'} &nbsp;&nbsp; <span class="label">ที่อยู่:</span> ${[site.subdistrict, site.district, site.province].filter(Boolean).join(', ') || '-'}<br>
-    <span class="label">ชื่อผู้แจ้ง:</span> ${doneName !== '-' ? doneName : (site.picName || '-')} &nbsp;&nbsp; <span class="label">เบอร์โทร:</span> ${customerTel !== '-' ? customerTel : (site.contactPhone || '-')}
+    <span class="label">ชื่อผู้แจ้ง:</span> ${reporterName !== '-' ? reporterName : (site.picName || '-')} &nbsp;&nbsp; <span class="label">เบอร์โทร:</span> ${reporterPhone !== '-' ? reporterPhone : (site.contactPhone || '-')}
+    &nbsp;&nbsp; <span class="label">ตำแหน่ง:</span> ${reporterPosition !== '-' ? reporterPosition : '-'}
 </div>
 </div>
 ` : ''}
@@ -11706,10 +11730,10 @@ ${inspHtml}
 
 
 <div class="section-block">
-<h2>ข้อมูลลูกค้า</h2>
+<h2>ข้อมูลลูกค้าผู้จบงาน</h2>
 <table style="font-size:10px; border:1px solid #ddd; border-radius:6px;">
     <tr style="border-bottom:1px solid #eee;">
-        <td style="padding:4px 8px; font-weight:700; width:33%;">ชื่อผู้รับมอบงาน</td>
+        <td style="padding:4px 8px; font-weight:700; width:33%;">ชื่อผู้จบงาน</td>
         <td style="padding:4px 8px; font-weight:700; width:33%;">เบอร์โทร</td>
         <td style="padding:4px 8px; font-weight:700; width:34%;">ตำแหน่ง</td>
     </tr>
@@ -11739,9 +11763,8 @@ ${log.installPhotos.map(function(img) { return '<div style="border:1px solid #ee
 ${(() => {
     const descAtts = [...(log.descriptionAttachments || []), ...(log.attachments || [])].filter(a => a.url && !a.type?.startsWith('video/'));
     const repairAtts = (log.repairPhotos || []).filter(a => a.url && !a.type?.startsWith('video/'));
-    const beforeAtts = (log.attachmentsBefore || []).filter(a => a.url && !a.type?.startsWith('video/'));
     const afterAtts = (log.attachmentsAfter || []).filter(a => a.url && !a.type?.startsWith('video/'));
-    const hasAny = descAtts.length || repairAtts.length || beforeAtts.length || afterAtts.length;
+    const hasAny = descAtts.length || repairAtts.length || afterAtts.length;
     if (!hasAny) return '';
     const renderPhotoSection = (title, items) => {
         if (!items.length) return '';
@@ -11753,8 +11776,7 @@ ${items.map(function(img) { return '<div style="border:1px solid #eee; border-ra
     };
     return `<div style="page-break-before: always;">
 ${renderPhotoSection('ไฟล์ประกอบคำอธิบายงาน', descAtts)}
-${renderPhotoSection('รูปถ่ายการซ่อม', repairAtts)}
-${renderPhotoSection('รูปถ่ายก่อนซ่อม (Before Repair)', beforeAtts)}
+${renderPhotoSection('รูปหลังซ่อม', repairAtts)}
 ${renderPhotoSection('รูปถ่ายหลังซ่อม (After Repair)', afterAtts)}
 </div>`;
 })()
@@ -16292,12 +16314,13 @@ function initPublicReportPage() {
                 const titleEl = document.getElementById('report-success-title');
                 const textEl = document.getElementById('report-success-text');
                 const caseIdDisplay = document.getElementById('report-case-id-display');
+                const displayCaseId = caseId ? caseId.replace(/^CASE-/, '') : '';
 
                 if (titleEl) titleEl.textContent = title;
                 if (textEl) textEl.innerHTML = text;
                 if (caseIdDisplay) {
                     if (caseId) {
-                        caseIdDisplay.innerHTML = `<i class="fa-solid fa-ticket"></i> รหัสเคส: <strong>${caseId}</strong>`;
+                        caseIdDisplay.innerHTML = `<i class="fa-solid fa-ticket"></i> รหัสเคส: <strong>${displayCaseId}</strong>`;
                         caseIdDisplay.style.display = 'flex';
                     } else {
                         caseIdDisplay.style.display = 'none';
@@ -16315,6 +16338,7 @@ function initPublicReportPage() {
 
                     const name = document.getElementById('report-name')?.value.trim();
                     const tel = document.getElementById('report-tel')?.value.trim();
+                    const position = document.getElementById('report-position')?.value.trim();
                     const description = document.getElementById('report-description')?.value.trim();
                     const cycleCountVal = document.getElementById('report-cycle-count')?.value.trim();
 
@@ -16367,11 +16391,7 @@ function initPublicReportPage() {
 
                         const uploadedAttachments = await uploadMediaFiles(publicReportMedia, 'public');
 
-                        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-                        let caseId = 'RPT-';
-                        for (let i = 0; i < 5; i++) {
-                            caseId += chars.charAt(Math.floor(Math.random() * chars.length));
-                        }
+                        const caseId = FirestoreService.generateCaseId();
                         
                         const now = new Date();
                         const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
@@ -16379,7 +16399,7 @@ function initPublicReportPage() {
                         const logData = {
                             siteId: reportSiteId,
                             caseId: caseId,
-                            category: 'แจ้งซ่อม',
+                            category: 'ซ่อม',
                             status: 'Open',
                             objective: description,
                             details: description,
@@ -16387,13 +16407,14 @@ function initPublicReportPage() {
                             timestamp: now.toISOString(),
                             recordedBy: name,
                             recorderId: 'public',
-                            customerName: name,
-                            customerPhone: tel,
+                            reporterName: name,
+                            reporterPhone: tel,
+                            reporterPosition: position || '',
                             isPublicReport: true,
                             cycleCount: cycleCountVal ? parseInt(cycleCountVal, 10) : null,
                             lineItems: [],
                             attachments: uploadedAttachments,
-                            attachmentsBefore: uploadedAttachments,
+                            attachmentsBefore: [],
                             attachmentsAfter: [],
                             statusHistory: { 'Open': now.toISOString() }
                         };

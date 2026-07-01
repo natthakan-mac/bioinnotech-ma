@@ -240,7 +240,15 @@
             z-index: 2;
             display: flex;
             align-items: center;
-            gap: 1.15rem;
+            gap: 2rem;
+        }
+
+        .brand-text-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 0;
+            padding-left: 0.1rem;
         }
 
         .brand-logo-container {
@@ -288,6 +296,7 @@
         .report-device-loaded-unified {
             display: flex;
             align-items: center;
+            gap: 0.9rem;
             background: var(--surface-ground);
             border: 1.5px solid var(--border-color);
             border-radius: 14px;
@@ -306,6 +315,7 @@
             justify-content: center;
             font-size: 1.35rem;
             flex-shrink: 0;
+            margin-right: 0.15rem;
         }
 
         .report-device-details-unified {
@@ -1120,10 +1130,15 @@
                     <span>แจ้งปัญหาเครื่อง</span>
                 </div>
 
+                <div class="ma-section" style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.06); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+                    <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa-solid fa-user-pen" style="color: #111111;"></i> ผู้แจ้ง (Reporter)
+                    </h4>
+
                 <div class="public-report-field">
                     <label class="public-report-label">
                         <i class="fa-solid fa-user"></i>
-                        ชื่อ-นามสกุล <span class="required-star">*</span>
+                        ชื่อผู้แจ้ง <span class="required-star">*</span>
                     </label>
                     <input type="text" id="report-name" class="public-report-input" placeholder="กรอกชื่อ-นามสกุลของคุณ"
                         required>
@@ -1132,10 +1147,21 @@
                 <div class="public-report-field">
                     <label class="public-report-label">
                         <i class="fa-solid fa-phone"></i>
-                        เบอร์โทรศัพท์ <span class="required-star">*</span>
+                        เบอร์โทรผู้แจ้ง <span class="required-star">*</span>
                     </label>
                     <input type="tel" id="report-tel" class="public-report-input" placeholder="08XXXXXXXX"
                         inputmode="numeric" required>
+                </div>
+
+                <div class="public-report-field">
+                    <label class="public-report-label">
+                        <i class="fa-solid fa-briefcase"></i>
+                        ตำแหน่งผู้แจ้ง
+                    </label>
+                    <input type="text" id="report-position" class="public-report-input" placeholder="ตำแหน่งงานหรือฝ่ายงาน"
+                        autocomplete="off">
+                </div>
+
                 </div>
 
                 <div class="public-report-field">
@@ -3329,11 +3355,11 @@
                     </button>
                     <input type="hidden" name="repairChecklistJSON" id="repair-checklist-json">
 
-                    <!-- รูปถ่ายการซ่อม -->
+                    <!-- รูปหลังซ่อม -->
                     <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(0,0,0,0.06);">
                         <label
                             style="margin: 0 0 0.5rem 0; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
-                            <i class="fa-solid fa-camera"></i> รูปถ่ายการซ่อม (Repair Photos)
+                            <i class="fa-solid fa-camera"></i> รูปหลังซ่อม (Repair Photos)
                         </label>
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.5rem;">
                             <input type="file" id="repair-photo-input" multiple accept="image/*,video/*"
@@ -3402,30 +3428,14 @@
                     </p>
                 </div>
 
-                <div onclick="toggleFormCostSection()"
-                    style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; background: rgba(0,0,0,0.02); padding: 0.5rem 0.75rem; border: 1px solid rgba(0,0,0,0.06); border-radius: 8px;">
-                    <label style="margin: 0; cursor: pointer; font-weight: 600; color: #111;"><i
-                            class="fa-solid fa-list"></i> รายการและค่าใช้จ่าย (Items & Cost)</label>
-                    <i id="form-cost-collapse-icon" class="fa-solid fa-chevron-down"
-                        style="font-size: 0.8rem; transition: transform 0.2s; opacity: 0.5;"></i>
-                </div>
-                <div id="form-cost-section-content" style="display: none;">
-                    <div id="line-items-container"></div>
-                    <div id="line-items-footer-placeholder"></div>
-                </div>
-                <input type="hidden" name="lineItemsJSON" id="line-items-json">
-                <input type="hidden" name="details" id="log-details-input" value="">
-                <input type="hidden" name="cost" id="log-cost-hidden" value="0">
             </div>
 
-            <datalist id="log-details-list"></datalist>
-
-            <!-- Customer Information -->
+            <!-- Completed Customer Information -->
             <div class="ma-section" id="form-customer-section"
                 style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.06); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
                 <h4
                     style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fa-solid fa-user-check" style="color: #111111;"></i> ข้อมูลลูกค้า (Customer Information)
+                    <i class="fa-solid fa-user-check" style="color: #111111;"></i> ข้อมูลลูกค้าผู้จบงาน (Completed Customer Information)
                 </h4>
                 
                 <!-- E-Signature Toggle -->
@@ -3892,23 +3902,12 @@
             <div id="detail-customer-content" style="font-size: 0.88rem; line-height: 1.7; padding: 0.75rem 0;"></div>
         </div>
 
-        <!-- Cost Section (full width) -->
-        <div class="case-detail-section" style="margin-bottom: 1.25rem;">
-            <div onclick="toggleCostSection()" class="case-detail-section-header"
-                style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
-                <div><i class="fa-solid fa-receipt"></i> รายละเอียดงาน & ค่าใช้จ่าย</div>
-                <i id="cost-collapse-icon" class="fa-solid fa-chevron-down"
-                    style="font-size: 0.65rem; transition: transform 0.2s; opacity: 0.5;"></i>
+        <!-- Completed Customer Section -->
+        <div class="case-detail-section" id="detail-customer-completed-section" style="display: none; margin-bottom: 1.25rem;">
+            <div class="case-detail-section-header">
+                <i class="fa-solid fa-user-check"></i> ข้อมูลลูกค้าผู้จบงาน (Completed Customer Information)
             </div>
-            <div id="cost-section-content" style="display: none;">
-                <div class="bill-receipt-box">
-                    <div id="detail-log-details" class="bill-receipt-content">-</div>
-                    <div class="bill-receipt-footer">
-                        <span class="bill-receipt-total-label">ยอดรวมสุทธิ</span>
-                        <span id="detail-log-cost" class="bill-receipt-total-value">-</span>
-                    </div>
-                </div>
-            </div>
+            <div id="detail-customer-completed-content" style="font-size: 0.88rem; line-height: 1.7; padding: 0.75rem 0;"></div>
         </div>
 
         <!-- Comments (full width) -->
