@@ -165,5 +165,7 @@ firebase login
 firebase deploy
 ```
 
+จ้ะจิงจาา
+
 ---
 *© 2026 BIO Thailand Group. All rights reserved. Proprietary software developed by BIO Innotech Co., Ltd.*
