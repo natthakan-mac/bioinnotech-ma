@@ -6954,6 +6954,24 @@ async function currentUserHasProfileSignature() {
     return !!(userDoc && userDoc.signature);
 }
 
+async function requireAdminManagerProfileSignature(newStatus) {
+    const user = auth.currentUser;
+    if (!user) return true;
+    const userDoc = await FirestoreService.getUser(user.uid);
+    const isAdminOrManager = userDoc?.role === 'admin' || userDoc?.role === 'manager';
+    if (!isAdminOrManager) return true;
+
+    if (newStatus === 'Cancel' || newStatus === 'Case Closed') {
+        if (!userDoc.signature) {
+            await showDialog("บัญชีของคุณยังไม่ได้บันทึกลายเซ็นในข้อมูลส่วนตัว กรุณาเพิ่มลายเซ็นก่อนปิดหรือยกเลิกเคส", {
+                title: "ลายเซ็นไม่พร้อมใช้งาน",
+            });
+            return false;
+        }
+    }
+    return true;
+}
+
 function getCategorySpecificDoneFields(data) {
     const missing = [];
     const category = String(getFieldValue(data, 'category') || '').trim();
@@ -7130,6 +7148,11 @@ async function quickUpdateStatus(logId, newStatus) {
             return;
         }
     }
+
+    if (newStatus === 'Cancel' || newStatus === 'Case Closed') {
+        if (!await requireAdminManagerProfileSignature(newStatus)) return;
+    }
+
     await executeStatusUpdate(logId, newStatus, null);
 }
 
@@ -10103,6 +10126,11 @@ async function updateLogStatus(logId, newStatus) {
             }
         }
     }
+
+    if (newStatus === 'Cancel' || newStatus === 'Case Closed') {
+        if (!await requireAdminManagerProfileSignature(newStatus)) return;
+    }
+
     await executeStatusUpdate(logId, newStatus, null);
 }
 
