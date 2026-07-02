@@ -3720,15 +3720,23 @@ function initCustomerSignaturePad() {
     const sigSection = document.getElementById("customer-signature-section");
     const signedDocSection = document.getElementById("signed-doc-upload-section");
     if (toggle) {
-        const applyToggle = () => {
-            // Checked = use system signature → hide manual pad, hide doc upload
-            // Unchecked = physical signing → hide manual pad, show doc upload only
+        const applyToggle = async () => {
             const useSystem = toggle.checked;
-            if (sigSection) sigSection.style.display = "none";
-            if (signedDocSection) signedDocSection.style.display = useSystem ? "none" : "";
+            if (useSystem) {
+                const hasProfileSig = await currentUserHasProfileSignature();
+                if (!hasProfileSig) {
+                    toggle.checked = false;
+                    if (signedDocSection) signedDocSection.style.display = "";
+                    if (sigSection) sigSection.style.display = 'none';
+                    showToast('บัญชีของคุณยังไม่ได้บันทึกลายเซ็นในข้อมูลส่วนตัว กรุณาเพิ่มลายเซ็นก่อนใช้งานลายเซ็นระบบ', 'warning');
+                    return;
+                }
+            }
+            if (sigSection) sigSection.style.display = 'none';
+            if (signedDocSection) signedDocSection.style.display = useSystem ? 'none' : "";
         };
-        toggle.addEventListener("change", applyToggle);
-        applyToggle();
+        toggle.addEventListener("change", () => applyToggle().catch(console.error));
+        applyToggle().catch(console.error);
     }
 
     // Wire up signed doc file input
@@ -3908,9 +3916,35 @@ async function handleLogMaintenance(e) {
 
         const logId = formData.get("logId");
         
-        // early check: status Done and system E-Signature is unchecked -> require signed doc
         const checkStatus = formData.get("status") || (logId ? (state.logs.find(l => l.id === logId)?.status || "Open") : "Open");
         const useESignature = document.getElementById("use-esignature-toggle")?.checked || false;
+
+        if (useESignature) {
+            const hasProfileSig = await currentUserHasProfileSignature();
+            if (!hasProfileSig) {
+                btn.textContent = originalText;
+                btn.disabled = false;
+                hideProgress();
+                await showDialog("บัญชีของคุณยังไม่ได้บันทึกลายเซ็นในข้อมูลส่วนตัว กรุณาเพิ่มลายเซ็นก่อนใช้งานลายเซ็นระบบ", {
+                    title: "ลายเซ็นระบบไม่พร้อมใช้งาน",
+                });
+                return;
+            }
+        }
+
+        if (checkStatus === 'Done') {
+            const missing = getIncompleteDoneFields(formData);
+            if (missing.length > 0) {
+                btn.textContent = originalText;
+                btn.disabled = false;
+                hideProgress();
+                await showDialog(`ไม่สามารถเปลี่ยนสถานะเป็นเสร็จสิ้นได้: โปรดกรอก ${missing.join(', ')} ให้ครบก่อน`, {
+                    title: "ข้อมูลไม่ครบ",
+                });
+                return;
+            }
+        }
+
         if (checkStatus === 'Done' && !useESignature) {
             const existingSignedJSON = formData.get("existingSignedDocsJSON");
             let existingSignedCount = 0;
@@ -4130,6 +4164,20 @@ async function handleLogMaintenance(e) {
             ciPcdType5: formData.get("ciPcdType5") || "",
             // Cycle Count
             cycleCount: formData.get("cycleCount") || "",
+            // Gas Detection
+            gasDoor1: formData.get("gasDoor1") || "",
+            gasDoor2: formData.get("gasDoor2") || "",
+            gasDoor3: formData.get("gasDoor3") || "",
+            gas1m1: formData.get("gas1m1") || "",
+            gas1m2: formData.get("gas1m2") || "",
+            gas1m3: formData.get("gas1m3") || "",
+            gas2m1: formData.get("gas2m1") || "",
+            gas2m2: formData.get("gas2m2") || "",
+            gas2m3: formData.get("gas2m3") || "",
+            // Reporter Information
+            reporterName: formData.get("reporterName") || "",
+            reporterPhone: formData.get("reporterPhone") || "",
+            reporterPosition: formData.get("reporterPosition") || "",
             // Customer Information
             customerName: formData.get("customerName") || "",
             customerPhone: formData.get("customerPhone") || "",
@@ -4218,6 +4266,9 @@ async function handleLogMaintenance(e) {
             insp_gasDoor: formData.get("insp_gasDoor") || "",
             insp_gas1m: formData.get("insp_gas1m") || "",
             insp_gas2m: formData.get("insp_gas2m") || "",
+            insp_chemicalLine: formData.get("insp_chemicalLine") || "",
+            insp_phaseRelay: formData.get("insp_phaseRelay") || "",
+            insp_systemRelay: formData.get("insp_systemRelay") || "",
         };
 
         // Add case ID for new logs (use pre-generated ID from form)
@@ -4407,7 +4458,7 @@ async function handleLogMaintenance(e) {
                 const extraFields = [
                     'actionPlan', 'walkwayWidth', 'walkwayHeight', 'doorCount', 'useRamp', 'rampWidth', 
                     'useElevator', 'elevatorCapacity', 'elevatorDoorWidth', 'elevatorDoorHeight', 
-                    'installDate', 'returnProductNote', 'precheckDate', 'customerName', 'customerPhone', 
+                    'installDate', 'returnProductNote', 'precheckDate', 'reporterName', 'reporterPhone', 'reporterPosition', 'customerName', 'customerPhone', 
                     'customerPosition', 'timeStart', 'timeEnd', 'installType', 'machineStatusAfter', 
                     'machineStatusAfterNote', 'needWiring', 'needPowerPlug', 'wireDistance', 
                     'needDrillWall', 'wireThroughCeiling', 'hospitalTechName', 'hospitalTechPhone'
@@ -4417,7 +4468,7 @@ async function handleLogMaintenance(e) {
                     doorCount: 'จำนวนประตูที่ต้องผ่าน', useRamp: 'ต้องใช้ทางลาด', rampWidth: 'ความกว้างทางลาด',
                     useElevator: 'ต้องใช้ลิฟต์', elevatorCapacity: 'น้ำหนักลิฟต์ที่รับได้', elevatorDoorWidth: 'ความกว้างประตูลิฟต์',
                     elevatorDoorHeight: 'ความสูงประตูลิฟต์', installDate: 'วันเวลาติดตั้ง/รื้อถอน', returnProductNote: 'หมายเหตุการรับสินค้ากลับ',
-                    precheckDate: 'วันที่ตรวจสอบรายละเอียดก่อนส่งมอบ', customerName: 'ชื่อลูกค้า', customerPhone: 'เบอร์โทรลูกค้า', customerPosition: 'ตำแหน่งลูกค้า',
+                    precheckDate: 'วันที่ตรวจสอบรายละเอียดก่อนส่งมอบ', reporterName: 'ชื่อผู้แจ้ง', reporterPhone: 'เบอร์โทรผู้แจ้ง', reporterPosition: 'ตำแหน่งผู้แจ้ง', customerName: 'ชื่อลูกค้า', customerPhone: 'เบอร์โทรลูกค้า', customerPosition: 'ตำแหน่งลูกค้า',
                     timeStart: 'เวลาเริ่มปฏิบัติงาน', timeEnd: 'เวลาเสร็จสิ้นภารกิจ', installType: 'ประเภทการติดตั้ง/รื้อถอน', 
                     machineStatusAfter: 'สถานะเครื่องหลังซ่อม', machineStatusAfterNote: 'หมายเหตุสถานะเครื่อง',
                     needWiring: 'ต้องเดินสายไฟ', needPowerPlug: 'ต้องเดิน Power Plug', wireDistance: 'ระยะจากตู้ไฟไปยังเครื่อง',
@@ -6323,6 +6374,12 @@ function resetLogForm() {
     window.repairPhotoPending = repairPhotoPending;
     if (typeof renderRepairPhotoPreview === 'function') renderRepairPhotoPreview();
 
+    // Clear reporter fields
+    const resetField = (name) => { const field = form.querySelector(`[name="${name}"]`); if (field) field.value = ""; };
+    resetField("reporterName");
+    resetField("reporterPhone");
+    resetField("reporterPosition");
+
     // Clear customer fields
     clearCustomerSignature();
 
@@ -6613,6 +6670,15 @@ function editLog(logId) {
     setField("avgWorkTemp", log.avgWorkTemp);
     setField("avgAreaTemp", log.avgAreaTemp);
     setField("leakPressure", log.leakPressure);
+    setField("gasDoor1", log.gasDoor1);
+    setField("gasDoor2", log.gasDoor2);
+    setField("gasDoor3", log.gasDoor3);
+    setField("gas1m1", log.gas1m1);
+    setField("gas1m2", log.gas1m2);
+    setField("gas1m3", log.gas1m3);
+    setField("gas2m1", log.gas2m1);
+    setField("gas2m2", log.gas2m2);
+    setField("gas2m3", log.gas2m3);
     // Radio buttons
     const checkRadios = (name, val) => { form.querySelectorAll(`input[name="${name}"]`).forEach(r => r.checked = r.value === (val || "")); };
     checkRadios("avgWorkTempCheck", log.avgWorkTempCheck);
@@ -6632,14 +6698,27 @@ function editLog(logId) {
         "insp_airChargingValue", "insp_filter", "insp_decomposer",
         "insp_vacuumPumpOil", "insp_connectors", "insp_drainTank",
         "insp_gasDoor", "insp_gas1m", "insp_gas2m",
+        "insp_chemicalLine", "insp_phaseRelay", "insp_systemRelay",
     ];
     inspKeys.forEach(key => checkRadios(key, log[key]));
 
+    // Reporter fields
+    setField("reporterName", log.reporterName || (log.customerName && !log.customerSignature ? log.customerName : ""));
+    setField("reporterPhone", log.reporterPhone || (log.customerPhone && !log.customerSignature ? log.customerPhone : ""));
+    setField("reporterPosition", log.reporterPosition || (log.customerPosition && !log.customerSignature ? log.customerPosition : ""));
+
     // Customer fields
-    // When editing, completed-customer fields must be entered anew and not pre-filled from CASP Service reporter data.
-    setField("customerName", "");
-    setField("customerPhone", "");
-    setField("customerPosition", "");
+    // When editing, restore completed-customer values if they were previously saved,
+    // otherwise leave empty so the field must be entered for the first time.
+    if (log.customerName || log.customerPhone || log.customerPosition || log.customerSignature) {
+        setField("customerName", log.customerName);
+        setField("customerPhone", log.customerPhone);
+        setField("customerPosition", log.customerPosition);
+    } else {
+        setField("customerName", "");
+        setField("customerPhone", "");
+        setField("customerPosition", "");
+    }
 
     // E-signature toggle
     const eSignToggle = document.getElementById("use-esignature-toggle");
@@ -6846,10 +6925,206 @@ function editLog(logId) {
     populateResponderDropdown(log.responderId || "");
 }
 
+function getFieldValue(data, key) {
+    if (!data) return null;
+    if (data instanceof FormData) return data.get(key);
+    return data[key];
+}
+
+function isFilled(value) {
+    return value !== null && value !== undefined && String(value).trim() !== '';
+}
+
+function parseRepairChecklist(data) {
+    if (!data) return [];
+    if (data instanceof FormData) {
+        try {
+            return JSON.parse(data.get('repairChecklistJSON') || '[]');
+        } catch (e) {
+            return [];
+        }
+    }
+    return Array.isArray(data.repairChecklist) ? data.repairChecklist : [];
+}
+
+async function currentUserHasProfileSignature() {
+    const user = auth.currentUser;
+    if (!user) return false;
+    const userDoc = await FirestoreService.getUser(user.uid);
+    return !!(userDoc && userDoc.signature);
+}
+
+function getCategorySpecificDoneFields(data) {
+    const missing = [];
+    const category = String(getFieldValue(data, 'category') || '').trim();
+
+    if (category === 'บำรุงรักษาตามรอบ') {
+        const requiredFields = [
+            'cycleCount',
+            'voltageL1', 'voltageL2', 'voltageL3',
+            'currentL1', 'currentL2', 'currentL3',
+            'avgWorkTemp', 'avgWorkTempCheck',
+            'avgAreaTemp', 'avgAreaTempCheck',
+            'leakPressure', 'leakCheck',
+            'complyType5', 'ciPcdType5',
+            'gasDoor1', 'gasDoor2', 'gasDoor3',
+            'gas1m1', 'gas1m2', 'gas1m3',
+            'gas2m1', 'gas2m2', 'gas2m3',
+            'insp_exteriorCleaning', 'insp_interiorCleaning', 'insp_doorSystem', 'insp_footSwitch',
+            'insp_sensor', 'insp_tempPoints', 'insp_workingPressure', 'insp_rfGenerator',
+            'insp_chemicalAmount', 'insp_airChargingValue', 'insp_filter', 'insp_decomposer',
+            'insp_vacuumPumpOil', 'insp_connectors', 'insp_drainTank',
+            'insp_chemicalLine', 'insp_phaseRelay', 'insp_systemRelay'
+        ];
+        requiredFields.forEach((key) => {
+            if (!isFilled(getFieldValue(data, key))) {
+                const labelMap = {
+                    cycleCount: 'จำนวนรอบขณะเช็ค',
+                    voltageL1: 'แรงดัน R', voltageL2: 'แรงดัน S', voltageL3: 'แรงดัน T',
+                    currentL1: 'กระแส R', currentL2: 'กระแส S', currentL3: 'กระแส T',
+                    avgWorkTemp: 'อุณหภูมิทำงาน', avgWorkTempCheck: 'ผลอุณหภูมิทำงาน',
+                    avgAreaTemp: 'อุณหภูมิพื้นที่', avgAreaTempCheck: 'ผลอุณหภูมิพื้นที่',
+                    leakPressure: 'ความดันรั่วไหล', leakCheck: 'ผลการรั่วไหล',
+                    complyType5: 'Comply Type 5', ciPcdType5: 'CI PCD Type 5',
+                    gasDoor1: 'แก๊สหน้าประตู ครั้งที่ 1', gasDoor2: 'แก๊สหน้าประตู ครั้งที่ 2', gasDoor3: 'แก๊สหน้าประตู ครั้งที่ 3',
+                    gas1m1: 'แก๊สห่าง 1ม. ครั้งที่ 1', gas1m2: 'แก๊สห่าง 1ม. ครั้งที่ 2', gas1m3: 'แก๊สห่าง 1ม. ครั้งที่ 3',
+                    gas2m1: 'แก๊สห่าง 2ม. ครั้งที่ 1', gas2m2: 'แก๊สห่าง 2ม. ครั้งที่ 2', gas2m3: 'แก๊สห่าง 2ม. ครั้งที่ 3',
+                    insp_exteriorCleaning: 'ความสะอาดภายนอก', insp_interiorCleaning: 'ความสะอาดภายใน',
+                    insp_doorSystem: 'ระบบประตู', insp_footSwitch: 'Foot Switch', insp_sensor: 'Sensor',
+                    insp_tempPoints: 'อุณหภูมิจุดที่ 1-4', insp_workingPressure: 'ความดัน',
+                    insp_rfGenerator: 'RF Generator', insp_chemicalAmount: 'ปริมาณน้ำยาที่ฉีด',
+                    insp_airChargingValue: 'Air Charging Valve', insp_filter: 'Filter', insp_decomposer: 'Decomposer',
+                    insp_vacuumPumpOil: 'น้ำมันปั๊มสุญญากาศ', insp_connectors: 'ข้อต่อ', insp_drainTank: 'ถังเดรนน้ำ',
+                    insp_chemicalLine: 'สายส่งน้ำยา', insp_phaseRelay: 'รีเลย์ควบคุมลำดับเฟส', insp_systemRelay: 'รีเลย์ควบคุมระบบ'
+                };
+                missing.push(labelMap[key] || key);
+            }
+        });
+    } else if (category === 'ติดตั้ง' || category === 'รื้อถอน') {
+        const hospitalTechName = String(getFieldValue(data, 'hospitalTechName') || '').trim();
+        const hospitalTechPhone = String(getFieldValue(data, 'hospitalTechPhone') || '').trim();
+        const isHospitalTechCase = !!(hospitalTechName || hospitalTechPhone);
+
+        if (!isHospitalTechCase) {
+            if (!isFilled(getFieldValue(data, 'installDate'))) {
+                missing.push('วันเวลาดำเนินการติดตั้ง/รื้อถอน');
+            }
+            if (!isFilled(getFieldValue(data, 'installType'))) {
+                missing.push('ประเภทการติดตั้ง/รื้อถอน');
+            }
+        }
+
+        if (category === 'ติดตั้ง' && !isHospitalTechCase) {
+            if (!isFilled(getFieldValue(data, 'precheckDate'))) {
+                missing.push('วันที่ตรวจสอบรายละเอียดก่อนส่งมอบ');
+            }
+
+            const precheckFields = [
+                'precheck_electrical', 'precheck_wiring', 'precheck_grounding', 'precheck_doorMotor',
+                'precheck_connectors', 'precheck_vacuumPump', 'precheck_leakTest', 'precheck_chemical',
+                'precheck_sensors', 'precheck_sterilize', 'precheck_gasResidual', 'precheck_interior',
+                'precheck_exterior'
+            ];
+            const failedPrechecks = precheckFields.filter((key) => getFieldValue(data, key) !== 'pass');
+            if (failedPrechecks.length > 0) {
+                missing.push('ตรวจสอบรายละเอียดก่อนส่งมอบทั้งหมดต้องเลือก "ผ่าน"');
+            }
+        }
+
+        if (category === 'ติดตั้ง' || category === 'รื้อถอน') {
+            let installPhotos = [];
+            let preInstallPhotos = [];
+
+            if (data instanceof FormData) {
+                if (typeof installPhotoPending !== 'undefined' && Array.isArray(installPhotoPending)) {
+                    installPhotos = installPhotoPending;
+                }
+                if (typeof preInstallPhotoPending !== 'undefined' && Array.isArray(preInstallPhotoPending)) {
+                    preInstallPhotos = preInstallPhotoPending;
+                }
+            } else {
+                installPhotos = Array.isArray(data.installPhotos) ? data.installPhotos : [];
+                preInstallPhotos = Array.isArray(data.preInstallPhotos) ? data.preInstallPhotos : [];
+            }
+
+            if (preInstallPhotos.length === 0) {
+                missing.push('รูปก่อนติดตั้ง');
+            }
+            if (installPhotos.length === 0) {
+                missing.push('รูปหลังติดตั้ง');
+            }
+        }
+    } else if (category === 'ซ่อม') {
+        const checklist = parseRepairChecklist(data).filter((item) => item && (isFilled(item.label) || isFilled(item.status) || isFilled(item.note)));
+        if (checklist.length === 0) {
+            missing.push('รายการที่ซ่อม');
+        }
+
+        const hasFailedItem = checklist.some((item) => String(item.status || '').trim().toLowerCase() === 'fail');
+        const machineStatusAfter = String(getFieldValue(data, 'machineStatusAfter') || '').trim();
+        if (hasFailedItem && machineStatusAfter !== 'ready') {
+            missing.push('สภาพเครื่องหลังดำเนินการต้องเป็น "พร้อมใช้งาน" เมื่อมีรายการซ่อมไม่ผ่าน');
+        }
+
+        let repairPhotos = [];
+        if (data instanceof FormData) {
+            if (typeof repairPhotoPending !== 'undefined' && Array.isArray(repairPhotoPending)) {
+                repairPhotos = repairPhotoPending;
+            }
+        } else {
+            repairPhotos = Array.isArray(data.repairPhotos) ? data.repairPhotos : [];
+        }
+
+        if (repairPhotos.length === 0) {
+            missing.push('รูปหลังซ่อม');
+        }
+    }
+
+    return missing;
+}
+
+function getIncompleteDoneFields(log) {
+    if (!log) return ['ข้อมูลเคสไม่ถูกต้อง'];
+
+    const requiredFields = [
+        { key: 'siteId', label: 'อุปกรณ์ (Device)' },
+        { key: 'date', label: 'วันที่-เวลา' },
+        { key: 'category', label: 'หมวดหมู่' },
+        { key: 'responderId', label: 'เจ้าหน้าที่ช่างบริการ' },
+        { key: 'objective', label: 'คำอธิบายงาน' },
+    ];
+
+    const missing = requiredFields
+        .filter(({ key }) => !isFilled(getFieldValue(log, key)))
+        .map(({ label }) => label);
+
+    if (!isFilled(getFieldValue(log, 'customerName'))) {
+        missing.push('ชื่อลูกค้าผู้จบงาน');
+    }
+    if (!isFilled(getFieldValue(log, 'customerPhone'))) {
+        missing.push('เบอร์โทรลูกค้าผู้จบงาน');
+    }
+
+    missing.push(...getCategorySpecificDoneFields(log));
+    return missing;
+}
+
+function canMarkDone(log) {
+    const missing = getIncompleteDoneFields(log);
+    return missing.length === 0;
+}
+
 async function quickUpdateStatus(logId, newStatus) {
     if (!newStatus) return;
     if (newStatus === 'Done') {
         var log = state.logs.find(function(l) { return l.id === logId; });
+        const missing = getIncompleteDoneFields(log);
+        if (missing.length > 0) {
+            showToast(`ไม่สามารถเปลี่ยนสถานะเป็นเสร็จสิ้นได้: โปรดกรอก ${missing.join(', ')} ให้ครบก่อน`, 'warning');
+            editLog(logId);
+            return;
+        }
+
         if (log && (!log.customerName || !log.customerPhone || !log.customerSignature)) {
             openSignatureModal(logId, newStatus);
             return;
@@ -9691,10 +9966,24 @@ function openSignatureModal(logId, newStatus) {
     // Show contact fields for status change, hide for profile
     const contactFields = document.getElementById("signature-contact-fields");
     if (contactFields) contactFields.style.display = "block";
+
     const nameInput = document.getElementById("signature-name");
     const telInput = document.getElementById("signature-tel");
-    if (nameInput) nameInput.value = "";
-    if (telInput) telInput.value = "";
+    const posInput = document.getElementById("signature-position");
+
+    // Prefill signature contact fields from the edit form or existing log values.
+    const formCustomerName = document.querySelector('input[name="customerName"]')?.value.trim();
+    const formCustomerPhone = document.querySelector('input[name="customerPhone"]')?.value.trim();
+    const formCustomerPosition = document.querySelector('input[name="customerPosition"]')?.value.trim();
+    const log = state.logs.find((l) => l.id === logId);
+    const existingName = formCustomerName || log?.customerName || '';
+    const existingPhone = formCustomerPhone || log?.customerPhone || '';
+    const existingPosition = formCustomerPosition || log?.customerPosition || '';
+
+    if (nameInput) nameInput.value = existingName;
+    if (telInput) telInput.value = existingPhone;
+    if (posInput) posInput.value = existingPosition;
+
     setTimeout(() => {
         if (!signaturePad) { initSignatureCanvas(); } else {
             const canvas = document.getElementById("signature-canvas");
@@ -9777,6 +10066,18 @@ window.confirmSignature = confirmSignature;
 async function updateLogStatus(logId, newStatus) {
     if (newStatus === 'Done') {
         var log = state.logs.find(function(l) { return l.id === logId; });
+        const missing = getIncompleteDoneFields(log);
+        if (missing.length > 0) {
+            showToast(`ไม่สามารถเปลี่ยนสถานะเป็นเสร็จสิ้นได้: โปรดกรอก ${missing.join(', ')} ให้ครบก่อน`, "warning");
+            const detailsModal = document.getElementById("modal-log-details");
+            if (detailsModal) {
+                detailsModal.classList.add("hidden");
+                detailsModal.style.display = "none";
+            }
+            editLog(logId);
+            return;
+        }
+
         if (log) {
             const useESignature = log.useESignature ?? false;
             if (useESignature) {
