@@ -7386,7 +7386,6 @@ function showDayDetails(dateStr, logs) {
                 <th style="width: 10%;">สถานะ</th>
 
                 <th style="width: 12%;">แก้ไขล่าสุด</th>
-                <th style="width: 12%; text-align: right;">ค่าใช้จ่าย</th>
                 <th style="width: 8%;"></th>
             </tr>
         </thead>
@@ -7411,11 +7410,6 @@ function showDayDetails(dateStr, logs) {
 
         const thaiDate = formatDateDDMMYYYY(log.date);
         const logTime = log.date && log.date.includes('T') && log.date.split('T')[1].substring(0,5) !== '00:00' ? log.date.split('T')[1].substring(0, 5) : '';
-
-        const formattedCost = new Intl.NumberFormat('th-TH', {
-            style: "currency",
-            currency: "THB",
-        }).format(log.cost).replace("฿", "").trim() + " บาท";
 
         const tr = document.createElement("tr");
         const siteColor = getSiteColor(site.name);
@@ -7516,11 +7510,9 @@ function showDayDetails(dateStr, logs) {
             <td class="cell-category" data-label="หมวดหมู่"><span class="value">${catBadge}</span></td>
             <td class="cell-status" data-label="สถานะ">${statusBadge}</td>
             <td class="cell-user" data-label="แก้ไขล่าสุด"><span class="value">${recorderName}</span></td>
-            <td class="cell-cost" data-label="ค่าใช้จ่าย"><span class="value">${formattedCost}</span></td>
             <td class="cell-mobile-card mobile-only" data-label="">
                 <div class="mc-top">
                     <span style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;"><span class="mc-caseid">${log.caseId ? log.caseId.replace('CASE-','') : '-'}</span> <span class="mc-siteid">${site.siteCode || '-'}</span></span>
-                    <span class="mc-cost">${formattedCost}</span>
                 </div>
                 <div class="mc-site">${site.name}</div>
                 <div class="mc-detail">
@@ -12439,7 +12431,6 @@ function renderLogs() {
                 <th style="width: 10%;">สถานะ</th>
 
                 <th style="width: 12%;">แก้ไขล่าสุด</th>
-                <th style="width: 12%; text-align: right;">ค่าใช้จ่าย</th>
                 <th style="width: 8%;"></th>
             </tr>
         </thead>
@@ -12567,10 +12558,6 @@ function appendLogRows(newLogs, targetTbody = null) {
                 : log.recordedBy || "-");
         const thaiDate = formatDateDDMMYYYY(log.date);
         const logTime = log.date && log.date.includes('T') && log.date.split('T')[1].substring(0,5) !== '00:00' ? log.date.split('T')[1].substring(0, 5) : '';
-        const formattedCost = new Intl.NumberFormat('th-TH', {
-            style: "currency",
-            currency: "THB",
-        }).format(log.cost).replace("฿", "").trim() + " บาท";
         const siteColor = getSiteColor(site.name);
 
         const tr = document.createElement("tr");
@@ -12668,11 +12655,9 @@ function appendLogRows(newLogs, targetTbody = null) {
             <td class="cell-category" data-label="หมวดหมู่"><span class="value">${catBadge}</span></td>
             <td class="cell-status" data-label="สถานะ">${statusBadge}</td>
             <td class="cell-user" data-label="แก้ไขล่าสุด"><span class="value">${recorderName}</span></td>
-            <td class="cell-cost" data-label="ค่าใช้จ่าย"><span class="value">${formattedCost}</span></td>
             <td class="cell-mobile-card mobile-only" data-label="">
                 <div class="mc-top">
                     <span style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;"><span class="mc-caseid">${log.caseId ? log.caseId.replace('CASE-','') : '-'}</span> <span class="mc-siteid">${site.siteCode || '-'}</span></span>
-                    <span class="mc-cost">${formattedCost}</span>
                 </div>
                 <div class="mc-site">${site.name}</div>
                 <div class="mc-detail">
