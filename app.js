@@ -910,6 +910,12 @@ const FirestoreService = {
         return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     },
 
+    async fetchLogsForSite(siteId) {
+        const q = query(collection(db, "logs"), where("siteId", "==", siteId));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    },
+
     async fetchGlobalLogCount() {
         const q = query(collection(db, "logs"));
         const snapshot = await getCountFromServer(q);
@@ -1727,8 +1733,6 @@ setupCustomNameLogic(); // Initialize custom name logic
         await refreshData();
         console.log("init() complete");
 
-        // Run MA Backfill in the background silently
-        runBackgroundMaBackfill();
 
         // Check for URL parameters to open specific views
         handleUrlParameters();
@@ -4759,8 +4763,8 @@ async function handleLogMaintenance(e) {
                 // Check if this site has a maintenance cycle and no active maintenance case
                 const site = state.sites.find((s) => s.id === logData.siteId);
                 if (site && site.maintenanceCycle && site.maintenanceCycle > 0) {
-                    const hasActiveMaintenance = state.logs.some((l) => 
-                        l.siteId === site.id && 
+                    const siteLogs = await FirestoreService.fetchLogsForSite(site.id);
+                    const hasActiveMaintenance = siteLogs.some((l) => 
                         l.id !== logId && // Exclude current log
                         (isMaCategory(l.category)) &&
                         l.status !== "Cancel" && 
@@ -4773,9 +4777,8 @@ async function handleLogMaintenance(e) {
                         console.log('[Category Change] No active maintenance case, creating new one');
                         
                         // Find all maintenance logs for this site (excluding the current one being changed)
-                        const siteMaLogs = state.logs.filter(
-                            (l) => l.siteId === site.id && 
-                            l.id !== logId && // Exclude current log being changed
+                        const siteMaLogs = siteLogs.filter(
+                            (l) => l.id !== logId && // Exclude current log being changed
                             (isMaCategory(l.category) || l.objective?.includes("รอบซ่อมบำรุง"))
                         ).sort((a, b) => new Date(b.date) - new Date(a.date));
                         
@@ -4921,149 +4924,7 @@ async function handleLogMaintenance(e) {
             }
         }
 
-        // Auto-create next cycle if Maintenance & newly Case Closed
-        if (
-            isNewlyCompleted &&
-            (isMaCategory(logData.category) ||
-                logData.category === "อื่นๆ" ||
-                logData.objective?.includes("รอบซ่อมบำรุง"))
-        ) {
-            const site = state.sites.find((s) => s.id === logData.siteId);
-            if (site && site.maintenanceCycle && site.maintenanceCycle > 0) {
-                // Check if there's already an active maintenance case for this site
-                const hasActiveMaintenance = state.logs.some((l) => 
-                    l.siteId === site.id && 
-                    (isMaCategory(l.category)) &&
-                    l.status !== "Cancel" && 
-                    l.status !== "Done" && 
-                    l.status !== "Completed" &&
-                    l.status !== "Case Closed"
-                );
-                
-                if (!hasActiveMaintenance) {
-                    const currentDate = new Date(logData.date);
-                    if (!isNaN(currentDate.getTime())) {
-                        currentDate.setDate(currentDate.getDate() + site.maintenanceCycle);
-                        const nextDateStr = currentDate.toISOString().split("T")[0];
 
-                        // Check if next maintenance date is beyond insurance end date
-                        if (site.insuranceEndDate) {
-                            const insuranceEndDate = new Date(site.insuranceEndDate);
-                            if (currentDate > insuranceEndDate) {
-                                console.log('[Auto-generate] Skipped - next maintenance date is beyond insurance end date');
-                                return;
-                            }
-                        }
-
-                        const siteMaLogs = state.logs.filter(
-                            (l) => l.siteId === site.id && (isMaCategory(l.category) || l.objective?.includes("รอบซ่อมบำรุง"))
-                        );
-                        const nextCycleNum = siteMaLogs.length + 1;
-
-                        const nextLogData = {
-                            siteId: site.id,
-                            date: nextDateStr,
-                            category: logData.category || "บำรุงรักษาตามรอบ",
-                            status: "Open",
-                            lineItems: [],
-                            details: "-",
-                            objective: `รอบซ่อมบำรุงตามกำหนด (${site.maintenanceCycle} วัน)`,
-                            cost: 0,
-                            attachments: [],
-                            recordedBy: "System",
-                            timestamp: new Date().toISOString(),
-                            comments: [{
-                                text: `ซ่อมบำรุงตามรอบ (ครั้งที่ ${nextCycleNum})`,
-                                author: "System",
-                                authorId: "system",
-                                photoURL: "",
-                                timestamp: new Date().toISOString(),
-                                attachments: []
-                            }]
-                        };
-                        try {
-                            await FirestoreService.addLog(nextLogData);
-                            console.log('[Auto-generate] Created next maintenance cycle for completed case');
-                        } catch (cycleErr) {
-                            console.error("Failed to add next MA cycle log:", cycleErr);
-                        }
-                    }
-                } else {
-                    console.log('[Auto-generate] Skipped - site already has active maintenance case');
-                }
-            }
-        }
-
-        // Auto-create replacement case if newly Cancelled
-        if (isNewlyCancelled) {
-            const site = state.sites.find((s) => s.id === logData.siteId);
-            if (site && site.maintenanceCycle && site.maintenanceCycle > 0) {
-                // Check if there's already an active maintenance case for this site
-                const hasActiveMaintenance = state.logs.some((l) => 
-                    l.siteId === site.id && 
-                    (isMaCategory(l.category)) &&
-                    l.status !== "Cancel" && 
-                    l.status !== "Done" && 
-                    l.status !== "Completed" &&
-                    l.status !== "Case Closed"
-                );
-                
-                if (!hasActiveMaintenance) {
-                    const currentDate = new Date(logData.date);
-                    if (!isNaN(currentDate.getTime())) {
-                        currentDate.setDate(currentDate.getDate() + site.maintenanceCycle);
-                        const nextDateStr = currentDate.toISOString().split("T")[0];
-
-                        // Check if next maintenance date is beyond insurance end date
-                        if (site.insuranceEndDate) {
-                            const insuranceEndDate = new Date(site.insuranceEndDate);
-                            if (currentDate > insuranceEndDate) {
-                                console.log('[Auto-generate] Skipped - next maintenance date is beyond insurance end date');
-                                return;
-                            }
-                        }
-
-                        const siteMaLogs = state.logs.filter(
-                            (l) => l.siteId === site.id && (isMaCategory(l.category) || l.objective?.includes("รอบซ่อมบำรุง"))
-                        );
-                        const nextCycleNum = siteMaLogs.length + 1;
-
-                        const nextLogData = {
-                            siteId: site.id,
-                            date: nextDateStr,
-                            category: logData.category || "บำรุงรักษาตามรอบ",
-                            status: "Open",
-                            lineItems: [],
-                            details: "-",
-                            objective: logData.objective || `รอบซ่อมบำรุงตามกำหนด (${site.maintenanceCycle} วัน)`,
-                            cost: 0,
-                            attachments: [],
-                            attachmentsBefore: [],
-                            attachmentsAfter: [],
-                            recordedBy: "System",
-                            timestamp: new Date().toISOString(),
-                            comments: [{
-                                text: `สร้างอัตโนมัติจากเคสที่ถูกยกเลิก (${logData.caseId || 'N/A'}) - รอบที่ ${nextCycleNum}`,
-                                author: "System",
-                                authorId: "system",
-                                photoURL: "",
-                                timestamp: new Date().toISOString(),
-                                attachments: []
-                            }]
-                        };
-                        try {
-                            await FirestoreService.addLog(nextLogData);
-                            console.log('[Auto-generate] Created replacement case for cancelled case with cycle date');
-                            showToast("สร้างเคสใหม่อัตโนมัติแล้ว", "info");
-                        } catch (err) {
-                            console.error("Failed to add replacement case:", err);
-                        }
-                    }
-                } else {
-                    console.log('[Auto-generate] Skipped - site already has active maintenance case');
-                }
-            }
-        }
 
         showProgress(90, 'กำลังรีเฟรชข้อมูล...');
 
@@ -6244,113 +6105,6 @@ window.handleClearAllData = async function () {
     }
 };
 
-async function runBackgroundMaBackfill() {
-    if (!state.sites || state.sites.length === 0) return;
-
-    let addedCount = 0;
-    try {
-        for (const site of state.sites) {
-            if (!site.maintenanceCycle || !site.firstMaDate) continue;
-
-            const maLogs = state.logs.filter(
-                (l) =>
-                    l.siteId === site.id &&
-                    (isMaCategory(l.category) ||
-                        l.category === "อื่นๆ" ||
-                        (l.objective && l.objective.includes("รอบซ่อมบำรุง"))),
-            );
-
-            if (maLogs.length === 0) {
-                const initialLogData = {
-                    siteId: site.id,
-                    date: site.firstMaDate,
-                    category: "บำรุงรักษาตามรอบ",
-                    status: "Open",
-                    lineItems: [],
-                    details: "-",
-                    objective: `รอบซ่อมบำรุงครั้งแรก (${site.maintenanceCycle} วัน)`,
-                    cost: 0,
-                    attachments: [],
-                    recordedBy: "System",
-                    timestamp: new Date().toISOString(),
-                    comments: [{
-                        text: `ซ่อมบำรุงตามรอบ (ครั้งที่ 1)`,
-                        author: "System",
-                        authorId: "system",
-                        photoURL: "",
-                        timestamp: new Date().toISOString(),
-                        attachments: []
-                    }]
-                };
-
-                await FirestoreService.addLog(initialLogData);
-                addedCount++;
-            } else {
-                maLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
-                const latestLog = maLogs[0];
-
-                if (latestLog.status === "Completed" || latestLog.status === "Done") {
-                    const hasOpen = maLogs.some(
-                        (l) => l.status !== "Completed" && l.status !== "Done",
-                    );
-                    if (!hasOpen) {
-                        const currentDate = new Date(latestLog.date);
-                        if (!isNaN(currentDate.getTime())) {
-                            currentDate.setDate(
-                                currentDate.getDate() + site.maintenanceCycle,
-                            );
-                            const nextDateStr = currentDate.toISOString().split("T")[0];
-
-                            // Check if next maintenance date is beyond insurance end date
-                            if (site.insuranceEndDate) {
-                                const insuranceEndDate = new Date(site.insuranceEndDate);
-                                if (currentDate > insuranceEndDate) {
-                                    console.log('[Bulk Import] Skipped site', site.name, '- next maintenance date is beyond insurance end date');
-                                    continue;
-                                }
-                            }
-
-                            const nextCycleNum = maLogs.length + 1;
-
-                            const nextLogData = {
-                                siteId: site.id,
-                                date: nextDateStr,
-                                category: "บำรุงรักษาตามรอบ",
-                                status: "Open",
-                                lineItems: [],
-                                details: "-",
-                                objective: `รอบซ่อมบำรุงตามกำหนด (${site.maintenanceCycle} วัน)`,
-                                cost: 0,
-                                attachments: [],
-                                recordedBy: "System",
-                                timestamp: new Date().toISOString(),
-                                comments: [{
-                                    text: `ซ่อมบำรุงตามรอบ (ครั้งที่ ${nextCycleNum})`,
-                                    author: "System",
-                                    authorId: "system",
-                                    photoURL: "",
-                                    timestamp: new Date().toISOString(),
-                                    attachments: []
-                                }]
-                            };
-                            await FirestoreService.addLog(nextLogData);
-                            addedCount++;
-                        }
-                    }
-                }
-            }
-        }
-
-        if (addedCount > 0) {
-            await refreshData();
-            console.log(
-                `Background MA Backfill: Successfully added ${addedCount} logs.`,
-            );
-        }
-    } catch (e) {
-        console.error("Background MA Backfill failed:", e);
-    }
-}
 
 function resetLogForm() {
     const form = document.getElementById("form-log-maintenance");
@@ -10353,154 +10107,6 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
         
         showToast('อัปเดตสถานะสำเร็จ', 'success');
         
-        // Auto-create replacement case if newly cancelled
-        if (oldStatus !== 'Cancel' && newStatus === 'Cancel') {
-            const site = state.sites.find((s) => s.id === log.siteId);
-            if (site && site.maintenanceCycle && site.maintenanceCycle > 0) {
-                // Check if there's already an active maintenance case for this site
-                const hasActiveMaintenance = state.logs.some((l) => 
-                    l.siteId === site.id && 
-                    l.id !== logId && // Exclude current log
-                    (isMaCategory(l.category)) &&
-                    l.status !== "Cancel" && 
-                    l.status !== "Done" && 
-                    l.status !== "Completed" &&
-                    l.status !== "Case Closed"
-                );
-                
-                if (!hasActiveMaintenance) {
-                    const currentDate = new Date(log.date);
-                    if (!isNaN(currentDate.getTime())) {
-                        currentDate.setDate(currentDate.getDate() + site.maintenanceCycle);
-                        const nextDateStr = currentDate.toISOString().split("T")[0];
-
-                        // Check if next maintenance date is beyond insurance end date
-                        if (site.insuranceEndDate) {
-                            const insuranceEndDate = new Date(site.insuranceEndDate);
-                            if (currentDate > insuranceEndDate) {
-                                console.log('[Auto-generate] Skipped - next maintenance date is beyond insurance end date');
-                                return;
-                            }
-                        }
-
-                        const siteMaLogs = state.logs.filter(
-                            (l) => l.siteId === site.id && (isMaCategory(l.category) || l.objective?.includes("รอบซ่อมบำรุง"))
-                        );
-                        const nextCycleNum = siteMaLogs.length + 1;
-
-                        const nextLogData = {
-                            siteId: site.id,
-                            date: nextDateStr,
-                            category: log.category || "บำรุงรักษาตามรอบ",
-                            status: "Open",
-                            lineItems: [],
-                            details: "-",
-                            objective: log.objective || `รอบซ่อมบำรุงตามกำหนด (${site.maintenanceCycle} วัน)`,
-                            cost: 0,
-                            attachments: [],
-                            attachmentsBefore: [],
-                            attachmentsAfter: [],
-                            recordedBy: "System",
-                            timestamp: new Date().toISOString(),
-                            comments: [{
-                                text: `สร้างอัตโนมัติจากเคสที่ถูกยกเลิก (${log.caseId || 'N/A'}) - รอบที่ ${nextCycleNum}`,
-                                author: "System",
-                                authorId: "system",
-                                photoURL: "",
-                                timestamp: new Date().toISOString(),
-                                attachments: []
-                            }]
-                        };
-                        try {
-                            await FirestoreService.addLog(nextLogData);
-                            await refreshData();
-                            renderCurrentView();
-                            console.log('[Auto-generate] Created replacement case for cancelled case with cycle date');
-                            showToast("สร้างเคสใหม่อัตโนมัติแล้ว", "info");
-                        } catch (err) {
-                            console.error("Failed to add replacement case:", err);
-                        }
-                    }
-                } else {
-                    console.log('[Auto-generate] Skipped - site already has active maintenance case');
-                }
-            }
-        }
-        
-        // Auto-create next cycle if Maintenance & newly case closed
-        if (
-            (oldStatus !== 'Case Closed') &&
-            (newStatus === 'Case Closed') &&
-            (isMaCategory(log.category))
-        ) {
-            const site = state.sites.find((s) => s.id === log.siteId);
-            if (site && site.maintenanceCycle && site.maintenanceCycle > 0) {
-                // Check if there's already an active maintenance case for this site
-                const hasActiveMaintenance = state.logs.some((l) => 
-                    l.siteId === site.id && 
-                    l.id !== logId && // Exclude current log
-                    (isMaCategory(l.category)) &&
-                    l.status !== "Cancel" && 
-                    l.status !== "Done" && 
-                    l.status !== "Completed" &&
-                    l.status !== "Case Closed"
-                );
-                
-                if (!hasActiveMaintenance) {
-                    const currentDate = new Date(log.date);
-                    if (!isNaN(currentDate.getTime())) {
-                        currentDate.setDate(currentDate.getDate() + site.maintenanceCycle);
-                        const nextDateStr = currentDate.toISOString().split("T")[0];
-
-                        // Check if next maintenance date is beyond insurance end date
-                        if (site.insuranceEndDate) {
-                            const insuranceEndDate = new Date(site.insuranceEndDate);
-                            if (currentDate > insuranceEndDate) {
-                                console.log('[Auto-generate] Skipped - next maintenance date is beyond insurance end date');
-                                return;
-                            }
-                        }
-
-                    const siteMaLogs = state.logs.filter(
-                        (l) => l.siteId === site.id && (isMaCategory(l.category) || l.objective?.includes("รอบซ่อมบำรุง"))
-                    );
-                    const nextCycleNum = siteMaLogs.length + 1;
-
-                        const nextLogData = {
-                            siteId: site.id,
-                            date: nextDateStr,
-                            category: log.category || "บำรุงรักษาตามรอบ",
-                            status: "Open",
-                            lineItems: [],
-                            details: "-",
-                            objective: `รอบซ่อมบำรุงตามกำหนด (${site.maintenanceCycle} วัน)`,
-                            cost: 0,
-                            attachments: [],
-                            recordedBy: "System",
-                            timestamp: new Date().toISOString(),
-                            comments: [{
-                                text: `ซ่อมบำรุงตามรอบ (ครั้งที่ ${nextCycleNum})`,
-                                author: "System",
-                                authorId: "system",
-                                photoURL: "",
-                                timestamp: new Date().toISOString(),
-                                attachments: []
-                            }]
-                        };
-                        try {
-                            await FirestoreService.addLog(nextLogData);
-                            await refreshData();
-                            renderCurrentView();
-                            console.log('[Auto-generate] Created next maintenance cycle for completed case');
-                        } catch (cycleErr) {
-                            console.error("Failed to add next MA cycle log:", cycleErr);
-                        }
-                    }
-                } else {
-                    console.log('[Auto-generate] Skipped - site already has active maintenance case');
-                }
-            }
-        }
     } catch (error) {
         console.error('Error updating status:', error);
         showToast('ไม่สามารถอัปเดตสถานะได้', 'error');
