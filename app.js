@@ -1605,25 +1605,15 @@ function setupStrictPhoneFormat(input) {
     if (!input) return;
 
     input.addEventListener("input", function (e) {
-        // 1. Strip non-numeric chars (preserve existing hyphens? No, re-format from scratch)
+        // Allow digits only, remove other chars
         let rawValue = e.target.value.replace(/\D/g, "");
 
-        // 2. Limit to 10 digits
-        if (rawValue.length > 10) {
-            rawValue = rawValue.substring(0, 10);
+        // Format into groups of 3 digits separated by hyphens (no length limit)
+        const parts = [];
+        for (let i = 0; i < rawValue.length; i += 3) {
+            parts.push(rawValue.substring(i, i + 3));
         }
-
-        // 3. Format (xxx-xxx-xxxx)
-        let formattedValue = "";
-        if (rawValue.length > 0) {
-            formattedValue = rawValue.substring(0, 3);
-            if (rawValue.length > 3) {
-                formattedValue += "-" + rawValue.substring(3, 6);
-            }
-            if (rawValue.length > 6) {
-                formattedValue += "-" + rawValue.substring(6, 10);
-            }
-        }
+        const formattedValue = parts.join('-');
 
         e.target.value = formattedValue;
     });
@@ -10861,6 +10851,20 @@ function viewLogDetails(id) {
         html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333;">ตรวจสอบการทะลุทะลวงด้วย CI PCD Type 5</span>${pillBadge(log.ciPcdType5)}</div>`;
         html += `</div>`;
 
+        // Gas Detection
+        const gasValue = (value) => (value !== null && value !== undefined && value !== '') ? value + ' PPM' : '-';
+        const hasGasValues = [log.gasDoor1, log.gasDoor2, log.gasDoor3, log.gas1m1, log.gas1m2, log.gas1m3, log.gas2m1, log.gas2m2, log.gas2m3].some(v => v !== null && v !== undefined && v !== '');
+        if (hasGasValues) {
+            html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-wind"></i> ตรวจสอบปริมาณแก๊ส (Gas Detection)</div>`;
+            html += `<table style="width:100%; border-collapse:collapse; border:1px solid rgba(0,0,0,0.08); border-radius:8px; overflow:hidden; font-size:0.88rem; margin-bottom:0.75rem;">`;
+            html += `<thead><tr style="background:rgba(0,0,0,0.02);"><th style="padding:0.5rem 0.75rem; text-align:left;">จุดตรวจ</th><th style="padding:0.5rem 0.75rem; text-align:center;">ครั้งที่ 1</th><th style="padding:0.5rem 0.75rem; text-align:center;">ครั้งที่ 2</th><th style="padding:0.5rem 0.75rem; text-align:center;">ครั้งที่ 3</th></tr></thead>`;
+            html += `<tbody>`;
+            html += `<tr style="border-top:1px solid rgba(0,0,0,0.06);"><td style="padding:0.5rem 0.75rem;">บริเวณหน้าประตู</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gasDoor1)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gasDoor2)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gasDoor3)}</td></tr>`;
+            html += `<tr style="border-top:1px solid rgba(0,0,0,0.06);"><td style="padding:0.5rem 0.75rem;">ระยะห่าง 1 เมตร</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas1m1)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas1m2)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas1m3)}</td></tr>`;
+            html += `<tr style="border-top:1px solid rgba(0,0,0,0.06);"><td style="padding:0.5rem 0.75rem;">ระยะห่าง 2 เมตร</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas2m1)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas2m2)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas2m3)}</td></tr>`;
+            html += `</tbody></table>`;
+        }
+
         // Inspection Checklist
         html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-magnifying-glass-chart"></i> รายการตรวจสอบ (Inspection Checklist)</div>`;
         html += `<div class="insp-checklist-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0 1.5rem;">`;
@@ -13252,18 +13256,6 @@ if (profileForm) {
         let user = auth.currentUser;
         if (!user) return;
 
-        // --- STRICT PHONE VALIDATION (Profile) ---
-        const profilePhoneInput = document.getElementById("profile-phone");
-        if (profilePhoneInput && profilePhoneInput.value) {
-            if (!validateThaiPhone(profilePhoneInput, window.itiInstances.profile)) {
-                await showDialog(
-                    "เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลักและขึ้นต้นด้วย 0 เท่านั้น",
-                    { title: "รูปแบบไม่ถูกต้อง" },
-                );
-                return; // Stop
-            }
-        }
-        // -------------------------------------
 
         // --- EMAIL FORMAT VALIDATION (Profile) ---
         const newEmailInput = document.getElementById("profile-email");
