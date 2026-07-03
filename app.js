@@ -923,39 +923,44 @@ const FirestoreService = {
     },
 
     async fetchFilteredStats(filters) {
-        let q = query(collection(db, "logs"));
-        const constraints = [];
+        try {
+            let q = query(collection(db, "logs"));
+            const constraints = [];
 
-        if (filters.siteId && filters.siteId !== "all") {
-            constraints.push(where("siteId", "==", filters.siteId));
+            if (filters.siteId && filters.siteId !== "all") {
+                constraints.push(where("siteId", "==", filters.siteId));
+            }
+
+            if (filters.startDate) {
+                const startStr = filters.startDate.toISOString().split("T")[0];
+                constraints.push(where("date", ">=", startStr));
+            }
+            if (filters.endDate) {
+                const endStr = filters.endDate.toISOString().split("T")[0];
+                constraints.push(where("date", "<=", endStr));
+            }
+
+            // Note: Category and Search aren't easily aggregateable via simple where clauses
+            // without complex indexing. For now, we'll prioritize Site and Date.
+
+            if (constraints.length > 0) {
+                q = query(q, ...constraints);
+            }
+
+            const snapshot = await getAggregateFromServer(q, {
+                totalCost: sum("cost"),
+                totalCount: count(),
+            });
+
+            const summary = snapshot.data();
+            return {
+                totalCost: summary.totalCost || 0,
+                count: summary.totalCount || 0,
+            };
+        } catch (e) {
+            console.warn("[FirestoreService] fetchFilteredStats failed (likely missing index). Falling back to client-side stats calculation.", e);
+            return null;
         }
-
-        if (filters.startDate) {
-            const startStr = filters.startDate.toISOString().split("T")[0];
-            constraints.push(where("date", ">=", startStr));
-        }
-        if (filters.endDate) {
-            const endStr = filters.endDate.toISOString().split("T")[0];
-            constraints.push(where("date", "<=", endStr));
-        }
-
-        // Note: Category and Search aren't easily aggregateable via simple where clauses
-        // without complex indexing. For now, we'll prioritize Site and Date.
-
-        if (constraints.length > 0) {
-            q = query(q, ...constraints);
-        }
-
-        const snapshot = await getAggregateFromServer(q, {
-            totalCost: sum("cost"),
-            totalCount: count(),
-        });
-
-        const summary = snapshot.data();
-        return {
-            totalCost: summary.totalCost || 0,
-            count: summary.totalCount || 0,
-        };
     },
 
     async fetchMoreLogs() {
@@ -1574,6 +1579,7 @@ const grids = {
 
 const selects = {
     filterInput: document.getElementById("site-filter-input"),
+    filterHidden: document.getElementById("site-filter"), // Stores selected site filter ID
     logSiteInput: document.getElementById("log-site-input"),
     logSiteHidden: document.getElementById("log-site-select"), // Stores ID
 
@@ -1596,6 +1602,99 @@ const addressInputs = {
 
 // --- Initialization ---
 let isAppInitialized = false;
+
+// --- Real-time Listener Unsubscribe Functions ---
+let _unsubscribeSites = null;
+let _unsubscribeLogs = null;
+let _realtimeRenderDebounce = null;
+
+/**
+ * Debounced render: waits 300ms after last snapshot before re-rendering.
+ * Prevents excessive renders when multiple documents change at once.
+ */
+function _scheduleRealtimeRender() {
+    clearTimeout(_realtimeRenderDebounce);
+    _realtimeRenderDebounce = setTimeout(() => {
+        try {
+            populateSiteFilters();
+            updateLogDetailsDatalist();
+            renderAll();
+            // Also refresh calendar if in calendar view
+            if (calendarState && calendarState.view === 'calendar') {
+                fetchAndRenderCalendar();
+            }
+        } catch (e) {
+            console.warn('[RealtimeListener] render error:', e);
+        }
+    }, 300);
+}
+
+/**
+ * Sets up onSnapshot real-time listeners for sites and logs collections.
+ * This makes the UI auto-update whenever any user saves data — no F5 needed.
+ */
+function setupRealtimeListeners() {
+    // Cleanup any previous listeners first
+    teardownRealtimeListeners();
+
+    console.log('[RealtimeListener] Setting up real-time listeners...');
+
+    let sitesReady = false;
+    let logsReady = false;
+
+    // --- Sites Listener ---
+    const sitesQuery = query(collection(db, 'sites'), orderBy('updatedAt', 'desc'));
+    _unsubscribeSites = onSnapshot(sitesQuery, (snapshot) => {
+        // Skip the very first snapshot (already loaded by refreshData in init)
+        if (!sitesReady) {
+            sitesReady = true;
+            return;
+        }
+        console.log('[RealtimeListener] Sites updated, re-rendering...');
+        state.sites = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        _scheduleRealtimeRender();
+    }, (error) => {
+        console.warn('[RealtimeListener] Sites listener error:', error);
+    });
+
+    // --- Logs Listener ---
+    const logsQuery = query(collection(db, 'logs'), orderBy('date', 'desc'), limit(20));
+    _unsubscribeLogs = onSnapshot(logsQuery, (snapshot) => {
+        // Skip the very first snapshot (already loaded by refreshData in init)
+        if (!logsReady) {
+            logsReady = true;
+            return;
+        }
+        console.log('[RealtimeListener] Logs updated, re-rendering...');
+        state.logs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Update pagination cursor
+        if (snapshot.docs.length > 0) {
+            state.lastLogSnapshot = snapshot.docs[snapshot.docs.length - 1];
+        }
+        state.hasMoreLogs = snapshot.docs.length === 20;
+        _scheduleRealtimeRender();
+    }, (error) => {
+        console.warn('[RealtimeListener] Logs listener error:', error);
+    });
+
+    console.log('[RealtimeListener] Real-time listeners active.');
+}
+
+/**
+ * Cleans up real-time listeners (call on logout).
+ */
+function teardownRealtimeListeners() {
+    if (_unsubscribeSites) {
+        _unsubscribeSites();
+        _unsubscribeSites = null;
+    }
+    if (_unsubscribeLogs) {
+        _unsubscribeLogs();
+        _unsubscribeLogs = null;
+    }
+    clearTimeout(_realtimeRenderDebounce);
+    console.log('[RealtimeListener] Listeners torn down.');
+}
 
 // --- Phone Input Handling ---
 window.itiInstances = {
@@ -1731,6 +1830,8 @@ setupCustomNameLogic(); // Initialize custom name logic
         initCalendarControls();
         setupAgencySelect(); // Load agency dropdown
         await refreshData();
+        // Start real-time listeners AFTER initial data load
+        setupRealtimeListeners();
         console.log("init() complete");
 
 
@@ -2311,6 +2412,10 @@ function initSiteAutocompletes() {
     const siteFilterInput = document.getElementById("site-filter-input");
     if (siteFilterInput) {
         siteFilterInput.addEventListener("input", () => {
+            const filterHidden = document.getElementById("site-filter");
+            if (filterHidden) {
+                filterHidden.value = "all";
+            }
             renderCurrentView();
         });
     }
@@ -2733,10 +2838,17 @@ function toggleMaRoundSections(category) {
     }
     if (installSection) {
         installSection.style.display = (category === 'ติดตั้ง' || category === 'รื้อถอน') ? 'block' : 'none';
-        // Auto-select install type pill
+        // Auto-select install type pill (hidden row still saves correctly)
         if (category === 'ติดตั้ง' || category === 'รื้อถอน') {
             const r = document.querySelector('input[name="installType"][value="' + category + '"]');
             if (r) r.checked = true;
+            // Show the job type badge in the section header
+            const badge = document.getElementById('install-type-badge');
+            if (badge) {
+                badge.textContent = category;
+                badge.style.background = category === 'ติดตั้ง' ? '#22c55e' : '#f59e0b';
+                badge.style.display = 'inline-block';
+            }
         }
     }
     if (repairSection) {
@@ -3963,8 +4075,9 @@ async function handleLogMaintenance(e) {
                 btn.textContent = originalText;
                 btn.disabled = false;
                 hideProgress();
-                await showDialog(`ไม่สามารถเปลี่ยนสถานะเป็นเสร็จสิ้นได้: โปรดกรอก ${missing.join(', ')} ให้ครบก่อน`, {
-                    title: "ข้อมูลไม่ครบ",
+                await showDialog(`ไม่สามารถเปลี่ยนสถานะเป็น "เสร็จสิ้น" ได้\n\nกรุณากรอกข้อมูลให้ครบก่อน:\n• ${missing.join('\n• ')}`, {
+                    title: 'ข้อมูลไม่ครบถ้วน',
+                    icon: 'warning',
                 });
                 return;
             }
@@ -6557,11 +6670,18 @@ function editLog(logId) {
     if (log.wireThroughCeiling) { const r = form.querySelector('input[name="wireThroughCeiling"][value="' + log.wireThroughCeiling + '"]'); if (r) r.checked = true; }
     setField("hospitalTechName", log.hospitalTechName);
     setField("hospitalTechPhone", log.hospitalTechPhone);
-    // Install type pill
+    // Install type pill (hidden — auto-set from category/installType)
     const installTypeVal = log.installType || log.category;
     if (installTypeVal) {
         const r = form.querySelector('input[name="installType"][value="' + installTypeVal + '"]');
         if (r) r.checked = true;
+        // Update badge
+        const badge = document.getElementById('install-type-badge');
+        if (badge) {
+            badge.textContent = installTypeVal;
+            badge.style.background = installTypeVal === 'ติดตั้ง' ? '#22c55e' : '#f59e0b';
+            badge.style.display = 'inline-block';
+        }
     }
     // Pre-delivery checklist
     ['precheck_electrical','precheck_wiring','precheck_grounding','precheck_doorMotor','precheck_connectors','precheck_vacuumPump','precheck_leakTest','precheck_chemical','precheck_sensors','precheck_sterilize','precheck_gasResidual','precheck_interior','precheck_exterior'].forEach(function(key) {
@@ -6913,7 +7033,10 @@ async function quickUpdateStatus(logId, newStatus) {
         var log = state.logs.find(function(l) { return l.id === logId; });
         const missing = getIncompleteDoneFields(log);
         if (missing.length > 0) {
-            showToast(`ไม่สามารถเปลี่ยนสถานะเป็นเสร็จสิ้นได้: โปรดกรอก ${missing.join(', ')} ให้ครบก่อน`, 'warning');
+            await showDialog(
+                `ไม่สามารถเปลี่ยนสถานะเป็น "เสร็จสิ้น" ได้\n\nกรุณากรอกข้อมูลให้ครบก่อน:\n• ${missing.join('\n• ')}`,
+                { title: 'ข้อมูลไม่ครบถ้วน', icon: 'warning' }
+            );
             editLog(logId);
             return;
         }
@@ -6994,6 +7117,8 @@ function resetFilters() {
     // 1. Reset Site Search Filter
     const siteInput = document.getElementById("site-filter-input");
     if (siteInput) siteInput.value = "";
+    const filterHidden = document.getElementById("site-filter");
+    if (filterHidden) filterHidden.value = "all";
 
     // Also clear log-search-input
     const logSearch = document.getElementById("log-search-input");
@@ -9900,12 +10025,16 @@ async function updateLogStatus(logId, newStatus) {
         var log = state.logs.find(function(l) { return l.id === logId; });
         const missing = getIncompleteDoneFields(log);
         if (missing.length > 0) {
-            showToast(`ไม่สามารถเปลี่ยนสถานะเป็นเสร็จสิ้นได้: โปรดกรอก ${missing.join(', ')} ให้ครบก่อน`, "warning");
-            const detailsModal = document.getElementById("modal-log-details");
+            // Close details modal first so dialog appears cleanly on top
+            const detailsModal = document.getElementById('modal-log-details');
             if (detailsModal) {
-                detailsModal.classList.add("hidden");
-                detailsModal.style.display = "none";
+                detailsModal.classList.add('hidden');
+                detailsModal.style.display = 'none';
             }
+            await showDialog(
+                `ไม่สามารถเปลี่ยนสถานะเป็น "เสร็จสิ้น" ได้\n\nกรุณากรอกข้อมูลให้ครบก่อน:\n• ${missing.join('\n• ')}`,
+                { title: 'ข้อมูลไม่ครบถ้วน', icon: 'warning' }
+            );
             editLog(logId);
             return;
         }
@@ -9920,15 +10049,16 @@ async function updateLogStatus(logId, newStatus) {
             } else {
                 const hasSignedDocs = log.signedDocAttachments && log.signedDocAttachments.length > 0;
                 if (!hasSignedDocs) {
-                    showToast("กรุณาอัปโหลดสำเนาเอกสารที่เซ็นแล้วก่อนเปลี่ยนสถานะเป็นเสร็จสิ้น", "error");
-                    
-                    // Close details modal to ensure a clean transition to edit modal
-                    const detailsModal = document.getElementById("modal-log-details");
-                    if (detailsModal) {
-                        detailsModal.classList.add("hidden");
-                        detailsModal.style.display = "none";
+                    // Close details modal first so dialog appears cleanly
+                    const detailsModal2 = document.getElementById('modal-log-details');
+                    if (detailsModal2) {
+                        detailsModal2.classList.add('hidden');
+                        detailsModal2.style.display = 'none';
                     }
-                    
+                    await showDialog(
+                        'กรุณาอัปโหลดสำเนาเอกสารที่เซ็นแล้วก่อนเปลี่ยนสถานะเป็น "เสร็จสิ้น"',
+                        { title: 'เอกสารไม่ครบถ้วน', icon: 'warning' }
+                    );
                     editLog(logId);
                     return;
                 }
@@ -10858,8 +10988,10 @@ function viewSiteLogs(siteId) {
 function filterLogsClientSide(logsToFilter, filters) {
     let result = logsToFilter;
 
-    // 1. Site/Case ID/Description Search Filter (combined)
-    if (filters.siteSearchQuery) {
+    // 1. Site Filter (Exact ID match if selected, otherwise fallback to search string)
+    if (filters.siteId && filters.siteId !== "all") {
+        result = result.filter((l) => l.siteId === filters.siteId);
+    } else if (filters.siteSearchQuery) {
         const q = filters.siteSearchQuery.toLowerCase().trim();
         result = result.filter((l) => {
             const site = state.sites.find((s) => s.id === l.siteId);
@@ -10947,6 +11079,9 @@ function getFilteredLogs() {
     const siteSearchQuery = document.getElementById("site-filter-input")
         ? document.getElementById("site-filter-input").value
         : "";
+    const siteId = selects.filterHidden
+        ? selects.filterHidden.value
+        : "all";
     const startDate =
         selects.filterStart && selects.filterStart.value
             ? new Date(selects.filterStart.value)
@@ -10968,6 +11103,7 @@ function getFilteredLogs() {
         : "";
 
     return filterLogsClientSide(state.logs, {
+        siteId,
         siteSearchQuery,
         startDate,
         endDate,
@@ -11461,7 +11597,7 @@ async function exportCasePDF(logId) {
             return '<div style="display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee; font-size:10px; min-height:22px;"><span style="font-weight:600; color:#555; white-space:nowrap;">' + label + '</span><span style="text-align:right;">' + value + '</span></div>';
         };
         inspHtml += '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px 16px; border:1px solid #ddd; border-radius:6px; padding:8px;">';
-        inspHtml += '<div style="display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee; font-size:10px; min-height:22px;"><span style="font-weight:700; color:#333;">ประเภทงาน</span><span style="font-weight:700; color:#333;">' + (log.installType || fallback) + '</span></div>';
+        inspHtml += '<div style="display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee; font-size:10px; min-height:22px;"><span style="font-weight:700; color:#333;">ประเภทงาน</span><span style="font-weight:700; color:#333;">' + (log.installType || log.category || fallback) + '</span></div>';
         inspHtml += pdfCell('มีทางลาด', pdfYesNo(log.useRamp) + (log.useRamp === 'yes' && log.rampWidth ? ' <span style="font-weight:600; color:#555;">กว้าง:</span> ' + log.rampWidth + ' ม.' : ''));
         inspHtml += pdfCell('มีลิฟต์', pdfYesNo(log.useElevator) + (log.useElevator === 'yes' ? ' <span style="font-weight:600; color:#555;">น้ำหนัก:</span> ' + (log.elevatorCapacity ? log.elevatorCapacity + ' kg' : fallback) + ' <span style="font-weight:600; color:#555;">ประตู:</span> ' + (log.elevatorDoorWidth && log.elevatorDoorHeight ? log.elevatorDoorWidth + '×' + log.elevatorDoorHeight + ' ม.' : fallback) : ''));
         inspHtml += pdfCell('ช่องทางเดิน (แคบสุด)', (log.walkwayWidth ? 'กว้าง ' + log.walkwayWidth + ' ม.' : fallback) + ' / ' + (log.walkwayHeight ? 'สูง ' + log.walkwayHeight + ' ม.' : fallback));
@@ -12391,9 +12527,10 @@ function renderLogs() {
             state.globalLogSummary = summary; // Cache it
             updateLogStats(logsToRender, summary);
         })
-        .catch((err) =>
-            console.error("Error fetching global filtered stats:", err),
-        );
+        .catch((err) => {
+            console.error("Error fetching global filtered stats:", err);
+            updateLogStats(logsToRender, null);
+        });
 
     // Fetch Total Count asynchronously for header (avoid blocking UI)
     FirestoreService.fetchGlobalLogCount()
@@ -12732,6 +12869,7 @@ function isLineInAppBrowser() {
 async function handleLogout() {
     if (await showDialog("คุณต้องการออกจากระบบหรือไม่?", { type: "confirm" })) {
         try {
+            teardownRealtimeListeners(); // Stop real-time listeners on logout
             await FirestoreService.logAction("AUTH", "LOGOUT", `User logged out`); // Log before signout
             await signOut(auth);
             window.location.reload();
