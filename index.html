@@ -1076,24 +1076,24 @@
             <!-- Unified Header & Device Info Banner -->
             <div class="public-report-header-unified">
                 <div class="header-brand-row">
-                    <div class="brand-logo-container">
-                        <img src="app-ico.svg" alt="CASP Logo" class="public-report-logo">
+                    <input type="tel" id="report-tel" class="public-report-input phone-ten" placeholder="08-XXX-XXXX"
+                        maxlength="12" pattern="\d{10}" inputmode="numeric" required>
                     </div>
                     <div class="brand-text-container">
                         <h1 class="public-report-title">CASP Service</h1>
                         <p class="public-report-subtitle">ระบบบริการอุปกรณ์</p>
                     </div>
                 </div>
-
-                <div class="header-device-info-container" id="report-device-info">
+                    <input type="tel" id="cycle-reporter-tel" class="public-report-input phone-ten" placeholder="08-XXX-XXXX"
+                        maxlength="12" pattern="\d{10}" inputmode="numeric" required>
                     <div class="report-device-spinner-unified">
                         <i class="fa-solid fa-circle-notch fa-spin"></i>
                         <span>กำลังโหลดข้อมูลเครื่อง...</span>
                     </div>
                 </div>
             </div>
-
-            <!-- Mode Selector (choose between report issue / cycle count) -->
+                    <input type="tel" id="report-tel" class="public-report-input phone-ten" placeholder="08-XXX-XXXX"
+                        maxlength="12" pattern="\d{10}" inputmode="numeric" required>
             <div id="portal-mode-selector" class="portal-mode-selector">
                 <p class="portal-mode-prompt">เลือกรายการที่ต้องการ</p>
                 <div class="portal-mode-cards">
@@ -1140,7 +1140,7 @@
                         <i class="fa-solid fa-user"></i>
                         ชื่อผู้แจ้ง <span class="required-star">*</span>
                     </label>
-                    <input type="text" id="report-name" class="public-report-input" placeholder="กรอกชื่อ-นามสกุลของคุณ"
+                    <input type="text" id="report-name" class="public-report-input name-only" placeholder="กรอกชื่อ-นามสกุลของคุณ"
                         required>
                 </div>
 
@@ -1149,8 +1149,8 @@
                         <i class="fa-solid fa-phone"></i>
                         เบอร์โทรผู้แจ้ง <span class="required-star">*</span>
                     </label>
-                    <input type="tel" id="report-tel" class="public-report-input" placeholder="08XXXXXXXX"
-                        inputmode="numeric" required>
+                    <input type="tel" id="report-tel" class="public-report-input phone-ten" placeholder="08-XXX-XXXX"
+                        maxlength="12" pattern="\d{10}" inputmode="numeric" required>
                 </div>
 
                 <div class="public-report-field">
@@ -1222,7 +1222,7 @@
                         <i class="fa-solid fa-user"></i>
                         ชื่อ-นามสกุล <span class="required-star">*</span>
                     </label>
-                    <input type="text" id="cycle-reporter-name" class="public-report-input" placeholder="กรอกชื่อ-นามสกุลของคุณ"
+                    <input type="text" id="cycle-reporter-name" class="public-report-input name-only" placeholder="กรอกชื่อ-นามสกุลของคุณ"
                         required>
                 </div>
 
@@ -1231,8 +1231,8 @@
                         <i class="fa-solid fa-phone"></i>
                         เบอร์โทรศัพท์ <span class="required-star">*</span>
                     </label>
-                    <input type="tel" id="cycle-reporter-tel" class="public-report-input" placeholder="08XXXXXXXX"
-                        inputmode="numeric" required>
+                    <input type="tel" id="cycle-reporter-tel" class="public-report-input phone-ten" placeholder="08-XXX-XXXX"
+                        maxlength="12" pattern="\d{10}" inputmode="numeric" required>
                 </div>
 
                 <div class="public-report-field">
@@ -1531,7 +1531,7 @@
                                         <div class="form-group">
                                             <label for="profile-name"><i class="fa-solid fa-user"></i> ชื่อที่แสดง
                                                 (Display Name)</label>
-                                            <input type="text" id="profile-name" placeholder="ระบุชื่อของคุณ" required
+                                            <input type="text" id="profile-name" class="name-only" placeholder="ระบุชื่อของคุณ" required
                                                 autocomplete="off">
                                         </div>
                                         <div class="form-group">
@@ -1543,7 +1543,7 @@
                                         <div class="form-group">
                                             <label for="profile-phone"><i class="fa-solid fa-phone"></i>
                                                 เบอร์โทรศัพท์</label>
-                                            <input type="tel" id="profile-phone" placeholder="08XXXXXXXX" maxlength="12"
+                                            <input type="tel" id="profile-phone" class="phone-ten" placeholder="08-XXX-XXXX" maxlength="12"
                                                 inputmode="numeric" autocomplete="off">
                                         </div>
                                     </div>
@@ -1832,8 +1832,8 @@
                                     </div>
                                     <div class="form-group" style="margin-top: 1rem;">
                                         <label class="form-label">เบอร์โทร Hotline</label>
-                                        <input type="tel" id="company-hotline-input" class="form-input"
-                                            placeholder="เช่น 02-152-5405">
+                                        <input type="tel" id="company-hotline-input" class="form-input phone-ten"
+                                            placeholder="08-XXX-XXXX" maxlength="12" pattern="\d{10}" inputmode="numeric" autocomplete="off">
                                         <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
                                             แสดงบนหน้า QR Code เพื่อให้ลูกค้าติดต่อได้
                                         </p>
@@ -2282,14 +2282,14 @@
             <div class="form-row form-row-3col">
                 <div class="form-group autocomplete-wrapper">
                     <label><i class="fa-solid fa-user-tie"></i> ชื่อผู้ดูแล (PIC)</label>
-                    <input type="text" name="picName" id="input-picName" placeholder="ชื่อเจ้าหน้าที่ช่างบริการ"
+                    <input type="text" name="picName" id="input-picName" class="name-only" placeholder="ชื่อเจ้าหน้าที่ช่างบริการ"
                         autocomplete="off">
                     <div id="dropdown-picName" class="autocomplete-dropdown hidden"></div>
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-phone"></i> เบอร์โทรศัพท์ (Phone)</label>
-                    <input type="tel" name="contactPhone" id="site-contact-phone" placeholder="0xx-xxx-xxxx"
-                        maxlength="12" inputmode="numeric" autocomplete="off">
+                    <input type="tel" name="contactPhone" id="site-contact-phone" class="phone-ten" placeholder="0xx-xxx-xxxx"
+                        maxlength="12" pattern="\d{10}" inputmode="numeric" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-rotate"></i> รอบการซ่อมบำรุง (วัน)</label>
@@ -2457,11 +2457,11 @@
             <div class="form-row form-row-3col" style="margin-bottom: 1rem;">
                 <div class="form-group">
                     <label><i class="fa-solid fa-user"></i> ชื่อผู้แจ้ง (Reporter Name)</label>
-                    <input type="text" name="reporterName" placeholder="ชื่อ-นามสกุล" autocomplete="off">
+                    <input type="text" name="reporterName" class="name-only" placeholder="ชื่อ-นามสกุล" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-phone"></i> เบอร์โทรผู้แจ้ง (Reporter Phone)</label>
-                    <input type="tel" name="reporterPhone" placeholder="0xx-xxx-xxxx" maxlength="12" inputmode="numeric" autocomplete="off">
+                    <input type="tel" name="reporterPhone" class="phone-ten" placeholder="0xx-xxx-xxxx" maxlength="12" pattern="\d{10}" inputmode="numeric" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-briefcase"></i> ตำแหน่งผู้แจ้ง (Reporter Position)</label>
@@ -2630,12 +2630,12 @@
                                 <label
                                     style="margin: 0 0 0.5rem 0; font-size: 0.85rem; display: block; font-weight: 500;">บริเวณหน้าประตู</label>
                                 <div class="form-row form-row-3col">
-                                    <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gasDoor1"
-                                            placeholder="ครั้งที่ 1 (PPM)" inputmode="decimal" autocomplete="off"></div>
-                                    <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gasDoor2"
-                                            placeholder="ครั้งที่ 2 (PPM)" inputmode="decimal" autocomplete="off"></div>
-                                    <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gasDoor3"
-                                            placeholder="ครั้งที่ 3 (PPM)" inputmode="decimal" autocomplete="off"></div>
+                                    <div class="form-group" style="margin-bottom: 0;"><input type="number" name="gasDoor1"
+                                            placeholder="ครั้งที่ 1 (PPM)" step="any" min="0" inputmode="decimal" autocomplete="off"></div>
+                                    <div class="form-group" style="margin-bottom: 0;"><input type="number" name="gasDoor2"
+                                            placeholder="ครั้งที่ 2 (PPM)" step="any" min="0" inputmode="decimal" autocomplete="off"></div>
+                                    <div class="form-group" style="margin-bottom: 0;"><input type="number" name="gasDoor3"
+                                            placeholder="ครั้งที่ 3 (PPM)" step="any" min="0" inputmode="decimal" autocomplete="off"></div>
                                 </div>
                             </div>
                             <div>
@@ -2643,12 +2643,12 @@
                                     style="margin: 0 0 0.5rem 0; font-size: 0.85rem; display: block; font-weight: 500;">ระยะห่างจากหน้าประตู
                                     1 เมตร</label>
                                 <div class="form-row form-row-3col">
-                                    <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gas1m1"
-                                            placeholder="ครั้งที่ 1 (PPM)" inputmode="decimal" autocomplete="off"></div>
-                                    <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gas1m2"
-                                            placeholder="ครั้งที่ 2 (PPM)" inputmode="decimal" autocomplete="off"></div>
-                                    <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gas1m3"
-                                            placeholder="ครั้งที่ 3 (PPM)" inputmode="decimal" autocomplete="off"></div>
+                                    <div class="form-group" style="margin-bottom: 0;"><input type="number" name="gas1m1"
+                                            placeholder="ครั้งที่ 1 (PPM)" step="any" min="0" inputmode="decimal" autocomplete="off"></div>
+                                    <div class="form-group" style="margin-bottom: 0;"><input type="number" name="gas1m2"
+                                            placeholder="ครั้งที่ 2 (PPM)" step="any" min="0" inputmode="decimal" autocomplete="off"></div>
+                                    <div class="form-group" style="margin-bottom: 0;"><input type="number" name="gas1m3"
+                                            placeholder="ครั้งที่ 3 (PPM)" step="any" min="0" inputmode="decimal" autocomplete="off"></div>
                                 </div>
                             </div>
                             <div>
@@ -2656,12 +2656,12 @@
                                     style="margin: 0 0 0.5rem 0; font-size: 0.85rem; display: block; font-weight: 500;">ระยะห่างจากหน้าประตู
                                     2 เมตร</label>
                                 <div class="form-row form-row-3col">
-                                    <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gas2m1"
-                                            placeholder="ครั้งที่ 1 (PPM)" inputmode="decimal" autocomplete="off"></div>
-                                    <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gas2m2"
-                                            placeholder="ครั้งที่ 2 (PPM)" inputmode="decimal" autocomplete="off"></div>
-                                    <div class="form-group" style="margin-bottom: 0;"><input type="text" name="gas2m3"
-                                            placeholder="ครั้งที่ 3 (PPM)" inputmode="decimal" autocomplete="off"></div>
+                                    <div class="form-group" style="margin-bottom: 0;"><input type="number" name="gas2m1"
+                                            placeholder="ครั้งที่ 1 (PPM)" step="any" min="0" inputmode="decimal" autocomplete="off"></div>
+                                    <div class="form-group" style="margin-bottom: 0;"><input type="number" name="gas2m2"
+                                            placeholder="ครั้งที่ 2 (PPM)" step="any" min="0" inputmode="decimal" autocomplete="off"></div>
+                                    <div class="form-group" style="margin-bottom: 0;"><input type="number" name="gas2m3"
+                                            placeholder="ครั้งที่ 3 (PPM)" step="any" min="0" inputmode="decimal" autocomplete="off"></div>
                                 </div>
                             </div>
                         </div>
@@ -3047,14 +3047,14 @@
                                     style="display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 180px;">
                                     <label
                                         style="margin: 0; font-size: 0.85rem; white-space: nowrap;">ชื่อ-สกุล:</label>
-                                    <input type="text" name="hospitalTechName" placeholder="ชื่อ-สกุล"
+                                    <input type="text" name="hospitalTechName" class="name-only" placeholder="ชื่อ-สกุล"
                                         autocomplete="off"
                                         style="flex: 1; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.82rem; border-radius: 6px;">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 0.4rem; min-width: 160px;">
                                     <label style="margin: 0; font-size: 0.85rem; white-space: nowrap;">เบอร์โทร:</label>
-                                    <input type="tel" name="hospitalTechPhone" placeholder="0xx-xxx-xxxx" maxlength="12"
-                                        inputmode="numeric" autocomplete="off"
+                                    <input type="tel" name="hospitalTechPhone" class="phone-ten" placeholder="0xx-xxx-xxxx" maxlength="12"
+                                        pattern="\d{10}" inputmode="numeric" autocomplete="off"
                                         style="width: 130px; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.82rem; border-radius: 6px;">
                                 </div>
                             </div>
@@ -3466,12 +3466,12 @@
                 <div class="form-row form-row-3col">
                     <div class="form-group">
                         <label><i class="fa-solid fa-user"></i> ชื่อลูกค้า (Customer Name)</label>
-                        <input type="text" name="customerName" placeholder="ชื่อ-นามสกุล" autocomplete="off">
+                        <input type="text" name="customerName" class="name-only" placeholder="ชื่อ-นามสกุล" autocomplete="off">
                     </div>
                     <div class="form-group">
                         <label><i class="fa-solid fa-phone"></i> เบอร์โทรลูกค้า (Phone)</label>
-                        <input type="tel" name="customerPhone" id="customer-phone-input" placeholder="0xx-xxx-xxxx"
-                            maxlength="12" inputmode="numeric" autocomplete="off">
+                        <input type="tel" name="customerPhone" id="customer-phone-input" class="phone-ten" placeholder="0xx-xxx-xxxx"
+                            maxlength="12" pattern="\d{10}" inputmode="numeric" autocomplete="off">
                     </div>
                     <div class="form-group">
                         <label><i class="fa-solid fa-briefcase"></i> ตำแหน่ง (Position)</label>
@@ -3552,14 +3552,14 @@
                             style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem; color: var(--text-color);"><i
                                 class="fa-solid fa-user"></i> ชื่อ-นามสกุล <span
                                 style="color: #ef4444;">*</span></label>
-                        <input type="text" id="signature-name" placeholder="ชื่อผู้ลงลายเซ็น" autocomplete="off"
+                        <input type="text" id="signature-name" class="name-only" placeholder="ชื่อผู้ลงลายเซ็น" autocomplete="off"
                             style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--surface-card); color: var(--text-color); font-size: 0.9rem;">
                     </div>
                     <div style="flex: 1;">
                         <label
                             style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem; color: var(--text-color);"><i
                                 class="fa-solid fa-phone"></i> เบอร์โทร <span style="color: #ef4444;">*</span></label>
-                        <input type="tel" id="signature-tel" placeholder="08XXXXXXXX" autocomplete="off"
+                        <input type="tel" id="signature-tel" class="phone-ten" placeholder="08-XXX-XXXX" maxlength="12" pattern="\d{10}" autocomplete="off"
                             style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--surface-card); color: var(--text-color); font-size: 0.9rem;">
                     </div>
                     <div style="flex: 1;">
@@ -3830,11 +3830,16 @@
             </div>
             <!-- Objective/Description -->
             <div id="detail-log-objective-wrap"
-                style="padding:0.5rem 0; border-top:1px solid rgba(0,0,0,0.05); display:none;">
+                style="padding:0.5rem 0; display:none;">
                 <div style="font-size:0.82rem; color:#888; margin-bottom:0.25rem;">คำอธิบายงาน:</div>
                 <div id="detail-log-objective"
                     style="font-size:0.88rem; color:#333; white-space:pre-wrap; line-height:1.5;">-</div>
             </div>
+
+        <!-- Status Timeline -->
+        <div style="margin-bottom: 1.25rem;">
+            <div id="status-timeline" class="status-timeline"></div>
+        </div>
 
         <!-- Customer Section -->
         <div class="case-detail-section" id="detail-customer-section" style="display: none; margin-bottom: 1.25rem;">
@@ -3842,14 +3847,6 @@
                 <i class="fa-solid fa-user-check"></i> ข้อมูลลูกค้า (Customer Information)
             </div>
             <div id="detail-customer-content" style="font-size: 0.88rem; line-height: 1.7; padding: 0.75rem 0;"></div>
-        </div>
-
-        <!-- Completed Customer Section -->
-        <div class="case-detail-section" id="detail-customer-completed-section" style="display: none; margin-bottom: 1.25rem;">
-            <div class="case-detail-section-header">
-                <i class="fa-solid fa-user-check"></i> ข้อมูลลูกค้าผู้จบงาน (Completed Customer Information)
-            </div>
-            <div id="detail-customer-completed-content" style="font-size: 0.88rem; line-height: 1.7; padding: 0.75rem 0;"></div>
         </div>
 
         <!-- Attachments Section -->
@@ -3872,6 +3869,14 @@
                 <i class="fa-solid fa-clipboard-check"></i> ข้อมูลตรวจสอบ (Inspection Data)
             </div>
             <div id="detail-inspection-content" style="font-size: 0.88rem; line-height: 1.7; padding: 0.75rem 0;"></div>
+        </div>
+
+        <!-- Completed Customer Section -->
+        <div class="case-detail-section" id="detail-customer-completed-section" style="display: none; margin-bottom: 1.25rem;">
+            <div class="case-detail-section-header">
+                <i class="fa-solid fa-user-check"></i> ข้อมูลลูกค้าผู้จบงาน (Completed Customer Information)
+            </div>
+            <div id="detail-customer-completed-content" style="font-size: 0.88rem; line-height: 1.7; padding: 0.75rem 0;"></div>
         </div>
 
         <!-- Install/Uninstall Section -->

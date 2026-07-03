@@ -99,7 +99,7 @@ function createDeviceBannerHTML(site, caseId = '', actionsHTML = '') {
                         <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.35rem;">
                             ${caseId ? `
                                 <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04) !important; color: #111111 !important; border: 1.2px solid rgba(0, 0, 0, 0.08) !important; font-size: 0.75rem !important; font-weight: 700 !important; padding: 3px 10px !important; border-radius: 10px !important; text-transform: uppercase; letter-spacing: 0.03em;">
-                                    <i class="fa-solid fa-folder-open" style="font-size: 0.7rem; color: #555555;"></i> Case: ${caseId}
+                                    <i class="fa-solid fa-folder-open" style="font-size: 0.7rem; color: #555555;"></i> Case: ${caseId.replace(/^CASE-/, '')}
                                 </span>
                             ` : ''}
                             ${site.siteCode ? `
@@ -1663,6 +1663,13 @@ function setupPhoneInputs() {
             });
         }
     }
+}
+
+// --- Email Validation Helper ---
+function validateEmail(email) {
+    if (!email) return false;
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(String(email).toLowerCase());
 }
 
 // --- Strict Thai Phone Validation Helper ---
@@ -9696,6 +9703,24 @@ document.addEventListener('DOMContentLoaded', () => {
             this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
         });
     });
+
+    // Enforce name-only inputs (Thai/Latin letters, spaces, dots, hyphens)
+    document.querySelectorAll('input.name-only').forEach(input => {
+        input.addEventListener('input', function() {
+            this.value = this.value.replace(/[^\p{L}\s\.\-]/gu, '');
+        });
+    });
+    // Apply strict phone formatter to phone inputs (format: 0xx-xxx-xxxx)
+    document.querySelectorAll('input.phone-ten').forEach(input => {
+        try {
+            setupStrictPhoneFormat(input);
+        } catch (err) {
+            // fallback: allow digits only and limit to 10
+            input.addEventListener('input', function() {
+                this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
+            });
+        }
+    });
 });
 
 // ─── Description Attachment Helpers ──────────────────────────────────────────
@@ -13191,6 +13216,15 @@ if (profileForm) {
             }
         }
         // -------------------------------------
+
+        // --- EMAIL FORMAT VALIDATION (Profile) ---
+        const newEmailInput = document.getElementById("profile-email");
+        const newEmailVal = newEmailInput ? newEmailInput.value.trim() : "";
+        if (newEmailVal && !validateEmail(newEmailVal)) {
+            await showDialog("รูปแบบอีเมลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง", { title: "รูปแบบไม่ถูกต้อง" });
+            return;
+        }
+        // -----------------------------------------
 
         const newDisplayName = document.getElementById("profile-name").value.trim();
         const newEmail = document.getElementById("profile-email")?.value.trim();
