@@ -1077,7 +1077,7 @@
             <div class="public-report-header-unified">
                 <div class="header-brand-row">
                     <input type="tel" id="report-tel" class="public-report-input phone-ten" placeholder="08-XXX-XXXX"
-                        maxlength="12" pattern="\d{10}" inputmode="numeric" required>
+                        maxlength="12" pattern="^([0-9]{10}|[0-9]{3}-[0-9]{3}-[0-9]{4})$" inputmode="numeric" required>
                     </div>
                     <div class="brand-text-container">
                         <h1 class="public-report-title">CASP Service</h1>
@@ -1085,7 +1085,7 @@
                     </div>
                 </div>
                     <input type="tel" id="cycle-reporter-tel" class="public-report-input phone-ten" placeholder="08-XXX-XXXX"
-                        maxlength="12" pattern="\d{10}" inputmode="numeric" required>
+                        maxlength="12" pattern="^([0-9]{10}|[0-9]{3}-[0-9]{3}-[0-9]{4})$" inputmode="numeric" required>
                     <div class="report-device-spinner-unified">
                         <i class="fa-solid fa-circle-notch fa-spin"></i>
                         <span>กำลังโหลดข้อมูลเครื่อง...</span>
@@ -1093,7 +1093,7 @@
                 </div>
             </div>
                     <input type="tel" id="report-tel" class="public-report-input phone-ten" placeholder="08-XXX-XXXX"
-                        maxlength="12" pattern="\d{10}" inputmode="numeric" required>
+                        maxlength="12" pattern="^([0-9]{10}|[0-9]{3}-[0-9]{3}-[0-9]{4})$" inputmode="numeric" required>
             <div id="portal-mode-selector" class="portal-mode-selector">
                 <p class="portal-mode-prompt">เลือกรายการที่ต้องการ</p>
                 <div class="portal-mode-cards">
@@ -1150,7 +1150,7 @@
                         เบอร์โทรผู้แจ้ง <span class="required-star">*</span>
                     </label>
                     <input type="tel" id="report-tel" class="public-report-input phone-ten" placeholder="08-XXX-XXXX"
-                        maxlength="12" pattern="\d{10}" inputmode="numeric" required>
+                        maxlength="12" pattern="^([0-9]{10}|[0-9]{3}-[0-9]{3}-[0-9]{4})$" inputmode="numeric" required>
                 </div>
 
                 <div class="public-report-field">
@@ -1232,7 +1232,7 @@
                         เบอร์โทรศัพท์ <span class="required-star">*</span>
                     </label>
                     <input type="tel" id="cycle-reporter-tel" class="public-report-input phone-ten" placeholder="08-XXX-XXXX"
-                        maxlength="12" pattern="\d{10}" inputmode="numeric" required>
+                        maxlength="12" pattern="^([0-9]{10}|[0-9]{3}-[0-9]{3}-[0-9]{4})$" inputmode="numeric" required>
                 </div>
 
                 <div class="public-report-field">
@@ -1833,7 +1833,7 @@
                                     <div class="form-group" style="margin-top: 1rem;">
                                         <label class="form-label">เบอร์โทร Hotline</label>
                                         <input type="tel" id="company-hotline-input" class="form-input phone-ten"
-                                            placeholder="08-XXX-XXXX" maxlength="12" pattern="\d{10}" inputmode="numeric" autocomplete="off">
+                                            placeholder="08-XXX-XXXX" maxlength="12" pattern="^([0-9]{10}|[0-9]{3}-[0-9]{3}-[0-9]{4})$" inputmode="numeric" autocomplete="off">
                                         <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
                                             แสดงบนหน้า QR Code เพื่อให้ลูกค้าติดต่อได้
                                         </p>
@@ -2289,7 +2289,7 @@
                 <div class="form-group">
                     <label><i class="fa-solid fa-phone"></i> เบอร์โทรศัพท์ (Phone)</label>
                     <input type="tel" name="contactPhone" id="site-contact-phone" class="phone-ten" placeholder="0xx-xxx-xxxx"
-                        maxlength="12" pattern="\d{10}" inputmode="numeric" autocomplete="off">
+                        maxlength="12" pattern="^([0-9]{10}|[0-9]{3}-[0-9]{3}-[0-9]{4})$" inputmode="numeric" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-rotate"></i> รอบการซ่อมบำรุง (วัน)</label>
@@ -2461,7 +2461,7 @@
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-phone"></i> เบอร์โทรผู้แจ้ง (Reporter Phone)</label>
-                    <input type="tel" name="reporterPhone" class="phone-ten" placeholder="0xx-xxx-xxxx" maxlength="12" pattern="\d{10}" inputmode="numeric" autocomplete="off">
+                    <input type="tel" name="reporterPhone" class="phone-ten" placeholder="0xx-xxx-xxxx" maxlength="12" pattern="^([0-9]{10}|[0-9]{3}-[0-9]{3}-[0-9]{4})$" inputmode="numeric" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-briefcase"></i> ตำแหน่งผู้แจ้ง (Reporter Position)</label>
@@ -3054,7 +3054,7 @@
                                 <div style="display: flex; align-items: center; gap: 0.4rem; min-width: 160px;">
                                     <label style="margin: 0; font-size: 0.85rem; white-space: nowrap;">เบอร์โทร:</label>
                                     <input type="tel" name="hospitalTechPhone" class="phone-ten" placeholder="0xx-xxx-xxxx" maxlength="12"
-                                        pattern="\d{10}" inputmode="numeric" autocomplete="off"
+                                        pattern="^([0-9]{10}|[0-9]{3}-[0-9]{3}-[0-9]{4})$" inputmode="numeric" autocomplete="off"
                                         style="width: 130px; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.82rem; border-radius: 6px;">
                                 </div>
                             </div>
@@ -3471,7 +3471,7 @@
                     <div class="form-group">
                         <label><i class="fa-solid fa-phone"></i> เบอร์โทรลูกค้า (Phone)</label>
                         <input type="tel" name="customerPhone" id="customer-phone-input" class="phone-ten" placeholder="0xx-xxx-xxxx"
-                            maxlength="12" pattern="\d{10}" inputmode="numeric" autocomplete="off">
+                            maxlength="12" pattern="^([0-9]{10}|[0-9]{3}-[0-9]{3}-[0-9]{4})$" inputmode="numeric" autocomplete="off">
                     </div>
                     <div class="form-group">
                         <label><i class="fa-solid fa-briefcase"></i> ตำแหน่ง (Position)</label>
@@ -3559,7 +3559,7 @@
                         <label
                             style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem; color: var(--text-color);"><i
                                 class="fa-solid fa-phone"></i> เบอร์โทร <span style="color: #ef4444;">*</span></label>
-                        <input type="tel" id="signature-tel" class="phone-ten" placeholder="08-XXX-XXXX" maxlength="12" pattern="\d{10}" autocomplete="off"
+                        <input type="tel" id="signature-tel" class="phone-ten" placeholder="08-XXX-XXXX" maxlength="12" pattern="^([0-9]{10}|[0-9]{3}-[0-9]{3}-[0-9]{4})$" autocomplete="off"
                             style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--surface-card); color: var(--text-color); font-size: 0.9rem;">
                     </div>
                     <div style="flex: 1;">

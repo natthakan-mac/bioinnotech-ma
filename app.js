@@ -3774,13 +3774,37 @@ function getCustomerSignatureDataUrl() {
     if (!customerSignaturePad || customerSignaturePad.isEmpty()) return "";
     const canvas = document.getElementById("customer-signature-canvas");
     if (!canvas) return "";
+    // Ensure source canvas has non-zero dimensions. If not, try to resize from bounding rect.
+    if (!canvas.width || !canvas.height) {
+        const rect = canvas.getBoundingClientRect();
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        const w = Math.round(rect.width * ratio) || 0;
+        const h = Math.round(rect.height * ratio) || 0;
+        if (w > 0 && h > 0) {
+            try {
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                if (ctx) ctx.scale(ratio, ratio);
+            } catch (err) {
+                console.warn('Failed to resize customer signature canvas:', err);
+            }
+        } else {
+            return ""; // cannot render signature
+        }
+    }
     const tmpCanvas = document.createElement("canvas");
     tmpCanvas.width = canvas.width;
     tmpCanvas.height = canvas.height;
     const ctx = tmpCanvas.getContext("2d");
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, tmpCanvas.width, tmpCanvas.height);
-    ctx.drawImage(canvas, 0, 0);
+    try {
+        ctx.drawImage(canvas, 0, 0);
+    } catch (err) {
+        console.warn('Failed to draw customer signature canvas to tmp canvas:', err);
+        return "";
+    }
     return tmpCanvas.toDataURL("image/jpeg", 0.8);
 }
 
@@ -10059,15 +10083,39 @@ function closeSignatureModal() {
 
 function getSignatureDataUrl() {
     if (!signaturePad) return null;
-    // Create white background JPG
+    // Create white background JPG, guard against zero-dimension canvas
     const canvas = document.getElementById("signature-canvas");
+    if (!canvas) return null;
+    if (!canvas.width || !canvas.height) {
+        const rect = canvas.getBoundingClientRect();
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        const w = Math.round(rect.width * ratio) || 0;
+        const h = Math.round(rect.height * ratio) || 0;
+        if (w > 0 && h > 0) {
+            try {
+                canvas.width = w;
+                canvas.height = h;
+                const cctx = canvas.getContext('2d');
+                if (cctx) cctx.scale(ratio, ratio);
+            } catch (err) {
+                console.warn('Failed to resize signature canvas:', err);
+            }
+        } else {
+            return null;
+        }
+    }
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = canvas.width;
     tempCanvas.height = canvas.height;
     const ctx = tempCanvas.getContext("2d");
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-    ctx.drawImage(canvas, 0, 0);
+    try {
+        ctx.drawImage(canvas, 0, 0);
+    } catch (err) {
+        console.warn('Failed to draw signature canvas to tmp canvas:', err);
+        return null;
+    }
     return tempCanvas.toDataURL("image/jpeg", 0.8);
 }
 
