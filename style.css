@@ -5483,6 +5483,20 @@ summary:focus-visible {
     /* keep original color or maybe slight change? User said "do not apply blue color" so inherit is safest */
 }
 
+/* Inline site filter button in log rows */
+.site-filter-btn {
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+tr:hover .site-filter-btn {
+    opacity: 1;
+}
+
+.site-filter-btn:hover {
+    background: rgba(56, 189, 248, 0.28) !important;
+}
+
 /* LINE Login Button */
 .btn-line {
     background: #06C755;

@@ -7629,8 +7629,11 @@ function showDayDetails(dateStr, logs) {
             <td class="cell-index desktop-only">${rowNumber}</td>
             <td class="cell-case-id" data-label="รหัสเคส"><span class="value" style="font-family: 'Courier New', monospace; font-weight: 600; color: var(--primary-color);">${log.caseId ? log.caseId.replace('CASE-', '') : "-"}</span></td>
             <td class="cell-date" data-label="วันที่"><span class="value">${thaiDate}</span>${logTime ? `<div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">${logTime}</div>` : ''}</td>
-            <td class="cell-site clickable-site" data-label="สถานที่" onclick="event.stopPropagation(); viewSiteLogs('${site.id}')" title="ดูประวัติทั้งหมดของสถานที่นี้" style="cursor: pointer; font-weight: 500;">
-                <span class="value">${site.siteCode ? site.siteCode + ' - ' : ''}${site.name}</span>
+            <td class="cell-site" data-label="สถานที่" style="font-weight: 500;">
+                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <span class="value">${site.siteCode ? site.siteCode + ' - ' : ''}${site.name}</span>
+                    <button class="site-filter-btn desktop-only" onclick="event.stopPropagation(); viewSiteLogs('${site.id}')" title="กรองเฉพาะสถานที่นี้" style="display:inline-flex; align-items:center; justify-content:center; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.35); color:#0369a1; border-radius:6px; padding:2px 6px; font-size:0.7rem; cursor:pointer; gap:3px; white-space:nowrap; transition:background 0.15s;"><i class="fa-solid fa-filter" style="font-size:0.65rem;"></i></button>
+                </div>
             </td>
             <td class="cell-category" data-label="หมวดหมู่"><span class="value">${catBadge}</span></td>
             <td class="cell-status" data-label="สถานะ">${statusBadge}</td>
@@ -7639,7 +7642,10 @@ function showDayDetails(dateStr, logs) {
                 <div class="mc-top">
                     <span style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;"><span class="mc-caseid">${log.caseId ? log.caseId.replace('CASE-','') : '-'}</span> <span class="mc-siteid">${site.siteCode || '-'}</span></span>
                 </div>
-                <div class="mc-site">${site.name}</div>
+                <div class="mc-site" style="display:flex; align-items:center; gap:6px;">
+                    <span>${site.name}</span>
+                    <button onclick="event.stopPropagation(); viewSiteLogs('${site.id}')" title="กรองเฉพาะสถานที่นี้" style="display:inline-flex; align-items:center; justify-content:center; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.35); color:#0369a1; border-radius:6px; padding:2px 7px; font-size:0.7rem; cursor:pointer; flex-shrink:0;"><i class="fa-solid fa-filter" style="font-size:0.65rem;"></i></button>
+                </div>
                 <div class="mc-detail">
                     <div><span class="mc-label">วันที่:</span> ${thaiDate}${logTime ? ' ' + logTime : ''}</div>
                     <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><span class="mc-label">รายละเอียด:</span> ${calInitialDetail}</div>
@@ -12784,9 +12790,12 @@ function appendLogRows(newLogs, targetTbody = null) {
             <td class="cell-index desktop-only">${rowNumber}</td>
             <td class="cell-case-id" data-label="รหัสเคส"><span class="value" style="font-family: 'Courier New', monospace; font-weight: 600; color: var(--primary-color);">${log.caseId ? log.caseId.replace('CASE-', '') : "-"}</span></td>
             <td class="cell-date" data-label="วันที่"><span class="value">${thaiDate}</span>${logTime ? `<div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">${logTime}</div>` : ''}</td>
-            <td class="cell-site clickable-site" data-label="สถานที่" onclick="event.stopPropagation(); viewSiteLogs('${site.id}')" title="ดูประวัติทั้งหมดของสถานที่นี้" style="cursor: pointer; font-weight: 500;">
-                <span class="value">${site.siteCode ? site.siteCode + ' - ' : ''}${site.name}</span>
-                ${log.attachments && log.attachments.length > 0 ? '<i class="fa-solid fa-paperclip desktop-only" style="color: var(--text-muted); font-size: 0.8rem; margin-left: 4px;" title="มีไฟล์แนบ"></i>' : ""}
+            <td class="cell-site" data-label="สถานที่" style="font-weight: 500;">
+                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <span class="value">${site.siteCode ? site.siteCode + ' - ' : ''}${site.name}</span>
+                    ${log.attachments && log.attachments.length > 0 ? '<i class="fa-solid fa-paperclip desktop-only" style="color: var(--text-muted); font-size: 0.8rem;" title="มีไฟล์แนบ"></i>' : ""}
+                    <button class="site-filter-btn desktop-only" onclick="event.stopPropagation(); viewSiteLogs('${site.id}')" title="กรองเฉพาะสถานที่นี้" style="display:inline-flex; align-items:center; justify-content:center; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.35); color:#0369a1; border-radius:6px; padding:2px 6px; font-size:0.7rem; cursor:pointer; gap:3px; white-space:nowrap; transition:background 0.15s;"><i class="fa-solid fa-filter" style="font-size:0.65rem;"></i></button>
+                </div>
                 ${initialDetail}
             </td>
             <td class="cell-category" data-label="หมวดหมู่"><span class="value">${catBadge}</span></td>
@@ -12796,7 +12805,10 @@ function appendLogRows(newLogs, targetTbody = null) {
                 <div class="mc-top">
                     <span style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;"><span class="mc-caseid">${log.caseId ? log.caseId.replace('CASE-','') : '-'}</span> <span class="mc-siteid">${site.siteCode || '-'}</span></span>
                 </div>
-                <div class="mc-site">${site.name}</div>
+                <div class="mc-site" style="display:flex; align-items:center; gap:6px;">
+                    <span>${site.name}</span>
+                    <button onclick="event.stopPropagation(); viewSiteLogs('${site.id}')" title="กรองเฉพาะสถานที่นี้" style="display:inline-flex; align-items:center; justify-content:center; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.35); color:#0369a1; border-radius:6px; padding:2px 7px; font-size:0.7rem; cursor:pointer; flex-shrink:0;"><i class="fa-solid fa-filter" style="font-size:0.65rem;"></i></button>
+                </div>
                 <div class="mc-detail">
                     <div><span class="mc-label">วันที่:</span> ${thaiDate}${logTime ? ' ' + logTime : ''}</div>
                     <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><span class="mc-label">รายละเอียด:</span> ${log.comments && log.comments.length > 0 && log.comments[0].text ? (log.comments[0].text.length > 60 ? log.comments[0].text.substring(0, 60) + '...' : log.comments[0].text) : (log.objective || '-')}</div>
