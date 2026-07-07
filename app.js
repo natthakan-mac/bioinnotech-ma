@@ -1834,6 +1834,8 @@ setupCustomNameLogic(); // Initialize custom name logic
         setupRealtimeListeners();
         console.log("init() complete");
 
+        // Non-blocking: check all sites for pending maintenance cases on startup
+        setTimeout(() => runAutoMaintenanceCheckForAllSites(), 1500);
 
         // Check for URL parameters to open specific views
         handleUrlParameters();
@@ -5041,6 +5043,15 @@ async function handleLogMaintenance(e) {
 
         showProgress(90, 'กำลังรีเฟรชข้อมูล...');
 
+        // Auto-create next maintenance case if this one was just closed/cancelled
+        if ((isNewlyCompleted || isNewlyCancelled) && logData.siteId) {
+            try {
+                await checkAndAutoCreateMaintenanceCase(logData.siteId);
+            } catch (autoMaErr) {
+                console.warn('[AutoMA] Check after save failed:', autoMaErr);
+            }
+        }
+
         await refreshData();
 
         // Refresh Calendar if active
@@ -5069,7 +5080,187 @@ async function handleLogMaintenance(e) {
     }
 }
 
-// --- Global State for Pending Uploads & Deletions ---
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTO MAINTENANCE CASE CREATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Checks whether a new maintenance case should be auto-created for a given site,
+ * and creates one if all conditions are met:
+ *  1. Site has maintenanceCycle > 0
+ *  2. Today is within the insurance period (insuranceStartDate – insuranceEndDate)
+ *  3. No open (non-closed, non-cancelled) MA case already exists
+ *  4. Next due date (last closed MA date + cycle) is still within insurance period
+ *
+ * If no closed MA case exists, the base date is firstMaDate → installationDate → today.
+ *
+ * @param {string} siteId
+ * @returns {Promise<boolean>} true if a new case was created
+ */
+async function checkAndAutoCreateMaintenanceCase(siteId) {
+    try {
+        const site = state.sites.find(s => s.id === siteId);
+        if (!site || !site.maintenanceCycle || site.maintenanceCycle <= 0) return false;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Must be within insurance period
+        if (site.insuranceStartDate) {
+            const insStart = new Date(site.insuranceStartDate);
+            insStart.setHours(0, 0, 0, 0);
+            if (today < insStart) {
+                console.log(`[AutoMA] ${site.name}: before insurance start, skipping`);
+                return false;
+            }
+        }
+        if (site.insuranceEndDate) {
+            const insEnd = new Date(site.insuranceEndDate);
+            insEnd.setHours(23, 59, 59, 999);
+            if (today > insEnd) {
+                console.log(`[AutoMA] ${site.name}: insurance expired, skipping`);
+                return false;
+            }
+        }
+
+        // Gather MA logs for this site from current state
+        const maLogs = state.logs
+            .filter(l => l.siteId === siteId && isMaCategory(l.category))
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        // Guard: skip if there is already an open MA case
+        const hasOpenMA = maLogs.some(l =>
+            l.status !== 'Case Closed' &&
+            l.status !== 'Done' &&
+            l.status !== 'Completed' &&
+            l.status !== 'Cancel'
+        );
+        if (hasOpenMA) {
+            console.log(`[AutoMA] ${site.name}: open MA case exists, skipping`);
+            return false;
+        }
+
+        // Find last closed MA case
+        const lastClosedMA = maLogs.find(l =>
+            l.status === 'Case Closed' ||
+            l.status === 'Done' ||
+            l.status === 'Completed'
+        );
+
+        let baseDate;
+        if (lastClosedMA) {
+            // Start counting from the last closed case's date
+            baseDate = new Date(lastClosedMA.date);
+        } else {
+            // No closed case → use firstMaDate, installationDate, or today
+            const anchor = site.firstMaDate || site.installationDate;
+            baseDate = anchor ? new Date(anchor) : new Date(today);
+        }
+
+        if (isNaN(baseDate.getTime())) {
+            console.warn(`[AutoMA] ${site.name}: invalid base date, skipping`);
+            return false;
+        }
+
+        baseDate.setHours(0, 0, 0, 0);
+
+        // Calculate next due date
+        const nextDate = new Date(baseDate);
+        nextDate.setDate(nextDate.getDate() + site.maintenanceCycle);
+
+        // Guard: must not exceed insurance end
+        if (site.insuranceEndDate) {
+            const insEnd = new Date(site.insuranceEndDate);
+            insEnd.setHours(23, 59, 59, 999);
+            if (nextDate > insEnd) {
+                console.log(`[AutoMA] ${site.name}: next MA date ${nextDate.toISOString().split('T')[0]} exceeds insurance end, skipping`);
+                return false;
+            }
+        }
+
+        const nextDateStr = nextDate.toISOString().split('T')[0];
+
+        // Guard: prevent exact-date duplicates
+        const duplicate = maLogs.some(l => l.date && l.date.startsWith(nextDateStr));
+        if (duplicate) {
+            console.log(`[AutoMA] ${site.name}: case already exists for ${nextDateStr}, skipping`);
+            return false;
+        }
+
+        const cycleNum = maLogs.length + 1;
+
+        const newLogData = {
+            siteId: site.id,
+            date: nextDateStr,
+            category: 'บำรุงรักษาตามรอบ',
+            status: 'Open',
+            lineItems: [],
+            details: '-',
+            objective: `รอบซ่อมบำรุงตามกำหนด (${site.maintenanceCycle} วัน)`,
+            cost: 0,
+            attachments: [],
+            recordedBy: 'System',
+            timestamp: new Date().toISOString(),
+            comments: [{
+                text: `ระบบสร้างเคสซ่อมบำรุงอัตโนมัติ ครั้งที่ ${cycleNum} (รอบ ${site.maintenanceCycle} วัน)\nวันที่กำหนด: ${nextDateStr}`,
+                author: 'System',
+                authorId: 'system',
+                photoURL: '',
+                timestamp: new Date().toISOString(),
+                attachments: [],
+                isSystemLog: true
+            }]
+        };
+
+        await FirestoreService.addLog(newLogData);
+        const siteName = site.siteCode ? `${site.siteCode} - ${site.name}` : site.name;
+        console.log(`[AutoMA] Created case for "${siteName}" on ${nextDateStr} (cycle #${cycleNum})`);
+        showToast(`📋 สร้างเคสซ่อมบำรุงอัตโนมัติ: ${site.name} (${nextDateStr})`, 'info', 5000);
+        return true;
+    } catch (err) {
+        console.error('[AutoMA] Error creating maintenance case:', err);
+        return false;
+    }
+}
+
+/** Mutex to prevent re-entrant batch checks */
+let _autoMaCheckRunning = false;
+
+/**
+ * Batch-checks all sites with a maintenance cycle and creates cases as needed.
+ * Calls refreshData() once at the end if any cases were created.
+ * Safe to call on every app load — internally guarded against duplicates.
+ */
+async function runAutoMaintenanceCheckForAllSites() {
+    if (_autoMaCheckRunning) return;
+    _autoMaCheckRunning = true;
+    try {
+        const sitesWithCycle = state.sites.filter(s => s.maintenanceCycle && s.maintenanceCycle > 0);
+        if (sitesWithCycle.length === 0) return;
+
+        console.log(`[AutoMA] Batch checking ${sitesWithCycle.length} site(s)...`);
+        let created = 0;
+        for (const site of sitesWithCycle) {
+            const ok = await checkAndAutoCreateMaintenanceCase(site.id);
+            if (ok) created++;
+        }
+        if (created > 0) {
+            console.log(`[AutoMA] Batch: created ${created} new case(s). Refreshing data...`);
+            await refreshData();
+        } else {
+            console.log('[AutoMA] Batch: no new cases needed.');
+        }
+    } catch (err) {
+        console.error('[AutoMA] Batch check error:', err);
+    } finally {
+        _autoMaCheckRunning = false;
+    }
+}
+
+window.checkAndAutoCreateMaintenanceCase = checkAndAutoCreateMaintenanceCase;
+window.runAutoMaintenanceCheckForAllSites = runAutoMaintenanceCheckForAllSites;
+
+
 let pendingUploadsBefore = [];
 let pendingUploadsAfter = [];
 let pendingDeletions = []; // Store paths of files to delete on save
@@ -10234,6 +10425,24 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
         }
         
         showToast('อัปเดตสถานะสำเร็จ', 'success');
+
+        // Auto-create next maintenance case when a MA case is closed or cancelled
+        if (
+            (newStatus === 'Case Closed' || newStatus === 'Done' || newStatus === 'Cancel') &&
+            isMaCategory(log.category) &&
+            log.siteId
+        ) {
+            // Small delay so Firestore has settled before we query state
+            setTimeout(async () => {
+                try {
+                    await refreshData(); // Sync state first
+                    const created = await checkAndAutoCreateMaintenanceCase(log.siteId);
+                    if (created) await refreshData(); // Reload to show new case
+                } catch (autoMaErr) {
+                    console.warn('[AutoMA] Check after status update failed:', autoMaErr);
+                }
+            }, 800);
+        }
         
     } catch (error) {
         console.error('Error updating status:', error);
