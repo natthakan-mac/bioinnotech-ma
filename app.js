@@ -469,6 +469,75 @@ function showDialog(message, options = {}) {
     });
 }
 
+function showCancelReasonDialog(title = "ยกเลิกเคส") {
+    return new Promise((resolve) => {
+        // Create modal container
+        const modal = document.createElement('div');
+        modal.id = 'custom-cancel-dialog';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100vw';
+        modal.style.height = '100vh';
+        modal.style.backgroundColor = 'rgba(0,0,0,0.4)';
+        modal.style.backdropFilter = 'blur(4px)';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.zIndex = '9999';
+        modal.style.transition = 'opacity 0.2s ease';
+        
+        modal.innerHTML = `
+            <div style="background: #ffffff; border-radius: 16px; padding: 2rem; width: 90%; max-width: 450px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.05); font-family: 'Outfit', 'Prompt', sans-serif;">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                    <div style="width: 40px; height: 40px; background: rgba(239, 68, 68, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <i class="fa-solid fa-ban" style="color: #ef4444; font-size: 1.2rem;"></i>
+                    </div>
+                    <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #111827;">${title}</h3>
+                </div>
+                <p style="margin: 0 0 1rem 0; font-size: 0.95rem; color: #4b5563; line-height: 1.5;">กรุณาระบุเหตุผลที่ขอยกเลิกเคสซ่อมบำรุงนี้:</p>
+                <textarea id="cancel-reason-textarea" placeholder="ระบุเหตุผล เช่น ลูกค้าแจ้งยกเลิก, พิมพ์ข้อมูลซ้ำ..." style="width: 100%; height: 100px; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #d1d5db; font-size: 0.95rem; font-family: inherit; resize: none; outline: none; transition: all 0.2s; box-sizing: border-box;" onfocus="this.style.borderColor='#ef4444'; this.style.boxShadow='0 0 0 3px rgba(239, 68, 68, 0.15)'" onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"></textarea>
+                <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button id="cancel-dialog-btn-close" style="padding: 0.625rem 1.25rem; border-radius: 10px; border: 1px solid #d1d5db; background: #ffffff; color: #374151; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='#ffffff'">ปิด</button>
+                    <button id="cancel-dialog-btn-submit" style="padding: 0.625rem 1.25rem; border-radius: 10px; border: none; background: #ef4444; color: #ffffff; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">ยืนยันการยกเลิก</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        
+        const textarea = modal.querySelector('#cancel-reason-textarea');
+        if (textarea) textarea.focus();
+
+        const btnClose = modal.querySelector('#cancel-dialog-btn-close');
+        const btnSubmit = modal.querySelector('#cancel-dialog-btn-submit');
+
+        const cleanup = (val) => {
+            modal.style.opacity = '0';
+            setTimeout(() => {
+                modal.remove();
+            }, 200);
+            resolve(val);
+        };
+
+        btnClose.onclick = () => cleanup(null);
+        btnSubmit.onclick = () => {
+            const reason = textarea.value.trim();
+            if (!reason) {
+                textarea.style.borderColor = '#ef4444';
+                textarea.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.2)';
+                textarea.placeholder = 'จำเป็นต้องระบุเหตุผลในการยกเลิกเคส!';
+                return;
+            }
+            cleanup(reason);
+        };
+
+        modal.onclick = (e) => {
+            if (e.target === modal) cleanup(null);
+        };
+    });
+}
+
 // --- Toast Notification Helper ---
 function showToast(message, type = "success", duration = 3000) {
     const container = document.getElementById("toast-container");
@@ -699,7 +768,7 @@ function setupAuthStateListener() {
                         updates.displayName = user.displayName;
                     if (freshPhotoURL && userDoc.photoURL !== freshPhotoURL)
                         updates.photoURL = freshPhotoURL;
-                    
+
                     // Update last login time
                     updates.lastLogin = new Date().toISOString();
 
@@ -1194,7 +1263,7 @@ const FirestoreService = {
                 uid: doc.id,
                 ...doc.data()
             }));
-            
+
             console.log('=== FIRESTORE USERS DEBUG ===');
             console.log('Total documents in users collection:', allUsers.length);
             allUsers.forEach((user, index) => {
@@ -1205,7 +1274,7 @@ const FirestoreService = {
                     role: user.role
                 });
             });
-            
+
             // Filter out invalid users (users without email or with clearly invalid data)
             const validUsers = allUsers.filter(user => {
                 // Must have a valid email
@@ -1213,27 +1282,27 @@ const FirestoreService = {
                     console.log('Filtered out (no email):', user.uid, user.displayName);
                     return false;
                 }
-                
+
                 // Filter out obvious test/dummy users
                 if (user.displayName && user.displayName.includes('แพคอะกินแซบนอน')) {
                     console.log('Filtered out (test user):', user.email);
                     return false;
                 }
-                
+
                 return true;
             });
-            
+
             // Sort by displayName
             validUsers.sort((a, b) => {
                 const nameA = (a.displayName || a.email || '').toLowerCase();
                 const nameB = (b.displayName || b.email || '').toLowerCase();
                 return nameA.localeCompare(nameB, 'th');
             });
-            
+
             console.log('Valid users after filtering:', validUsers.length);
             console.log('Valid users:', validUsers.map(u => ({ email: u.email, name: u.displayName })));
             console.log('=== END FIRESTORE DEBUG ===');
-            
+
             return validUsers;
         } catch (e) {
             console.error("Error fetching all users:", e);
@@ -1246,12 +1315,12 @@ const FirestoreService = {
             const q = query(collection(db, "users"));
             const querySnapshot = await getDocs(q);
             const invalidUsers = [];
-            
+
             querySnapshot.docs.forEach(doc => {
                 const data = doc.data();
                 // Identify invalid users
-                if (!data.email || 
-                    data.email === 'null' || 
+                if (!data.email ||
+                    data.email === 'null' ||
                     data.email.trim() === '' ||
                     (data.displayName && data.displayName.includes('แพคอะกินแซบนอน'))) {
                     invalidUsers.push({
@@ -1260,10 +1329,10 @@ const FirestoreService = {
                     });
                 }
             });
-            
+
             console.log('Invalid users found:', invalidUsers.length);
             console.log('Invalid users:', invalidUsers.map(u => ({ id: u.id, email: u.data.email, name: u.data.displayName })));
-            
+
             return invalidUsers;
         } catch (e) {
             console.error("Error checking invalid users:", e);
@@ -1459,7 +1528,7 @@ const FirestoreService = {
         try {
             const storageRef = ref(storage, path);
             const uploadTask = uploadBytesResumable(storageRef, file);
-            
+
             return new Promise((resolve, reject) => {
                 uploadTask.on(
                     'state_changed',
@@ -1813,7 +1882,7 @@ async function init() {
         await loadAddressData();
         setupEventListeners();
 
-setupCustomNameLogic(); // Initialize custom name logic
+        setupCustomNameLogic(); // Initialize custom name logic
         setupSiteManagerFilters();
 
         // Restore Log View Sub-state
@@ -1834,8 +1903,13 @@ setupCustomNameLogic(); // Initialize custom name logic
         setupRealtimeListeners();
         console.log("init() complete");
 
-        // Non-blocking: check all sites for pending maintenance cases on startup
-        setTimeout(() => runAutoMaintenanceCheckForAllSites(), 1500);
+        // Startup check: create MA cases for any site that qualifies but has none yet.
+        // Safe now because checkAndAutoCreateMaintenanceCase uses fresh Firestore data.
+        // _autoMaStartupDone prevents duplicate runs within the same page session.
+        if (!window._autoMaStartupDone) {
+            window._autoMaStartupDone = true;
+            setTimeout(() => runAutoMaintenanceCheckForAllSites(), 2000);
+        }
 
         // Check for URL parameters to open specific views
         handleUrlParameters();
@@ -1848,12 +1922,12 @@ setupCustomNameLogic(); // Initialize custom name logic
 // Handle URL parameters to open specific views
 function handleUrlParameters() {
     const urlParams = new URLSearchParams(window.location.search);
-    
+
     // Check for siteId parameter to open site detail modal
     const siteId = urlParams.get('siteId');
     if (siteId) {
         console.log('Opening site detail from URL parameter:', siteId);
-        
+
         // Wait for data to be loaded, then open the modal
         const checkAndOpen = () => {
             if (state.sites && state.sites.length > 0) {
@@ -1873,15 +1947,15 @@ function handleUrlParameters() {
                 setTimeout(checkAndOpen, 200);
             }
         };
-        
+
         checkAndOpen();
     }
-    
+
     // Check for logId parameter to open MA case detail modal
     const logId = urlParams.get('logId');
     if (logId) {
         console.log('Opening MA case detail from URL parameter:', logId);
-        
+
         // Wait for data to be loaded, then open the modal
         const checkAndOpen = () => {
             if (state.logs && state.logs.length > 0) {
@@ -1901,7 +1975,7 @@ function handleUrlParameters() {
                 setTimeout(checkAndOpen, 200);
             }
         };
-        
+
         checkAndOpen();
     }
 }
@@ -2005,7 +2079,101 @@ window.wipeAllDataExceptSites = async function () {
     }
 };
 
-// --- Address Logic ---
+// --- Cleanup Duplicate Auto-MA Cases (Via Console) ---
+// Usage: await cleanupDuplicateMACases()
+window.cleanupDuplicateMACases = async function (dryRun = false) {
+    console.log(`[Cleanup] Starting duplicate MA case cleanup (dryRun=${dryRun})...`);
+
+    try {
+        // Fetch ALL logs fresh from Firestore
+        const { collection: col, getDocs: gd, query: q } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js').catch(() => ({ collection: null }));
+
+        // Use the already-imported Firestore functions via FirestoreService
+        const allLogs = await FirestoreService.fetchLogs();
+        console.log(`[Cleanup] Fetched ${allLogs.length} total logs`);
+
+        // Find auto-created MA cases: category='บำรุงรักษาตามรอบ', recordedBy='System', status='Open'
+        const autoMACases = allLogs.filter(l =>
+            l.category === 'บำรุงรักษาตามรอบ' &&
+            l.recordedBy === 'System' &&
+            l.status === 'Open'
+        );
+        console.log(`[Cleanup] Found ${autoMACases.length} auto-created open MA cases`);
+
+        // Group by siteId + date key
+        const groups = {};
+        for (const log of autoMACases) {
+            const key = `${log.siteId}__${log.date}`;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(log);
+        }
+
+        // Find groups with duplicates
+        const duplicateGroups = Object.entries(groups).filter(([, logs]) => logs.length > 1);
+        console.log(`[Cleanup] Found ${duplicateGroups.length} duplicate group(s)`);
+
+        if (duplicateGroups.length === 0) {
+            console.log('[Cleanup] No duplicates found. Nothing to delete.');
+            showToast('ไม่พบเคสซ้ำ', 'success');
+            return { deleted: 0, kept: 0 };
+        }
+
+        let totalDeleted = 0;
+        let totalKept = 0;
+
+        for (const [key, logs] of duplicateGroups) {
+            // Sort by timestamp ascending → keep the OLDEST (first auto-created), delete the rest
+            logs.sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
+            const keep = logs[0];
+            const toDelete = logs.slice(1);
+
+            const site = state.sites.find(s => s.id === keep.siteId);
+            const siteName = site ? (site.name || site.id) : keep.siteId;
+            console.log(`[Cleanup] Group "${siteName} / ${keep.date}": keeping ${keep.id}, deleting ${toDelete.length} duplicate(s)`);
+
+            if (!dryRun) {
+                for (const dup of toDelete) {
+                    try {
+                        // Direct Firestore delete (bypassing audit log for bulk cleanup)
+                        const { doc: docFn, deleteDoc: delDoc } = window._firestoreExports || {};
+                        if (delDoc && docFn) {
+                            await delDoc(docFn(db, 'logs', dup.id));
+                        } else {
+                            // Fallback to FirestoreService.deleteLog
+                            await FirestoreService.deleteLog(dup.id);
+                        }
+                        console.log(`[Cleanup]   Deleted ${dup.id}`);
+                        totalDeleted++;
+                    } catch (delErr) {
+                        console.error(`[Cleanup]   Failed to delete ${dup.id}:`, delErr);
+                    }
+                }
+            } else {
+                console.log(`[Cleanup]   [DRY RUN] Would delete: ${toDelete.map(d => d.id).join(', ')}`);
+                totalDeleted += toDelete.length;
+            }
+            totalKept++;
+        }
+
+        const msg = dryRun
+            ? `[DRY RUN] จะลบ ${totalDeleted} เคสซ้ำจาก ${duplicateGroups.length} กลุ่ม`
+            : `ลบเคสซ้ำสำเร็จ: ${totalDeleted} รายการจาก ${duplicateGroups.length} กลุ่ม`;
+        console.log(`[Cleanup] Done. ${msg}`);
+        showToast(msg, dryRun ? 'info' : 'success', 6000);
+
+        if (!dryRun && totalDeleted > 0) {
+            await refreshData();
+        }
+
+        return { deleted: totalDeleted, kept: totalKept, groups: duplicateGroups.length };
+    } catch (err) {
+        console.error('[Cleanup] Error:', err);
+        showToast('เกิดข้อผิดพลาดระหว่างทำความสะอาดข้อมูล: ' + err.message, 'error', 6000);
+        throw err;
+    }
+};
+
+
 // State for Calendar
 let calendarState = {
     view: "list", // 'list' or 'calendar'
@@ -2227,14 +2395,14 @@ function setupAutocomplete(
 
     const renderDropdown = (filterText = "") => {
         const items = getItems(); // Should return string array
-        
+
         // Require minimum characters before showing dropdown
         if (filterText.trim().length < minChars) {
             dropdown.classList.add("hidden");
             if (wrapper) wrapper.classList.remove("active");
             return;
         }
-        
+
         const matches = items.filter((a) =>
             a.toLowerCase().includes(filterText.toLowerCase()),
         ).slice(0, 50);
@@ -2686,7 +2854,7 @@ function updateSiteFieldDataLists() {
                 }
                 return options.sort((a, b) => a.localeCompare(b, 'th'));
             },
-            () => {},
+            () => { },
             "ค้นหา...",
             false,
             0
@@ -2798,11 +2966,11 @@ function formatDateDDMMYYYY(dateInput) {
     if (!dateInput) return "-";
     const d = new Date(dateInput);
     if (isNaN(d)) return "-";
-    
+
     const day = String(d.getDate()).padStart(2, '0');
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const year = d.getFullYear();
-    
+
     return `${day}/${month}/${year}`;
 }
 
@@ -2810,13 +2978,13 @@ function formatDateTimeDDMMYYYY(dateInput) {
     if (!dateInput) return "-";
     const d = new Date(dateInput);
     if (isNaN(d)) return "-";
-    
+
     const day = String(d.getDate()).padStart(2, '0');
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const year = d.getFullYear();
     const hours = String(d.getHours()).padStart(2, '0');
     const minutes = String(d.getMinutes()).padStart(2, '0');
-    
+
     if (hours === '00' && minutes === '00') return `${day}/${month}/${year}`;
     return `${day}/${month}/${year} ${hours}:${minutes}`;
 }
@@ -2877,7 +3045,7 @@ function renderRepairChecklist() {
     if (!container) return;
     container.innerHTML = '';
     var H = 36;
-    repairChecklistData.forEach(function(item, idx) {
+    repairChecklistData.forEach(function (item, idx) {
         var row = document.createElement('div');
         row.style.cssText = 'display:grid; grid-template-columns:24px 1fr auto 1fr 28px; gap:8px; align-items:stretch; padding:4px 0;';
 
@@ -2901,12 +3069,12 @@ function renderRepairChecklist() {
         var pillWrap = document.createElement('div');
         pillWrap.style.cssText = 'display:flex; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.12); box-sizing:border-box;';
 
-        var makeBtn = function(val, label, activeColor) {
+        var makeBtn = function (val, label, activeColor) {
             var btn = document.createElement('div');
             var isActive = item.status === val;
             btn.style.cssText = 'display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0 14px; font-size:0.78rem; font-weight:500; user-select:none; white-space:nowrap; min-width:52px; background:' + (isActive ? activeColor : '#fff') + '; color:' + (isActive ? '#fff' : '#999') + ';';
             btn.textContent = label;
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function () {
                 repairChecklistData[idx].status = val;
                 if (jsonInput) jsonInput.value = JSON.stringify(repairChecklistData);
                 renderRepairChecklist();
@@ -2944,7 +3112,7 @@ function renderRepairChecklist() {
     if (jsonInput) jsonInput.value = JSON.stringify(repairChecklistData);
 }
 
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
     if (e.target.closest('#btn-add-repair-row')) {
         repairChecklistData.push({ label: '', status: '', note: '' });
         renderRepairChecklist();
@@ -2956,7 +3124,7 @@ document.addEventListener('click', function(e) {
     }
 });
 
-document.addEventListener('input', function(e) {
+document.addEventListener('input', function (e) {
     if (e.target.dataset.repairIdx !== undefined && e.target.dataset.field) {
         var idx = parseInt(e.target.dataset.repairIdx);
         if (repairChecklistData[idx]) {
@@ -2967,7 +3135,7 @@ document.addEventListener('input', function(e) {
     }
 });
 
-document.addEventListener('change', function(e) {
+document.addEventListener('change', function (e) {
     if (e.target.name && e.target.name.startsWith('repair_status_')) {
         var idx = parseInt(e.target.name.replace('repair_status_', ''));
         if (repairChecklistData[idx]) {
@@ -2990,7 +3158,7 @@ function renderReturnProductList() {
     var jsonInput = document.getElementById('return-product-json');
     if (!container) return;
     container.innerHTML = '';
-    returnProductData.forEach(function(item, idx) {
+    returnProductData.forEach(function (item, idx) {
         var row = document.createElement('div');
         row.style.cssText = 'display:grid; grid-template-columns:24px 1fr 1fr 24px; gap:8px; align-items:center; padding:4px 0;';
 
@@ -3029,7 +3197,7 @@ function renderReturnProductList() {
     if (jsonInput) jsonInput.value = JSON.stringify(returnProductData);
 }
 
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
     if (e.target.closest('#btn-add-return-product')) {
         returnProductData.push({ name: '', status: '', qty: '', note: '' });
         renderReturnProductList();
@@ -3041,7 +3209,7 @@ document.addEventListener('click', function(e) {
     }
 });
 
-document.addEventListener('input', function(e) {
+document.addEventListener('input', function (e) {
     if (e.target.dataset.returnIdx !== undefined && e.target.dataset.field) {
         var idx = parseInt(e.target.dataset.returnIdx);
         if (returnProductData[idx]) {
@@ -3055,7 +3223,7 @@ document.addEventListener('input', function(e) {
 window.returnProductData = returnProductData;
 window.renderReturnProductList = renderReturnProductList;
 
-document.addEventListener('change', function(e) {
+document.addEventListener('change', function (e) {
     if (e.target.name === 'category') {
         toggleMaRoundSections(e.target.value);
     }
@@ -3088,7 +3256,7 @@ function renderDoorSizeFields(count) {
     }
 }
 
-document.addEventListener('input', function(e) {
+document.addEventListener('input', function (e) {
     if (e.target.name === 'doorCount') {
         renderDoorSizeFields(e.target.value);
     }
@@ -3105,7 +3273,7 @@ function updateDoorCount(delta) {
     renderDoorSizeFields(count);
 }
 
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
     if (e.target.closest('#btn-door-plus')) updateDoorCount(1);
     if (e.target.closest('#btn-door-minus')) updateDoorCount(-1);
 });
@@ -3118,8 +3286,8 @@ let preInstallPhotoPending = [];
 const btnPreInstallPhoto = document.getElementById('btn-pre-install-photo');
 const preInstallPhotoInput = document.getElementById('pre-install-photo-input');
 if (btnPreInstallPhoto && preInstallPhotoInput) {
-    btnPreInstallPhoto.addEventListener('click', function() { preInstallPhotoInput.click(); });
-    preInstallPhotoInput.addEventListener('change', function(e) {
+    btnPreInstallPhoto.addEventListener('click', function () { preInstallPhotoInput.click(); });
+    preInstallPhotoInput.addEventListener('change', function (e) {
         const files = Array.from(e.target.files);
         preInstallPhotoPending.push(...files);
         renderPreInstallPhotoPreview();
@@ -3133,7 +3301,7 @@ function renderPreInstallPhotoPreview() {
     if (!container) return;
     container.innerHTML = '';
     if (countEl) countEl.textContent = preInstallPhotoPending.length > 0 ? preInstallPhotoPending.length + ' ไฟล์' : 'ไม่ได้เลือกไฟล์';
-    preInstallPhotoPending.forEach(function(file, idx) {
+    preInstallPhotoPending.forEach(function (file, idx) {
         const wrapper = document.createElement('div');
         wrapper.style.cssText = 'position:relative; width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1);';
         const img = document.createElement('img');
@@ -3145,7 +3313,7 @@ function renderPreInstallPhotoPreview() {
         removeBtn.style.cssText = 'position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;';
         // Use reference-based removal to avoid stale index issues
         var fileRef = file;
-        removeBtn.onclick = function(e) {
+        removeBtn.onclick = function (e) {
             e.stopPropagation();
             if (removeBtn._deleted) return; // Guard against double-click
             removeBtn._deleted = true;
@@ -3185,8 +3353,8 @@ async function uploadPhotoArray(photos, logId, prefix) {
 const btnInstallPhoto = document.getElementById('btn-install-photo');
 const installPhotoInput = document.getElementById('install-photo-input');
 if (btnInstallPhoto && installPhotoInput) {
-    btnInstallPhoto.addEventListener('click', function() { installPhotoInput.click(); });
-    installPhotoInput.addEventListener('change', function(e) {
+    btnInstallPhoto.addEventListener('click', function () { installPhotoInput.click(); });
+    installPhotoInput.addEventListener('change', function (e) {
         const files = Array.from(e.target.files);
         installPhotoPending.push(...files);
         renderInstallPhotoPreview();
@@ -3200,7 +3368,7 @@ function renderInstallPhotoPreview() {
     if (!container) return;
     container.innerHTML = '';
     if (countEl) countEl.textContent = installPhotoPending.length > 0 ? installPhotoPending.length + ' ไฟล์' : 'ไม่ได้เลือกไฟล์';
-    installPhotoPending.forEach(function(file, idx) {
+    installPhotoPending.forEach(function (file, idx) {
         const wrapper = document.createElement('div');
         wrapper.style.cssText = 'position:relative; width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1);';
         const img = document.createElement('img');
@@ -3216,7 +3384,7 @@ function renderInstallPhotoPreview() {
         removeBtn.style.cssText = 'position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;';
         // Use reference-based removal to avoid stale index issues
         var fileRef = file;
-        removeBtn.onclick = function(e) {
+        removeBtn.onclick = function (e) {
             e.stopPropagation();
             if (removeBtn._deleted) return; // Guard against double-click
             removeBtn._deleted = true;
@@ -3254,9 +3422,9 @@ function renderRepairPhotoPreview() {
     repairPhotoPending.forEach(function (file, idx) {
         const wrapper = document.createElement('div');
         wrapper.style.cssText = 'position:relative; width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); background:#000;';
-        
+
         const isVideo = (file.type && file.type.startsWith('video/')) || (file.name && file.name.endsWith('.mp4'));
-        
+
         if (isVideo) {
             const video = document.createElement('video');
             video.style.cssText = 'width:100%; height:100%; object-fit:cover;';
@@ -3272,7 +3440,7 @@ function renderRepairPhotoPreview() {
             if (file instanceof File) { img.src = URL.createObjectURL(file); } else if (file.url) { img.src = file.url; }
             wrapper.appendChild(img);
         }
-        
+
         const removeBtn = document.createElement('div');
         removeBtn.innerHTML = '&times;';
         removeBtn.style.cssText = 'position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; z-index:2;';
@@ -3509,15 +3677,15 @@ async function handleSiteSubmit(e) {
                     const progressEl = document.getElementById(
                         `site-upload-progress-${index}`,
                     );
-                    
+
                     // Find the card element to add uploading state
                     const cardEl = progressEl?.closest('.pending-item');
-                    
+
                     if (progressEl) {
                         progressEl.style.display = "block";
                         progressEl.textContent = "0%";
                     }
-                    
+
                     if (cardEl) {
                         cardEl.style.opacity = "0.7";
                         cardEl.style.pointerEvents = "none";
@@ -3699,7 +3867,7 @@ function editSite(id) {
     setVal("insuranceEndDate", site.insuranceEndDate);
     setVal("warrantyNumber", site.warrantyNumber);
     setVal("maintenanceCycle", site.maintenanceCycle);
-    
+
     let installDate = site.installationDate;
     let installLogCaseId = null;
     let installLogId = null;
@@ -3715,7 +3883,7 @@ function editSite(id) {
     const formLinkEl = document.getElementById("install-case-link-form");
     if (formLinkEl) {
         if (installLogCaseId && installLogId) {
-            formLinkEl.innerHTML = `<a href="javascript:void(0)" onclick="openLogDetails('${installLogId}')" style="color: var(--primary-color); text-decoration: underline; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-link"></i> ${installLogCaseId}</a>`;
+            formLinkEl.innerHTML = `<a href="javascript:void(0)" onclick="viewLogDetails('${installLogId}')" style="color: var(--primary-color); text-decoration: underline; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-link"></i> ${installLogCaseId}</a>`;
         } else {
             formLinkEl.innerHTML = "";
         }
@@ -4001,24 +4169,24 @@ function buildInspectionSummary(logData) {
     // Electrical
     const hasE = logData.voltageL1 || logData.voltageL2 || logData.voltageL3 || logData.currentL1 || logData.currentL2 || logData.currentL3;
     if (hasE) {
-        lines.push(`⚡ Electrical — V: R${logData.voltageL1||'-'} S${logData.voltageL2||'-'} T${logData.voltageL3||'-'} | A: R${logData.currentL1||'-'} S${logData.currentL2||'-'} T${logData.currentL3||'-'}`);
+        lines.push(`⚡ Electrical — V: R${logData.voltageL1 || '-'} S${logData.voltageL2 || '-'} T${logData.voltageL3 || '-'} | A: R${logData.currentL1 || '-'} S${logData.currentL2 || '-'} T${logData.currentL3 || '-'}`);
     }
     // Physical
     const pf = (v) => !v ? '' : v === 'pass' ? '✅' : '❌';
     if (logData.avgWorkTemp) lines.push(`อุณหภูมิทำงาน: ${logData.avgWorkTemp}°C ${pf(logData.avgWorkTempCheck)}`);
     if (logData.avgAreaTemp) lines.push(`อุณหภูมิพื้นที่: ${logData.avgAreaTemp}°C ${pf(logData.avgAreaTempCheck)}`);
-    if (logData.leakPressure || logData.leakCheck) lines.push(`การรั่วไหล: ${logData.leakPressure||'-'} PSI ${pf(logData.leakCheck)}`);
+    if (logData.leakPressure || logData.leakCheck) lines.push(`การรั่วไหล: ${logData.leakPressure || '-'} PSI ${pf(logData.leakCheck)}`);
     if (logData.complyType5) lines.push(`Comply Type 5: ${pf(logData.complyType5)}`);
     if (logData.ciPcdType5) lines.push(`CI PCD Type 5: ${pf(logData.ciPcdType5)}`);
     // Inspection checklist
     const inspLabels = { check: 'Check', service: 'Service', replace: 'Replace' };
     const inspItems = [
-        ['insp_exteriorCleaning','ความสะอาดภายนอก'],['insp_interiorCleaning','ความสะอาดภายใน'],
-        ['insp_doorSystem','ระบบประตู'],['insp_footSwitch','Foot Switch'],['insp_sensor','Sensor'],
-        ['insp_tempPoints','อุณหภูมิจุดที่ 1-4'],['insp_workingPressure','ความดัน'],['insp_rfGenerator','RF Generator'],
-        ['insp_chemicalAmount','น้ำยาที่ฉีด'],['insp_airChargingValue','Air Charging'],['insp_filter','Filter'],
-        ['insp_decomposer','Decomposer'],['insp_vacuumPumpOil','น้ำมันปั๊มสุญญากาศ'],['insp_connectors','ข้อต่อ'],
-        ['insp_drainTank','ถังเดรนน้ำ'],['insp_gasDoor','แก๊สหน้าประตู'],['insp_gas1m','แก๊สห่าง 1ม.'],['insp_gas2m','แก๊สห่าง 2ม.'],
+        ['insp_exteriorCleaning', 'ความสะอาดภายนอก'], ['insp_interiorCleaning', 'ความสะอาดภายใน'],
+        ['insp_doorSystem', 'ระบบประตู'], ['insp_footSwitch', 'Foot Switch'], ['insp_sensor', 'Sensor'],
+        ['insp_tempPoints', 'อุณหภูมิจุดที่ 1-4'], ['insp_workingPressure', 'ความดัน'], ['insp_rfGenerator', 'RF Generator'],
+        ['insp_chemicalAmount', 'น้ำยาที่ฉีด'], ['insp_airChargingValue', 'Air Charging'], ['insp_filter', 'Filter'],
+        ['insp_decomposer', 'Decomposer'], ['insp_vacuumPumpOil', 'น้ำมันปั๊มสุญญากาศ'], ['insp_connectors', 'ข้อต่อ'],
+        ['insp_drainTank', 'ถังเดรนน้ำ'], ['insp_gasDoor', 'แก๊สหน้าประตู'], ['insp_gas1m', 'แก๊สห่าง 1ม.'], ['insp_gas2m', 'แก๊สห่าง 2ม.'],
     ];
     const inspResults = inspItems.filter(([k]) => logData[k]).map(([k, label]) => `${label}: ${inspLabels[logData[k]] || logData[k]}`);
     if (inspResults.length > 0) lines.push(`📋 Inspection — ${inspResults.join(' | ')}`);
@@ -4036,13 +4204,13 @@ async function handleLogMaintenance(e) {
     const progressContainer = document.getElementById('upload-progress-container');
     const progressBar = document.getElementById('upload-progress-bar');
     const progressText = document.getElementById('upload-progress-text');
-    
+
     const showProgress = (percent, text = '') => {
         if (progressContainer) progressContainer.style.display = 'block';
         if (progressBar) progressBar.style.width = percent + '%';
         if (progressText) progressText.textContent = text || `${Math.round(percent)}%`;
     };
-    
+
     const hideProgress = () => {
         if (progressContainer) progressContainer.style.display = 'none';
         if (progressBar) progressBar.style.width = '0%';
@@ -4050,11 +4218,11 @@ async function handleLogMaintenance(e) {
 
     try {
         showProgress(0, 'กำลังเตรียมข้อมูล...');
-        
+
         const formData = new FormData(e.target);
 
         const logId = formData.get("logId");
-        
+
         const checkStatus = formData.get("status") || (logId ? (state.logs.find(l => l.id === logId)?.status || "Open") : "Open");
         const useESignature = document.getElementById("use-esignature-toggle")?.checked || false;
 
@@ -4071,16 +4239,51 @@ async function handleLogMaintenance(e) {
             }
         }
 
+        if (checkStatus === 'Case Closed') {
+            const existingLog = logId ? state.logs.find(l => l.id === logId) : null;
+            const hasPassedDone = existingLog && (
+                existingLog.status === 'Done' ||
+                existingLog.status === 'Completed' ||
+                existingLog.status === 'Case Closed' ||
+                (existingLog.statusHistory && (existingLog.statusHistory.Done || existingLog.statusHistory.Completed || existingLog.statusHistory['Case Closed']))
+            );
+            if (!hasPassedDone) {
+                btn.textContent = originalText;
+                btn.disabled = false;
+                hideProgress();
+                await showDialog('ไม่สามารถเปลี่ยนสถานะเป็น "ปิดเคส" ได้ เนื่องจากปิดได้แค่สถานะ "เสร็จสิ้น" เท่านั้น"', {
+                    title: 'สถานะไม่ถูกต้อง',
+                    icon: 'warning',
+                });
+                return;
+            }
+        }
+
+        if (checkStatus === 'Cancel') {
+            const existingLog = logId ? state.logs.find(l => l.id === logId) : null;
+            if (!existingLog || existingLog.status !== 'Cancel') {
+                const reason = await showCancelReasonDialog();
+                if (reason === null) {
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                    hideProgress();
+                    return;
+                }
+                window._pendingCancelReason = reason;
+            }
+        }
+
         if (checkStatus === 'Done') {
             const missing = getIncompleteDoneFields(formData);
             if (missing.length > 0) {
                 btn.textContent = originalText;
                 btn.disabled = false;
                 hideProgress();
-                await showDialog(`ไม่สามารถเปลี่ยนสถานะเป็น "เสร็จสิ้น" ได้\n\nกรุณากรอกข้อมูลให้ครบก่อน:\n• ${missing.join('\n• ')}`, {
+                await showDialog('ไม่สามารถเปลี่ยนสถานะเป็น "เสร็จสิ้น" ได้ เนื่องจากข้อมูลยังไม่ครบถ้วน', {
                     title: 'ข้อมูลไม่ครบถ้วน',
                     icon: 'warning',
                 });
+                highlightIncompleteFields(e.target, getIncompleteDoneFieldKeys(formData));
                 return;
             }
         }
@@ -4177,10 +4380,10 @@ async function handleLogMaintenance(e) {
             progressPrefix,
         ) => {
             if (!uploadsArray || uploadsArray.length === 0) return;
-            
+
             const totalFiles = uploadsArray.length;
             let completedFiles = 0;
-            
+
             const uploadPromises = uploadsArray.map((file, index) => {
                 return new Promise((resolve, reject) => {
                     const storageRef = ref(storage, `logs/${Date.now()}_${file.name}`);
@@ -4196,11 +4399,11 @@ async function handleLogMaintenance(e) {
                         (snapshot) => {
                             const progress =
                                 (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                            
+
                             // Update individual file progress
                             if (progressEl)
                                 progressEl.textContent = Math.round(progress) + "%";
-                            
+
                             // Update global progress (20-70% range for uploads)
                             const baseProgress = 20;
                             const uploadRange = 50;
@@ -4352,11 +4555,11 @@ async function handleLogMaintenance(e) {
             hospitalTechPhone: formData.get("hospitalTechPhone") || "",
             installType: formData.get("installType") || "",
             // Repair checklist
-            repairChecklist: (() => { try { return JSON.parse(formData.get("repairChecklistJSON") || "[]"); } catch(e) { return []; } })(),
+            repairChecklist: (() => { try { return JSON.parse(formData.get("repairChecklistJSON") || "[]"); } catch (e) { return []; } })(),
             machineStatusAfter: formData.get("machineStatusAfter") || "",
             machineStatusAfterNote: formData.get("machineStatusAfterNote") || "",
             returnProductNote: formData.get("returnProductNote") || "",
-            returnProducts: (() => { try { return JSON.parse(formData.get("returnProductJSON") || "[]"); } catch(e) { return []; } })(),
+            returnProducts: (() => { try { return JSON.parse(formData.get("returnProductJSON") || "[]"); } catch (e) { return []; } })(),
             // Pre-delivery checklist
             precheck_electrical: formData.get("precheck_electrical") || "",
             precheck_electrical_note: formData.get("precheck_electrical_note") || "",
@@ -4439,7 +4642,7 @@ async function handleLogMaintenance(e) {
             // Check if status newly transitioned to Case Closed
             existingLog = state.logs.find((l) => l.id === logId);
             console.log('[handleLogMaintenance] Found existing log:', existingLog ? 'YES' : 'NO', existingLog?.id);
-            
+
             if (
                 existingLog &&
                 existingLog.status !== "Case Closed" &&
@@ -4447,7 +4650,7 @@ async function handleLogMaintenance(e) {
             ) {
                 isNewlyCompleted = true;
             }
-            
+
             // Check if status newly transitioned to Cancel
             if (
                 existingLog &&
@@ -4456,7 +4659,7 @@ async function handleLogMaintenance(e) {
             ) {
                 isNewlyCancelled = true;
             }
-            
+
             // Update status history if status changed
             if (existingLog && existingLog.status !== logData.status) {
                 if (!existingLog.statusHistory) {
@@ -4470,7 +4673,7 @@ async function handleLogMaintenance(e) {
             }
 
             logData.updatedBy = paramUser;
-            
+
             // Detect and log changes
             const changes = [];
             const fieldLabels = {
@@ -4482,7 +4685,7 @@ async function handleLogMaintenance(e) {
                 responderId: 'เจ้าหน้าที่ช่างบริการ',
                 cost: 'ค่าใช้จ่าย'
             };
-            
+
             const statusLabels = {
                 'Open': 'เปิดงาน',
                 'On Process': 'กำลังดำเนินการ',
@@ -4510,7 +4713,7 @@ async function handleLogMaintenance(e) {
                     cost: logData.cost,
                     lineItems: logData.lineItems
                 });
-                
+
                 // Check site change
                 if (existingLog.siteId !== logData.siteId) {
                     const oldSite = state.sites.find(s => s.id === existingLog.siteId);
@@ -4519,7 +4722,7 @@ async function handleLogMaintenance(e) {
                     console.log('[Change Detection] Site changed:', changeMsg);
                     changes.push(changeMsg);
                 }
-                
+
                 // Check date change
                 if (existingLog.date !== logData.date) {
                     // Format dates in Thai format for better readability
@@ -4530,12 +4733,12 @@ async function handleLogMaintenance(e) {
                     };
                     changes.push(`${fieldLabels.date}: ${formatDate(existingLog.date)} → ${formatDate(logData.date)}`);
                 }
-                
+
                 // Check category change
                 if (existingLog.category !== logData.category) {
                     changes.push(`${fieldLabels.category}: ${existingLog.category} → ${logData.category}`);
                 }
-                
+
                 // Check objective change
                 if (existingLog.objective !== logData.objective) {
                     const oldObj = existingLog.objective || '-';
@@ -4545,14 +4748,17 @@ async function handleLogMaintenance(e) {
                     const newDisplay = newObj.length > 50 ? newObj.substring(0, 47) + '...' : newObj;
                     changes.push(`${fieldLabels.objective}: ${oldDisplay} → ${newDisplay}`);
                 }
-                
+
                 // Check status change
                 if (existingLog.status !== logData.status) {
                     const oldStatus = statusLabels[existingLog.status] || existingLog.status;
                     const newStatus = statusLabels[logData.status] || logData.status;
                     changes.push(`${fieldLabels.status}: ${oldStatus} → ${newStatus}`);
+                    if (logData.status === 'Cancel' && window._pendingCancelReason) {
+                        changes.push(`เหตุผลที่ยกเลิก: ${window._pendingCancelReason}`);
+                    }
                 }
-                
+
                 // Check responder change
                 if ((existingLog.responderId || '') !== (logData.responderId || '')) {
                     const oldResponder = existingLog.responderId && state.users && state.users[existingLog.responderId]
@@ -4563,7 +4769,7 @@ async function handleLogMaintenance(e) {
                         : '-';
                     changes.push(`${fieldLabels.responderId}: ${oldResponder} → ${newResponder}`);
                 }
-                
+
                 // Check cost/line items change
                 const oldCost = existingLog.lineItems && existingLog.lineItems.length > 0
                     ? existingLog.lineItems.reduce((s, li) => s + (li.cost || 0), 0)
@@ -4571,7 +4777,7 @@ async function handleLogMaintenance(e) {
                 const newCost = logData.lineItems && logData.lineItems.length > 0
                     ? logData.lineItems.reduce((s, li) => s + (li.cost || 0), 0)
                     : logData.cost || 0;
-                    
+
                 if (oldCost !== newCost) {
                     const fmt = (v) => new Intl.NumberFormat(undefined, {
                         minimumFractionDigits: 2,
@@ -4579,7 +4785,7 @@ async function handleLogMaintenance(e) {
                     }).format(v || 0);
                     changes.push(`${fieldLabels.cost}: ${fmt(oldCost)} บาท → ${fmt(newCost)} บาท`);
                 }
-                
+
                 // Check line items changes (only if actual content changed)
                 const oldItems = existingLog.lineItems || [];
                 const newItems = logData.lineItems || [];
@@ -4596,11 +4802,11 @@ async function handleLogMaintenance(e) {
 
                 // Track extra UI fields
                 const extraFields = [
-                    'actionPlan', 'walkwayWidth', 'walkwayHeight', 'doorCount', 'useRamp', 'rampWidth', 
-                    'useElevator', 'elevatorCapacity', 'elevatorDoorWidth', 'elevatorDoorHeight', 
-                    'installDate', 'returnProductNote', 'precheckDate', 'reporterName', 'reporterPhone', 'reporterPosition', 'customerName', 'customerPhone', 
-                    'customerPosition', 'timeStart', 'timeEnd', 'installType', 'machineStatusAfter', 
-                    'machineStatusAfterNote', 'needWiring', 'needPowerPlug', 'wireDistance', 
+                    'actionPlan', 'walkwayWidth', 'walkwayHeight', 'doorCount', 'useRamp', 'rampWidth',
+                    'useElevator', 'elevatorCapacity', 'elevatorDoorWidth', 'elevatorDoorHeight',
+                    'installDate', 'returnProductNote', 'precheckDate', 'reporterName', 'reporterPhone', 'reporterPosition', 'customerName', 'customerPhone',
+                    'customerPosition', 'timeStart', 'timeEnd', 'installType', 'machineStatusAfter',
+                    'machineStatusAfterNote', 'needWiring', 'needPowerPlug', 'wireDistance',
                     'needDrillWall', 'wireThroughCeiling', 'hospitalTechName', 'hospitalTechPhone'
                 ];
                 const extraLabels = {
@@ -4609,12 +4815,12 @@ async function handleLogMaintenance(e) {
                     useElevator: 'ต้องใช้ลิฟต์', elevatorCapacity: 'น้ำหนักลิฟต์ที่รับได้', elevatorDoorWidth: 'ความกว้างประตูลิฟต์',
                     elevatorDoorHeight: 'ความสูงประตูลิฟต์', installDate: 'วันเวลาติดตั้ง/รื้อถอน', returnProductNote: 'หมายเหตุการรับสินค้ากลับ',
                     precheckDate: 'วันที่ตรวจสอบรายละเอียดก่อนส่งมอบ', reporterName: 'ชื่อผู้แจ้ง', reporterPhone: 'เบอร์โทรผู้แจ้ง', reporterPosition: 'ตำแหน่งผู้แจ้ง', customerName: 'ชื่อลูกค้า', customerPhone: 'เบอร์โทรลูกค้า', customerPosition: 'ตำแหน่งลูกค้า',
-                    timeStart: 'เวลาเริ่มปฏิบัติงาน', timeEnd: 'เวลาเสร็จสิ้นภารกิจ', installType: 'ประเภทการติดตั้ง/รื้อถอน', 
+                    timeStart: 'เวลาเริ่มปฏิบัติงาน', timeEnd: 'เวลาเสร็จสิ้นภารกิจ', installType: 'ประเภทการติดตั้ง/รื้อถอน',
                     machineStatusAfter: 'สถานะเครื่องหลังซ่อม', machineStatusAfterNote: 'หมายเหตุสถานะเครื่อง',
                     needWiring: 'ต้องเดินสายไฟ', needPowerPlug: 'ต้องเดิน Power Plug', wireDistance: 'ระยะจากตู้ไฟไปยังเครื่อง',
                     needDrillWall: 'เจาะกำแพง', wireThroughCeiling: 'สายไฟเดินลอดฝ้า', hospitalTechName: 'ชื่อช่างโรงพยาบาล', hospitalTechPhone: 'เบอร์ช่างโรงพยาบาล'
                 };
-                
+
                 const formatValue = (v) => {
                     if (v === 'yes') return 'ใช่';
                     if (v === 'no') return 'ไม่ใช่';
@@ -4663,21 +4869,21 @@ async function handleLogMaintenance(e) {
                     if ((existingLog[f] || '') !== (logData[f] || '')) {
                         changes.push(`ตรวจสอบ ${precheckLabels[f]}: ${existingLog[f] || '-'} → ${logData[f] || '-'}`);
                     }
-                    if ((existingLog[f+'_note'] || '') !== (logData[f+'_note'] || '')) {
-                        changes.push(`หมายเหตุ ${precheckLabels[f]}: ${existingLog[f+'_note'] || '-'} → ${logData[f+'_note'] || '-'}`);
+                    if ((existingLog[f + '_note'] || '') !== (logData[f + '_note'] || '')) {
+                        changes.push(`หมายเหตุ ${precheckLabels[f]}: ${existingLog[f + '_note'] || '-'} → ${logData[f + '_note'] || '-'}`);
                     }
                 });
 
                 // Check electrical fields
-                const elecFields = ['voltageL1','voltageL2','voltageL3','currentL1','currentL2','currentL3'];
-                const elecLabels = { voltageL1:'แรงดัน R', voltageL2:'แรงดัน S', voltageL3:'แรงดัน T', currentL1:'กระแส R', currentL2:'กระแส S', currentL3:'กระแส T' };
+                const elecFields = ['voltageL1', 'voltageL2', 'voltageL3', 'currentL1', 'currentL2', 'currentL3'];
+                const elecLabels = { voltageL1: 'แรงดัน R', voltageL2: 'แรงดัน S', voltageL3: 'แรงดัน T', currentL1: 'กระแส R', currentL2: 'กระแส S', currentL3: 'กระแส T' };
                 elecFields.forEach(f => {
                     if ((existingLog[f] || '') !== (logData[f] || '')) changes.push(`${elecLabels[f]}: ${existingLog[f] || '-'} → ${logData[f] || '-'}`);
                 });
 
                 // Check physical inspection
-                const physFields = ['avgWorkTemp','avgAreaTemp','leakPressure','avgWorkTempCheck','avgAreaTempCheck','leakCheck'];
-                const physLabels = { avgWorkTemp:'อุณหภูมิทำงาน', avgAreaTemp:'อุณหภูมิพื้นที่', leakPressure:'ความดันรั่วไหล', avgWorkTempCheck:'ผลอุณหภูมิทำงาน', avgAreaTempCheck:'ผลอุณหภูมิพื้นที่', leakCheck:'ผลการรั่วไหล' };
+                const physFields = ['avgWorkTemp', 'avgAreaTemp', 'leakPressure', 'avgWorkTempCheck', 'avgAreaTempCheck', 'leakCheck'];
+                const physLabels = { avgWorkTemp: 'อุณหภูมิทำงาน', avgAreaTemp: 'อุณหภูมิพื้นที่', leakPressure: 'ความดันรั่วไหล', avgWorkTempCheck: 'ผลอุณหภูมิทำงาน', avgAreaTempCheck: 'ผลอุณหภูมิพื้นที่', leakCheck: 'ผลการรั่วไหล' };
                 physFields.forEach(f => {
                     if ((existingLog[f] || '') !== (logData[f] || '')) changes.push(`${physLabels[f]}: ${existingLog[f] || '-'} → ${logData[f] || '-'}`);
                 });
@@ -4690,15 +4896,15 @@ async function handleLogMaintenance(e) {
                 if ((existingLog.cycleCount || '') !== (logData.cycleCount || '')) changes.push(`จำนวนรอบ: ${existingLog.cycleCount || '-'} → ${logData.cycleCount || '-'}`);
 
                 // Check inspection checklist
-                const inspKeys = ['insp_exteriorCleaning','insp_interiorCleaning','insp_doorSystem','insp_footSwitch','insp_sensor','insp_tempPoints','insp_workingPressure','insp_rfGenerator','insp_chemicalAmount','insp_airChargingValue','insp_filter','insp_decomposer','insp_vacuumPumpOil','insp_connectors','insp_drainTank','insp_gasDoor','insp_gas1m','insp_gas2m'];
-                const inspLabelMap = { check:'Check', service:'Service', replace:'Replace' };
+                const inspKeys = ['insp_exteriorCleaning', 'insp_interiorCleaning', 'insp_doorSystem', 'insp_footSwitch', 'insp_sensor', 'insp_tempPoints', 'insp_workingPressure', 'insp_rfGenerator', 'insp_chemicalAmount', 'insp_airChargingValue', 'insp_filter', 'insp_decomposer', 'insp_vacuumPumpOil', 'insp_connectors', 'insp_drainTank', 'insp_gasDoor', 'insp_gas1m', 'insp_gas2m'];
+                const inspLabelMap = { check: 'Check', service: 'Service', replace: 'Replace' };
                 inspKeys.forEach(k => {
                     if ((existingLog[k] || '') !== (logData[k] || '')) {
-                        const label = k.replace('insp_','').replace(/([A-Z])/g,' $1').trim();
+                        const label = k.replace('insp_', '').replace(/([A-Z])/g, ' $1').trim();
                         changes.push(`${label}: ${inspLabelMap[existingLog[k]] || existingLog[k] || '-'} → ${inspLabelMap[logData[k]] || logData[k] || '-'}`);
                     }
                 });
-                
+
                 // Check photo changes
                 if (JSON.stringify(existingLog.installPhotos || []) !== JSON.stringify(installPhotoPending)) {
                     changes.push(`รูปถ่ายการดำเนินงาน: มีการเปลี่ยนแปลง`);
@@ -4707,7 +4913,7 @@ async function handleLogMaintenance(e) {
                     changes.push(`รูปถ่ายก่อนดำเนินงาน: มีการเปลี่ยนแปลง`);
                 }
             }
-            
+
             await FirestoreService.updateLog(logId, logData);
 
             // Upload/update install photos
@@ -4721,7 +4927,7 @@ async function handleLogMaintenance(e) {
             const hasPreInstallChanges = preInstallPhotoPending.length > 0 || hadPreInstallPhotos;
             const hasRepairChanges = repairPhotoPending.length > 0 || hadRepairPhotos;
             const hasDescriptionChanges = descriptionAttachments.length > 0 || hadDescriptionAttachments;
-            
+
             if (hasInstallChanges || hasPreInstallChanges || hasRepairChanges || hasDescriptionChanges) {
                 try {
                     var photoUpdate = {};
@@ -4742,11 +4948,11 @@ async function handleLogMaintenance(e) {
                         descriptionAttachments = []; window.descriptionAttachments = descriptionAttachments;
                     }
                     await FirestoreService.updateLog(logId, photoUpdate);
-                } catch(photoErr) { console.error('Photo upload failed:', photoErr); }
+                } catch (photoErr) { console.error('Photo upload failed:', photoErr); }
             }
-            
+
             console.log('[Change Detection] Changes detected:', changes.length, changes);
-            
+
             // Add change log comment if there are changes
             if (changes.length > 0 && existingLog) {
                 console.log('[Change Log] Adding system comment with changes');
@@ -4759,28 +4965,28 @@ async function handleLogMaintenance(e) {
                     attachments: [],
                     isSystemLog: true
                 };
-                
+
                 console.log('[Change Log] Change log comment:', changeLogComment);
-                
+
                 const existingComments = existingLog.comments || [];
                 const updatedCommentsWithLog = [...existingComments, changeLogComment];
                 console.log('[Change Log] Updating comments array, old length:', existingComments.length, 'new length:', updatedCommentsWithLog.length);
-                
+
                 try {
                     await FirestoreService.updateLog(logId, { comments: updatedCommentsWithLog });
                     console.log('[Change Log] Successfully updated comments in Firestore');
                     console.log('[Change Log] Comment text:', changeLogComment.text);
-                    
+
                     // Update existingLog.comments so the next section uses the updated array
                     existingLog.comments = updatedCommentsWithLog;
-                    
+
                     // Also update state.logs to reflect the change immediately
                     const logInState = state.logs.find(l => l.id === logId);
                     if (logInState) {
                         logInState.comments = updatedCommentsWithLog;
                         console.log('[Change Log] Updated state.logs with new comments');
                     }
-                    
+
                     // Show a toast to confirm the change log was added
                     showToast(`บันทึกการเปลี่ยนแปลง ${changes.length} รายการ`, "info");
                 } catch (error) {
@@ -4792,11 +4998,11 @@ async function handleLogMaintenance(e) {
 
             // Update first comment (description) if editing
             const descriptionText = document.getElementById('log-description')?.value.trim();
-            
+
             if (existingLog) {
                 const existingComments = existingLog.comments || [];
                 let updatedComments = [...existingComments];
-                
+
                 // Prepare new/updated first comment
                 if (descriptionText || descriptionAttachments.length > 0) {
                     const commentData = {
@@ -4811,7 +5017,7 @@ async function handleLogMaintenance(e) {
                     // Handle attachments
                     const newAttachments = descriptionAttachments.filter(att => !att.isExisting);
                     const existingAttachments = descriptionAttachments.filter(att => att.isExisting);
-                    
+
                     // Upload new attachments
                     if (newAttachments.length > 0) {
                         const uploadPromises = newAttachments.map(async (file) => {
@@ -4836,9 +5042,9 @@ async function handleLogMaintenance(e) {
                     } else {
                         updatedComments = [commentData];
                     }
-                    
+
                     await FirestoreService.updateLog(logId, { comments: updatedComments });
-                    
+
                     // Clear description attachments
                     descriptionAttachments = [];
                     updateDescriptionAttachmentPreview();
@@ -4866,49 +5072,49 @@ async function handleLogMaintenance(e) {
                     }
                 }
             }
-            
+
             // Check if category changed from Maintenance to something else
-            if (existingLog && 
-                (isMaCategory(existingLog.category)) && 
-                !isMaCategory(logData.category) && 
+            if (existingLog &&
+                (isMaCategory(existingLog.category)) &&
+                !isMaCategory(logData.category) &&
                 logData.category !== "อื่นๆ") {
-                
+
                 console.log('[Category Change] Maintenance case changed to non-maintenance category');
-                
+
                 // Check if this site has a maintenance cycle and no active maintenance case
                 const site = state.sites.find((s) => s.id === logData.siteId);
                 if (site && site.maintenanceCycle && site.maintenanceCycle > 0) {
                     const siteLogs = await FirestoreService.fetchLogsForSite(site.id);
-                    const hasActiveMaintenance = siteLogs.some((l) => 
+                    const hasActiveMaintenance = siteLogs.some((l) =>
                         l.id !== logId && // Exclude current log
                         (isMaCategory(l.category)) &&
-                        l.status !== "Cancel" && 
-                        l.status !== "Done" && 
+                        l.status !== "Cancel" &&
+                        l.status !== "Done" &&
                         l.status !== "Completed" &&
                         l.status !== "Case Closed"
                     );
-                    
+
                     if (!hasActiveMaintenance) {
                         console.log('[Category Change] No active maintenance case, creating new one');
-                        
+
                         // Find all maintenance logs for this site (excluding the current one being changed)
                         const siteMaLogs = siteLogs.filter(
                             (l) => l.id !== logId && // Exclude current log being changed
-                            (isMaCategory(l.category) || l.objective?.includes("รอบซ่อมบำรุง"))
+                                (isMaCategory(l.category) || l.objective?.includes("รอบซ่อมบำรุง"))
                         ).sort((a, b) => new Date(b.date) - new Date(a.date));
-                        
+
                         // The cycle number should be based on remaining MA cases only
                         const nextCycleNum = siteMaLogs.length + 1;
-                        
-                        const latestClosedCase = siteMaLogs.find(l => 
-                            l.status === "Case Closed" || 
-                            l.status === "Done" || 
+
+                        const latestClosedCase = siteMaLogs.find(l =>
+                            l.status === "Case Closed" ||
+                            l.status === "Done" ||
                             l.status === "Cancel"
                         );
-                        
+
                         // Use the current log's date as base if it was the latest, otherwise use latest closed case
                         const baseDate = latestClosedCase ? new Date(latestClosedCase.date) : new Date(existingLog.date);
-                        
+
                         if (!isNaN(baseDate.getTime())) {
                             baseDate.setDate(baseDate.getDate() + site.maintenanceCycle);
                             const nextDateStr = baseDate.toISOString().split("T")[0];
@@ -4921,36 +5127,36 @@ async function handleLogMaintenance(e) {
                                     return;
                                 }
                             }
-                                
-                                const nextLogData = {
-                                    siteId: site.id,
-                                    date: nextDateStr,
-                                    category: "บำรุงรักษาตามรอบ",
-                                    status: "Open",
-                                    lineItems: [],
-                                    details: "-",
-                                    objective: `รอบซ่อมบำรุงตามกำหนด (${site.maintenanceCycle} วัน)`,
-                                    cost: 0,
-                                    attachments: [],
-                                    recordedBy: "System",
+
+                            const nextLogData = {
+                                siteId: site.id,
+                                date: nextDateStr,
+                                category: "บำรุงรักษาตามรอบ",
+                                status: "Open",
+                                lineItems: [],
+                                details: "-",
+                                objective: `รอบซ่อมบำรุงตามกำหนด (${site.maintenanceCycle} วัน)`,
+                                cost: 0,
+                                attachments: [],
+                                recordedBy: "System",
+                                timestamp: new Date().toISOString(),
+                                comments: [{
+                                    text: `ซ่อมบำรุงตามรอบ (ครั้งที่ ${nextCycleNum})`,
+                                    author: "System",
+                                    authorId: "system",
+                                    photoURL: "",
                                     timestamp: new Date().toISOString(),
-                                    comments: [{
-                                        text: `ซ่อมบำรุงตามรอบ (ครั้งที่ ${nextCycleNum})`,
-                                        author: "System",
-                                        authorId: "system",
-                                        photoURL: "",
-                                        timestamp: new Date().toISOString(),
-                                        attachments: []
-                                    }]
-                                };
-                                
-                                try {
-                                    await FirestoreService.addLog(nextLogData);
-                                    console.log('[Category Change] Created new maintenance case');
-                                    showToast("สร้างเคสซ่อมบำรุงใหม่อัตโนมัติแล้ว", "info");
-                                } catch (err) {
-                                    console.error("Failed to create maintenance case:", err);
-                                }
+                                    attachments: []
+                                }]
+                            };
+
+                            try {
+                                await FirestoreService.addLog(nextLogData);
+                                console.log('[Category Change] Created new maintenance case');
+                                showToast("สร้างเคสซ่อมบำรุงใหม่อัตโนมัติแล้ว", "info");
+                            } catch (err) {
+                                console.error("Failed to create maintenance case:", err);
+                            }
                         }
                     } else {
                         console.log('[Category Change] Active maintenance case exists, skipping');
@@ -4967,18 +5173,18 @@ async function handleLogMaintenance(e) {
             if (logData.status === "Cancel") {
                 isNewlyCancelled = true;
             }
-            
+
             // Initialize status history for new log
             logData.statusHistory = {
                 [logData.status]: new Date().toISOString()
             };
-            
+
             logData.recordedBy = paramUser;
             logData.recorderId = recorderId;
             logData.timestamp = new Date().toISOString();
             const newLogId = await FirestoreService.addLog(logData);
             console.log('[handleLogMaintenance] New log created with ID:', newLogId, 'Case ID:', logData.caseId);
-            
+
             // Add initial comment from description if provided
             const descriptionText = document.getElementById('log-description')?.value.trim();
             if (descriptionText || descriptionAttachments.length > 0) {
@@ -5016,10 +5222,10 @@ async function handleLogMaintenance(e) {
             } else {
                 const inspSummary = buildInspectionSummary(logData);
                 if (inspSummary) {
-                    try { await FirestoreService.updateLog(newLogId, { comments: [{ text: inspSummary, author: "System", authorId: "system", photoURL: "", timestamp: new Date().toISOString(), attachments: [], isSystemLog: true }] }); } catch(e) {}
+                    try { await FirestoreService.updateLog(newLogId, { comments: [{ text: inspSummary, author: "System", authorId: "system", photoURL: "", timestamp: new Date().toISOString(), attachments: [], isSystemLog: true }] }); } catch (e) { }
                 }
             }
-            
+
             showToast("บันทึกการบำรุงรักษาสำเร็จ", "success");
 
             // Upload install photos if any
@@ -5035,7 +5241,7 @@ async function handleLogMaintenance(e) {
                         preInstallPhotoPending = []; window.preInstallPhotoPending = preInstallPhotoPending;
                     }
                     await FirestoreService.updateLog(newLogId, photoUpdate);
-                } catch(photoErr) { console.error('Photo upload failed:', photoErr); }
+                } catch (photoErr) { console.error('Photo upload failed:', photoErr); }
             }
         }
 
@@ -5043,16 +5249,18 @@ async function handleLogMaintenance(e) {
 
         showProgress(90, 'กำลังรีเฟรชข้อมูล...');
 
+        await refreshData();
+
         // Auto-create next maintenance case if this one was just closed/cancelled
+        // BUG FIX: run AFTER refreshData() so state.logs has the updated status
         if ((isNewlyCompleted || isNewlyCancelled) && logData.siteId) {
             try {
-                await checkAndAutoCreateMaintenanceCase(logData.siteId);
+                const created = await checkAndAutoCreateMaintenanceCase(logData.siteId);
+                if (created) await refreshData(); // reload to show new case
             } catch (autoMaErr) {
                 console.warn('[AutoMA] Check after save failed:', autoMaErr);
             }
         }
-
-        await refreshData();
 
         // Refresh Calendar if active
         if (calendarState.view === "calendar") {
@@ -5060,7 +5268,7 @@ async function handleLogMaintenance(e) {
         }
 
         showProgress(100, 'เสร็จสิ้น!');
-        
+
         // Hide progress after a short delay
         setTimeout(() => hideProgress(), 500);
 
@@ -5077,6 +5285,7 @@ async function handleLogMaintenance(e) {
     } finally {
         btn.textContent = originalText;
         btn.disabled = false;
+        window._pendingCancelReason = null;
     }
 }
 
@@ -5100,7 +5309,11 @@ async function handleLogMaintenance(e) {
 async function checkAndAutoCreateMaintenanceCase(siteId) {
     try {
         const site = state.sites.find(s => s.id === siteId);
-        if (!site || !site.maintenanceCycle || site.maintenanceCycle <= 0) return false;
+        if (!site) { console.log('[AutoMA] site not found:', siteId); return false; }
+        if (!site.maintenanceCycle || site.maintenanceCycle <= 0) {
+            console.log(`[AutoMA] ${site.name}: no maintenanceCycle, skipping`);
+            return false;
+        }
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -5110,7 +5323,7 @@ async function checkAndAutoCreateMaintenanceCase(siteId) {
             const insStart = new Date(site.insuranceStartDate);
             insStart.setHours(0, 0, 0, 0);
             if (today < insStart) {
-                console.log(`[AutoMA] ${site.name}: before insurance start, skipping`);
+                console.log(`[AutoMA] ${site.name}: before insurance start (${site.insuranceStartDate}), skipping`);
                 return false;
             }
         }
@@ -5118,29 +5331,43 @@ async function checkAndAutoCreateMaintenanceCase(siteId) {
             const insEnd = new Date(site.insuranceEndDate);
             insEnd.setHours(23, 59, 59, 999);
             if (today > insEnd) {
-                console.log(`[AutoMA] ${site.name}: insurance expired, skipping`);
+                console.log(`[AutoMA] ${site.name}: insurance expired (${site.insuranceEndDate}), skipping`);
                 return false;
             }
         }
 
-        // Gather MA logs for this site from current state
-        const maLogs = state.logs
-            .filter(l => l.siteId === siteId && isMaCategory(l.category))
-            .sort((a, b) => new Date(b.date) - new Date(a.date));
+        // ── Always fetch FRESH data from Firestore to avoid stale state.logs ──
+        const freshLogs = await FirestoreService.fetchLogsForSite(siteId);
+        console.log(`[AutoMA] ${site.name}: fetched ${freshLogs.length} fresh logs`);
 
-        // Guard: skip if there is already an open MA case
-        const hasOpenMA = maLogs.some(l =>
+        // Sort: newest date first, then newest timestamp first
+        const sortDesc = (a, b) => {
+            const d = new Date(b.date) - new Date(a.date);
+            return d !== 0 ? d : new Date(b.timestamp || 0) - new Date(a.timestamp || 0);
+        };
+
+        // Gather only scheduled MA-category logs
+        const maLogs = freshLogs
+            .filter(l => l.category === 'บำรุงรักษาตามรอบ' || l.category === 'ตามสัญญาจ้าง' || l.category === 'ตามใบสั่งซื้อ')
+            .sort(sortDesc);
+
+        console.log(`[AutoMA] ${site.name}: maLogs count = ${maLogs.length}`, maLogs.map(l => ({ id: l.id, caseId: l.caseId, date: l.date, status: l.status })));
+
+        // ── KEY GUARD ──────────────────────────────────────────────────────────
+        // Check if there is ANY active MA-category case that is not closed yet.
+        // Other categories (ซ่อม, ติดตั้ง, รื้อถอน) do NOT block MA creation.
+        const hasActiveMa = maLogs.some(l =>
             l.status !== 'Case Closed' &&
             l.status !== 'Done' &&
-            l.status !== 'Completed' &&
             l.status !== 'Cancel'
         );
-        if (hasOpenMA) {
-            console.log(`[AutoMA] ${site.name}: open MA case exists, skipping`);
+        if (hasActiveMa) {
+            console.log(`[AutoMA] ${site.name}: there is an active MA case open, skipping`);
             return false;
         }
+        // ──────────────────────────────────────────────────────────────────────
 
-        // Find last closed MA case
+        // Find last closed MA case (for base-date calculation)
         const lastClosedMA = maLogs.find(l =>
             l.status === 'Case Closed' ||
             l.status === 'Done' ||
@@ -5148,13 +5375,22 @@ async function checkAndAutoCreateMaintenanceCase(siteId) {
         );
 
         let baseDate;
+        let useImmediateDate = false;
+
         if (lastClosedMA) {
-            // Start counting from the last closed case's date
+            // Count forward from the last closed MA case
             baseDate = new Date(lastClosedMA.date);
+            console.log(`[AutoMA] ${site.name}: baseDate from lastClosedMA = ${lastClosedMA.date}`);
         } else {
-            // No closed case → use firstMaDate, installationDate, or today
-            const anchor = site.firstMaDate || site.installationDate;
+            // No closed MA case → create immediately from anchor date (no cycle offset)
+            useImmediateDate = true;
+            // Fallback: firstMaDate → oldest MA log date → installationDate → today
+            const oldestMaDate = maLogs.length > 0
+                ? [...maLogs].sort((a, b) => new Date(a.date) - new Date(b.date))[0]?.date
+                : null;
+            const anchor = site.firstMaDate || oldestMaDate || site.installationDate;
             baseDate = anchor ? new Date(anchor) : new Date(today);
+            console.log(`[AutoMA] ${site.name}: useImmediateDate=true, anchor = ${anchor || 'today'}`);
         }
 
         if (isNaN(baseDate.getTime())) {
@@ -5164,21 +5400,23 @@ async function checkAndAutoCreateMaintenanceCase(siteId) {
 
         baseDate.setHours(0, 0, 0, 0);
 
-        // Calculate next due date
         const nextDate = new Date(baseDate);
-        nextDate.setDate(nextDate.getDate() + site.maintenanceCycle);
+        if (!useImmediateDate) {
+            nextDate.setDate(nextDate.getDate() + site.maintenanceCycle);
+        }
+
+        const nextDateStr = nextDate.toISOString().split('T')[0];
+        console.log(`[AutoMA] ${site.name}: nextDate = ${nextDateStr}, cycle = ${site.maintenanceCycle} days`);
 
         // Guard: must not exceed insurance end
         if (site.insuranceEndDate) {
             const insEnd = new Date(site.insuranceEndDate);
             insEnd.setHours(23, 59, 59, 999);
             if (nextDate > insEnd) {
-                console.log(`[AutoMA] ${site.name}: next MA date ${nextDate.toISOString().split('T')[0]} exceeds insurance end, skipping`);
+                console.log(`[AutoMA] ${site.name}: nextDate (${nextDateStr}) exceeds insurance end (${site.insuranceEndDate}), skipping`);
                 return false;
             }
         }
-
-        const nextDateStr = nextDate.toISOString().split('T')[0];
 
         // Guard: prevent exact-date duplicates
         const duplicate = maLogs.some(l => l.date && l.date.startsWith(nextDateStr));
@@ -5214,7 +5452,7 @@ async function checkAndAutoCreateMaintenanceCase(siteId) {
 
         await FirestoreService.addLog(newLogData);
         const siteName = site.siteCode ? `${site.siteCode} - ${site.name}` : site.name;
-        console.log(`[AutoMA] Created case for "${siteName}" on ${nextDateStr} (cycle #${cycleNum})`);
+        console.log(`[AutoMA] ✅ Created case for "${siteName}" on ${nextDateStr} (cycle #${cycleNum})`);
         showToast(`📋 สร้างเคสซ่อมบำรุงอัตโนมัติ: ${site.name} (${nextDateStr})`, 'info', 5000);
         return true;
     } catch (err) {
@@ -5222,6 +5460,7 @@ async function checkAndAutoCreateMaintenanceCase(siteId) {
         return false;
     }
 }
+
 
 /** Mutex to prevent re-entrant batch checks */
 let _autoMaCheckRunning = false;
@@ -5970,58 +6209,7 @@ async function handleLogin(e) {
     }
 }
 
-function setupMaDateAutoCalculation() {
-    const mainForm = document.getElementById("form-add-site");
-    if (!mainForm) return;
 
-    const insStartInput = mainForm.querySelector(
-        'input[name="insuranceStartDate"]',
-    );
-    const maCycleInput = mainForm.querySelector('input[name="maintenanceCycle"]');
-    const firstMaDateInput = mainForm.querySelector('input[name="firstMaDate"]');
-
-    if (!insStartInput || !maCycleInput || !firstMaDateInput) return;
-
-    // Track if user manually set the first MA date
-    let userModifiedMaDate = false;
-
-    firstMaDateInput.addEventListener("input", () => {
-        userModifiedMaDate = !!firstMaDateInput.value;
-    });
-
-    // Reset tracker when form is reset (we can plug this into resetSiteForm later, but catching empty is enough here)
-    mainForm.addEventListener("reset", () => {
-        userModifiedMaDate = false;
-    });
-
-    const calculateMaDate = () => {
-        if (userModifiedMaDate && !!firstMaDateInput.value) return;
-
-        const startVal = insStartInput.value;
-        const cycleVal = parseInt(maCycleInput.value, 10);
-
-        if (startVal && !isNaN(cycleVal) && cycleVal > 0) {
-            const startDate = new Date(startVal);
-            startDate.setDate(startDate.getDate() + cycleVal);
-
-            // Format to YYYY-MM-DD
-            const yyyy = startDate.getFullYear();
-            const mm = String(startDate.getMonth() + 1).padStart(2, "0");
-            const dd = String(startDate.getDate()).padStart(2, "0");
-
-            firstMaDateInput.value = `${yyyy}-${mm}-${dd}`;
-            userModifiedMaDate = false; // System filled it
-        } else if (!userModifiedMaDate) {
-            firstMaDateInput.value = ""; // clear if invalid/empty inputs
-        }
-    };
-
-    insStartInput.addEventListener("change", calculateMaDate);
-    insStartInput.addEventListener("input", calculateMaDate);
-    maCycleInput.addEventListener("input", calculateMaDate);
-    maCycleInput.addEventListener("change", calculateMaDate);
-    maCycleInput.addEventListener("keyup", calculateMaDate);
-}
 
 function setupEventListeners() {
     // Initialize Cycle Count Modal for Annual Plan
@@ -6040,8 +6228,7 @@ function setupEventListeners() {
         });
     });
 
-    // ... existing listeners ...
-    setupMaDateAutoCalculation();
+
 
     document.querySelectorAll(".nav-btn").forEach((btn) => {
         btn.addEventListener("click", () => switchView(btn.dataset.view));
@@ -6117,7 +6304,7 @@ function setupEventListeners() {
         btn.addEventListener("click", async (e) => {
             const modal = e.target.closest(".modal-overlay");
             if (!modal) return;
-            
+
             // Add confirmation for specific forms
             if (modal.id === "modal-add-site" || modal.id === "modal-log-maintenance") {
                 const confirmed = await showDialog("คุณต้องการปิดหน้านี้ใช่หรือไม่? ข้อมูลที่คุณกรอกไว้จะหายไป", {
@@ -6126,7 +6313,7 @@ function setupEventListeners() {
                 });
                 if (!confirmed) return;
             }
-            
+
             modal.classList.add("hidden");
             modal.style.display = "none";
 
@@ -6156,7 +6343,7 @@ function setupEventListeners() {
                     });
                     if (!confirmed) return;
                 }
-                
+
                 overlay.classList.add("hidden");
                 overlay.style.display = "none";
 
@@ -6205,12 +6392,12 @@ function setupEventListeners() {
 
     if (selects.filterCategory)
         selects.filterCategory.addEventListener("change", renderCurrentView);
-    
+
     // Status Filter
     const statusFilter = document.getElementById("filter-status");
     if (statusFilter)
         statusFilter.addEventListener("change", renderCurrentView);
-    
+
     if (selects.filterStart)
         selects.filterStart.addEventListener("change", renderCurrentView);
     if (selects.filterEnd)
@@ -6419,14 +6606,14 @@ function resetLogForm() {
     const newCaseId = FirestoreService.generateCaseId();
     const caseIdEl = document.getElementById('ma-form-case-id');
     const titleEl = document.getElementById('ma-form-title');
-    
+
     if (caseIdEl) {
         caseIdEl.textContent = newCaseId;
     }
     if (titleEl) {
         titleEl.textContent = 'บันทึกการเข้าซ่อมบำรุง';
     }
-    
+
     // Store the generated case ID for later use
     form.dataset.generatedCaseId = newCaseId;
 
@@ -6522,7 +6709,7 @@ function resetLogForm() {
         lineContainer.innerHTML = "";
         addLineItemRow();
     }
-    
+
     // Reset Items & Cost section to collapsed
     const formCostContent = document.getElementById("form-cost-section-content");
     const formCostIcon = document.getElementById("form-cost-collapse-icon");
@@ -6603,7 +6790,7 @@ async function checkEditPermission(logId, status, isDelete = false) {
         try {
             const userDoc = await FirestoreService.getUser(user.uid);
             const isAdminOrManager = userDoc?.role === 'admin' || userDoc?.role === 'manager';
-            
+
             if (!isAdminOrManager) {
                 const statusLabel = 'ปิดเคส';
                 showToast(`เฉพาะผู้ดูแลระบบและผู้จัดการเท่านั้นที่สามารถแก้ไขเคสสถานะ "${statusLabel}" ได้`, 'error');
@@ -6644,7 +6831,7 @@ function editLog(logId) {
     // Update title with case ID and device name in header
     const caseIdEl = document.getElementById('ma-form-case-id');
     const titleEl = document.getElementById('ma-form-title');
-    
+
     if (caseIdEl && log.caseId) {
         const site = state.sites.find((s) => s.id === log.siteId);
         const siteName = site ? site.name : '';
@@ -6661,7 +6848,7 @@ function editLog(logId) {
         // Clear the log ID to treat this as a new record
         document.getElementById("log-id-hidden").value = "";
         console.log('[editLog] Cleared log-id-hidden field');
-        
+
         // Show comment section for new case
         const commentSection = form.querySelector('.form-group:has(#ma-form-comment-input)');
         if (commentSection) commentSection.style.display = 'block';
@@ -6847,7 +7034,7 @@ function editLog(logId) {
     if (currentDoorCount > 0) {
         renderDoorSizeFields(currentDoorCount);
         if (log.doorSizes && log.doorSizes.length > 0) {
-            log.doorSizes.forEach(function(door, i) {
+            log.doorSizes.forEach(function (door, i) {
                 setField("doorWidth_" + (i + 1), door.width);
                 setField("doorHeight_" + (i + 1), door.height);
             });
@@ -6875,14 +7062,14 @@ function editLog(logId) {
         }
     }
     // Pre-delivery checklist
-    ['precheck_electrical','precheck_wiring','precheck_grounding','precheck_doorMotor','precheck_connectors','precheck_vacuumPump','precheck_leakTest','precheck_chemical','precheck_sensors','precheck_sterilize','precheck_gasResidual','precheck_interior','precheck_exterior'].forEach(function(key) {
+    ['precheck_electrical', 'precheck_wiring', 'precheck_grounding', 'precheck_doorMotor', 'precheck_connectors', 'precheck_vacuumPump', 'precheck_leakTest', 'precheck_chemical', 'precheck_sensors', 'precheck_sterilize', 'precheck_gasResidual', 'precheck_interior', 'precheck_exterior'].forEach(function (key) {
         if (log[key]) { const r = form.querySelector('input[name="' + key + '"][value="' + log[key] + '"]'); if (r) r.checked = true; }
         if (log[key + '_note']) { const n = form.querySelector('input[name="' + key + '_note"]'); if (n) n.value = log[key + '_note']; }
     });
     // Precheck date
     const precheckDateEl = form.querySelector('input[name="precheckDate"]');
     if (precheckDateEl && log.precheckDate) precheckDateEl.value = log.precheckDate;
-    
+
     // Install date
     const installDateEl = form.querySelector('input[name="installDate"]');
     if (installDateEl && log.installDate) installDateEl.value = log.installDate;
@@ -6947,7 +7134,7 @@ function editLog(logId) {
                 if (!canvas) return;
                 var ctx = canvas.getContext("2d");
                 var img = new Image();
-                img.onload = function() {
+                img.onload = function () {
                     var cw = canvas.width;
                     var ch = canvas.height;
                     ctx.fillStyle = "#ffffff";
@@ -6959,7 +7146,7 @@ function editLog(logId) {
                     customerSignaturePad._isEmpty = false;
                 };
                 img.src = log.customerSignature;
-            } catch(e) {}
+            } catch (e) { }
         }, 300);
     }
 
@@ -7213,6 +7400,159 @@ function getIncompleteDoneFields(log) {
     return missing;
 }
 
+function getIncompleteDoneFieldKeys(data) {
+    if (!data) return [];
+
+    const missingKeys = [];
+    const requiredFields = [
+        { key: 'siteId' },
+        { key: 'date' },
+        { key: 'category' },
+        { key: 'responderId' },
+        { key: 'objective' },
+    ];
+
+    requiredFields.forEach(({ key }) => {
+        if (!isFilled(getFieldValue(data, key))) {
+            missingKeys.push(key);
+        }
+    });
+
+    if (!isFilled(getFieldValue(data, 'customerName'))) {
+        missingKeys.push('customerName');
+    }
+    if (!isFilled(getFieldValue(data, 'customerPhone'))) {
+        missingKeys.push('customerPhone');
+    }
+
+    const category = String(getFieldValue(data, 'category') || '').trim();
+    if (category === 'บำรุงรักษาตามรอบ') {
+        const maRequired = [
+            'cycleCount',
+            'voltageL1', 'voltageL2', 'voltageL3',
+            'currentL1', 'currentL2', 'currentL3',
+            'avgWorkTemp', 'avgWorkTempCheck',
+            'avgAreaTemp', 'avgAreaTempCheck',
+            'leakPressure', 'leakCheck',
+            'complyType5', 'ciPcdType5',
+            'gasDoor1', 'gasDoor2', 'gasDoor3',
+            'gas1m1', 'gas1m2', 'gas1m3',
+            'gas2m1', 'gas2m2', 'gas2m3',
+            'insp_exteriorCleaning', 'insp_interiorCleaning', 'insp_doorSystem', 'insp_footSwitch',
+            'insp_sensor', 'insp_tempPoints', 'insp_workingPressure', 'insp_rfGenerator',
+            'insp_chemicalAmount', 'insp_airChargingValue', 'insp_filter', 'insp_decomposer',
+            'insp_vacuumPumpOil', 'insp_connectors', 'insp_drainTank',
+            'insp_chemicalLine', 'insp_phaseRelay', 'insp_systemRelay'
+        ];
+        maRequired.forEach((key) => {
+            if (!isFilled(getFieldValue(data, key))) {
+                missingKeys.push(key);
+            }
+        });
+    } else if (category === 'ติดตั้ง' || category === 'รื้อถอน') {
+        const hospitalTechName = String(getFieldValue(data, 'hospitalTechName') || '').trim();
+        const hospitalTechPhone = String(getFieldValue(data, 'hospitalTechPhone') || '').trim();
+        const isHospitalTechCase = !!(hospitalTechName || hospitalTechPhone);
+
+        if (!isHospitalTechCase) {
+            if (!isFilled(getFieldValue(data, 'installDate'))) {
+                missingKeys.push('installDate');
+            }
+            if (!isFilled(getFieldValue(data, 'installType'))) {
+                missingKeys.push('installType');
+            }
+        }
+
+        if (category === 'ติดตั้ง' && !isHospitalTechCase) {
+            if (!isFilled(getFieldValue(data, 'precheckDate'))) {
+                missingKeys.push('precheckDate');
+            }
+            const precheckFields = [
+                'precheck_physicalCondition', 'precheck_electricalSafety', 'precheck_cycleTest',
+                'precheck_rfLeakageTest', 'precheck_h2o2LeakageTest', 'precheck_doorOperation',
+                'precheck_pmSensorTest', 'precheck_biologicalIndicator', 'precheck_trainingCompleted'
+            ];
+            precheckFields.forEach((key) => {
+                if (!isFilled(getFieldValue(data, key))) {
+                    missingKeys.push(key);
+                }
+            });
+        }
+    }
+
+    if (category === 'ซ่อม' || category === 'ซ่อมบำรุง') {
+        const repairPhotos = getFieldValue(data, 'repairPhotos') || [];
+        if (Array.isArray(repairPhotos) && repairPhotos.length === 0) {
+            missingKeys.push('repairPhotos');
+        }
+    }
+
+    return missingKeys;
+}
+
+function highlightIncompleteFields(form, missingKeys) {
+    if (!form) return;
+
+    // Clear previous highlights
+    const elements = form.querySelectorAll('input, select, textarea, .autocomplete-wrapper');
+    elements.forEach(el => {
+        el.classList.remove('is-invalid');
+    });
+
+    // Highlight missing fields
+    missingKeys.forEach(key => {
+        if (key === 'siteId') {
+            const wrapper = form.querySelector('.autocomplete-wrapper:has(#log-site-input)') || document.getElementById('log-site-input');
+            if (wrapper) {
+                wrapper.classList.add('is-invalid');
+
+                const removeHighlight = () => {
+                    wrapper.classList.remove('is-invalid');
+                    const inputEl = document.getElementById('log-site-input');
+                    if (inputEl) {
+                        inputEl.removeEventListener('input', removeHighlight);
+                        inputEl.removeEventListener('change', removeHighlight);
+                    }
+                };
+                const inputEl = document.getElementById('log-site-input');
+                if (inputEl) {
+                    inputEl.addEventListener('input', removeHighlight);
+                    inputEl.addEventListener('change', removeHighlight);
+                }
+            }
+            return;
+        }
+
+        const el = form.querySelector(`[name="${key}"]`) || document.getElementById(key);
+        if (el) {
+            el.classList.add('is-invalid');
+
+            // Remove highlight on input
+            const removeHighlight = () => {
+                el.classList.remove('is-invalid');
+                el.removeEventListener('input', removeHighlight);
+                el.removeEventListener('change', removeHighlight);
+            };
+            el.addEventListener('input', removeHighlight);
+            el.addEventListener('change', removeHighlight);
+        }
+    });
+
+    // Scroll the first invalid element into view and focus it
+    if (missingKeys.length > 0) {
+        let firstKey = missingKeys[0];
+        let firstEl = firstKey === 'siteId'
+            ? (document.getElementById('log-site-input') || form.querySelector('.autocomplete-wrapper'))
+            : (form.querySelector(`[name="${firstKey}"]`) || document.getElementById(firstKey));
+        if (firstEl) {
+            setTimeout(() => {
+                firstEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstEl.focus();
+            }, 200);
+        }
+    }
+}
+
 function canMarkDone(log) {
     const missing = getIncompleteDoneFields(log);
     return missing.length === 0;
@@ -7221,14 +7561,20 @@ function canMarkDone(log) {
 async function quickUpdateStatus(logId, newStatus) {
     if (!newStatus) return;
     if (newStatus === 'Done') {
-        var log = state.logs.find(function(l) { return l.id === logId; });
+        var log = state.logs.find(function (l) { return l.id === logId; });
         const missing = getIncompleteDoneFields(log);
         if (missing.length > 0) {
             await showDialog(
-                `ไม่สามารถเปลี่ยนสถานะเป็น "เสร็จสิ้น" ได้\n\nกรุณากรอกข้อมูลให้ครบก่อน:\n• ${missing.join('\n• ')}`,
+                'ไม่สามารถเปลี่ยนสถานะเป็น "เสร็จสิ้น" ได้ เนื่องจากข้อมูลยังไม่ครบถ้วน',
                 { title: 'ข้อมูลไม่ครบถ้วน', icon: 'warning' }
             );
             editLog(logId);
+            setTimeout(() => {
+                const form = document.getElementById("form-log-maintenance");
+                if (form) {
+                    highlightIncompleteFields(form, getIncompleteDoneFieldKeys(log));
+                }
+            }, 300);
             return;
         }
 
@@ -7238,11 +7584,17 @@ async function quickUpdateStatus(logId, newStatus) {
         }
     }
 
+    let cancelReason = null;
+    if (newStatus === 'Cancel') {
+        cancelReason = await showCancelReasonDialog();
+        if (cancelReason === null) return;
+    }
+
     if (newStatus === 'Cancel' || newStatus === 'Case Closed') {
         if (!await requireAdminManagerProfileSignature(newStatus)) return;
     }
 
-    await executeStatusUpdate(logId, newStatus, null);
+    await executeStatusUpdate(logId, newStatus, null, '', '', '', cancelReason);
 }
 
 window.quickUpdateStatus = quickUpdateStatus;
@@ -7425,9 +7777,9 @@ function renderCalendar() {
     if (monthSelect) monthSelect.value = month;
 
     // Format month and year according to system locale
-    monthLabel.textContent = date.toLocaleDateString(undefined, { 
-        year: 'numeric', 
-        month: 'long' 
+    monthLabel.textContent = date.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long'
     });
 
     // --- Calculate Total Cost for Current View ---
@@ -7579,9 +7931,9 @@ function renderCalendar() {
                     "Case Closed": { color: "#22c55e", bg: "rgba(34,197,94,0.2)" },
                     Completed: { color: "#a855f7", bg: "rgba(168,85,247,0.2)" },
                 };
-                const statusStyle = statusColors[log.status] || { 
-                    color: "var(--text-muted)", 
-                    bg: "var(--card-bg)" 
+                const statusStyle = statusColors[log.status] || {
+                    color: "var(--text-muted)",
+                    bg: "var(--card-bg)"
                 };
 
                 // Category Icon
@@ -7725,7 +8077,7 @@ function showDayDetails(dateStr, logs) {
                 : log.recordedBy || "-");
 
         const thaiDate = formatDateDDMMYYYY(log.date);
-        const logTime = log.date && log.date.includes('T') && log.date.split('T')[1].substring(0,5) !== '00:00' ? log.date.split('T')[1].substring(0, 5) : '';
+        const logTime = log.date && log.date.includes('T') && log.date.split('T')[1].substring(0, 5) !== '00:00' ? log.date.split('T')[1].substring(0, 5) : '';
 
         const tr = document.createElement("tr");
         const siteColor = getSiteColor(site.name);
@@ -7744,7 +8096,7 @@ function showDayDetails(dateStr, logs) {
         let catBadge = '';
         let catColor = '#64748b';
         let catBg = 'rgba(100,116,139,0.12)';
-        
+
         if (isMaCategory(log.category)) {
             catColor = '#0369a1';
             catBg = '#e0f2fe';
@@ -7764,7 +8116,7 @@ function showDayDetails(dateStr, logs) {
             catColor = '#0891b2';
             catBg = '#cffafe';
         }
-        
+
         catBadge = `<span style="background:${catBg}; color:${catColor}; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; white-space:nowrap; ">${log.category || "-"}</span>`;
         const catBadgeMobile = `<span style="background:${catBg}; color:${catColor}; padding:0.2rem 0.6rem; border-radius:6px; font-size:0.75rem; font-weight:700; white-space:nowrap;">${log.category || "-"}</span>`;
 
@@ -7831,7 +8183,7 @@ function showDayDetails(dateStr, logs) {
             <td class="cell-user" data-label="แก้ไขล่าสุด"><span class="value">${recorderName}</span></td>
             <td class="cell-mobile-card mobile-only" data-label="">
                 <div class="mc-top">
-                    <span style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;"><span class="mc-caseid">${log.caseId ? log.caseId.replace('CASE-','') : '-'}</span> <span class="mc-siteid">${site.siteCode || '-'}</span></span>
+                    <span style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;"><span class="mc-caseid">${log.caseId ? log.caseId.replace('CASE-', '') : '-'}</span> <span class="mc-siteid">${site.siteCode || '-'}</span></span>
                 </div>
                 <div class="mc-site" style="display:flex; align-items:center; gap:6px;">
                     <span>${site.name}</span>
@@ -8139,28 +8491,28 @@ function addLineItemRow(item = "", cost = "") {
     });
 
     container.appendChild(row);
-    
+
     // Animate in
     requestAnimationFrame(() => {
         row.classList.add("line-item-row-visible");
     });
-    
+
     recalcLineItemTotal();
 }
 
 function recalcLineItemTotal() {
     const container = document.getElementById("line-items-container");
     if (!container) return;
-    
+
     const costs = [...document.querySelectorAll(".line-item-cost")].map(
         (el) => parseCurrency(el.value) || 0,
     );
     const total = costs.reduce((a, b) => a + b, 0);
-    
+
     // Get or create the footer row
     let footerRow = document.getElementById("line-items-footer");
     const placeholder = document.getElementById("line-items-footer-placeholder");
-    
+
     if (!footerRow && placeholder) {
         footerRow = document.createElement("div");
         footerRow.id = "line-items-footer";
@@ -8179,24 +8531,24 @@ function recalcLineItemTotal() {
                 </div>
             </div>
         `;
-        
+
         // Insert into placeholder
         placeholder.appendChild(footerRow);
-        
+
         // Re-attach event listener to the new button
         const addBtn = footerRow.querySelector("#btn-add-line-item");
         if (addBtn) {
             addBtn.addEventListener("click", () => addLineItemRow());
         }
     }
-    
+
     // Update total
     if (footerRow) {
         const totalEl = footerRow.querySelector("#line-items-total");
         if (totalEl) {
             totalEl.textContent = formatCurrency(total);
         }
-        
+
         // Always show footer to keep add button visible
         footerRow.style.display = "flex";
     }
@@ -8906,17 +9258,73 @@ function viewSiteDetails(id) {
             ? `${site.maintenanceCycle} วัน`
             : "-";
     if (fmaEl) {
-        if (site.firstMaDate) {
+        // Find all MA logs for this site, sorted by date ascending (oldest first)
+        const siteMaLogs = (state.logs || [])
+            .filter(l =>
+                l.siteId === site.id &&
+                (l.category === 'บำรุงรักษาตามรอบ' || l.category === 'ตามสัญญาจ้าง' || l.category === 'ตามใบสั่งซื้อ')
+            )
+            .sort((a, b) => {
+                const dateDiff = new Date(a.date) - new Date(b.date);
+                if (dateDiff !== 0) return dateDiff;
+                return new Date(a.timestamp || 0) - new Date(b.timestamp || 0);
+            });
+
+        const firstMaLog = siteMaLogs[0];
+
+        console.debug('[FirstMA] siteMaLogs (sorted oldest first) for site', site.id, siteMaLogs.map(l => ({
+            id: l.id, caseId: l.caseId, date: l.date, status: l.status,
+            objective: l.objective, cycleCount: l.cycleCount
+        })));
+        console.debug('[FirstMA] resolved firstMaLog:', firstMaLog ? { id: firstMaLog.id, caseId: firstMaLog.caseId, status: firstMaLog.status } : null);
+
+
+
+
+        if (firstMaLog) {
+            // Prefer the Case Closed timestamp, fall back to log date
+            let firstMaDateStr = null;
+            if (firstMaLog.statusHistory && firstMaLog.statusHistory['Case Closed']) {
+                const closedTs = new Date(firstMaLog.statusHistory['Case Closed']);
+                const yyyy = closedTs.getFullYear();
+                const mm = String(closedTs.getMonth() + 1).padStart(2, '0');
+                const dd = String(closedTs.getDate()).padStart(2, '0');
+                firstMaDateStr = `${yyyy}-${mm}-${dd}`;
+            } else if (firstMaLog.date) {
+                firstMaDateStr = sanitizeDate(firstMaLog.date).split('T')[0];
+            }
+
+            if (firstMaDateStr) {
+                let dateText = formatThaiDate(firstMaDateStr, {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                });
+                // Append status badge
+                const isClosed = firstMaLog.status === 'Case Closed';
+                const statusColor = isClosed ? 'var(--success-color, #22c55e)' : 'var(--warning-color, #f59e0b)';
+                const statusLabel = isClosed ? 'ปิดเคสแล้ว' : (firstMaLog.status || 'Open');
+                dateText += ` <span style="font-size:0.78rem; color:${statusColor}; font-weight:600;">(${statusLabel})</span>`;
+                if (firstMaLog.caseId && firstMaLog.id) {
+                    dateText += ` <a href="javascript:void(0)" onclick="viewLogDetails('${firstMaLog.id}')" style="color: var(--primary-color); text-decoration: underline; margin-left: 6px; font-size: 0.85em;"><i class="fa-solid fa-link"></i> ${firstMaLog.caseId}</a>`;
+                }
+                fmaEl.innerHTML = dateText;
+            } else {
+                fmaEl.textContent = '-';
+            }
+        } else if (site.firstMaDate) {
+            // Fallback: show from site field if no log found
             fmaEl.textContent = formatThaiDate(site.firstMaDate, {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
             });
         } else {
-            fmaEl.textContent = "-";
+            fmaEl.textContent = '-';
         }
     }
-    
+
+
     const installDateEl = document.getElementById("detail-installation-date");
     if (installDateEl) {
         let installDate = site.installationDate;
@@ -8937,7 +9345,7 @@ function viewSiteDetails(id) {
                 day: "numeric",
             });
             if (installLogCaseId && installLogId) {
-                dateText += ` <a href="javascript:void(0)" onclick="openLogDetails('${installLogId}')" style="color: var(--primary-color); text-decoration: underline; margin-left: 8px; font-size: 0.85em;"><i class="fa-solid fa-link"></i> ${installLogCaseId}</a>`;
+                dateText += ` <a href="javascript:void(0)" onclick="viewLogDetails('${installLogId}')" style="color: var(--primary-color); text-decoration: underline; margin-left: 8px; font-size: 0.85em;"><i class="fa-solid fa-link"></i> ${installLogCaseId}</a>`;
                 installDateEl.innerHTML = dateText;
             } else {
                 installDateEl.textContent = dateText;
@@ -8950,42 +9358,99 @@ function viewSiteDetails(id) {
     // Next MA Date
     const nextMaEl = document.getElementById("detail-next-ma");
     if (nextMaEl) {
-        if (site.maintenanceCycle && site.firstMaDate) {
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-            let nextMa = new Date(site.firstMaDate);
+        // Find if there is an active MA case (category MA, status is not Case Closed/Done/Cancel)
+        const activeMaLog = (state.logs || []).find(l =>
+            l.siteId === site.id &&
+            (l.category === 'บำรุงรักษาตามรอบ' || l.category === 'ตามสัญญาจ้าง' || l.category === 'ตามใบสั่งซื้อ') &&
+            l.status !== 'Case Closed' && l.status !== 'Done' && l.status !== 'Cancel'
+        );
 
-            const siteLogs = state.logs.filter(
-                (l) => l.siteId === site.id && isMaCategory(l.category),
-            );
-            if (siteLogs.length > 0) {
-                siteLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
-                nextMa = new Date(siteLogs[0].date);
-                nextMa.setDate(nextMa.getDate() + site.maintenanceCycle);
-            } else {
-                while (nextMa < now) {
-                    nextMa.setDate(nextMa.getDate() + site.maintenanceCycle);
+        let nextMaDateStr = null;
+        let activeLogId = null;
+        let activeCaseId = null;
+
+        if (activeMaLog) {
+            nextMaDateStr = sanitizeDate(activeMaLog.date).split('T')[0];
+            activeLogId = activeMaLog.id;
+            activeCaseId = activeMaLog.caseId;
+        } else {
+            // Fallback: calculate next MA date dynamically
+            let firstMaAnchor = site.firstMaDate || null;
+            if (!firstMaAnchor) {
+                const firstMaLogForNext = (state.logs || [])
+                    .filter(l =>
+                        l.siteId === site.id &&
+                        (l.category === 'บำรุงรักษาตามรอบ' || l.category === 'ตามสัญญาจ้าง' || l.category === 'ตามใบสั่งซื้อ')
+                    )
+                    .sort((a, b) => {
+                        const dateDiff = new Date(a.date) - new Date(b.date);
+                        if (dateDiff !== 0) return dateDiff;
+                        return new Date(a.timestamp || 0) - new Date(b.timestamp || 0);
+                    })[0];
+                if (firstMaLogForNext && firstMaLogForNext.date) {
+                    firstMaAnchor = sanitizeDate(firstMaLogForNext.date).split('T')[0];
                 }
             }
 
-            // Format as YYYY-MM-DD string for formatThaiDate
-            const yyyy = nextMa.getFullYear();
-            const mm = String(nextMa.getMonth() + 1).padStart(2, '0');
-            const dd = String(nextMa.getDate()).padStart(2, '0');
-            const formattedDate = formatThaiDate(`${yyyy}-${mm}-${dd}`, { year: 'numeric', month: 'long', day: 'numeric' });
-            const daysDiff = Math.ceil((nextMa - now) / (1000 * 60 * 60 * 24));
+            if (site.maintenanceCycle && firstMaAnchor) {
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                let nextMa = new Date(firstMaAnchor);
+
+                const siteLogs = state.logs.filter(
+                    (l) => l.siteId === site.id && isMaCategory(l.category),
+                );
+                if (siteLogs.length > 0) {
+                    siteLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    nextMa = new Date(siteLogs[0].date);
+                    nextMa.setDate(nextMa.getDate() + site.maintenanceCycle);
+                } else {
+                    while (nextMa < now) {
+                        nextMa.setDate(nextMa.getDate() + site.maintenanceCycle);
+                    }
+                }
+                const yyyy = nextMa.getFullYear();
+                const mm = String(nextMa.getMonth() + 1).padStart(2, '0');
+                const dd = String(nextMa.getDate()).padStart(2, '0');
+                nextMaDateStr = `${yyyy}-${mm}-${dd}`;
+            }
+        }
+
+        if (nextMaDateStr) {
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            const targetDate = new Date(nextMaDateStr);
+            targetDate.setHours(0, 0, 0, 0);
+
+            const formattedDate = formatThaiDate(nextMaDateStr, { year: 'numeric', month: 'long', day: 'numeric' });
+            const daysDiff = Math.ceil((targetDate - now) / (1000 * 60 * 60 * 24));
             const daysLabel =
-                daysDiff <= 0
+                daysDiff < 0
                     ? `เลยกำหนด ${Math.abs(daysDiff)} วัน`
-                    : `อีก ${daysDiff} วัน`;
+                    : daysDiff === 0
+                        ? `ครบกำหนดวันนี้`
+                        : `อีก ${daysDiff} วัน`;
+
+            let htmlContent = formattedDate;
+            if (daysDiff < 0) {
+                htmlContent += ` <span style="color: var(--danger-color, #ef4444); font-size: 0.8rem; font-weight: 600;">(${daysLabel})</span>`;
+            } else {
+                htmlContent += ` <span style="color: var(--text-muted); font-size: 0.8rem;">(${daysLabel})</span>`;
+            }
+
+            if (activeLogId && activeCaseId) {
+                htmlContent += ` <a href="javascript:void(0)" onclick="viewLogDetails('${activeLogId}')" style="color: var(--primary-color); text-decoration: underline; margin-left: 6px; font-size: 0.85em;"><i class="fa-solid fa-link"></i> ${activeCaseId}</a>`;
+            }
 
             nextMaEl.style.color = "";
-            nextMaEl.innerHTML = `${formattedDate} <span style="color: var(--text-muted); font-size: 0.8rem;">(${daysLabel})</span>`;
+            nextMaEl.innerHTML = htmlContent;
         } else {
             nextMaEl.textContent = "-";
             nextMaEl.style.color = "";
         }
     }
+
+
 
     // Insurance
     const insuranceEl = document.getElementById("detail-insurance");
@@ -9161,14 +9626,14 @@ function viewSiteDetails(id) {
         // Remove old listeners by cloning
         const newBtn = btnViewMaRecords.cloneNode(true);
         btnViewMaRecords.parentNode.replaceChild(newBtn, btnViewMaRecords);
-        
+
         newBtn.addEventListener("click", () => {
             // Close site details modal
             toggleModal("siteDetails", false);
-            
+
             // Switch to engineer view (logs view)
             switchView("engineer-view");
-            
+
             // Set the site name in the search filter
             const siteFilterInput = document.getElementById("site-filter-input");
             if (siteFilterInput) {
@@ -9176,7 +9641,7 @@ function viewSiteDetails(id) {
                 // Trigger input event to apply filter
                 siteFilterInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
-            
+
             // Scroll to top of logs
             setTimeout(() => {
                 const logsView = document.getElementById("engineer-view");
@@ -9226,16 +9691,16 @@ function renderLogComments(logId, comments) {
                     timeStyle: "short",
                 })
                 : "";
-            
+
             // Check if this is the first comment (initial description) - it's now at the end
             const originalIndex = originalLength - 1 - index;
             const isInitialComment = originalIndex === 0;
             const isLatestComment = index === 0;
-            
+
             // Get author info - ALWAYS prioritize state.users for latest profile data
             let authorName = c.author || "ไม่ระบุชื่อ";
             let authorPhoto = '';
-            
+
             // Try to sync from state.users FIRST if authorId is available
             if (c.authorId && state.users && state.users[c.authorId]) {
                 const userData = state.users[c.authorId];
@@ -9249,10 +9714,10 @@ function renderLogComments(logId, comments) {
                 authorPhoto = c.photoURL || '';
                 console.log(`[Comment Render] User not found in state.users, using stored photo:`, authorPhoto);
             }
-            
+
             // Get first letter of author name for fallback avatar
             const authorInitial = authorName.charAt(0).toUpperCase();
-            
+
             // Create avatar HTML - use photo if available, otherwise use initial
             let avatarHtml;
             if (authorPhoto && authorPhoto.trim() !== '') {
@@ -9260,15 +9725,15 @@ function renderLogComments(logId, comments) {
             } else {
                 avatarHtml = authorInitial;
             }
-            
+
             let attachmentsHtml = '';
             if (c.attachments && c.attachments.length > 0) {
                 // Separate images from other files
                 const images = c.attachments.filter(att => att.type && att.type.startsWith('image/'));
                 const files = c.attachments.filter(att => !att.type || !att.type.startsWith('image/'));
-                
+
                 attachmentsHtml = '<div style="margin-top: 0.75rem;">';
-                
+
                 // Render images in grid
                 if (images.length > 0) {
                     attachmentsHtml += '<div class="comment-images-grid">';
@@ -9286,7 +9751,7 @@ function renderLogComments(logId, comments) {
                     });
                     attachmentsHtml += '</div>';
                 }
-                
+
                 // Render other files in list
                 if (files.length > 0) {
                     attachmentsHtml += '<div style="display: flex; flex-direction: column; gap: 8px;">';
@@ -9294,7 +9759,7 @@ function renderLogComments(logId, comments) {
                         const fileExt = att.name ? att.name.split('.').pop().toUpperCase() : 'FILE';
                         let iconClass = 'fa-file-alt';
                         let iconColor = '#64748b';
-                        
+
                         if (att.type === 'application/pdf' || fileExt === 'PDF') {
                             iconClass = 'fa-file-pdf';
                             iconColor = '#ef4444';
@@ -9305,7 +9770,7 @@ function renderLogComments(logId, comments) {
                             iconClass = 'fa-file-excel';
                             iconColor = '#16a34a';
                         }
-                        
+
                         attachmentsHtml += `<a href="${att.url}" target="_blank" class="comment-file-attachment">
                             <div class="file-icon">
                                 <i class="fa-solid ${iconClass}" style="color: ${iconColor};"></i>
@@ -9320,26 +9785,26 @@ function renderLogComments(logId, comments) {
                     });
                     attachmentsHtml += '</div>';
                 }
-                
+
                 attachmentsHtml += '</div>';
             }
-            
+
             // Add badge for initial comment
             const initialBadge = isInitialComment ? `<span class="comment-badge-initial"><i class="fa-solid fa-file-lines"></i> รายละเอียดเริ่มต้น</span>` : '';
-            
+
             // Add badge for system log
             const systemLogBadge = c.isSystemLog ? `<span class="comment-badge-system"><i class="fa-solid fa-robot"></i> ระบบ</span>` : '';
-            
+
             // Determine ID for scrolling
             let commentId = '';
             if (isInitialComment) commentId = 'initial-comment';
             if (isLatestComment) commentId = 'latest-comment';
-            
+
             // Determine comment item classes
             let commentClasses = 'comment-item';
             if (isInitialComment) commentClasses += ' comment-item-initial';
             if (c.isSystemLog) commentClasses += ' comment-item-system-log';
-            
+
             return `<div class="${commentClasses}" ${commentId ? `id="${commentId}"` : ''}>
                 <div class="comment-avatar">${avatarHtml}</div>
                 <div class="comment-content">
@@ -9435,8 +9900,8 @@ async function postLogComment(logId, inputEl) {
     const user = auth.currentUser;
     const author = user ? user.displayName || user.email || "Unknown" : "Unknown";
 
-    const comment = { 
-        text: text || '', 
+    const comment = {
+        text: text || '',
         author,
         authorId: user ? user.uid : null,
         photoURL: user ? user.photoURL || '' : '',
@@ -9449,7 +9914,7 @@ async function postLogComment(logId, inputEl) {
         try {
             // Show uploading state
             showUploadingState(true);
-            
+
             const uploadPromises = commentAttachments.map(async (file, index) => {
                 const path = `comments/${logId}/${Date.now()}_${file.name}`;
                 const url = await FirestoreService.uploadFile(file, path, (progress) => {
@@ -9463,7 +9928,7 @@ async function postLogComment(logId, inputEl) {
                 };
             });
             comment.attachments = await Promise.all(uploadPromises);
-            
+
             // Hide uploading state
             showUploadingState(false);
         } catch (err) {
@@ -9480,11 +9945,11 @@ async function postLogComment(logId, inputEl) {
     try {
         await FirestoreService.updateLog(logId, { comments });
         if (log) log.comments = comments;
-        
+
         // Refresh users data to ensure latest profile info is displayed
         const users = await FirestoreService.fetchUsers();
         state.users = users;
-        
+
         renderLogComments(logId, comments);
         inputEl.value = "";
         commentAttachments = [];
@@ -9497,7 +9962,7 @@ async function postLogComment(logId, inputEl) {
 function showUploadingState(show) {
     const preview = document.getElementById('comment-attachments-preview');
     if (!preview) return;
-    
+
     if (show) {
         preview.classList.add('uploading');
         // Disable buttons
@@ -9540,7 +10005,7 @@ function updateAttachmentPreview() {
 
     commentAttachments.forEach((file, index) => {
         const isImage = file.type.startsWith('image/');
-        
+
         // Create card container
         const card = document.createElement('div');
         card.className = 'pending-item';
@@ -9565,7 +10030,7 @@ function updateAttachmentPreview() {
             // Show file icon
             const icon = document.createElement('i');
             const fileExt = file.name.split('.').pop().toLowerCase();
-            
+
             if (file.type.includes('pdf') || fileExt === 'pdf') {
                 icon.className = 'fa-solid fa-file-pdf';
                 icon.style.color = '#ef4444';
@@ -9655,16 +10120,16 @@ function updateMaFormAttachmentPreview() {
 
     preview.style.display = 'block';
     preview.setAttribute('data-count', maFormCommentAttachments.length);
-    
+
     let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
-    
+
     maFormCommentAttachments.forEach((file, index) => {
         const isImage = file.type.startsWith('image/');
         const fileExt = file.name.split('.').pop().toUpperCase();
         const sizeKB = (file.size / 1024).toFixed(1);
         const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
         const sizeText = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
-        
+
         if (isImage) {
             // Show image preview with thumbnail (40x40px to match icon size)
             const previewUrl = URL.createObjectURL(file);
@@ -9690,7 +10155,7 @@ function updateMaFormAttachmentPreview() {
             // Show file icon for non-images
             let iconClass = 'fa-file-alt';
             let iconColor = '#64748b';
-            
+
             if (file.type === 'application/pdf' || fileExt === 'PDF') {
                 iconClass = 'fa-file-pdf';
                 iconColor = '#ef4444';
@@ -9701,7 +10166,7 @@ function updateMaFormAttachmentPreview() {
                 iconClass = 'fa-file-excel';
                 iconColor = '#16a34a';
             }
-            
+
             html += `
                 <div class="comment-file-attachment" style="position: relative; padding-right: 40px; cursor: default;">
                     <div class="file-icon">
@@ -9723,7 +10188,7 @@ function updateMaFormAttachmentPreview() {
             `;
         }
     });
-    
+
     html += '</div>';
     preview.innerHTML = html;
 }
@@ -9739,18 +10204,18 @@ window.removeMaFormAttachment = removeMaFormAttachment;
 function initMaFormCommentAttachments() {
     const attachBtn = document.getElementById("btn-ma-form-attach-file");
     const attachInput = document.getElementById("ma-form-attachment-input");
-    
+
     if (attachBtn && attachInput) {
         attachBtn.onclick = () => attachInput.click();
-        
+
         attachInput.onchange = (e) => {
             const files = Array.from(e.target.files);
-            
+
             // Validate file sizes (25MB limit per file)
             const maxSize = 25 * 1024 * 1024; // 25MB
             const validFiles = [];
             const invalidFiles = [];
-            
+
             files.forEach(file => {
                 if (file.size > maxSize) {
                     invalidFiles.push(file.name);
@@ -9758,16 +10223,16 @@ function initMaFormCommentAttachments() {
                     validFiles.push(file);
                 }
             });
-            
+
             if (invalidFiles.length > 0) {
                 showToast(`ไฟล์เหล่านี้มีขนาดเกิน 25MB: ${invalidFiles.join(', ')}`, 'warning', 5000);
             }
-            
+
             if (validFiles.length > 0) {
                 maFormCommentAttachments.push(...validFiles);
                 updateMaFormAttachmentPreview();
             }
-            
+
             e.target.value = '';
         };
     }
@@ -9781,14 +10246,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Enforce numeric-only on electrical fields
     document.querySelectorAll('input[name^="voltageL"], input[name^="currentL"], input[name="leakPressure"]').forEach(input => {
-        input.addEventListener('input', function() {
+        input.addEventListener('input', function () {
             this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
         });
     });
 
     // Enforce name-only inputs (Thai/Latin letters, spaces, dots, hyphens)
     document.querySelectorAll('input.name-only').forEach(input => {
-        input.addEventListener('input', function() {
+        input.addEventListener('input', function () {
             this.value = this.value.replace(/[^\p{L}\s\.\-]/gu, '');
         });
     });
@@ -9798,7 +10263,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setupStrictPhoneFormat(input);
         } catch (err) {
             // fallback: allow digits only and limit to 10
-            input.addEventListener('input', function() {
+            input.addEventListener('input', function () {
                 this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
             });
         }
@@ -9835,7 +10300,7 @@ function updateDescriptionAttachmentPreview() {
     descriptionAttachments.forEach((file, index) => {
         const isImage = (file.type && file.type.startsWith('image/')) || (file.name && /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name));
         const isExisting = file.isExisting || file.url;
-        
+
         // Create card container
         const card = document.createElement('div');
         card.className = isExisting ? 'existing-item' : 'pending-item';
@@ -9869,7 +10334,7 @@ function updateDescriptionAttachmentPreview() {
             // Show file icon
             const icon = document.createElement('i');
             const fileExt = file.name.split('.').pop().toLowerCase();
-            
+
             if (file.type === 'application/pdf' || fileExt === 'pdf') {
                 icon.className = 'fa-solid fa-file-pdf';
                 icon.style.color = '#ef4444';
@@ -9941,10 +10406,10 @@ function removeDescriptionAttachment(index) {
 function initDescriptionAttachments() {
     const btn = document.getElementById('btn-attach-description');
     const input = document.getElementById('description-attachment-input');
-    
+
     if (btn && input) {
         btn.onclick = () => input.click();
-        
+
         input.onchange = (e) => {
             const files = Array.from(e.target.files);
             if (files.length > 0) {
@@ -9967,7 +10432,7 @@ window.removeDescriptionAttachment = removeDescriptionAttachment;
 function renderStatusTimeline(currentStatus, logId, statusHistory = {}) {
     const timeline = document.getElementById('status-timeline');
     if (!timeline) return;
-    
+
     const statuses = [
         { value: 'Open', label: 'เปิดงาน', icon: 'fa-folder-open' },
         { value: 'On Process', label: 'ดำเนินการ', icon: 'fa-gear' },
@@ -9975,13 +10440,13 @@ function renderStatusTimeline(currentStatus, logId, statusHistory = {}) {
         { value: 'Case Closed', label: 'ปิดเคส', icon: 'fa-lock', adminOnly: true },
         { value: 'Cancel', label: 'ยกเลิก', icon: 'fa-circle-xmark' }
     ];
-    
+
     const currentIndex = statuses.findIndex(s => s.value === currentStatus);
     const isCancelled = currentStatus === 'Cancel';
-    
+
     timeline.innerHTML = statuses.map((status, index) => {
         let stepClass = 'status-step';
-        
+
         if (isCancelled) {
             // If cancelled, show all steps as cancelled
             stepClass += ' cancelled';
@@ -9993,11 +10458,11 @@ function renderStatusTimeline(currentStatus, logId, statusHistory = {}) {
         } else if (index === currentIndex) {
             stepClass += ' active';
         }
-        
+
         // Check if this status is admin-only
         const isAdminOnly = status.adminOnly || false;
         const clickHandler = isAdminOnly ? `checkAdminAndUpdateStatus('${logId}', '${status.value}')` : `updateLogStatus('${logId}', '${status.value}')`;
-        
+
         // Format timestamp if exists, otherwise show waiting text
         let timestampHtml = '';
         if (statusHistory[status.value]) {
@@ -10013,7 +10478,7 @@ function renderStatusTimeline(currentStatus, logId, statusHistory = {}) {
             // Show waiting text for statuses that haven't been reached yet
             timestampHtml = `<div class="status-timestamp status-waiting">No update</div>`;
         }
-        
+
         return `
             <div class="${stepClass}" onclick="${clickHandler}">
                 ${index < statuses.length - 1 ? '<div class="status-line"></div>' : ''}
@@ -10034,16 +10499,16 @@ async function checkAdminAndUpdateStatus(logId, newStatus) {
             showToast('กรุณาเข้าสู่ระบบ', 'error');
             return;
         }
-        
+
         // Check if user is admin or manager
         const userDoc = await FirestoreService.getUser(user.uid);
         const isAdminOrManager = userDoc?.role === 'admin' || userDoc?.role === 'manager';
-        
+
         if (!isAdminOrManager) {
             showToast('เฉพาะผู้ดูแลระบบและผู้จัดการเท่านั้นที่สามารถปิดเคสได้', 'error');
             return;
         }
-        
+
         // If admin or manager, proceed with status update
         await updateLogStatus(logId, newStatus);
     } catch (error) {
@@ -10218,8 +10683,31 @@ window.clearSignatureCanvas = clearSignatureCanvas;
 window.confirmSignature = confirmSignature;
 
 async function updateLogStatus(logId, newStatus) {
+    if (newStatus === 'Case Closed') {
+        const log = state.logs.find(l => l.id === logId);
+        if (log) {
+            const hasPassedDone = log.status === 'Done' ||
+                log.status === 'Completed' ||
+                log.status === 'Case Closed' ||
+                (log.statusHistory && (log.statusHistory.Done || log.statusHistory.Completed || log.statusHistory['Case Closed']));
+            if (!hasPassedDone) {
+                // Close details modal first so dialog appears cleanly
+                const detailsModal = document.getElementById('modal-log-details');
+                if (detailsModal) {
+                    detailsModal.classList.add('hidden');
+                    detailsModal.style.display = 'none';
+                }
+                await showDialog('ไม่สามารถเปลี่ยนสถานะเป็น "ปิดเคส" ได้ เนื่องจากเคสนี้ยังไม่ผ่านสถานะ "เสร็จสิ้น"', {
+                    title: 'สถานะไม่ถูกต้อง',
+                    icon: 'warning'
+                });
+                return;
+            }
+        }
+    }
+
     if (newStatus === 'Done') {
-        var log = state.logs.find(function(l) { return l.id === logId; });
+        var log = state.logs.find(function (l) { return l.id === logId; });
         const missing = getIncompleteDoneFields(log);
         if (missing.length > 0) {
             // Close details modal first so dialog appears cleanly on top
@@ -10229,10 +10717,16 @@ async function updateLogStatus(logId, newStatus) {
                 detailsModal.style.display = 'none';
             }
             await showDialog(
-                `ไม่สามารถเปลี่ยนสถานะเป็น "เสร็จสิ้น" ได้\n\nกรุณากรอกข้อมูลให้ครบก่อน:\n• ${missing.join('\n• ')}`,
+                'ไม่สามารถเปลี่ยนสถานะเป็น "เสร็จสิ้น" ได้ เนื่องจากข้อมูลยังไม่ครบถ้วน',
                 { title: 'ข้อมูลไม่ครบถ้วน', icon: 'warning' }
             );
             editLog(logId);
+            setTimeout(() => {
+                const form = document.getElementById("form-log-maintenance");
+                if (form) {
+                    highlightIncompleteFields(form, getIncompleteDoneFieldKeys(log));
+                }
+            }, 300);
             return;
         }
 
@@ -10263,32 +10757,49 @@ async function updateLogStatus(logId, newStatus) {
         }
     }
 
+    let cancelReason = null;
+    if (newStatus === 'Cancel') {
+        const detailsModal = document.getElementById('modal-log-details');
+        if (detailsModal) {
+            detailsModal.classList.add('hidden');
+            detailsModal.style.display = 'none';
+        }
+        cancelReason = await showCancelReasonDialog();
+        if (cancelReason === null) {
+            if (detailsModal) {
+                detailsModal.classList.remove('hidden');
+                detailsModal.style.display = '';
+            }
+            return;
+        }
+    }
+
     if (newStatus === 'Cancel' || newStatus === 'Case Closed') {
         if (!await requireAdminManagerProfileSignature(newStatus)) return;
     }
 
-    await executeStatusUpdate(logId, newStatus, null);
+    await executeStatusUpdate(logId, newStatus, null, '', '', '', cancelReason);
 }
 
-async function executeStatusUpdate(logId, newStatus, signatureData, signerName = '', signerTel = '', signerPosition = '') {
+async function executeStatusUpdate(logId, newStatus, signatureData, signerName = '', signerTel = '', signerPosition = '', cancelReason = null) {
     try {
         const log = state.logs.find(l => l.id === logId);
         if (!log) return;
-        
+
         const oldStatus = log.status;
-        
+
         // Initialize status history if it doesn't exist
         if (!log.statusHistory) {
             log.statusHistory = {};
         }
-        
+
         // Define status order (excluding Cancel as it's a separate branch)
         const statusOrder = ['Open', 'On Process', 'Done', 'Case Closed'];
         const oldIndex = statusOrder.indexOf(oldStatus);
         const newIndex = statusOrder.indexOf(newStatus);
-        
+
         const timestamp = new Date().toISOString();
-        
+
         // If moving from Cancel to any other status, remove Cancel and forward timestamps
         if (oldStatus === 'Cancel' && newStatus !== 'Cancel') {
             delete log.statusHistory['Cancel'];
@@ -10333,7 +10844,7 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
         else {
             log.statusHistory[newStatus] = timestamp;
         }
-        
+
         // Store signature with the status change
         if (signatureData) {
             if (!log.statusSignatures) log.statusSignatures = {};
@@ -10348,7 +10859,7 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
         }
 
         // Update in Firestore with status history and signature
-        const updateData = { 
+        const updateData = {
             status: newStatus,
             statusHistory: log.statusHistory
         };
@@ -10368,10 +10879,10 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
             }
         }
         await FirestoreService.updateLog(logId, updateData);
-        
+
         log.status = newStatus;
         renderStatusTimeline(newStatus, logId, log.statusHistory);
-        
+
         // Add change log comment for status change
         const statusLabels = {
             'Open': 'เปิดงาน',
@@ -10380,14 +10891,19 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
             'Case Closed': 'ปิดเคส',
             'Cancel': 'ยกเลิก'
         };
-        
+
         const user = auth.currentUser;
         if (user && oldStatus !== newStatus) {
             const oldStatusLabel = statusLabels[oldStatus] || oldStatus;
             const newStatusLabel = statusLabels[newStatus] || newStatus;
-            
+
+            let changeText = `• สถานะ: ${oldStatusLabel} → ${newStatusLabel}`;
+            if (newStatus === 'Cancel' && cancelReason) {
+                changeText += `\n• เหตุผลที่ยกเลิก: ${cancelReason}`;
+            }
+
             const changeLogComment = {
-                text: `• สถานะ: ${oldStatusLabel} → ${newStatusLabel}`,
+                text: changeText,
                 author: user.displayName || user.email || 'ผู้ใช้',
                 authorId: user.uid,
                 photoURL: user.photoURL || '',
@@ -10395,10 +10911,10 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
                 attachments: signatureData ? [{ url: signatureData, name: 'ลายเซ็น.jpg', type: 'image/jpeg' }] : [],
                 isSystemLog: true
             };
-            
+
             const existingComments = log.comments || [];
             const updatedComments = [...existingComments, changeLogComment];
-            
+
             try {
                 await FirestoreService.updateLog(logId, { comments: updatedComments });
                 log.comments = updatedComments;
@@ -10407,12 +10923,12 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
                 console.error('[Timeline Status Change] Error adding change log:', error);
             }
         }
-        
+
         // Refresh calendar if in calendar view
         const calendarView = document.getElementById("logs-calendar-view");
         if (calendarView && !calendarView.classList.contains("hidden")) {
             await fetchAndRenderCalendar();
-            
+
             // Also refresh the detail panel if a date is selected
             if (calendarState.selectedDate) {
                 const logsForDay = state.logs.filter(l => l.date === calendarState.selectedDate);
@@ -10423,7 +10939,7 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
         } else {
             renderCurrentView();
         }
-        
+
         showToast('อัปเดตสถานะสำเร็จ', 'success');
 
         // Auto-create next maintenance case when a MA case is closed or cancelled
@@ -10443,7 +10959,7 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
                 }
             }, 800);
         }
-        
+
     } catch (error) {
         console.error('Error updating status:', error);
         showToast('ไม่สามารถอัปเดตสถานะได้', 'error');
@@ -10459,7 +10975,7 @@ function viewLogDetails(id) {
     try {
         const log = state.logs.find((l) => l.id === id);
         if (!log) return;
-        
+
         // Reset Cost section to collapsed by default
         const costContent = document.getElementById("cost-section-content");
         const costIcon = document.getElementById("cost-collapse-icon");
@@ -10480,51 +10996,51 @@ function viewLogDetails(id) {
             console.warn("Failed to refresh users for comments:", err);
         });
 
-    const site = state.sites.find((s) => s.id === log.siteId) || {
-        name: "ไม่พบข้อมูลสถานที่",
-    };
+        const site = state.sites.find((s) => s.id === log.siteId) || {
+            name: "ไม่พบข้อมูลสถานที่",
+        };
 
-    // Resolve dynamic user name
-    const recorderName = log.updatedBy ||
-        (state.users && log.recorderId && state.users[log.recorderId]
-            ? state.users[log.recorderId].displayName ||
-            state.users[log.recorderId].email ||
-            log.recordedBy
-            : log.recordedBy || "-");
+        // Resolve dynamic user name
+        const recorderName = log.updatedBy ||
+            (state.users && log.recorderId && state.users[log.recorderId]
+                ? state.users[log.recorderId].displayName ||
+                state.users[log.recorderId].email ||
+                log.recordedBy
+                : log.recordedBy || "-");
 
-    const thaiDate = formatDateTimeDDMMYYYY(log.date);
+        const thaiDate = formatDateTimeDDMMYYYY(log.date);
 
-    const timestampStr = log.timestamp
-        ? new Date(log.timestamp).toLocaleString(undefined)
-        : "-";
+        const timestampStr = log.timestamp
+            ? new Date(log.timestamp).toLocaleString(undefined)
+            : "-";
 
-    // Populate Modal
-    const caseIdEl = document.getElementById("detail-log-case-id");
-    if (caseIdEl) {
-        caseIdEl.textContent = log.caseId || "-";
-    }
+        // Populate Modal
+        const caseIdEl = document.getElementById("detail-log-case-id");
+        if (caseIdEl) {
+            caseIdEl.textContent = log.caseId || "-";
+        }
 
-    // Header: case ID
-    const headerCaseIdEl = document.getElementById("detail-log-header-case-id");
-    if (headerCaseIdEl) {
-        headerCaseIdEl.textContent = log.caseId || "";
-    }
+        // Header: case ID
+        const headerCaseIdEl = document.getElementById("detail-log-header-case-id");
+        if (headerCaseIdEl) {
+            headerCaseIdEl.textContent = log.caseId || "";
+        }
 
-    // Date field (in job info grid)
-    const dateFieldEl = document.getElementById("detail-log-date-field");
-    if (dateFieldEl) {
-        dateFieldEl.textContent = thaiDate;
-    }
-    
-    const siteEl = document.getElementById("detail-log-site");
-    if (siteEl) {
-        siteEl.textContent = site.name;
-    }
+        // Date field (in job info grid)
+        const dateFieldEl = document.getElementById("detail-log-date-field");
+        if (dateFieldEl) {
+            dateFieldEl.textContent = thaiDate;
+        }
 
-    // Device Banner in header (replaces old text title)
-    const bannerContainer = document.getElementById("detail-log-banner-container");
-    if (bannerContainer) {
-        const actionsHTML = `
+        const siteEl = document.getElementById("detail-log-site");
+        if (siteEl) {
+            siteEl.textContent = site.name;
+        }
+
+        // Device Banner in header (replaces old text title)
+        const bannerContainer = document.getElementById("detail-log-banner-container");
+        if (bannerContainer) {
+            const actionsHTML = `
             <button onclick="exportCasePDF('${log.id}')" title="ส่งออก PDF"
                 style="display:inline-flex; align-items:center; gap:6px; padding:0 14px; height:36px; background:#ffffff; color:#111111; border:1.5px solid #111111; border-radius:10px; font-size:0.82rem; font-weight:600; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1); white-space:nowrap; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);"
                 onmouseover="this.style.background='#111111';this.style.color='#ffffff';this.style.transform='scale(1.03)';" 
@@ -10538,174 +11054,174 @@ function viewLogDetails(id) {
                 <i class="fa-solid fa-pen-to-square"></i> แก้ไข
             </button>
         `;
-        bannerContainer.innerHTML = createDeviceBannerHTML(site, log.caseId, actionsHTML);
-        bannerContainer.style.cursor = 'default';
-        bannerContainer.onclick = null;
-    }
-
-    // Responder
-    const responderEl = document.getElementById("detail-log-responder");
-    if (responderEl) {
-        const rUser = log.responderId && state.users ? state.users[log.responderId] : null;
-        responderEl.textContent = rUser ? (rUser.displayName || rUser.email || '-') : '-';
-    }
-    
-    // Category
-    const categoryEl = document.getElementById("detail-log-category");
-    if (categoryEl) {
-        categoryEl.textContent = log.category || "-";
-    }
-
-    // Device info from site
-    const warrantyEl = document.getElementById("detail-log-warranty");
-    if (warrantyEl) {
-        if (site.insuranceStartDate && site.insuranceEndDate) {
-            warrantyEl.textContent = `${site.insuranceStartDate} ~ ${site.insuranceEndDate}`;
-        } else {
-            warrantyEl.textContent = "-";
+            bannerContainer.innerHTML = createDeviceBannerHTML(site, log.caseId, actionsHTML);
+            bannerContainer.style.cursor = 'default';
+            bannerContainer.onclick = null;
         }
-    }
-    const deviceTypeEl = document.getElementById("detail-log-device-type");
-    if (deviceTypeEl) deviceTypeEl.textContent = site.deviceType || "-";
 
-    const brandModelEl = document.getElementById("detail-log-brand-model");
-    if (brandModelEl) brandModelEl.textContent = [site.brand, site.model].filter(Boolean).join(" / ") || "-";
-
-    const serialEl = document.getElementById("detail-log-serial");
-    if (serialEl) serialEl.textContent = site.serialNumber || "-";
-
-    const installLocEl = document.getElementById("detail-log-install-loc");
-    if (installLocEl) installLocEl.textContent = site.installLocation || site.villageName || "-";
-
-    const provinceEl = document.getElementById("detail-log-province");
-    if (provinceEl) provinceEl.textContent = site.province || "-";
-
-    const maCycleEl = document.getElementById("detail-log-ma-cycle");
-    if (maCycleEl) maCycleEl.textContent = site.maintenanceCycle ? `${site.maintenanceCycle} วัน` : "-";
-
-    const cycleCountEl = document.getElementById("detail-log-cycle-count");
-    if (cycleCountEl) cycleCountEl.textContent = log.cycleCount ? `${Number(log.cycleCount).toLocaleString()} รอบ` : "-";
-
-    const dateFieldEl2 = document.getElementById("detail-log-date-field");
-    if (dateFieldEl2) dateFieldEl2.textContent = thaiDate;
-
-    const statusTextEl = document.getElementById("detail-log-status-text");
-    if (statusTextEl) {
-        const statusLabels = { 'Open': 'เปิด', 'On Process': 'ดำเนินการ', 'Done': 'เสร็จสิ้น', 'Case Closed': 'ปิดเคส', 'Cancel': 'ยกเลิก' };
-        statusTextEl.textContent = statusLabels[log.status] || log.status || "-";
-    }
-    
-    // Objective/Description
-    const objectiveWrap = document.getElementById("detail-log-objective-wrap");
-    const objectiveEl = document.getElementById("detail-log-objective");
-    if (objectiveWrap && objectiveEl) {
-        if (log.objective) {
-            objectiveWrap.style.display = "block";
-            objectiveEl.textContent = log.objective;
-        } else {
-            objectiveWrap.style.display = "none";
+        // Responder
+        const responderEl = document.getElementById("detail-log-responder");
+        if (responderEl) {
+            const rUser = log.responderId && state.users ? state.users[log.responderId] : null;
+            responderEl.textContent = rUser ? (rUser.displayName || rUser.email || '-') : '-';
         }
-    }
 
-    // Render Attachments — split into all 4 sections
-    const attachSection = document.getElementById("detail-attachments-section");
-    const attachContent = document.getElementById("detail-attachments-content");
+        // Category
+        const categoryEl = document.getElementById("detail-log-category");
+        if (categoryEl) {
+            categoryEl.textContent = log.category || "-";
+        }
 
-    const _isInstallLog = log.category === 'ติดตั้ง' || log.category === 'รื้อถอน';
-    const attachmentsBefore = log.attachmentsBefore || [];
-    const attachmentsAfter = log.attachmentsAfter || [];
-    const descriptionAttachments = [
-        ...(log.descriptionAttachments || []),
-        ...(log.attachments || []),
-    ];
-    // For install/remove cases, installPhotos and preInstallPhotos are shown
-    // in their own dedicated section — exclude them from the general section
-    const repairPhotos = _isInstallLog
-        ? []
-        : [
-            ...(log.repairPhotos || []),
-            ...(log.installPhotos || []),
-            ...(log.preInstallPhotos || []),
-          ];
-    const totalAttachments = descriptionAttachments.length + repairPhotos.length;
+        // Device info from site
+        const warrantyEl = document.getElementById("detail-log-warranty");
+        if (warrantyEl) {
+            if (site.insuranceStartDate && site.insuranceEndDate) {
+                warrantyEl.textContent = `${site.insuranceStartDate} ~ ${site.insuranceEndDate}`;
+            } else {
+                warrantyEl.textContent = "-";
+            }
+        }
+        const deviceTypeEl = document.getElementById("detail-log-device-type");
+        if (deviceTypeEl) deviceTypeEl.textContent = site.deviceType || "-";
 
-    if (attachSection && attachContent) {
-        if (totalAttachments > 0) {
-            attachSection.style.display = "block";
+        const brandModelEl = document.getElementById("detail-log-brand-model");
+        if (brandModelEl) brandModelEl.textContent = [site.brand, site.model].filter(Boolean).join(" / ") || "-";
 
-            const renderGroup = (label, icon, items) => {
-                if (!items.length) return '';
-                const thumbs = items.map(att => {
-                    const url = att.url || att;
-                    const isVideo = (att.type && att.type.startsWith('video/')) || (typeof url === 'string' && url.includes('.mp4'));
-                    if (isVideo) {
-                        return `<div style="width:110px; height:82px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer; background:#000; position:relative; flex-shrink:0;" onclick="window.openImageViewer('${url}', 'video')">
+        const serialEl = document.getElementById("detail-log-serial");
+        if (serialEl) serialEl.textContent = site.serialNumber || "-";
+
+        const installLocEl = document.getElementById("detail-log-install-loc");
+        if (installLocEl) installLocEl.textContent = site.installLocation || site.villageName || "-";
+
+        const provinceEl = document.getElementById("detail-log-province");
+        if (provinceEl) provinceEl.textContent = site.province || "-";
+
+        const maCycleEl = document.getElementById("detail-log-ma-cycle");
+        if (maCycleEl) maCycleEl.textContent = site.maintenanceCycle ? `${site.maintenanceCycle} วัน` : "-";
+
+        const cycleCountEl = document.getElementById("detail-log-cycle-count");
+        if (cycleCountEl) cycleCountEl.textContent = log.cycleCount ? `${Number(log.cycleCount).toLocaleString()} รอบ` : "-";
+
+        const dateFieldEl2 = document.getElementById("detail-log-date-field");
+        if (dateFieldEl2) dateFieldEl2.textContent = thaiDate;
+
+        const statusTextEl = document.getElementById("detail-log-status-text");
+        if (statusTextEl) {
+            const statusLabels = { 'Open': 'เปิด', 'On Process': 'ดำเนินการ', 'Done': 'เสร็จสิ้น', 'Case Closed': 'ปิดเคส', 'Cancel': 'ยกเลิก' };
+            statusTextEl.textContent = statusLabels[log.status] || log.status || "-";
+        }
+
+        // Objective/Description
+        const objectiveWrap = document.getElementById("detail-log-objective-wrap");
+        const objectiveEl = document.getElementById("detail-log-objective");
+        if (objectiveWrap && objectiveEl) {
+            if (log.objective) {
+                objectiveWrap.style.display = "block";
+                objectiveEl.textContent = log.objective;
+            } else {
+                objectiveWrap.style.display = "none";
+            }
+        }
+
+        // Render Attachments — split into all 4 sections
+        const attachSection = document.getElementById("detail-attachments-section");
+        const attachContent = document.getElementById("detail-attachments-content");
+
+        const _isInstallLog = log.category === 'ติดตั้ง' || log.category === 'รื้อถอน';
+        const attachmentsBefore = log.attachmentsBefore || [];
+        const attachmentsAfter = log.attachmentsAfter || [];
+        const descriptionAttachments = [
+            ...(log.descriptionAttachments || []),
+            ...(log.attachments || []),
+        ];
+        // For install/remove cases, installPhotos and preInstallPhotos are shown
+        // in their own dedicated section — exclude them from the general section
+        const repairPhotos = _isInstallLog
+            ? []
+            : [
+                ...(log.repairPhotos || []),
+                ...(log.installPhotos || []),
+                ...(log.preInstallPhotos || []),
+            ];
+        const totalAttachments = descriptionAttachments.length + repairPhotos.length;
+
+        if (attachSection && attachContent) {
+            if (totalAttachments > 0) {
+                attachSection.style.display = "block";
+
+                const renderGroup = (label, icon, items) => {
+                    if (!items.length) return '';
+                    const thumbs = items.map(att => {
+                        const url = att.url || att;
+                        const isVideo = (att.type && att.type.startsWith('video/')) || (typeof url === 'string' && url.includes('.mp4'));
+                        if (isVideo) {
+                            return `<div style="width:110px; height:82px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer; background:#000; position:relative; flex-shrink:0;" onclick="window.openImageViewer('${url}', 'video')">
                             <video src="${url}" style="width:100%; height:100%; object-fit:cover;"></video>
                             <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-size:1.5rem;"><i class="fa-solid fa-play"></i></div>
                         </div>`;
-                    }
-                    return `<div style="width:110px; height:82px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer; flex-shrink:0;" onclick="window.openImageViewer('${url}')">
+                        }
+                        return `<div style="width:110px; height:82px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer; flex-shrink:0;" onclick="window.openImageViewer('${url}')">
                         <img src="${url}" style="width:100%; height:100%; object-fit:cover;" loading="lazy">
                     </div>`;
-                }).join('');
-                return `<div style="margin-bottom:0.85rem;">
+                    }).join('');
+                    return `<div style="margin-bottom:0.85rem;">
                     <div style="font-size:0.78rem; font-weight:600; color:#555; margin-bottom:0.4rem; display:flex; align-items:center; gap:0.35rem;">
                         <i class="${icon}" style="font-size:0.7rem; opacity:0.7;"></i>${label} <span style="font-weight:400; color:#9ca3af;">(${items.length})</span>
                     </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">${thumbs}</div>
                 </div>`;
-            };
+                };
 
-            attachContent.innerHTML =
-                renderGroup('ไฟล์ประกอบคำอธิบายงาน', 'fa-solid fa-file-lines', descriptionAttachments) +
-                renderGroup('รูปหลังซ่อม', 'fa-solid fa-camera', repairPhotos);
-        } else {
-            attachSection.style.display = "none";
+                attachContent.innerHTML =
+                    renderGroup('ไฟล์ประกอบคำอธิบายงาน', 'fa-solid fa-file-lines', descriptionAttachments) +
+                    renderGroup('รูปหลังซ่อม', 'fa-solid fa-camera', repairPhotos);
+            } else {
+                attachSection.style.display = "none";
+            }
         }
-    }
 
-    
-    // Render Status Timeline
-    // Initialize status history if it doesn't exist (for old logs)
-    if (!log.statusHistory && log.status) {
-        log.statusHistory = {
-            [log.status]: log.timestamp || new Date().toISOString()
-        };
-    }
-    renderStatusTimeline(log.status, log.id, log.statusHistory || {});
 
-    // Cost (total of lineItems, or legacy)
-    const totalCost =
-        Array.isArray(log.lineItems) && log.lineItems.length > 0
-            ? log.lineItems.reduce((s, li) => s + (li.cost || 0), 0)
-            : log.cost || 0;
-    const costEl = document.getElementById("detail-log-cost");
-    if (costEl) {
-        costEl.textContent = new Intl.NumberFormat(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        }).format(totalCost) + " บาท";
-    }
+        // Render Status Timeline
+        // Initialize status history if it doesn't exist (for old logs)
+        if (!log.statusHistory && log.status) {
+            log.statusHistory = {
+                [log.status]: log.timestamp || new Date().toISOString()
+            };
+        }
+        renderStatusTimeline(log.status, log.id, log.statusHistory || {});
 
-    // Details as line-items table
-    const detailsEl = document.getElementById("detail-log-details");
-    if (detailsEl) {
-        if (Array.isArray(log.lineItems) && log.lineItems.length > 0) {
-            const fmt = (v) =>
-                new Intl.NumberFormat(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                }).format(v || 0) + " บาท";
-            const rows = log.lineItems
-                .map(
-                    (li, i) => `
+        // Cost (total of lineItems, or legacy)
+        const totalCost =
+            Array.isArray(log.lineItems) && log.lineItems.length > 0
+                ? log.lineItems.reduce((s, li) => s + (li.cost || 0), 0)
+                : log.cost || 0;
+        const costEl = document.getElementById("detail-log-cost");
+        if (costEl) {
+            costEl.textContent = new Intl.NumberFormat(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }).format(totalCost) + " บาท";
+        }
+
+        // Details as line-items table
+        const detailsEl = document.getElementById("detail-log-details");
+        if (detailsEl) {
+            if (Array.isArray(log.lineItems) && log.lineItems.length > 0) {
+                const fmt = (v) =>
+                    new Intl.NumberFormat(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    }).format(v || 0) + " บาท";
+                const rows = log.lineItems
+                    .map(
+                        (li, i) => `
                 <tr>
                     <td style="padding:0.35rem 0.5rem; color:var(--text-color);">${i + 1}. ${li.item || "-"}</td>
                     <td style="padding:0.35rem 0.5rem; text-align:right; white-space:nowrap; font-weight:500;">${fmt(li.cost)}</td>
                 </tr>`,
-                )
-                .join("");
-            detailsEl.innerHTML = `
+                    )
+                    .join("");
+                detailsEl.innerHTML = `
                 <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
                     <thead>
                         <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
@@ -10715,408 +11231,408 @@ function viewLogDetails(id) {
                     </thead>
                     <tbody>${rows}</tbody>
                 </table>`;
-        } else {
-            detailsEl.textContent = log.details || "-";
-        }
-    }
-
-    // Comments
-    renderLogComments(log.id, log.comments || []);
-
-    // Electrical & Physical Inspection - only for บำรุงรักษาตามรอบ
-    const inspSection = document.getElementById("detail-inspection-section");
-    const inspContent = document.getElementById("detail-inspection-content");
-    const isMaLog = isMaCategory(log.category);
-    const isInstallLog = log.category === 'ติดตั้ง' || log.category === 'รื้อถอน';
-
-    if (inspSection) inspSection.style.display = isMaLog ? "block" : "none";
-    if (inspSection && inspContent && isMaLog) {
-        const inspItems = [
-            ['insp_exteriorCleaning', '1. ความสะอาดภายนอก'],
-            ['insp_interiorCleaning', '2. ความสะอาดภายใน'],
-            ['insp_doorSystem', '3. การทำงานระบบประตู'],
-            ['insp_footSwitch', '4. การทำงาน Foot Switch'],
-            ['insp_sensor', '5. ระบบ Sensor'],
-            ['insp_tempPoints', '6. อุณหภูมิจุดที่ 1-4'],
-            ['insp_workingPressure', '7. ความดันขณะทำงาน'],
-            ['insp_rfGenerator', '8. RF Generator'],
-            ['insp_chemicalAmount', '9. ปริมาณน้ำยาที่ฉีด'],
-            ['insp_airChargingValue', '10. Air Charging Valve'],
-            ['insp_filter', '11. Filter'],
-            ['insp_decomposer', '12. Decomposor'],
-            ['insp_vacuumPumpOil', '13. น้ำมันปั้มสุญากาศ'],
-            ['insp_connectors', '14. ระบบข้อต่อต่างๆ'],
-            ['insp_drainTank', '15. ถังเดรนน้ำ'],
-            ['insp_chemicalLine', '16. สายส่งน้ำยา'],
-            ['insp_phaseRelay', '17. รีเลย์ควบคุมลำดับเฟส'],
-            ['insp_systemRelay', '18. รีเลย์ควบคุมระบบต่างๆ'],
-        ];
-
-        const row = (label, value) => `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333;">${label}</span><span style="font-size:0.88rem; font-weight:500; color:#111;">${value}</span></div>`;
-
-        const pillBadge = (val, passLabel = 'ผ่าน', failLabel = 'ไม่ผ่าน') => {
-            if (!val) return `<span style="color:#ccc;">-</span>`;
-            const isPass = val === 'pass';
-            const bg = isPass ? '#22c55e' : '#ef4444';
-            const text = isPass ? passLabel : failLabel;
-            return `<span class="detail-pill" style="background:${bg};">${text}</span>`;
-        };
-
-        const inspBadge = (val) => {
-            if (!val) return `<span style="color:#ccc;">-</span>`;
-            const config = { check: { full: 'Check', short: 'C', bg: '#22c55e' }, service: { full: 'Service', short: 'S', bg: '#f59e0b' }, replace: { full: 'Replace', short: 'R', bg: '#ef4444' } };
-            const valStr = String(val);
-            const c = config[valStr] || { full: valStr, short: valStr.charAt(0), bg: '#111' };
-            return `<span class="detail-pill" style="background:${c.bg};"><span class="insp-full">${c.full}</span><span class="insp-short">${c.short}</span></span>`;
-        };
-
-        let html = '';
-
-        // Electrical section header
-        html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-bolt" style="color:#111111;"></i> ข้อมูลไฟฟ้า (Electrical)</div>`;
-        html += `<table style="width:100%; border-collapse:collapse; border:1px solid rgba(0,0,0,0.08); border-radius:6px; overflow:hidden;">`;
-        html += `<tr style="border-bottom:1px solid rgba(0,0,0,0.06);"><td style="padding:0.5rem 0.75rem; font-weight:500; font-size:0.88rem;">แรงดันไฟฟ้า</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">R ${log.voltageL1 || '___'} V (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">S ${log.voltageL2 || '___'} V (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">T ${log.voltageL3 || '___'} V (Load/Unload)</td></tr>`;
-        html += `<tr><td style="padding:0.5rem 0.75rem; font-weight:500; font-size:0.88rem;">กระแส</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">R ${log.currentL1 || '___'} A (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">S ${log.currentL2 || '___'} A (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">T ${log.currentL3 || '___'} A (Load/Unload)</td></tr>`;
-        html += `</table>`;
-
-        // Physical Inspection
-        html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-clipboard-check"></i> ตรวจสอบทางกายภาพ (Physical Inspection)</div>`;
-        html += `<div style="display:flex; flex-direction:column;">`;
-        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333; flex:1;">อุณหภูมิเฉลี่ยในการทำงาน</span><span style="font-size:0.88rem; margin-right:0.75rem;">${log.avgWorkTemp ? log.avgWorkTemp + ' °C' : '-'}</span>${pillBadge(log.avgWorkTempCheck)}</div>`;
-        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333; flex:1;">อุณหภูมิเฉลี่ยพื้นที่</span><span style="font-size:0.88rem; margin-right:0.75rem;">${log.avgAreaTemp ? log.avgAreaTemp + ' °C' : '-'}</span>${pillBadge(log.avgAreaTempCheck)}</div>`;
-        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333; flex:1;">ตรวจสอบการรั่วไหล</span><span style="font-size:0.88rem; margin-right:0.75rem;">${log.leakPressure ? log.leakPressure + ' PSI' : '-'}</span>${pillBadge(log.leakCheck)}</div>`;
-        html += `</div>`;
-
-        // Performance
-        html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-gauge-high"></i> ประสิทธิภาพการทำงาน (Performance)</div>`;
-        html += `<div style="display:flex; flex-direction:column;">`;
-        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333;">ตรวจสอบด้วย Comply Type 5</span>${pillBadge(log.complyType5)}</div>`;
-        html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333;">ตรวจสอบการทะลุทะลวงด้วย CI PCD Type 5</span>${pillBadge(log.ciPcdType5)}</div>`;
-        html += `</div>`;
-
-        // Gas Detection
-        const gasValue = (value) => (value !== null && value !== undefined && value !== '') ? value + ' PPM' : '-';
-        const hasGasValues = [log.gasDoor1, log.gasDoor2, log.gasDoor3, log.gas1m1, log.gas1m2, log.gas1m3, log.gas2m1, log.gas2m2, log.gas2m3].some(v => v !== null && v !== undefined && v !== '');
-        if (hasGasValues) {
-            html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-wind"></i> ตรวจสอบปริมาณแก๊ส (Gas Detection)</div>`;
-            html += `<table style="width:100%; border-collapse:collapse; border:1px solid rgba(0,0,0,0.08); border-radius:8px; overflow:hidden; font-size:0.88rem; margin-bottom:0.75rem;">`;
-            html += `<thead><tr style="background:rgba(0,0,0,0.02);"><th style="padding:0.5rem 0.75rem; text-align:left;">จุดตรวจ</th><th style="padding:0.5rem 0.75rem; text-align:center;">ครั้งที่ 1</th><th style="padding:0.5rem 0.75rem; text-align:center;">ครั้งที่ 2</th><th style="padding:0.5rem 0.75rem; text-align:center;">ครั้งที่ 3</th></tr></thead>`;
-            html += `<tbody>`;
-            html += `<tr style="border-top:1px solid rgba(0,0,0,0.06);"><td style="padding:0.5rem 0.75rem;">บริเวณหน้าประตู</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gasDoor1)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gasDoor2)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gasDoor3)}</td></tr>`;
-            html += `<tr style="border-top:1px solid rgba(0,0,0,0.06);"><td style="padding:0.5rem 0.75rem;">ระยะห่าง 1 เมตร</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas1m1)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas1m2)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas1m3)}</td></tr>`;
-            html += `<tr style="border-top:1px solid rgba(0,0,0,0.06);"><td style="padding:0.5rem 0.75rem;">ระยะห่าง 2 เมตร</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas2m1)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas2m2)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas2m3)}</td></tr>`;
-            html += `</tbody></table>`;
+            } else {
+                detailsEl.textContent = log.details || "-";
+            }
         }
 
-        // Inspection Checklist
-        html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-magnifying-glass-chart"></i> รายการตรวจสอบ (Inspection Checklist)</div>`;
-        html += `<div class="insp-checklist-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0 1.5rem;">`;
-        inspItems.forEach(([key, label]) => {
-            html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333; flex:1;">${label}</span><span style="flex-shrink:0;">${inspBadge(log[key])}</span></div>`;
-        });
-        html += `</div>`;
+        // Comments
+        renderLogComments(log.id, log.comments || []);
 
-        inspContent.innerHTML = html;
-    }
+        // Electrical & Physical Inspection - only for บำรุงรักษาตามรอบ
+        const inspSection = document.getElementById("detail-inspection-section");
+        const inspContent = document.getElementById("detail-inspection-content");
+        const isMaLog = isMaCategory(log.category);
+        const isInstallLog = log.category === 'ติดตั้ง' || log.category === 'รื้อถอน';
 
-    // Install/Uninstall Section - only for ติดตั้ง/รื้อถอน
-    const installSection = document.getElementById("detail-install-section");
-    const installContent = document.getElementById("detail-install-content");
-    if (installSection) installSection.style.display = isInstallLog ? "block" : "none";
-    if (installSection && installContent && isInstallLog) {
-        const yesNo = (val) => {
-            if (!val) return '<span style="color:#ccc;">-</span>';
-            const isYes = val === 'yes';
-            return `<span class="detail-pill" style="background:${isYes ? '#22c55e' : '#ef4444'};">${isYes ? 'ใช่' : 'ไม่ใช่'}</span>`;
-        };
-        const gridRow = (label, pill, extra) => `<div style="display:grid; grid-template-columns:200px 80px 1fr; align-items:center; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05); gap:0.5rem;"><span style="font-size:0.88rem; color:#333;">${label}</span><span>${pill}</span><span style="font-size:0.85rem; color:#666;">${extra || ''}</span></div>`;
-        const valRow = (label, value) => `<div style="display:grid; grid-template-columns:200px 1fr; align-items:center; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05); gap:0.5rem;"><span style="font-size:0.88rem; color:#333;">${label}</span><span style="font-size:0.88rem; font-weight:500; color:#111;">${value}</span></div>`;
+        if (inspSection) inspSection.style.display = isMaLog ? "block" : "none";
+        if (inspSection && inspContent && isMaLog) {
+            const inspItems = [
+                ['insp_exteriorCleaning', '1. ความสะอาดภายนอก'],
+                ['insp_interiorCleaning', '2. ความสะอาดภายใน'],
+                ['insp_doorSystem', '3. การทำงานระบบประตู'],
+                ['insp_footSwitch', '4. การทำงาน Foot Switch'],
+                ['insp_sensor', '5. ระบบ Sensor'],
+                ['insp_tempPoints', '6. อุณหภูมิจุดที่ 1-4'],
+                ['insp_workingPressure', '7. ความดันขณะทำงาน'],
+                ['insp_rfGenerator', '8. RF Generator'],
+                ['insp_chemicalAmount', '9. ปริมาณน้ำยาที่ฉีด'],
+                ['insp_airChargingValue', '10. Air Charging Valve'],
+                ['insp_filter', '11. Filter'],
+                ['insp_decomposer', '12. Decomposor'],
+                ['insp_vacuumPumpOil', '13. น้ำมันปั้มสุญากาศ'],
+                ['insp_connectors', '14. ระบบข้อต่อต่างๆ'],
+                ['insp_drainTank', '15. ถังเดรนน้ำ'],
+                ['insp_chemicalLine', '16. สายส่งน้ำยา'],
+                ['insp_phaseRelay', '17. รีเลย์ควบคุมลำดับเฟส'],
+                ['insp_systemRelay', '18. รีเลย์ควบคุมระบบต่างๆ'],
+            ];
 
-        let iHtml = '';
-        if (log.installType) iHtml += valRow('ประเภทงาน', `<span class="detail-pill" style="background:${log.installType === 'ติดตั้ง' ? '#22c55e' : '#f59e0b'};">${log.installType}</span>`);
-        if (log.installDate) iHtml += valRow('วันเวลาดำเนินการ', formatDateTimeDDMMYYYY(log.installDate));
-        iHtml += gridRow('มีทางลาดหรือไม่', yesNo(log.useRamp), log.useRamp === 'yes' && log.rampWidth ? 'กว้าง ' + log.rampWidth + ' ม.' : '');
-        iHtml += gridRow('มีลิฟต์หรือไม่', yesNo(log.useElevator), log.useElevator === 'yes' ? [log.elevatorCapacity ? log.elevatorCapacity + ' kg' : '', log.elevatorDoorWidth && log.elevatorDoorHeight ? 'ประตู ' + log.elevatorDoorWidth + '×' + log.elevatorDoorHeight + ' ม.' : ''].filter(Boolean).join(' / ') : '');
-        iHtml += valRow('ช่องทางเดิน (ที่แคบที่สุด)', `${log.walkwayWidth ? 'กว้าง ' + log.walkwayWidth + ' ม.' : '-'} / ${log.walkwayHeight ? 'สูง ' + log.walkwayHeight + ' ม.' : '-'}`);
-        iHtml += valRow('จำนวนประตูที่ต้องผ่าน', log.doorCount ? log.doorCount + ' ประตู' : '-');
-        if (Array.isArray(log.doorSizes) && log.doorSizes.length > 0) {
-            log.doorSizes.forEach(function(door, i) {
-                iHtml += valRow('ขนาดประตูที่ ' + (i + 1), (door.width ? 'กว้าง ' + door.width + ' ม.' : '-') + ' / ' + (door.height ? 'สูง ' + door.height + ' ม.' : '-'));
+            const row = (label, value) => `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333;">${label}</span><span style="font-size:0.88rem; font-weight:500; color:#111;">${value}</span></div>`;
+
+            const pillBadge = (val, passLabel = 'ผ่าน', failLabel = 'ไม่ผ่าน') => {
+                if (!val) return `<span style="color:#ccc;">-</span>`;
+                const isPass = val === 'pass';
+                const bg = isPass ? '#22c55e' : '#ef4444';
+                const text = isPass ? passLabel : failLabel;
+                return `<span class="detail-pill" style="background:${bg};">${text}</span>`;
+            };
+
+            const inspBadge = (val) => {
+                if (!val) return `<span style="color:#ccc;">-</span>`;
+                const config = { check: { full: 'Check', short: 'C', bg: '#22c55e' }, service: { full: 'Service', short: 'S', bg: '#f59e0b' }, replace: { full: 'Replace', short: 'R', bg: '#ef4444' } };
+                const valStr = String(val);
+                const c = config[valStr] || { full: valStr, short: valStr.charAt(0), bg: '#111' };
+                return `<span class="detail-pill" style="background:${c.bg};"><span class="insp-full">${c.full}</span><span class="insp-short">${c.short}</span></span>`;
+            };
+
+            let html = '';
+
+            // Electrical section header
+            html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-bolt" style="color:#111111;"></i> ข้อมูลไฟฟ้า (Electrical)</div>`;
+            html += `<table style="width:100%; border-collapse:collapse; border:1px solid rgba(0,0,0,0.08); border-radius:6px; overflow:hidden;">`;
+            html += `<tr style="border-bottom:1px solid rgba(0,0,0,0.06);"><td style="padding:0.5rem 0.75rem; font-weight:500; font-size:0.88rem;">แรงดันไฟฟ้า</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">R ${log.voltageL1 || '___'} V (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">S ${log.voltageL2 || '___'} V (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">T ${log.voltageL3 || '___'} V (Load/Unload)</td></tr>`;
+            html += `<tr><td style="padding:0.5rem 0.75rem; font-weight:500; font-size:0.88rem;">กระแส</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">R ${log.currentL1 || '___'} A (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">S ${log.currentL2 || '___'} A (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">T ${log.currentL3 || '___'} A (Load/Unload)</td></tr>`;
+            html += `</table>`;
+
+            // Physical Inspection
+            html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-clipboard-check"></i> ตรวจสอบทางกายภาพ (Physical Inspection)</div>`;
+            html += `<div style="display:flex; flex-direction:column;">`;
+            html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333; flex:1;">อุณหภูมิเฉลี่ยในการทำงาน</span><span style="font-size:0.88rem; margin-right:0.75rem;">${log.avgWorkTemp ? log.avgWorkTemp + ' °C' : '-'}</span>${pillBadge(log.avgWorkTempCheck)}</div>`;
+            html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333; flex:1;">อุณหภูมิเฉลี่ยพื้นที่</span><span style="font-size:0.88rem; margin-right:0.75rem;">${log.avgAreaTemp ? log.avgAreaTemp + ' °C' : '-'}</span>${pillBadge(log.avgAreaTempCheck)}</div>`;
+            html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333; flex:1;">ตรวจสอบการรั่วไหล</span><span style="font-size:0.88rem; margin-right:0.75rem;">${log.leakPressure ? log.leakPressure + ' PSI' : '-'}</span>${pillBadge(log.leakCheck)}</div>`;
+            html += `</div>`;
+
+            // Performance
+            html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-gauge-high"></i> ประสิทธิภาพการทำงาน (Performance)</div>`;
+            html += `<div style="display:flex; flex-direction:column;">`;
+            html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333;">ตรวจสอบด้วย Comply Type 5</span>${pillBadge(log.complyType5)}</div>`;
+            html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333;">ตรวจสอบการทะลุทะลวงด้วย CI PCD Type 5</span>${pillBadge(log.ciPcdType5)}</div>`;
+            html += `</div>`;
+
+            // Gas Detection
+            const gasValue = (value) => (value !== null && value !== undefined && value !== '') ? value + ' PPM' : '-';
+            const hasGasValues = [log.gasDoor1, log.gasDoor2, log.gasDoor3, log.gas1m1, log.gas1m2, log.gas1m3, log.gas2m1, log.gas2m2, log.gas2m3].some(v => v !== null && v !== undefined && v !== '');
+            if (hasGasValues) {
+                html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-wind"></i> ตรวจสอบปริมาณแก๊ส (Gas Detection)</div>`;
+                html += `<table style="width:100%; border-collapse:collapse; border:1px solid rgba(0,0,0,0.08); border-radius:8px; overflow:hidden; font-size:0.88rem; margin-bottom:0.75rem;">`;
+                html += `<thead><tr style="background:rgba(0,0,0,0.02);"><th style="padding:0.5rem 0.75rem; text-align:left;">จุดตรวจ</th><th style="padding:0.5rem 0.75rem; text-align:center;">ครั้งที่ 1</th><th style="padding:0.5rem 0.75rem; text-align:center;">ครั้งที่ 2</th><th style="padding:0.5rem 0.75rem; text-align:center;">ครั้งที่ 3</th></tr></thead>`;
+                html += `<tbody>`;
+                html += `<tr style="border-top:1px solid rgba(0,0,0,0.06);"><td style="padding:0.5rem 0.75rem;">บริเวณหน้าประตู</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gasDoor1)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gasDoor2)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gasDoor3)}</td></tr>`;
+                html += `<tr style="border-top:1px solid rgba(0,0,0,0.06);"><td style="padding:0.5rem 0.75rem;">ระยะห่าง 1 เมตร</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas1m1)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas1m2)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas1m3)}</td></tr>`;
+                html += `<tr style="border-top:1px solid rgba(0,0,0,0.06);"><td style="padding:0.5rem 0.75rem;">ระยะห่าง 2 เมตร</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas2m1)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas2m2)}</td><td style="padding:0.5rem 0.75rem; text-align:center;">${gasValue(log.gas2m3)}</td></tr>`;
+                html += `</tbody></table>`;
+            }
+
+            // Inspection Checklist
+            html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-magnifying-glass-chart"></i> รายการตรวจสอบ (Inspection Checklist)</div>`;
+            html += `<div class="insp-checklist-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0 1.5rem;">`;
+            inspItems.forEach(([key, label]) => {
+                html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.88rem; color:#333; flex:1;">${label}</span><span style="flex-shrink:0;">${inspBadge(log[key])}</span></div>`;
             });
-        }
-        iHtml += gridRow('ต้องเดินสายไฟ', yesNo(log.needWiring), '');
-        iHtml += gridRow('ต้องเดิน Power Plug', yesNo(log.needPowerPlug), '');
-        iHtml += valRow('ระยะจากตู้ไฟไปยังเครื่อง', log.wireDistance ? log.wireDistance + ' ม.' : '-');
-        iHtml += gridRow('เจาะกำแพง', yesNo(log.needDrillWall), '');
-        iHtml += gridRow('สายไฟเดินลอดฝ้า', yesNo(log.wireThroughCeiling), '');
-        iHtml += `<div style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid rgba(0,0,0,0.08);">`;
-        iHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.25rem;">กรณีใช้ช่างโรงพยาบาล</div>`;
-        iHtml += valRow('ชื่อ-สกุล', log.hospitalTechName || '-');
-        iHtml += valRow('เบอร์โทร', log.hospitalTechPhone || '-');
-        iHtml += `</div>`;
-        installContent.innerHTML = iHtml;
-    }
+            html += `</div>`;
 
-    // Precheck Section - for ติดตั้ง/รื้อถอน
-    const precheckSection = document.getElementById("detail-precheck-section");
-    const precheckContent = document.getElementById("detail-precheck-content");
-    if (precheckSection) precheckSection.style.display = isInstallLog ? "block" : "none";
-    if (precheckSection && precheckContent && isInstallLog) {
-        const precheckBadge = (val) => {
-            if (val === 'noneed') return `<span class="detail-pill" style="background:#94a3b8;">ไม่จำเป็น</span>`;
-            if (!val || val === 'pending') return `<span class="detail-pill" style="background:#f59e0b;">รอตรวจ</span>`;
-            if (val === 'pass') return `<span class="detail-pill" style="background:#22c55e;">ผ่าน</span>`;
-            return `<span class="detail-pill" style="background:#ef4444;">ไม่ผ่าน</span>`;
-        };
-        const precheckItems = [
-            ['precheck_electrical', 'ระบบไฟฟ้าภายในเครื่อง'],
-            ['precheck_wiring', 'ระบบการเดินสายไฟ'],
-            ['precheck_grounding', 'ระบบสายดิน'],
-            ['precheck_doorMotor', 'ระบบประตู, มอเตอร์'],
-            ['precheck_connectors', 'ระบบข้อต่อ'],
-            ['precheck_vacuumPump', 'ระบบปั้มสุญญากาศ'],
-            ['precheck_leakTest', 'การตรวจการรั่วไหล'],
-            ['precheck_chemical', 'การตรวจปริมาณน้ำยาที่ฉีด'],
-            ['precheck_sensors', 'ระบบ Sensor ต่างๆ'],
-            ['precheck_sterilize', 'การตรวจ Sterilize ด้วย CI, CI PCD'],
-            ['precheck_gasResidual', 'การตรวจปริมาณแก๊สตกค้าง'],
-            ['precheck_interior', 'การตรวจความเรียบร้อยภายในเครื่อง'],
-            ['precheck_exterior', 'การตรวจความเรียบร้อยภายนอกเครื่อง']
-        ];
-        let pcHtml = '';
-        if (log.precheckDate) {
-            pcHtml += `<div style="margin-bottom:0.5rem; font-size:0.85rem; color:#666;"><i class="fa-regular fa-calendar"></i> วันที่ตรวจ: <strong>${formatDateTimeDDMMYYYY(log.precheckDate)}</strong></div>`;
+            inspContent.innerHTML = html;
         }
-        if (log.category === 'รื้อถอน') {
-            pcHtml += `<div style="padding:1rem; text-align:center; color:#666; font-size:0.9rem; border:1px solid rgba(0,0,0,0.08); border-radius:8px; background:rgba(0,0,0,0.02);">ไม่จำเป็น (No need) — กรณีรื้อถอน</div>`;
-        } else {
-            pcHtml += `<div style="display:flex; flex-direction:column;">`;
-            precheckItems.forEach(([key, label], idx) => {
-                const val = log[key] || 'pending';
-                const note = log[key + '_note'] || '';
-                pcHtml += `<div style="display:grid; grid-template-columns:30px 1fr 90px 1fr; align-items:center; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05); gap:0.5rem;">`;
-                pcHtml += `<span style="font-size:0.82rem; color:#888; text-align:center;">${idx + 1}</span>`;
-                pcHtml += `<span style="font-size:0.85rem; color:#333;">${label}</span>`;
-                pcHtml += `<span>${precheckBadge(val)}</span>`;
-                pcHtml += `<span style="font-size:0.82rem; color:#888;">${note || '-'}</span>`;
+
+        // Install/Uninstall Section - only for ติดตั้ง/รื้อถอน
+        const installSection = document.getElementById("detail-install-section");
+        const installContent = document.getElementById("detail-install-content");
+        if (installSection) installSection.style.display = isInstallLog ? "block" : "none";
+        if (installSection && installContent && isInstallLog) {
+            const yesNo = (val) => {
+                if (!val) return '<span style="color:#ccc;">-</span>';
+                const isYes = val === 'yes';
+                return `<span class="detail-pill" style="background:${isYes ? '#22c55e' : '#ef4444'};">${isYes ? 'ใช่' : 'ไม่ใช่'}</span>`;
+            };
+            const gridRow = (label, pill, extra) => `<div style="display:grid; grid-template-columns:200px 80px 1fr; align-items:center; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05); gap:0.5rem;"><span style="font-size:0.88rem; color:#333;">${label}</span><span>${pill}</span><span style="font-size:0.85rem; color:#666;">${extra || ''}</span></div>`;
+            const valRow = (label, value) => `<div style="display:grid; grid-template-columns:200px 1fr; align-items:center; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05); gap:0.5rem;"><span style="font-size:0.88rem; color:#333;">${label}</span><span style="font-size:0.88rem; font-weight:500; color:#111;">${value}</span></div>`;
+
+            let iHtml = '';
+            if (log.installType) iHtml += valRow('ประเภทงาน', `<span class="detail-pill" style="background:${log.installType === 'ติดตั้ง' ? '#22c55e' : '#f59e0b'};">${log.installType}</span>`);
+            if (log.installDate) iHtml += valRow('วันเวลาดำเนินการ', formatDateTimeDDMMYYYY(log.installDate));
+            iHtml += gridRow('มีทางลาดหรือไม่', yesNo(log.useRamp), log.useRamp === 'yes' && log.rampWidth ? 'กว้าง ' + log.rampWidth + ' ม.' : '');
+            iHtml += gridRow('มีลิฟต์หรือไม่', yesNo(log.useElevator), log.useElevator === 'yes' ? [log.elevatorCapacity ? log.elevatorCapacity + ' kg' : '', log.elevatorDoorWidth && log.elevatorDoorHeight ? 'ประตู ' + log.elevatorDoorWidth + '×' + log.elevatorDoorHeight + ' ม.' : ''].filter(Boolean).join(' / ') : '');
+            iHtml += valRow('ช่องทางเดิน (ที่แคบที่สุด)', `${log.walkwayWidth ? 'กว้าง ' + log.walkwayWidth + ' ม.' : '-'} / ${log.walkwayHeight ? 'สูง ' + log.walkwayHeight + ' ม.' : '-'}`);
+            iHtml += valRow('จำนวนประตูที่ต้องผ่าน', log.doorCount ? log.doorCount + ' ประตู' : '-');
+            if (Array.isArray(log.doorSizes) && log.doorSizes.length > 0) {
+                log.doorSizes.forEach(function (door, i) {
+                    iHtml += valRow('ขนาดประตูที่ ' + (i + 1), (door.width ? 'กว้าง ' + door.width + ' ม.' : '-') + ' / ' + (door.height ? 'สูง ' + door.height + ' ม.' : '-'));
+                });
+            }
+            iHtml += gridRow('ต้องเดินสายไฟ', yesNo(log.needWiring), '');
+            iHtml += gridRow('ต้องเดิน Power Plug', yesNo(log.needPowerPlug), '');
+            iHtml += valRow('ระยะจากตู้ไฟไปยังเครื่อง', log.wireDistance ? log.wireDistance + ' ม.' : '-');
+            iHtml += gridRow('เจาะกำแพง', yesNo(log.needDrillWall), '');
+            iHtml += gridRow('สายไฟเดินลอดฝ้า', yesNo(log.wireThroughCeiling), '');
+            iHtml += `<div style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid rgba(0,0,0,0.08);">`;
+            iHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.25rem;">กรณีใช้ช่างโรงพยาบาล</div>`;
+            iHtml += valRow('ชื่อ-สกุล', log.hospitalTechName || '-');
+            iHtml += valRow('เบอร์โทร', log.hospitalTechPhone || '-');
+            iHtml += `</div>`;
+            installContent.innerHTML = iHtml;
+        }
+
+        // Precheck Section - for ติดตั้ง/รื้อถอน
+        const precheckSection = document.getElementById("detail-precheck-section");
+        const precheckContent = document.getElementById("detail-precheck-content");
+        if (precheckSection) precheckSection.style.display = isInstallLog ? "block" : "none";
+        if (precheckSection && precheckContent && isInstallLog) {
+            const precheckBadge = (val) => {
+                if (val === 'noneed') return `<span class="detail-pill" style="background:#94a3b8;">ไม่จำเป็น</span>`;
+                if (!val || val === 'pending') return `<span class="detail-pill" style="background:#f59e0b;">รอตรวจ</span>`;
+                if (val === 'pass') return `<span class="detail-pill" style="background:#22c55e;">ผ่าน</span>`;
+                return `<span class="detail-pill" style="background:#ef4444;">ไม่ผ่าน</span>`;
+            };
+            const precheckItems = [
+                ['precheck_electrical', 'ระบบไฟฟ้าภายในเครื่อง'],
+                ['precheck_wiring', 'ระบบการเดินสายไฟ'],
+                ['precheck_grounding', 'ระบบสายดิน'],
+                ['precheck_doorMotor', 'ระบบประตู, มอเตอร์'],
+                ['precheck_connectors', 'ระบบข้อต่อ'],
+                ['precheck_vacuumPump', 'ระบบปั้มสุญญากาศ'],
+                ['precheck_leakTest', 'การตรวจการรั่วไหล'],
+                ['precheck_chemical', 'การตรวจปริมาณน้ำยาที่ฉีด'],
+                ['precheck_sensors', 'ระบบ Sensor ต่างๆ'],
+                ['precheck_sterilize', 'การตรวจ Sterilize ด้วย CI, CI PCD'],
+                ['precheck_gasResidual', 'การตรวจปริมาณแก๊สตกค้าง'],
+                ['precheck_interior', 'การตรวจความเรียบร้อยภายในเครื่อง'],
+                ['precheck_exterior', 'การตรวจความเรียบร้อยภายนอกเครื่อง']
+            ];
+            let pcHtml = '';
+            if (log.precheckDate) {
+                pcHtml += `<div style="margin-bottom:0.5rem; font-size:0.85rem; color:#666;"><i class="fa-regular fa-calendar"></i> วันที่ตรวจ: <strong>${formatDateTimeDDMMYYYY(log.precheckDate)}</strong></div>`;
+            }
+            if (log.category === 'รื้อถอน') {
+                pcHtml += `<div style="padding:1rem; text-align:center; color:#666; font-size:0.9rem; border:1px solid rgba(0,0,0,0.08); border-radius:8px; background:rgba(0,0,0,0.02);">ไม่จำเป็น (No need) — กรณีรื้อถอน</div>`;
+            } else {
+                pcHtml += `<div style="display:flex; flex-direction:column;">`;
+                precheckItems.forEach(([key, label], idx) => {
+                    const val = log[key] || 'pending';
+                    const note = log[key + '_note'] || '';
+                    pcHtml += `<div style="display:grid; grid-template-columns:30px 1fr 90px 1fr; align-items:center; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05); gap:0.5rem;">`;
+                    pcHtml += `<span style="font-size:0.82rem; color:#888; text-align:center;">${idx + 1}</span>`;
+                    pcHtml += `<span style="font-size:0.85rem; color:#333;">${label}</span>`;
+                    pcHtml += `<span>${precheckBadge(val)}</span>`;
+                    pcHtml += `<span style="font-size:0.82rem; color:#888;">${note || '-'}</span>`;
+                    pcHtml += `</div>`;
+                });
                 pcHtml += `</div>`;
-            });
-            pcHtml += `</div>`;
+            }
+            precheckContent.innerHTML = pcHtml;
         }
-        precheckContent.innerHTML = pcHtml;
-    }
 
-    // Install Photos Section - for ติดตั้ง/รื้อถอน — split into pre/post sections
-    const installPhotosSection = document.getElementById("detail-install-photos-section");
-    const installPhotosContent = document.getElementById("detail-install-photos-content");
-    const hasPrePhotos = log.preInstallPhotos && log.preInstallPhotos.length > 0;
-    const hasPostPhotos = log.installPhotos && log.installPhotos.length > 0;
-    if (installPhotosSection) installPhotosSection.style.display = (isInstallLog && (hasPrePhotos || hasPostPhotos)) ? "block" : "none";
-    if (installPhotosSection && installPhotosContent && isInstallLog && (hasPrePhotos || hasPostPhotos)) {
+        // Install Photos Section - for ติดตั้ง/รื้อถอน — split into pre/post sections
+        const installPhotosSection = document.getElementById("detail-install-photos-section");
+        const installPhotosContent = document.getElementById("detail-install-photos-content");
+        const hasPrePhotos = log.preInstallPhotos && log.preInstallPhotos.length > 0;
+        const hasPostPhotos = log.installPhotos && log.installPhotos.length > 0;
+        if (installPhotosSection) installPhotosSection.style.display = (isInstallLog && (hasPrePhotos || hasPostPhotos)) ? "block" : "none";
+        if (installPhotosSection && installPhotosContent && isInstallLog && (hasPrePhotos || hasPostPhotos)) {
 
-        const renderInstallGroup = (label, icon, items) => {
-            if (!items || !items.length) return '';
-            const thumbs = items.map(p => {
-                const url = p.url || p;
-                return `<div style="width:110px; height:82px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer; flex-shrink:0;" onclick="window.openImageViewer('${url}')">
+            const renderInstallGroup = (label, icon, items) => {
+                if (!items || !items.length) return '';
+                const thumbs = items.map(p => {
+                    const url = p.url || p;
+                    return `<div style="width:110px; height:82px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); cursor:pointer; flex-shrink:0;" onclick="window.openImageViewer('${url}')">
                     <img src="${url}" style="width:100%; height:100%; object-fit:cover;" loading="lazy">
                 </div>`;
-            }).join('');
-            return `<div style="margin-bottom:0.85rem;">
+                }).join('');
+                return `<div style="margin-bottom:0.85rem;">
                 <div style="font-size:0.78rem; font-weight:600; color:#555; margin-bottom:0.4rem; display:flex; align-items:center; gap:0.35rem;">
                     <i class="${icon}" style="font-size:0.7rem; opacity:0.7;"></i>${label} <span style="font-weight:400; color:#9ca3af;">(${items.length})</span>
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">${thumbs}</div>
             </div>`;
-        };
+            };
 
-        installPhotosContent.innerHTML =
-            renderInstallGroup('รูปถ่ายก่อนติดตั้ง/รื้อถอน', 'fa-solid fa-camera-retro', log.preInstallPhotos || []) +
-            renderInstallGroup('รูปถ่ายประกอบการติดตั้ง/รื้อถอน', 'fa-solid fa-camera', log.installPhotos || []);
-    }
-
-    // Action Plan Section
-    const actionPlanSection = document.getElementById("detail-action-plan-section");
-    const actionPlanContent = document.getElementById("detail-action-plan-content");
-    if (actionPlanSection) actionPlanSection.style.display = log.actionPlan ? "block" : "none";
-    if (actionPlanSection && actionPlanContent && log.actionPlan) {
-        actionPlanContent.innerHTML = `<div style="padding:0.75rem; border:1px solid rgba(0,0,0,0.08); border-radius:8px; background:rgba(0,0,0,0.02); white-space:pre-wrap; font-size:0.88rem; color:#333; line-height:1.6;">${log.actionPlan}</div>`;
-    }
-
-    // Repair Section - for ซ่อม
-    const isRepairLog = log.category === 'ซ่อม';
-    const repairSection = document.getElementById("detail-repair-section");
-    const repairContent = document.getElementById("detail-repair-content");
-    if (repairSection) repairSection.style.display = isRepairLog ? "block" : "none";
-    if (repairSection && repairContent && isRepairLog) {
-        let rHtml = '';
-
-        // Repair checklist
-        if (Array.isArray(log.repairChecklist) && log.repairChecklist.length > 0) {
-            rHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.4rem;"><i class="fa-solid fa-list-check"></i> รายการที่ซ่อม</div>`;
-            rHtml += `<div style="display:flex; flex-direction:column; margin-bottom:0.75rem;">`;
-            log.repairChecklist.forEach((item, i) => {
-                const statusBadge = item.status === 'pass'
-                    ? `<span class="detail-pill" style="background:#22c55e;">ผ่าน</span>`
-                    : item.status === 'fail'
-                        ? `<span class="detail-pill" style="background:#ef4444;">ไม่ผ่าน</span>`
-                        : `<span style="color:#ccc;">-</span>`;
-                rHtml += `<div style="display:grid; grid-template-columns:30px 1fr 80px 1fr; align-items:center; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05); gap:0.5rem;">`;
-                rHtml += `<span style="font-size:0.82rem; color:#888; text-align:center;">${i + 1}</span>`;
-                rHtml += `<span style="font-size:0.85rem; color:#333;">${item.label || '-'}</span>`;
-                rHtml += `<span>${statusBadge}</span>`;
-                rHtml += `<span style="font-size:0.82rem; color:#888;">${item.note || '-'}</span>`;
-                rHtml += `</div>`;
-            });
-            rHtml += `</div>`;
+            installPhotosContent.innerHTML =
+                renderInstallGroup('รูปถ่ายก่อนติดตั้ง/รื้อถอน', 'fa-solid fa-camera-retro', log.preInstallPhotos || []) +
+                renderInstallGroup('รูปถ่ายประกอบการติดตั้ง/รื้อถอน', 'fa-solid fa-camera', log.installPhotos || []);
         }
 
-        // Machine status after repair
-        if (log.machineStatusAfter) {
-            const msReady = log.machineStatusAfter === 'ready';
-            rHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.4rem;"><i class="fa-solid fa-clipboard-check"></i> สภาพเครื่องหลังดำเนินการ</div>`;
-            rHtml += `<div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">`;
-            rHtml += `<span class="detail-pill" style="background:${msReady ? '#22c55e' : '#ef4444'};">${msReady ? 'พร้อมใช้งาน' : 'ไม่พร้อมใช้งาน'}</span>`;
-            rHtml += `</div>`;
-            if (log.machineStatusAfterNote) {
-                rHtml += `<div style="font-size:0.85rem; color:#666; margin-top:0.25rem;">หมายเหตุ: ${log.machineStatusAfterNote}</div>`;
-            }
+        // Action Plan Section
+        const actionPlanSection = document.getElementById("detail-action-plan-section");
+        const actionPlanContent = document.getElementById("detail-action-plan-content");
+        if (actionPlanSection) actionPlanSection.style.display = log.actionPlan ? "block" : "none";
+        if (actionPlanSection && actionPlanContent && log.actionPlan) {
+            actionPlanContent.innerHTML = `<div style="padding:0.75rem; border:1px solid rgba(0,0,0,0.08); border-radius:8px; background:rgba(0,0,0,0.02); white-space:pre-wrap; font-size:0.88rem; color:#333; line-height:1.6;">${log.actionPlan}</div>`;
         }
 
-        // Return product
-        if (log.returnProductNote || (Array.isArray(log.returnProducts) && log.returnProducts.length > 0)) {
-            rHtml += `<div style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid rgba(0,0,0,0.08);">`;
-            rHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.4rem;"><i class="fa-solid fa-box-archive"></i> กรณีรับสินค้ากลับ</div>`;
-            if (log.returnProductNote) {
-                rHtml += `<div style="font-size:0.85rem; color:#333; margin-bottom:0.5rem; padding:0.5rem; border:1px solid rgba(0,0,0,0.06); border-radius:6px; background:rgba(0,0,0,0.02);">${log.returnProductNote}</div>`;
-            }
-            if (Array.isArray(log.returnProducts) && log.returnProducts.length > 0) {
-                rHtml += `<div style="font-size:0.82rem; font-weight:600; color:#555; margin-bottom:0.25rem;">รายการสินค้า:</div>`;
-                log.returnProducts.forEach((prod, i) => {
-                    rHtml += `<div style="display:flex; align-items:center; gap:0.5rem; padding:0.3rem 0; border-bottom:1px solid rgba(0,0,0,0.04); font-size:0.85rem;">`;
-                    rHtml += `<span style="color:#888;">${i + 1}.</span>`;
-                    rHtml += `<span style="color:#333;">${prod.name || prod.label || '-'}</span>`;
-                    if (prod.qty) rHtml += `<span style="color:#666;">x${prod.qty}</span>`;
-                    if (prod.note) rHtml += `<span style="color:#888;">(${prod.note})</span>`;
+        // Repair Section - for ซ่อม
+        const isRepairLog = log.category === 'ซ่อม';
+        const repairSection = document.getElementById("detail-repair-section");
+        const repairContent = document.getElementById("detail-repair-content");
+        if (repairSection) repairSection.style.display = isRepairLog ? "block" : "none";
+        if (repairSection && repairContent && isRepairLog) {
+            let rHtml = '';
+
+            // Repair checklist
+            if (Array.isArray(log.repairChecklist) && log.repairChecklist.length > 0) {
+                rHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.4rem;"><i class="fa-solid fa-list-check"></i> รายการที่ซ่อม</div>`;
+                rHtml += `<div style="display:flex; flex-direction:column; margin-bottom:0.75rem;">`;
+                log.repairChecklist.forEach((item, i) => {
+                    const statusBadge = item.status === 'pass'
+                        ? `<span class="detail-pill" style="background:#22c55e;">ผ่าน</span>`
+                        : item.status === 'fail'
+                            ? `<span class="detail-pill" style="background:#ef4444;">ไม่ผ่าน</span>`
+                            : `<span style="color:#ccc;">-</span>`;
+                    rHtml += `<div style="display:grid; grid-template-columns:30px 1fr 80px 1fr; align-items:center; padding:0.4rem 0; border-bottom:1px solid rgba(0,0,0,0.05); gap:0.5rem;">`;
+                    rHtml += `<span style="font-size:0.82rem; color:#888; text-align:center;">${i + 1}</span>`;
+                    rHtml += `<span style="font-size:0.85rem; color:#333;">${item.label || '-'}</span>`;
+                    rHtml += `<span>${statusBadge}</span>`;
+                    rHtml += `<span style="font-size:0.82rem; color:#888;">${item.note || '-'}</span>`;
                     rHtml += `</div>`;
                 });
+                rHtml += `</div>`;
             }
-            rHtml += `</div>`;
+
+            // Machine status after repair
+            if (log.machineStatusAfter) {
+                const msReady = log.machineStatusAfter === 'ready';
+                rHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.4rem;"><i class="fa-solid fa-clipboard-check"></i> สภาพเครื่องหลังดำเนินการ</div>`;
+                rHtml += `<div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">`;
+                rHtml += `<span class="detail-pill" style="background:${msReady ? '#22c55e' : '#ef4444'};">${msReady ? 'พร้อมใช้งาน' : 'ไม่พร้อมใช้งาน'}</span>`;
+                rHtml += `</div>`;
+                if (log.machineStatusAfterNote) {
+                    rHtml += `<div style="font-size:0.85rem; color:#666; margin-top:0.25rem;">หมายเหตุ: ${log.machineStatusAfterNote}</div>`;
+                }
+            }
+
+            // Return product
+            if (log.returnProductNote || (Array.isArray(log.returnProducts) && log.returnProducts.length > 0)) {
+                rHtml += `<div style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid rgba(0,0,0,0.08);">`;
+                rHtml += `<div style="font-weight:600; font-size:0.85rem; color:#888; margin-bottom:0.4rem;"><i class="fa-solid fa-box-archive"></i> กรณีรับสินค้ากลับ</div>`;
+                if (log.returnProductNote) {
+                    rHtml += `<div style="font-size:0.85rem; color:#333; margin-bottom:0.5rem; padding:0.5rem; border:1px solid rgba(0,0,0,0.06); border-radius:6px; background:rgba(0,0,0,0.02);">${log.returnProductNote}</div>`;
+                }
+                if (Array.isArray(log.returnProducts) && log.returnProducts.length > 0) {
+                    rHtml += `<div style="font-size:0.82rem; font-weight:600; color:#555; margin-bottom:0.25rem;">รายการสินค้า:</div>`;
+                    log.returnProducts.forEach((prod, i) => {
+                        rHtml += `<div style="display:flex; align-items:center; gap:0.5rem; padding:0.3rem 0; border-bottom:1px solid rgba(0,0,0,0.04); font-size:0.85rem;">`;
+                        rHtml += `<span style="color:#888;">${i + 1}.</span>`;
+                        rHtml += `<span style="color:#333;">${prod.name || prod.label || '-'}</span>`;
+                        if (prod.qty) rHtml += `<span style="color:#666;">x${prod.qty}</span>`;
+                        if (prod.note) rHtml += `<span style="color:#888;">(${prod.note})</span>`;
+                        rHtml += `</div>`;
+                    });
+                }
+                rHtml += `</div>`;
+            }
+
+            repairContent.innerHTML = rHtml;
         }
 
-        repairContent.innerHTML = rHtml;
-    }
-
-    // Completed Customer Information Section
-    const custSection = document.getElementById("detail-customer-section");
-    const custContent = document.getElementById("detail-customer-content");
-    if (custSection && custContent) {
-        const reporterName = log.reporterName || log.recordedBy || (log.customerName && !log.customerSignature ? log.customerName : '');
-        const reporterPhone = log.reporterPhone || (log.customerPhone && !log.customerSignature ? log.customerPhone : '');
-        const reporterPosition = log.reporterPosition || '';
-        const hasReporterInfo = reporterName || reporterPhone || reporterPosition;
-        custSection.style.display = hasReporterInfo ? "block" : "none";
-        let custHtml = '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem 1.5rem;">';
-        const custRow = (label, value) => `<div style="display:flex; flex-direction:column; padding:0.4rem 0;"><span style="font-size:0.8rem; color:#888;">${label}</span><span style="font-size:0.9rem; font-weight:500; color:#111;">${value || '-'}</span></div>`;
-        custHtml += custRow('ชื่อผู้แจ้ง', reporterName || '-');
-        custHtml += custRow('เบอร์โทร', reporterPhone || '-');
-        custHtml += custRow('ตำแหน่ง', reporterPosition || '-');
-        custHtml += '</div>';
-        custContent.innerHTML = custHtml;
-    }
-
-    const finishedSection = document.getElementById("detail-customer-completed-section");
-    const finishedContent = document.getElementById("detail-customer-completed-content");
-    if (finishedSection && finishedContent) {
-        const custName = log.customerName || '';
-        const custPhone = log.customerPhone || '';
-        const custPos = log.customerPosition || '';
-        const custSig = log.customerSignature || '';
-        const hasFinishedInfo = custSig || log.status === 'Done' ||
-            (log.statusSignatures && log.statusSignatures['Done']) ||
-            (Array.isArray(log.signedDocAttachments) && log.signedDocAttachments.length > 0);
-        finishedSection.style.display = hasFinishedInfo ? "block" : "none";
-        let custHtml = '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem 1.5rem;">';
-        const custRow = (label, value) => `<div style="display:flex; flex-direction:column; padding:0.4rem 0;"><span style="font-size:0.8rem; color:#888;">${label}</span><span style="font-size:0.9rem; font-weight:500; color:#111;">${value || '-'}</span></div>`;
-        custHtml += custRow('ชื่อผู้จบงาน', custName);
-        custHtml += custRow('เบอร์โทร', custPhone);
-        custHtml += custRow('ตำแหน่ง', custPos);
-        custHtml += '</div>';
-        if (custSig) {
-            custHtml += '<div style="margin-top:0.75rem;">';
-            custHtml += '<span style="font-size:0.8rem; color:#888; display:block; margin-bottom:0.35rem;">ลายเซ็นผู้จบงาน</span>';
-            custHtml += '<div style="border:1px solid rgba(0,0,0,0.08); border-radius:8px; padding:0.5rem; background:#fafafa; display:inline-block;">';
-            custHtml += '<img src="' + custSig + '" style="max-height:80px; max-width:200px; object-fit:contain; display:block;" alt="Customer Signature">';
-            custHtml += '</div></div>';
+        // Completed Customer Information Section
+        const custSection = document.getElementById("detail-customer-section");
+        const custContent = document.getElementById("detail-customer-content");
+        if (custSection && custContent) {
+            const reporterName = log.reporterName || log.recordedBy || (log.customerName && !log.customerSignature ? log.customerName : '');
+            const reporterPhone = log.reporterPhone || (log.customerPhone && !log.customerSignature ? log.customerPhone : '');
+            const reporterPosition = log.reporterPosition || '';
+            const hasReporterInfo = reporterName || reporterPhone || reporterPosition;
+            custSection.style.display = hasReporterInfo ? "block" : "none";
+            let custHtml = '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem 1.5rem;">';
+            const custRow = (label, value) => `<div style="display:flex; flex-direction:column; padding:0.4rem 0;"><span style="font-size:0.8rem; color:#888;">${label}</span><span style="font-size:0.9rem; font-weight:500; color:#111;">${value || '-'}</span></div>`;
+            custHtml += custRow('ชื่อผู้แจ้ง', reporterName || '-');
+            custHtml += custRow('เบอร์โทร', reporterPhone || '-');
+            custHtml += custRow('ตำแหน่ง', reporterPosition || '-');
+            custHtml += '</div>';
+            custContent.innerHTML = custHtml;
         }
-        finishedContent.innerHTML = custHtml;
-    }
 
-    const postBtn = document.getElementById("btn-post-comment");
-    const commentInput = document.getElementById("log-comment-input");
-    const attachBtn = document.getElementById("btn-attach-file");
-    const attachInput = document.getElementById("comment-attachment-input");
-    
-    if (postBtn && commentInput) {
-        // Clone button to remove old listeners
-        const newBtn = postBtn.cloneNode(true);
-        postBtn.parentNode.replaceChild(newBtn, postBtn);
-        newBtn.addEventListener("click", () =>
-            postLogComment(log.id, commentInput),
-        );
-        commentInput.onkeydown = (e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                postLogComment(log.id, commentInput);
+        const finishedSection = document.getElementById("detail-customer-completed-section");
+        const finishedContent = document.getElementById("detail-customer-completed-content");
+        if (finishedSection && finishedContent) {
+            const custName = log.customerName || '';
+            const custPhone = log.customerPhone || '';
+            const custPos = log.customerPosition || '';
+            const custSig = log.customerSignature || '';
+            const hasFinishedInfo = custSig || log.status === 'Done' ||
+                (log.statusSignatures && log.statusSignatures['Done']) ||
+                (Array.isArray(log.signedDocAttachments) && log.signedDocAttachments.length > 0);
+            finishedSection.style.display = hasFinishedInfo ? "block" : "none";
+            let custHtml = '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem 1.5rem;">';
+            const custRow = (label, value) => `<div style="display:flex; flex-direction:column; padding:0.4rem 0;"><span style="font-size:0.8rem; color:#888;">${label}</span><span style="font-size:0.9rem; font-weight:500; color:#111;">${value || '-'}</span></div>`;
+            custHtml += custRow('ชื่อผู้จบงาน', custName);
+            custHtml += custRow('เบอร์โทร', custPhone);
+            custHtml += custRow('ตำแหน่ง', custPos);
+            custHtml += '</div>';
+            if (custSig) {
+                custHtml += '<div style="margin-top:0.75rem;">';
+                custHtml += '<span style="font-size:0.8rem; color:#888; display:block; margin-bottom:0.35rem;">ลายเซ็นผู้จบงาน</span>';
+                custHtml += '<div style="border:1px solid rgba(0,0,0,0.08); border-radius:8px; padding:0.5rem; background:#fafafa; display:inline-block;">';
+                custHtml += '<img src="' + custSig + '" style="max-height:80px; max-width:200px; object-fit:contain; display:block;" alt="Customer Signature">';
+                custHtml += '</div></div>';
             }
-        };
-    }
+            finishedContent.innerHTML = custHtml;
+        }
 
-    if (attachBtn && attachInput) {
-        // Clone to remove old listeners
-        const newAttachBtn = attachBtn.cloneNode(true);
-        attachBtn.parentNode.replaceChild(newAttachBtn, attachBtn);
-        
-        newAttachBtn.addEventListener("click", () => {
-            attachInput.click();
-        });
-        
-        attachInput.onchange = (e) => {
-            const files = Array.from(e.target.files);
-            commentAttachments.push(...files);
-            updateAttachmentPreview();
-            e.target.value = ''; // Reset input
-        };
-    }
+        const postBtn = document.getElementById("btn-post-comment");
+        const commentInput = document.getElementById("log-comment-input");
+        const attachBtn = document.getElementById("btn-attach-file");
+        const attachInput = document.getElementById("comment-attachment-input");
 
-    // Recorder
-    const recorderEl = document.getElementById("detail-log-recorder");
-    if (recorderEl) {
-        recorderEl.textContent = recorderName;
-    }
-    const timestampEl = document.getElementById("detail-log-timestamp");
-    if (timestampEl) {
-        timestampEl.textContent = timestampStr;
-    }
+        if (postBtn && commentInput) {
+            // Clone button to remove old listeners
+            const newBtn = postBtn.cloneNode(true);
+            postBtn.parentNode.replaceChild(newBtn, postBtn);
+            newBtn.addEventListener("click", () =>
+                postLogComment(log.id, commentInput),
+            );
+            commentInput.onkeydown = (e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    postLogComment(log.id, commentInput);
+                }
+            };
+        }
 
-    // Check if user can edit (admin can always edit, regular users can't edit closed cases)
-    const user = auth.currentUser;
-    
-    if (log.status === 'Case Closed' && user) {
-        // For closed cases, check if user is admin
-        FirestoreService.getUser(user.uid).then(userDoc => {
-            const isAdmin = userDoc?.role === 'admin';
-            if (!isAdmin) {
-                const editBtn = document.getElementById("detail-log-edit-btn");
-                if (editBtn) editBtn.style.display = 'none';
-            }
-        });
-    }
-    
-    // Record footer - metadata only
-    const recordFooter = document.querySelector('.modal-record-footer');
-    if (recordFooter) {
-        recordFooter.innerHTML = `
+        if (attachBtn && attachInput) {
+            // Clone to remove old listeners
+            const newAttachBtn = attachBtn.cloneNode(true);
+            attachBtn.parentNode.replaceChild(newAttachBtn, attachBtn);
+
+            newAttachBtn.addEventListener("click", () => {
+                attachInput.click();
+            });
+
+            attachInput.onchange = (e) => {
+                const files = Array.from(e.target.files);
+                commentAttachments.push(...files);
+                updateAttachmentPreview();
+                e.target.value = ''; // Reset input
+            };
+        }
+
+        // Recorder
+        const recorderEl = document.getElementById("detail-log-recorder");
+        if (recorderEl) {
+            recorderEl.textContent = recorderName;
+        }
+        const timestampEl = document.getElementById("detail-log-timestamp");
+        if (timestampEl) {
+            timestampEl.textContent = timestampStr;
+        }
+
+        // Check if user can edit (admin can always edit, regular users can't edit closed cases)
+        const user = auth.currentUser;
+
+        if (log.status === 'Case Closed' && user) {
+            // For closed cases, check if user is admin
+            FirestoreService.getUser(user.uid).then(userDoc => {
+                const isAdmin = userDoc?.role === 'admin';
+                if (!isAdmin) {
+                    const editBtn = document.getElementById("detail-log-edit-btn");
+                    if (editBtn) editBtn.style.display = 'none';
+                }
+            });
+        }
+
+        // Record footer - metadata only
+        const recordFooter = document.querySelector('.modal-record-footer');
+        if (recordFooter) {
+            recordFooter.innerHTML = `
             <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                 <div>
                     <i class="fa-solid fa-user-pen" style="margin-right: 4px;"></i> แก้ไขล่าสุด: <span style="color: var(--text-color); font-weight: 500;">${recorderName}</span>
@@ -11126,20 +11642,24 @@ function viewLogDetails(id) {
                 </div>
             </div>
         `;
-    }
+        }
 
-    // Collapse comments by default on mobile
-    const commentCollapsible = document.getElementById("comment-collapsible");
-    const commentIcon = document.getElementById("comment-collapse-icon");
-    if (window.innerWidth <= 768) {
-        if (commentCollapsible) commentCollapsible.style.display = "none";
-        if (commentIcon) commentIcon.style.transform = "rotate(180deg)";
-    } else {
-        if (commentCollapsible) commentCollapsible.style.display = "";
-        if (commentIcon) commentIcon.style.transform = "";
-    }
+        // Collapse comments by default on mobile
+        const commentCollapsible = document.getElementById("comment-collapsible");
+        const commentIcon = document.getElementById("comment-collapse-icon");
+        if (window.innerWidth <= 768) {
+            if (commentCollapsible) commentCollapsible.style.display = "none";
+            if (commentIcon) commentIcon.style.transform = "rotate(180deg)";
+        } else {
+            if (commentCollapsible) commentCollapsible.style.display = "";
+            if (commentIcon) commentIcon.style.transform = "";
+        }
 
-    toggleModal("logDetails", true);
+        // Force close device details and edit modals to prevent overlapping UI
+        toggleModal("siteDetails", false);
+        toggleModal("addSite", false);
+
+        toggleModal("logDetails", true);
     } catch (error) {
         console.error("Error in viewLogDetails:", error);
         alert("เกิดข้อผิดพลาดในการเปิดรายละเอียดเคส:\n" + error.message + "\n\n" + error.stack);
@@ -11215,7 +11735,7 @@ function filterLogsClientSide(logsToFilter, filters) {
             const caseId = (l.caseId || "").toLowerCase();
             const objective = (l.objective || "").toLowerCase();
             const details = (l.details || "").toLowerCase();
-            
+
             // Get first comment (description) if exists
             const firstComment = l.comments && l.comments.length > 0 ? l.comments[0].text.toLowerCase() : "";
 
@@ -11536,7 +12056,7 @@ async function exportCasePDF(logId) {
     const site = log._mockSite || state.sites.find(s => s.id === log.siteId) || { name: '-' };
     const isBlank = !!log._isBlank;
     const fallback = isBlank ? '....................' : 'ไม่ระบุข้อมูล';
-    
+
     const thaiDate = isBlank ? '....................' : formatDateDDMMYYYY(log.date);
     const recorderName = isBlank ? '....................' : (log.updatedBy || (state.users && log.recorderId && state.users[log.recorderId]
         ? state.users[log.recorderId].displayName || state.users[log.recorderId].email || log.recordedBy
@@ -11613,7 +12133,7 @@ async function exportCasePDF(logId) {
     if (log.statusHistory) {
         statusTimelineHtml = statusDefs.map((s, i) => {
             const hasTimestamp = !!log.statusHistory[s.value];
-            const ts = hasTimestamp ? new Date(log.statusHistory[s.value]).toLocaleString('th-TH', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '-';
+            const ts = hasTimestamp ? new Date(log.statusHistory[s.value]).toLocaleString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
             const isActive = s.value === log.status;
             const isCompleted = !isCancelled && i < currentIndex;
             const isCancelledStep = isCancelled && hasTimestamp;
@@ -11662,26 +12182,26 @@ async function exportCasePDF(logId) {
         ${buildSigBox(doneSignature, 'ลูกค้า', 'Customer Authorized PIC')}
         ${buildSigBox(closerSignature, 'ผู้จัดการฝ่ายช่างบริการ', 'Service Manager')}
     </div>${(() => {
-        // When not using e-signature, show any uploaded signed document copies
-        if (log.useESignature) return '';
-        const docs = log.signedDocAttachments || [];
-        if (docs.length === 0) return '';
-        const items = docs.map(d => {
-            const isPdf = d.name && d.name.toLowerCase().endsWith('.pdf');
-            const isImg = d.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(d.name || '');
-            if (isImg) {
-                return `<div style="display:inline-block; margin:4px;">
+            // When not using e-signature, show any uploaded signed document copies
+            if (log.useESignature) return '';
+            const docs = log.signedDocAttachments || [];
+            if (docs.length === 0) return '';
+            const items = docs.map(d => {
+                const isPdf = d.name && d.name.toLowerCase().endsWith('.pdf');
+                const isImg = d.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(d.name || '');
+                if (isImg) {
+                    return `<div style="display:inline-block; margin:4px;">
                     <img src="${d.url}" style="max-width:200px; max-height:160px; border:1px solid #ddd; border-radius:4px; display:block;">
                     <div style="font-size:8px; color:#666; margin-top:2px; text-align:center;">${d.name || ''}</div>
                 </div>`;
-            }
-            return `<div style="display:inline-flex; align-items:center; gap:6px; margin:4px; padding:6px 10px; border:1px solid #ddd; border-radius:4px; background:#fafafa;">
+                }
+                return `<div style="display:inline-flex; align-items:center; gap:6px; margin:4px; padding:6px 10px; border:1px solid #ddd; border-radius:4px; background:#fafafa;">
                 <i class="fa-solid fa-file-pdf" style="color:#ef4444;"></i>
                 <a href="${d.url}" style="font-size:9px; color:#333; text-decoration:none;">${d.name || 'เอกสาร'}</a>
             </div>`;
-        }).join('');
-        return `<div style="margin-top:10px;"><div style="font-size:10px; font-weight:700; color:#333; margin-bottom:4px; border-bottom:1px solid #eee; padding-bottom:3px;">สำเนาเอกสารที่เซ็นแล้ว (Signed Document Copy)</div><div style="display:flex; flex-wrap:wrap; gap:4px;">${items}</div></div>`;
-    })()}`;
+            }).join('');
+            return `<div style="margin-top:10px;"><div style="font-size:10px; font-weight:700; color:#333; margin-bottom:4px; border-bottom:1px solid #eee; padding-bottom:3px;">สำเนาเอกสารที่เซ็นแล้ว (Signed Document Copy)</div><div style="display:flex; flex-wrap:wrap; gap:4px;">${items}</div></div>`;
+        })()}`;
 
     // Get initial case detail from first comment
     const initialDetail = log.comments && log.comments.length > 0 && log.comments[0].text
@@ -11698,21 +12218,21 @@ async function exportCasePDF(logId) {
     // --- Build inspection data for PDF ---
     const renderPillGroup = (items) => {
         return '<div style="display:inline-flex; border:1px solid #ddd; border-radius:5px; overflow:hidden; font-size:8.5px; background:#fff; white-space:nowrap;">' +
-            items.map((it, i) => 
+            items.map((it, i) =>
                 '<div style="padding:4px 12px; border-left:' + (i === 0 ? '0' : '1px solid #ddd') + '; color:' + (it.color || '#333') + '; font-weight:700; display:flex; align-items:center; gap:4px; min-width:35px; justify-content:center;">' +
                 '<div style="width:9px; height:9px; border:1.2px solid ' + (it.color || '#ddd') + '; border-radius:2px; display:inline-block; flex:none;"></div> ' + it.label + '</div>'
             ).join('') +
             '</div>';
     };
     const pdfBadge = (val) => {
-        if (isBlank) return renderPillGroup([{label:'ผ่าน', color:'#22c55e'}, {label:'ไม่ผ่าน', color:'#ef4444'}]);
+        if (isBlank) return renderPillGroup([{ label: 'ผ่าน', color: '#22c55e' }, { label: 'ไม่ผ่าน', color: '#ef4444' }]);
         if (!val) return '-';
         const bg = val === 'pass' ? '#22c55e' : '#ef4444';
         const text = val === 'pass' ? 'ผ่าน' : 'ไม่ผ่าน';
         return '<span style="background:' + bg + '; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:45px; text-align:center;">' + text + '</span>';
     };
     const pdfInspBadge = (val) => {
-        if (isBlank) return renderPillGroup([{label:'Check', color:'#22c55e'}, {label:'Service', color:'#f59e0b'}, {label:'Replace', color:'#ef4444'}]);
+        if (isBlank) return renderPillGroup([{ label: 'Check', color: '#22c55e' }, { label: 'Service', color: '#f59e0b' }, { label: 'Replace', color: '#ef4444' }]);
         if (!val) return '-';
         const cfg = { check: { l: 'Check', b: '#22c55e' }, service: { l: 'Service', b: '#f59e0b' }, replace: { l: 'Replace', b: '#ef4444' } };
         const c = cfg[val] || { l: val, b: '#111' };
@@ -11722,16 +12242,16 @@ async function exportCasePDF(logId) {
     const hasElec = isBlank || log.voltageL1 || log.voltageL2 || log.voltageL3 || log.currentL1 || log.currentL2 || log.currentL3;
     const hasPhys = isBlank || log.avgWorkTemp || log.avgAreaTemp || log.leakCheck || log.leakPressure;
     const hasPerf = isBlank || log.complyType5 || log.ciPcdType5;
-    const hasGas = isBlank || log.gasDoor1||log.gasDoor2||log.gasDoor3||log.gas1m1||log.gas1m2||log.gas1m3||log.gas2m1||log.gas2m2||log.gas2m3;
+    const hasGas = isBlank || log.gasDoor1 || log.gasDoor2 || log.gasDoor3 || log.gas1m1 || log.gas1m2 || log.gas1m3 || log.gas2m1 || log.gas2m2 || log.gas2m3;
     const pdfInspItems = [
-        ['insp_exteriorCleaning','1. ความสะอาดภายนอก'],['insp_interiorCleaning','2. ความสะอาดภายใน'],
-        ['insp_doorSystem','3. การทำงานระบบประตู'],['insp_footSwitch','4. การทำงาน Foot Switch'],['insp_sensor','5. ระบบ Sensor'],
-        ['insp_tempPoints','6. อุณหภูมิจุดที่ 1-4'],['insp_workingPressure','7. ความดันขณะทำงาน'],['insp_rfGenerator','8. RF Generator'],
-        ['insp_chemicalAmount','9. ปริมาณน้ำยาที่ฉีด'],['insp_airChargingValue','10. Air Charging Valve'],['insp_filter','11. Filter'],
-        ['insp_decomposer','12. Decomposor'],['insp_vacuumPumpOil','13. น้ำมันปั้มสุญากาศ'],['insp_connectors','14. ระบบข้อต่อต่างๆ'],
-        ['insp_drainTank','15. ถังเดรนน้ำ'],['insp_chemicalLine','16. สายส่งน้ำยา'],['insp_phaseRelay','17. รีเลย์ควบคุมลำดับเฟส'],['insp_systemRelay','18. รีเลย์ควบคุมระบบต่างๆ'],
+        ['insp_exteriorCleaning', '1. ความสะอาดภายนอก'], ['insp_interiorCleaning', '2. ความสะอาดภายใน'],
+        ['insp_doorSystem', '3. การทำงานระบบประตู'], ['insp_footSwitch', '4. การทำงาน Foot Switch'], ['insp_sensor', '5. ระบบ Sensor'],
+        ['insp_tempPoints', '6. อุณหภูมิจุดที่ 1-4'], ['insp_workingPressure', '7. ความดันขณะทำงาน'], ['insp_rfGenerator', '8. RF Generator'],
+        ['insp_chemicalAmount', '9. ปริมาณน้ำยาที่ฉีด'], ['insp_airChargingValue', '10. Air Charging Valve'], ['insp_filter', '11. Filter'],
+        ['insp_decomposer', '12. Decomposor'], ['insp_vacuumPumpOil', '13. น้ำมันปั้มสุญากาศ'], ['insp_connectors', '14. ระบบข้อต่อต่างๆ'],
+        ['insp_drainTank', '15. ถังเดรนน้ำ'], ['insp_chemicalLine', '16. สายส่งน้ำยา'], ['insp_phaseRelay', '17. รีเลย์ควบคุมลำดับเฟส'], ['insp_systemRelay', '18. รีเลย์ควบคุมระบบต่างๆ'],
     ];
-    const hasInspChecklist = isBlank || pdfInspItems.some(function(item) { return log[item[0]]; });
+    const hasInspChecklist = isBlank || pdfInspItems.some(function (item) { return log[item[0]]; });
 
     var inspHtml = '';
     var isMaPdf = isMaCategory(log.category);
@@ -11740,75 +12260,75 @@ async function exportCasePDF(logId) {
 
     if (isMaPdf) {
 
-    if (hasElec) {
-        const vF = isBlank ? '......' : '___';
-        inspHtml += '<div class="section-block"><table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:10px;">'
-            + '<tr style="border-bottom:1px solid #eee;"><td colspan="4" style="padding:6px 8px; font-weight:700; font-size:11px;">ข้อมูลไฟฟ้า (Electrical)</td></tr>'
-            + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;"><b>แรงดันไฟฟ้า</b></td>'
-            + '<td style="text-align:center; padding:4px 8px;">R <b>' + (log.voltageL1||vF) + '</b> V (Load/Unload)</td>'
-            + '<td style="text-align:center; padding:4px 8px;">S <b>' + (log.voltageL2||vF) + '</b> V (Load/Unload)</td>'
-            + '<td style="text-align:center; padding:4px 8px;">T <b>' + (log.voltageL3||vF) + '</b> V (Load/Unload)</td></tr>'
-            + '<tr><td style="padding:4px 8px;"><b>กระแส</b></td>'
-            + '<td style="text-align:center; padding:4px 8px;">R <b>' + (log.currentL1||vF) + '</b> A (Load/Unload)</td>'
-            + '<td style="text-align:center; padding:4px 8px;">S <b>' + (log.currentL2||vF) + '</b> A (Load/Unload)</td>'
-            + '<td style="text-align:center; padding:4px 8px;">T <b>' + (log.currentL3||vF) + '</b> A (Load/Unload)</td></tr>'
-            + '</table></div>';
-    }
+        if (hasElec) {
+            const vF = isBlank ? '......' : '___';
+            inspHtml += '<div class="section-block"><table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:10px;">'
+                + '<tr style="border-bottom:1px solid #eee;"><td colspan="4" style="padding:6px 8px; font-weight:700; font-size:11px;">ข้อมูลไฟฟ้า (Electrical)</td></tr>'
+                + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;"><b>แรงดันไฟฟ้า</b></td>'
+                + '<td style="text-align:center; padding:4px 8px;">R <b>' + (log.voltageL1 || vF) + '</b> V (Load/Unload)</td>'
+                + '<td style="text-align:center; padding:4px 8px;">S <b>' + (log.voltageL2 || vF) + '</b> V (Load/Unload)</td>'
+                + '<td style="text-align:center; padding:4px 8px;">T <b>' + (log.voltageL3 || vF) + '</b> V (Load/Unload)</td></tr>'
+                + '<tr><td style="padding:4px 8px;"><b>กระแส</b></td>'
+                + '<td style="text-align:center; padding:4px 8px;">R <b>' + (log.currentL1 || vF) + '</b> A (Load/Unload)</td>'
+                + '<td style="text-align:center; padding:4px 8px;">S <b>' + (log.currentL2 || vF) + '</b> A (Load/Unload)</td>'
+                + '<td style="text-align:center; padding:4px 8px;">T <b>' + (log.currentL3 || vF) + '</b> A (Load/Unload)</td></tr>'
+                + '</table></div>';
+        }
 
-    if (hasPhys || hasPerf) {
-        inspHtml += '<div class="section-block"><div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px;">';
-        if (hasPhys) {
+        if (hasPhys || hasPerf) {
+            inspHtml += '<div class="section-block"><div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px;">';
+            if (hasPhys) {
+                const vF = isBlank ? '......' : '-';
+                inspHtml += '<div style="border:1px solid #ddd; border-radius:6px; padding:8px; font-size:10px;">'
+                    + '<div style="font-weight:700; margin-bottom:4px; font-size:11px;">ตรวจสอบทางกายภาพ (Physical Inspection)</div>'
+                    + '<div style="display:flex; justify-content:space-between; padding:3px 0;">อุณหภูมิเฉลี่ยทำงาน <span style="display:flex; align-items:center; gap:6px;">' + (log.avgWorkTemp ? log.avgWorkTemp + ' °C' : vF) + ' ' + pdfBadge(log.avgWorkTempCheck) + '</span></div>'
+                    + '<div style="display:flex; justify-content:space-between; padding:3px 0;">อุณหภูมิเฉลี่ยพื้นที่ <span style="display:flex; align-items:center; gap:6px;">' + (log.avgAreaTemp ? log.avgAreaTemp + ' °C' : vF) + ' ' + pdfBadge(log.avgAreaTempCheck) + '</span></div>'
+                    + '<div style="display:flex; justify-content:space-between; padding:3px 0;">ตรวจสอบการรั่วไหล <span style="display:flex; align-items:center; gap:6px;">' + (log.leakPressure ? log.leakPressure + ' PSI' : vF) + ' ' + pdfBadge(log.leakCheck) + '</span></div>'
+                    + '</div>';
+            }
+            if (hasPerf) {
+                inspHtml += '<div style="border:1px solid #ddd; border-radius:6px; padding:8px; font-size:10px;">'
+                    + '<div style="font-weight:700; margin-bottom:4px; font-size:11px;">ประสิทธิภาพการทำงาน (Performance)</div>'
+                    + '<div style="display:flex; justify-content:space-between; padding:3px 0;">ตรวจสอบด้วย Comply Type 5 ' + pdfBadge(log.complyType5) + '</div>'
+                    + '<div style="display:flex; justify-content:space-between; padding:3px 0;">ตรวจสอบการทะลุทะลวงด้วย CI PCD Type 5 ' + pdfBadge(log.ciPcdType5) + '</div>'
+                    + '</div>';
+            }
+            inspHtml += '</div></div>';
+        }
+
+        if (hasGas) {
             const vF = isBlank ? '......' : '-';
-            inspHtml += '<div style="border:1px solid #ddd; border-radius:6px; padding:8px; font-size:10px;">'
-                + '<div style="font-weight:700; margin-bottom:4px; font-size:11px;">ตรวจสอบทางกายภาพ (Physical Inspection)</div>'
-                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">อุณหภูมิเฉลี่ยทำงาน <span style="display:flex; align-items:center; gap:6px;">' + (log.avgWorkTemp ? log.avgWorkTemp + ' °C' : vF) + ' ' + pdfBadge(log.avgWorkTempCheck) + '</span></div>'
-                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">อุณหภูมิเฉลี่ยพื้นที่ <span style="display:flex; align-items:center; gap:6px;">' + (log.avgAreaTemp ? log.avgAreaTemp + ' °C' : vF) + ' ' + pdfBadge(log.avgAreaTempCheck) + '</span></div>'
-                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">ตรวจสอบการรั่วไหล <span style="display:flex; align-items:center; gap:6px;">' + (log.leakPressure ? log.leakPressure + ' PSI' : vF) + ' ' + pdfBadge(log.leakCheck) + '</span></div>'
-                + '</div>';
+            inspHtml += '<div class="section-block"><table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:10px;">'
+                + '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px;">ตรวจสอบปริมาณแก๊ส (Gas Detection)</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 1</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 2</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 3</th></tr></thead>'
+                + '<tbody>'
+                + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;">บริเวณหน้าประตู</td><td style="text-align:center;">' + (log.gasDoor1 || vF) + ' PPM</td><td style="text-align:center;">' + (log.gasDoor2 || vF) + ' PPM</td><td style="text-align:center;">' + (log.gasDoor3 || vF) + ' PPM</td></tr>'
+                + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;">ระยะห่าง 1 เมตร</td><td style="text-align:center;">' + (log.gas1m1 || vF) + ' PPM</td><td style="text-align:center;">' + (log.gas1m2 || vF) + ' PPM</td><td style="text-align:center;">' + (log.gas1m3 || vF) + ' PPM</td></tr>'
+                + '<tr><td style="padding:4px 8px;">ระยะห่าง 2 เมตร</td><td style="text-align:center;">' + (log.gas2m1 || vF) + ' PPM</td><td style="text-align:center;">' + (log.gas2m2 || vF) + ' PPM</td><td style="text-align:center;">' + (log.gas2m3 || vF) + ' PPM</td></tr>'
+                + '</tbody></table>';
         }
-        if (hasPerf) {
-            inspHtml += '<div style="border:1px solid #ddd; border-radius:6px; padding:8px; font-size:10px;">'
-                + '<div style="font-weight:700; margin-bottom:4px; font-size:11px;">ประสิทธิภาพการทำงาน (Performance)</div>'
-                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">ตรวจสอบด้วย Comply Type 5 ' + pdfBadge(log.complyType5) + '</div>'
-                + '<div style="display:flex; justify-content:space-between; padding:3px 0;">ตรวจสอบการทะลุทะลวงด้วย CI PCD Type 5 ' + pdfBadge(log.ciPcdType5) + '</div>'
-                + '</div>';
+
+        if (hasInspChecklist) {
+            inspHtml += '<div class="section-block"><div style="display:grid; grid-template-columns:1fr 1fr; gap:0 20px; border:1px solid #ddd; border-radius:6px; padding:8px; margin-top:10px;">'
+                + '<div style="grid-column: span 2; font-weight:700; font-size:11px; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid #eee;">รายการตรวจสอบ (Inspection Checklist)</div>';
+            pdfInspItems.forEach(function (item) {
+                inspHtml += '<div style="display:flex; justify-content:space-between; align-items:center; padding:3px 0; border-bottom:1px solid #f0f0f0; font-size:10px;"><span>' + item[1] + '</span>' + pdfInspBadge(log[item[0]]) + '</div>';
+            });
+            inspHtml += '</div></div>';
         }
-        inspHtml += '</div></div>';
-    }
-
-    if (hasGas) {
-        const vF = isBlank ? '......' : '-';
-        inspHtml += '<div class="section-block"><table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:10px;">'
-            + '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px;">ตรวจสอบปริมาณแก๊ส (Gas Detection)</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 1</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 2</th><th style="text-align:center; padding:4px 8px;">ครั้งที่ 3</th></tr></thead>'
-            + '<tbody>'
-            + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;">บริเวณหน้าประตู</td><td style="text-align:center;">' + (log.gasDoor1||vF) + ' PPM</td><td style="text-align:center;">' + (log.gasDoor2||vF) + ' PPM</td><td style="text-align:center;">' + (log.gasDoor3||vF) + ' PPM</td></tr>'
-            + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;">ระยะห่าง 1 เมตร</td><td style="text-align:center;">' + (log.gas1m1||vF) + ' PPM</td><td style="text-align:center;">' + (log.gas1m2||vF) + ' PPM</td><td style="text-align:center;">' + (log.gas1m3||vF) + ' PPM</td></tr>'
-            + '<tr><td style="padding:4px 8px;">ระยะห่าง 2 เมตร</td><td style="text-align:center;">' + (log.gas2m1||vF) + ' PPM</td><td style="text-align:center;">' + (log.gas2m2||vF) + ' PPM</td><td style="text-align:center;">' + (log.gas2m3||vF) + ' PPM</td></tr>'
-            + '</tbody></table>';
-    }
-
-    if (hasInspChecklist) {
-        inspHtml += '<div class="section-block"><div style="display:grid; grid-template-columns:1fr 1fr; gap:0 20px; border:1px solid #ddd; border-radius:6px; padding:8px; margin-top:10px;">'
-            + '<div style="grid-column: span 2; font-weight:700; font-size:11px; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid #eee;">รายการตรวจสอบ (Inspection Checklist)</div>';
-        pdfInspItems.forEach(function(item) {
-            inspHtml += '<div style="display:flex; justify-content:space-between; align-items:center; padding:3px 0; border-bottom:1px solid #f0f0f0; font-size:10px;"><span>' + item[1] + '</span>' + pdfInspBadge(log[item[0]]) + '</div>';
-        });
-        inspHtml += '</div></div>';
-    }
 
     } // end isMaPdf
 
     // Install/Uninstall section for PDF
     if (isInstallPdf) {
-        var pdfYesNo = function(val) {
-            if (isBlank) return renderPillGroup([{label:'ใช่', color:'#22c55e'}, {label:'ไม่ใช่', color:'#ef4444'}]);
+        var pdfYesNo = function (val) {
+            if (isBlank) return renderPillGroup([{ label: 'ใช่', color: '#22c55e' }, { label: 'ไม่ใช่', color: '#ef4444' }]);
             if (!val) return fallback;
             var isYes = val === 'yes';
             return '<span style="background:' + (isYes ? '#22c55e' : '#ef4444') + '; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:35px; text-align:center; margin-right:6px;">' + (isYes ? 'ใช่' : 'ไม่ใช่') + '</span>';
         };
         var installDateStr = log.installDate ? formatDateTimeDDMMYYYY(log.installDate) : fallback;
         inspHtml += '<div class="section-block"><h2>ข้อมูลสถานที่การติดตั้ง/รื้อถอน <span style="font-weight:400; font-size:9px; color:#666; margin-left:8px;">วันที่ดำเนินการ: ' + installDateStr + '</span></h2>';
-        var pdfCell = function(label, value) {
+        var pdfCell = function (label, value) {
             return '<div style="display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee; font-size:10px; min-height:22px;"><span style="font-weight:600; color:#555; white-space:nowrap;">' + label + '</span><span style="text-align:right;">' + value + '</span></div>';
         };
         inspHtml += '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px 16px; border:1px solid #ddd; border-radius:6px; padding:8px;">';
@@ -11828,8 +12348,8 @@ async function exportCasePDF(logId) {
         inspHtml += '<div style="font-weight:600; margin-bottom:4px;">ประตูที่ต้องผ่าน: ' + (log.doorCount || fallback) + (log.doorCount ? ' ประตู' : '') + '</div>';
         if (log.doorSizes && log.doorSizes.length > 0) {
             inspHtml += '<div style="display:grid; grid-template-columns:repeat(' + Math.min(log.doorSizes.length, 4) + ', 1fr); gap:6px;">';
-            log.doorSizes.forEach(function(door, i) {
-                inspHtml += '<div style="background:#f9f9f9; border:1px solid #eee; border-radius:4px; padding:4px 8px; text-align:center;"><div style="font-weight:600; font-size:9px; color:#555;">ประตูที่ ' + (i+1) + '</div><div>กว้าง ' + (door.width || fallback) + ' × สูง ' + (door.height || fallback) + ' ม.</div></div>';
+            log.doorSizes.forEach(function (door, i) {
+                inspHtml += '<div style="background:#f9f9f9; border:1px solid #eee; border-radius:4px; padding:4px 8px; text-align:center;"><div style="font-weight:600; font-size:9px; color:#555;">ประตูที่ ' + (i + 1) + '</div><div>กว้าง ' + (door.width || fallback) + ' × สูง ' + (door.height || fallback) + ' ม.</div></div>';
             });
             inspHtml += '</div>';
         }
@@ -11852,7 +12372,7 @@ async function exportCasePDF(logId) {
                 totalTime = (days > 0 ? days + ' วัน ' : '') + hours + ' ชั่วโมง ' + mins + ' นาที';
             }
         }
-        var resultCell = function(label, value) {
+        var resultCell = function (label, value) {
             return '<div style="display:flex; flex-direction:column; padding:4px 0;"><span style="font-weight:600; color:#555; font-size:9px;">' + label + '</span><span style="font-size:10px;">' + value + '</span></div>';
         };
         inspHtml += resultCell('วันเวลาเริ่ม', startDate);
@@ -11881,8 +12401,8 @@ async function exportCasePDF(logId) {
             ['precheck_interior', 'การตรวจความเรียบร้อยภายในเครื่อง'],
             ['precheck_exterior', 'การตรวจความเรียบร้อยภายนอกเครื่อง']
         ];
-        var precheckBadge = function(val) {
-            if (isBlank) return renderPillGroup([{label:'ผ่าน', color:'#22c55e'}, {label:'ไม่ผ่าน', color:'#ef4444'}, {label:'ไม่จำเป็น', color:'#94a3b8'}]);
+        var precheckBadge = function (val) {
+            if (isBlank) return renderPillGroup([{ label: 'ผ่าน', color: '#22c55e' }, { label: 'ไม่ผ่าน', color: '#ef4444' }, { label: 'ไม่จำเป็น', color: '#94a3b8' }]);
             if (val === 'noneed') return '<span style="background:#94a3b8; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ไม่จำเป็น</span>';
             if (!val || val === 'pending') return '<span style="background:#f59e0b; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">รอตรวจ</span>';
             if (val === 'pass') return '<span style="background:#22c55e; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ผ่าน</span>';
@@ -11894,7 +12414,7 @@ async function exportCasePDF(logId) {
         inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; width:100%;">';
         inspHtml += '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px; width:25px;">ลำดับ</th><th style="padding:4px 8px; width:160px;">รายการตรวจสอบ</th><th style="padding:4px 8px; width:' + (isBlank ? '160px' : '55px') + '; text-align:center;">ผลตรวจ</th><th style="padding:4px 8px;">หมายเหตุ</th></tr></thead>';
         inspHtml += '<tbody>';
-        precheckItems.forEach(function(item, idx) {
+        precheckItems.forEach(function (item, idx) {
             var val = log[item[0]] || 'pending';
             if (log.category === 'รื้อถอน') val = 'noneed';
             var note = log.category === 'รื้อถอน' ? '-' : (log[item[0] + '_note'] || '-');
@@ -11912,8 +12432,8 @@ async function exportCasePDF(logId) {
 
         inspHtml += '<h2>รายการที่ซ่อม</h2>';
         if (log.repairChecklist && log.repairChecklist.length > 0) {
-            var repairBadge = function(val) {
-                if (isBlank) return renderPillGroup([{label:'ผ่าน', color:'#22c55e'}, {label:'ไม่ผ่าน', color:'#ef4444'}]);
+            var repairBadge = function (val) {
+                if (isBlank) return renderPillGroup([{ label: 'ผ่าน', color: '#22c55e' }, { label: 'ไม่ผ่าน', color: '#ef4444' }]);
                 if (val === 'pass') return '<span style="background:#22c55e; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ผ่าน</span>';
                 if (val === 'fail') return '<span style="background:#ef4444; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ไม่ผ่าน</span>';
                 return '<span style="color:#999; font-size:9px;">-</span>';
@@ -11921,8 +12441,8 @@ async function exportCasePDF(logId) {
             inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; width:100%;">';
             inspHtml += '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px; width:25px;">ลำดับ</th><th style="padding:4px 8px;">รายการ</th><th style="padding:4px 8px; width:' + (isBlank ? '110px' : '55px') + '; text-align:center;">ผลตรวจ</th><th style="padding:4px 8px;">หมายเหตุ</th></tr></thead>';
             inspHtml += '<tbody>';
-            log.repairChecklist.forEach(function(item, i) {
-                inspHtml += '<tr style="border-bottom:1px solid #eee;"><td style="padding:3px 8px; text-align:center;">' + (i+1) + '</td><td style="padding:3px 8px;">' + (item.label||'-') + '</td><td style="padding:3px 8px; text-align:center;">' + repairBadge(item.status) + '</td><td style="padding:3px 8px; color:#666;">' + (item.note||'-') + '</td></tr>';
+            log.repairChecklist.forEach(function (item, i) {
+                inspHtml += '<tr style="border-bottom:1px solid #eee;"><td style="padding:3px 8px; text-align:center;">' + (i + 1) + '</td><td style="padding:3px 8px;">' + (item.label || '-') + '</td><td style="padding:3px 8px; text-align:center;">' + repairBadge(item.status) + '</td><td style="padding:3px 8px; color:#666;">' + (item.note || '-') + '</td></tr>';
             });
             inspHtml += '</tbody></table>';
         } else {
@@ -11942,9 +12462,9 @@ async function exportCasePDF(logId) {
         var rTime = '-';
         if (log.timeStart && log.timeEnd) {
             var ms1 = new Date(log.timeStart).getTime(), ms2 = new Date(log.timeEnd).getTime();
-            if (ms2 > ms1) { var df = ms2-ms1; var dy = Math.floor(df/864e5); var hr = Math.floor((df%864e5)/36e5); var mn = Math.floor((df%36e5)/6e4); rTime = (dy>0?dy+' วัน ':'') + hr + ' ชั่วโมง ' + mn + ' นาที'; }
+            if (ms2 > ms1) { var df = ms2 - ms1; var dy = Math.floor(df / 864e5); var hr = Math.floor((df % 864e5) / 36e5); var mn = Math.floor((df % 36e5) / 6e4); rTime = (dy > 0 ? dy + ' วัน ' : '') + hr + ' ชั่วโมง ' + mn + ' นาที'; }
         }
-        var rc = function(l,v) { return '<div style="padding:4px 0;"><span style="font-weight:700; color:#333; font-size:9px;">' + l + '</span><br><span>' + v + '</span></div>'; };
+        var rc = function (l, v) { return '<div style="padding:4px 0;"><span style="font-weight:700; color:#333; font-size:9px;">' + l + '</span><br><span>' + v + '</span></div>'; };
         inspHtml += '<div style="border:1px solid #ddd; border-radius:6px; padding:8px; font-size:10px;">';
         inspHtml += '<div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:4px 16px;">';
         inspHtml += rc('วันเวลาเริ่ม', rStart) + rc('วันเวลาสิ้นสุด', rEnd) + rc('สถานะ', statusText) + rc('ระยะเวลารวม', rTime);
@@ -11964,8 +12484,8 @@ async function exportCasePDF(logId) {
                 inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; width:100%;">';
                 inspHtml += '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px; width:25px;">ลำดับ</th><th style="padding:4px 8px;">รายการสินค้า</th><th style="padding:4px 8px;">หมายเหตุ</th></tr></thead>';
                 inspHtml += '<tbody>';
-                log.returnProducts.forEach(function(item, i) {
-                    inspHtml += '<tr style="border-bottom:1px solid #eee;"><td style="padding:3px 8px; text-align:center;">' + (i+1) + '</td><td style="padding:3px 8px;">' + (item.name || '-') + '</td><td style="padding:3px 8px; color:#666;">' + (item.note || '-') + '</td></tr>';
+                log.returnProducts.forEach(function (item, i) {
+                    inspHtml += '<tr style="border-bottom:1px solid #eee;"><td style="padding:3px 8px; text-align:center;">' + (i + 1) + '</td><td style="padding:3px 8px;">' + (item.name || '-') + '</td><td style="padding:3px 8px; color:#666;">' + (item.note || '-') + '</td></tr>';
                 });
                 inspHtml += '</tbody></table>';
             }
@@ -12105,37 +12625,37 @@ ${isInstallPdf ? `
 <h2>รูปถ่ายก่อนติดตั้ง/รื้อถอน (Pre-installation/removal Photos)</h2>
 ${(log.preInstallPhotos && log.preInstallPhotos.length > 0) ? `
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-${log.preInstallPhotos.map(function(img) { return '<div style="border:1px solid #eee; border-radius:4px; overflow:hidden; aspect-ratio:4/3;"><img src="' + img.url + '" style="width:100%; height:100%; display:block; object-fit:contain;"></div>'; }).join('')}
+${log.preInstallPhotos.map(function (img) { return '<div style="border:1px solid #eee; border-radius:4px; overflow:hidden; aspect-ratio:4/3;"><img src="' + img.url + '" style="width:100%; height:100%; display:block; object-fit:contain;"></div>'; }).join('')}
 </div>` : `<div style="padding:15px; text-align:center; color:#999; font-size:11px; border:1px solid #eee; border-radius:6px; background:#fafafa;">ไม่มีข้อมูล</div>`}
 </div>
 
 <h2>รูปถ่ายหลังติดตั้ง/รื้อถอน (Post-installation/removal Photos)</h2>
 ${(log.installPhotos && log.installPhotos.length > 0) ? `
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-${log.installPhotos.map(function(img) { return '<div style="border:1px solid #eee; border-radius:4px; overflow:hidden; aspect-ratio:4/3;"><img src="' + img.url + '" style="width:100%; height:100%; display:block; object-fit:contain;"></div>'; }).join('')}
+${log.installPhotos.map(function (img) { return '<div style="border:1px solid #eee; border-radius:4px; overflow:hidden; aspect-ratio:4/3;"><img src="' + img.url + '" style="width:100%; height:100%; display:block; object-fit:contain;"></div>'; }).join('')}
 </div>` : `<div style="padding:15px; text-align:center; color:#999; font-size:11px; border:1px solid #eee; border-radius:6px; background:#fafafa;">ไม่มีข้อมูล</div>`}
 ` : `
 ${(() => {
-    const descAtts = [...(log.descriptionAttachments || []), ...(log.attachments || [])].filter(a => a.url && !a.type?.startsWith('video/'));
-    const repairAtts = (log.repairPhotos || []).filter(a => a.url && !a.type?.startsWith('video/'));
-    const afterAtts = (log.attachmentsAfter || []).filter(a => a.url && !a.type?.startsWith('video/'));
-    const hasAny = descAtts.length || repairAtts.length || afterAtts.length;
-    if (!hasAny) return '';
-    const renderPhotoSection = (title, items) => {
-        if (!items.length) return '';
-        return `<div style="margin-bottom:16px; page-break-inside:avoid;">
+            const descAtts = [...(log.descriptionAttachments || []), ...(log.attachments || [])].filter(a => a.url && !a.type?.startsWith('video/'));
+            const repairAtts = (log.repairPhotos || []).filter(a => a.url && !a.type?.startsWith('video/'));
+            const afterAtts = (log.attachmentsAfter || []).filter(a => a.url && !a.type?.startsWith('video/'));
+            const hasAny = descAtts.length || repairAtts.length || afterAtts.length;
+            if (!hasAny) return '';
+            const renderPhotoSection = (title, items) => {
+                if (!items.length) return '';
+                return `<div style="margin-bottom:16px; page-break-inside:avoid;">
 <h2 style="font-size:11px; margin:0 0 6px; color:#333;">${title}</h2>
 <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
-${items.map(function(img) { return '<div style="border:1px solid #eee; border-radius:4px; overflow:hidden; aspect-ratio:4/3;"><img src="' + img.url + '" style="width:100%; height:100%; display:block; object-fit:contain;"></div>'; }).join('')}
+${items.map(function (img) { return '<div style="border:1px solid #eee; border-radius:4px; overflow:hidden; aspect-ratio:4/3;"><img src="' + img.url + '" style="width:100%; height:100%; display:block; object-fit:contain;"></div>'; }).join('')}
 </div></div>`;
-    };
-    return `<div style="page-break-before: always;">
+            };
+            return `<div style="page-break-before: always;">
 ${renderPhotoSection('ไฟล์ประกอบคำอธิบายงาน', descAtts)}
 ${renderPhotoSection('รูปหลังซ่อม', repairAtts)}
 ${renderPhotoSection('รูปถ่ายหลังซ่อม (After Repair)', afterAtts)}
 </div>`;
-})()
-}`}
+        })()
+        }`}
 
 <div style="page-break-inside: avoid;">
 <h2>ลายเซ็น (Signatures)</h2>
@@ -12207,12 +12727,12 @@ window.onload = function() {
             + '</div>';
         document.body.appendChild(pdfModal);
 
-        document.getElementById('pdf-btn-close').onclick = function() { pdfModal.style.display = 'none'; };
-        pdfModal.onclick = function(e) { if (e.target === pdfModal) pdfModal.style.display = 'none'; };
-        document.addEventListener('keydown', function(e) {
+        document.getElementById('pdf-btn-close').onclick = function () { pdfModal.style.display = 'none'; };
+        pdfModal.onclick = function (e) { if (e.target === pdfModal) pdfModal.style.display = 'none'; };
+        document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && pdfModal.style.display === 'flex') pdfModal.style.display = 'none';
         });
-        document.getElementById('pdf-btn-print').onclick = function() {
+        document.getElementById('pdf-btn-print').onclick = function () {
             var fr = document.getElementById('pdf-preview-iframe');
             if (fr && fr.contentWindow) fr.contentWindow.print();
         };
@@ -12579,7 +13099,7 @@ async function exportLogsToExcel() {
 
     // Create Workbook
     const workbook = XLSX.utils.book_new();
-    
+
     // ===== SHEET 1: Summary =====
     // Data starts at Row 3 (A3)
     const worksheet = XLSX.utils.json_to_sheet(dataForSheet, { origin: "A3" });
@@ -12909,7 +13429,7 @@ function appendLogRows(newLogs, targetTbody = null) {
                 log.recordedBy
                 : log.recordedBy || "-");
         const thaiDate = formatDateDDMMYYYY(log.date);
-        const logTime = log.date && log.date.includes('T') && log.date.split('T')[1].substring(0,5) !== '00:00' ? log.date.split('T')[1].substring(0, 5) : '';
+        const logTime = log.date && log.date.includes('T') && log.date.split('T')[1].substring(0, 5) !== '00:00' ? log.date.split('T')[1].substring(0, 5) : '';
         const siteColor = getSiteColor(site.name);
 
         const tr = document.createElement("tr");
@@ -12925,7 +13445,7 @@ function appendLogRows(newLogs, targetTbody = null) {
         let catBadge = '';
         let catColor = '#64748b';
         let catBg = 'rgba(100,116,139,0.12)';
-        
+
         if (isMaCategory(log.category)) {
             catColor = '#0369a1';
             catBg = '#e0f2fe';
@@ -12945,7 +13465,7 @@ function appendLogRows(newLogs, targetTbody = null) {
             catColor = '#0891b2';
             catBg = '#cffafe';
         }
-        
+
         catBadge = `<span style="background:${catBg}; color:${catColor}; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; white-space:nowrap; ">${log.category || "-"}</span>`;
         const catBadgeMobile = `<span style="background:${catBg}; color:${catColor}; padding:0.2rem 0.6rem; border-radius:6px; font-size:0.75rem; font-weight:700; white-space:nowrap;">${log.category || "-"}</span>`;
 
@@ -12986,7 +13506,7 @@ function appendLogRows(newLogs, targetTbody = null) {
 
         // Calculate Row Number (Global Index)
         const rowNumber = tbody.querySelectorAll("tr").length + 1;
-        
+
         // Get initial detail from first comment
         let initialDetail = '';
         if (log.comments && log.comments.length > 0 && log.comments[0].text) {
@@ -13012,7 +13532,7 @@ function appendLogRows(newLogs, targetTbody = null) {
             <td class="cell-user" data-label="แก้ไขล่าสุด"><span class="value">${recorderName}</span></td>
             <td class="cell-mobile-card mobile-only" data-label="">
                 <div class="mc-top">
-                    <span style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;"><span class="mc-caseid">${log.caseId ? log.caseId.replace('CASE-','') : '-'}</span> <span class="mc-siteid">${site.siteCode || '-'}</span></span>
+                    <span style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;"><span class="mc-caseid">${log.caseId ? log.caseId.replace('CASE-', '') : '-'}</span> <span class="mc-siteid">${site.siteCode || '-'}</span></span>
                 </div>
                 <div class="mc-site" style="display:flex; align-items:center; gap:6px;">
                     <span>${site.name}</span>
@@ -13445,7 +13965,7 @@ if (btnClearNotificationSettings) {
 
         try {
             await FirestoreService.deleteNotificationSettings();
-            
+
             // Clear all form fields
             document.getElementById("email-enabled").checked = false;
             document.getElementById("smtp-host").value = "";
@@ -13455,12 +13975,12 @@ if (btnClearNotificationSettings) {
             document.getElementById("smtp-from").value = "";
             document.getElementById("smtp-secure").checked = false;
             loadEmailRecipients([]);
-            
+
             document.getElementById("line-enabled").checked = false;
             document.getElementById("line-channel-access-token").value = "";
             document.getElementById("line-channel-secret").value = "";
             document.getElementById("line-user-id").value = "";
-            
+
             document.getElementById("telegram-enabled").checked = false;
             document.getElementById("telegram-bot-token").value = "";
             document.getElementById("telegram-chat-id").value = "";
@@ -13484,14 +14004,14 @@ if (btnClearNotificationSettings) {
 function initEmailRecipients() {
     const container = document.getElementById("email-recipients-container");
     const addButton = document.getElementById("btn-add-email-recipient");
-    
+
     if (!container || !addButton) return;
-    
+
     // Add recipient button
     addButton.addEventListener("click", () => {
         addEmailRecipientRow();
     });
-    
+
     // Setup initial row
     setupRecipientRow(container.querySelector(".email-recipient-row"));
 }
@@ -13501,7 +14021,7 @@ function addEmailRecipientRow(value = "") {
     const row = document.createElement("div");
     row.className = "email-recipient-row";
     row.style.cssText = "display: flex; gap: 0.5rem; align-items: center;";
-    
+
     const input = document.createElement("input");
     input.type = "email";
     input.className = "email-recipient-input";
@@ -13509,24 +14029,24 @@ function addEmailRecipientRow(value = "") {
     input.autocomplete = "off";
     input.style.flex = "1";
     input.value = value;
-    
+
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className = "btn-icon btn-remove-recipient";
     removeBtn.title = "Remove";
     removeBtn.innerHTML = '<i class="fa-solid fa-times"></i>';
-    
+
     row.appendChild(input);
     row.appendChild(removeBtn);
     container.appendChild(row);
-    
+
     setupRecipientRow(row);
     updateRemoveButtons();
 }
 
 function setupRecipientRow(row) {
     if (!row) return;
-    
+
     const removeBtn = row.querySelector(".btn-remove-recipient");
     if (removeBtn) {
         removeBtn.addEventListener("click", () => {
@@ -13539,7 +14059,7 @@ function setupRecipientRow(row) {
 function updateRemoveButtons() {
     const container = document.getElementById("email-recipients-container");
     const rows = container.querySelectorAll(".email-recipient-row");
-    
+
     rows.forEach((row, index) => {
         const removeBtn = row.querySelector(".btn-remove-recipient");
         if (removeBtn) {
@@ -13552,24 +14072,24 @@ function updateRemoveButtons() {
 function getEmailRecipients() {
     const inputs = document.querySelectorAll(".email-recipient-input");
     const recipients = [];
-    
+
     inputs.forEach(input => {
         const email = input.value.trim();
         if (email) {
             recipients.push(email);
         }
     });
-    
+
     return recipients;
 }
 
 function loadEmailRecipients(recipients = []) {
     const container = document.getElementById("email-recipients-container");
     if (!container) return;
-    
+
     // Clear existing rows
     container.innerHTML = "";
-    
+
     // Add rows for each recipient, or at least one empty row
     if (recipients.length === 0) {
         addEmailRecipientRow();
@@ -13890,13 +14410,13 @@ async function renderProfile(userArg = null) {
     // Check if user is admin to show admin-only tabs (user management and notification settings)
     const currentUserDoc = await FirestoreService.getUser(user.uid);
     const isAdmin = currentUserDoc?.role === 'admin';
-    
+
     // User Management tab - admin only
     const userManagementTab = document.getElementById('user-management-tab');
     if (userManagementTab) {
         userManagementTab.style.display = isAdmin ? 'flex' : 'none';
     }
-    
+
     // Notification Settings tab - admin only
     const notificationSettingsTab = document.getElementById('notification-settings-tab');
     if (notificationSettingsTab) {
@@ -14058,7 +14578,7 @@ async function renderProfile(userArg = null) {
             if (btn) btn.onclick = handleLinkLineAccount;
         }
     }
-    
+
     // Render User Roles Management (only if admin)
     if (isAdmin) {
         await renderUserRoles();
@@ -14143,7 +14663,7 @@ function setupProfileTabs() {
 async function loadNotificationSettings() {
     try {
         const settings = await FirestoreService.getNotificationSettings();
-        
+
         if (settings) {
             // Load SMTP settings
             if (settings.smtp) {
@@ -14154,7 +14674,7 @@ async function loadNotificationSettings() {
                 document.getElementById("smtp-password").value = settings.smtp.password || "";
                 document.getElementById("smtp-from").value = settings.smtp.from || "";
                 document.getElementById("smtp-secure").checked = settings.smtp.secure || false;
-                
+
                 // Load recipients
                 if (settings.smtp.recipients && settings.smtp.recipients.length > 0) {
                     loadEmailRecipients(settings.smtp.recipients);
@@ -14166,7 +14686,7 @@ async function loadNotificationSettings() {
                 document.getElementById("email-enabled").checked = false;
                 loadEmailRecipients([]);
             }
-            
+
             // Load LINE settings
             if (settings.line) {
                 document.getElementById("line-enabled").checked = settings.line.enabled || false;
@@ -14177,7 +14697,7 @@ async function loadNotificationSettings() {
                 // Default to OFF if no settings
                 document.getElementById("line-enabled").checked = false;
             }
-            
+
             // Load Telegram settings
             if (settings.telegram) {
                 document.getElementById("telegram-enabled").checked = settings.telegram.enabled || false;
@@ -14203,24 +14723,24 @@ async function loadNotificationSettings() {
 async function renderUserRoles() {
     const usersList = document.getElementById('users-list');
     if (!usersList) return;
-    
+
     const currentUser = auth.currentUser;
     if (!currentUser) return;
-    
+
     // Check if current user is admin
     const currentUserDoc = await FirestoreService.getUser(currentUser.uid);
     const isAdmin = currentUserDoc?.role === 'admin';
-    
+
     if (!isAdmin) {
         usersList.innerHTML = '<p class="text-muted" style="font-size: 0.9rem;">คุณไม่มีสิทธิ์จัดการผู้ใช้งาน</p>';
         return;
     }
-    
+
     try {
         usersList.innerHTML = '<p class="text-muted" style="font-size: 0.9rem;">กำลังโหลดข้อมูล...</p>';
-        
+
         const users = await FirestoreService.getAllUsers();
-        
+
         console.log('=== USER MANAGEMENT DEBUG ===');
         console.log('Current user:', currentUser.email);
         console.log('Users loaded:', users.length);
@@ -14235,7 +14755,7 @@ async function renderUserRoles() {
             });
         });
         console.log('=== END DEBUG ===');
-        
+
         if (!users || users.length === 0) {
             usersList.innerHTML = `
                 <div style="text-align: center; padding: 2rem;">
@@ -14247,16 +14767,16 @@ async function renderUserRoles() {
             `;
             return;
         }
-        
+
         renderUsersList(users);
         setupUserSearch(users);
-        
+
         // Setup cleanup button
         const cleanupBtn = document.getElementById('btn-cleanup-users');
         if (cleanupBtn) {
             cleanupBtn.onclick = handleCleanupUsers;
         }
-        
+
     } catch (error) {
         console.error('Error loading users:', error);
         usersList.innerHTML = '<p class="text-muted" style="font-size: 0.9rem; color: var(--danger-color);">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
@@ -14268,36 +14788,36 @@ async function handleCleanupUsers() {
         'คุณต้องการลบข้อมูลผู้ใช้ที่ไม่ถูกต้องหรือไม่?\n\nระบบจะลบผู้ใช้ที่:\n- ไม่มีอีเมล\n- มีข้อมูลเป็น null\n- เป็นข้อมูลทดสอบ',
         { type: 'confirm' }
     );
-    
+
     if (!confirmed) return;
-    
+
     try {
         const invalidUsers = await FirestoreService.cleanupInvalidUsers();
-        
+
         if (invalidUsers.length === 0) {
             showToast('ไม่พบข้อมูลผู้ใช้ที่ไม่ถูกต้อง', 'success');
             return;
         }
-        
+
         // Show what will be deleted
         const userNames = invalidUsers.map(u => u.data.displayName || u.data.email || u.id).join('\n');
         const confirmDelete = await showDialog(
             `พบผู้ใช้ไม่ถูกต้อง ${invalidUsers.length} คน:\n\n${userNames}\n\nต้องการลบหรือไม่?`,
             { type: 'confirm' }
         );
-        
+
         if (!confirmDelete) return;
-        
+
         // Delete invalid users
         for (const user of invalidUsers) {
             await FirestoreService.deleteInvalidUser(user.id);
         }
-        
+
         showToast(`ลบข้อมูลผู้ใช้ไม่ถูกต้อง ${invalidUsers.length} คนเรียบร้อยแล้ว`, 'success');
-        
+
         // Reload user list
         await renderUserRoles();
-        
+
     } catch (error) {
         console.error('Error cleaning up users:', error);
         showToast('เกิดข้อผิดพลาดในการลบข้อมูล', 'error');
@@ -14307,39 +14827,39 @@ async function handleCleanupUsers() {
 function renderUsersList(users) {
     const usersList = document.getElementById('users-list');
     if (!usersList) return;
-    
+
     const currentUser = auth.currentUser;
-    
+
     usersList.innerHTML = users.map(user => {
         const initial = (user.displayName || user.email || 'U').charAt(0).toUpperCase();
         const photoUrl = user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=38bdf8&color=fff`;
         const role = user.role || 'user';
         const isCurrentUser = user.uid === currentUser.uid;
-        
+
         // Format dates
-        const createdAt = user.createdAt ? new Date(user.createdAt).toLocaleDateString(undefined, { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric' 
+        const createdAt = user.createdAt ? new Date(user.createdAt).toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
         }) : 'ไม่ระบุ';
-        
-        const lastLogin = user.lastLogin ? new Date(user.lastLogin).toLocaleDateString(undefined, { 
-            year: 'numeric', 
-            month: 'short', 
+
+        const lastLogin = user.lastLogin ? new Date(user.lastLogin).toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'short',
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
         }) : 'ไม่เคยเข้าสู่ระบบ';
-        
+
         const phone = user.phone || 'ไม่ระบุ';
-        
+
         // Role badge
-        const roleBadge = role === 'admin' 
+        const roleBadge = role === 'admin'
             ? '<span class="user-role-badge admin"><i class="fa-solid fa-shield-halved"></i> ผู้ดูแลระบบ</span>'
             : role === 'manager'
-            ? '<span class="user-role-badge manager"><i class="fa-solid fa-user-tie"></i> ผู้จัดการ</span>'
-            : '<span class="user-role-badge viewer"><i class="fa-solid fa-user"></i> ผู้ใช้งานทั่วไป</span>';
-        
+                ? '<span class="user-role-badge manager"><i class="fa-solid fa-user-tie"></i> ผู้จัดการ</span>'
+                : '<span class="user-role-badge viewer"><i class="fa-solid fa-user"></i> ผู้ใช้งานทั่วไป</span>';
+
         return `<div class="user-role-item" data-user-email="${user.email}" data-user-name="${user.displayName || ''}">
             <div class="user-role-avatar">
                 ${user.photoURL ? `<img src="${photoUrl}" alt="${user.displayName || 'User'}">` : initial}
@@ -14375,7 +14895,7 @@ function renderUsersList(users) {
             </div>
         </div>`;
     }).join('');
-    
+
     // Add event listeners to role selects
     usersList.querySelectorAll('.user-role-select').forEach(select => {
         select.addEventListener('change', async (e) => {
@@ -14389,21 +14909,21 @@ function renderUsersList(users) {
 function setupUserSearch(users) {
     const searchInput = document.getElementById('user-search-input');
     if (!searchInput) return;
-    
+
     searchInput.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase().trim();
-        
+
         if (!query) {
             renderUsersList(users);
             return;
         }
-        
+
         const filtered = users.filter(user => {
             const name = (user.displayName || '').toLowerCase();
             const email = (user.email || '').toLowerCase();
             return name.includes(query) || email.includes(query);
         });
-        
+
         renderUsersList(filtered);
     });
 }
@@ -14413,13 +14933,13 @@ async function handleRoleChange(userId, newRole) {
         await FirestoreService.updateUserRole(userId, newRole);
         const roleLabel = newRole === 'admin' ? 'ผู้ดูแลระบบ' : newRole === 'manager' ? 'ผู้จัดการ' : 'ผู้ใช้งานทั่วไป';
         showToast(`อัปเดตสิทธิ์ผู้ใช้เป็น ${roleLabel} เรียบร้อยแล้ว`, 'success');
-        
+
         // Log the action
         await FirestoreService.logAction('USER', 'UPDATE_ROLE', `Updated user role to ${newRole}`, {
             userId: userId,
             newRole: newRole
         });
-        
+
         // Reload to update badges
         await renderUserRoles();
     } catch (error) {
@@ -14829,7 +15349,7 @@ function renderMaintenancePlan() {
     const now = new Date();
     const currentMonth = (currentYear + 543) == parseInt(selectedBE) ? now.getMonth() : -1;
     const userLocale = navigator.language || 'th-TH';
-    const monthNames = Array.from({length: 12}, (_, i) => new Date(2024, i, 1).toLocaleString(userLocale, { month: 'short' }));
+    const monthNames = Array.from({ length: 12 }, (_, i) => new Date(2024, i, 1).toLocaleString(userLocale, { month: 'short' }));
 
     headerRow.innerHTML = `<th style="text-align:center; padding:0.6rem 0.4rem; border:1px solid rgba(0,0,0,0.08); width:30px; background:#f5f5f5;">No.</th><th style="text-align:center; padding:0.6rem 0.4rem; border:1px solid rgba(0,0,0,0.08); width:50px; background:#f5f5f5;">รหัส</th><th style="text-align:left; padding:0.6rem 0.75rem; border:1px solid rgba(0,0,0,0.08); min-width:180px; position:sticky; left:0; background:#f5f5f5; z-index:3;">อุปกรณ์</th>`;
     for (let m = 0; m < 12; m++) {
@@ -14857,7 +15377,7 @@ function renderMaintenancePlan() {
             <div><span style="font-weight:600; font-size:0.88rem;">${site.name}</span>${deviceSubtle ? `<div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:3px;">${deviceSubtle}</div>` : ''}</div>
         </td>`;
 
-        const monthCells = Array.from({length: 12}, (_, m) => {
+        const monthCells = Array.from({ length: 12 }, (_, m) => {
             const monthNum = m + 1;
             const isCurrent = m === currentMonth;
             const pd = getPlanMonthData(site, selectedBE, monthNum);
@@ -14937,7 +15457,7 @@ function showPlanCellMenu(td, siteId, year, month, hasData) {
     planBtn.type = 'button';
     planBtn.innerHTML = '<i class="fa-solid fa-calendar-check" style="font-size:0.75rem;"></i>';
     planBtn.title = isPlanned ? 'ยกเลิกแผนซ่อมบำรุงประจำปี' : 'เพิ่มเป็นแผนซ่อมบำรุงประจำปี';
-    
+
     // Premium theme styles based on active/inactive status
     if (isPlanned) {
         planBtn.style.cssText = 'width:26px; height:26px; display:flex; align-items:center; justify-content:center; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; border-radius:6px; cursor:pointer; flex-shrink:0; transition:all 0.15s ease;';
@@ -14948,7 +15468,7 @@ function showPlanCellMenu(td, siteId, year, month, hasData) {
         planBtn.onmouseenter = () => { planBtn.style.background = '#e5e7eb'; planBtn.style.color = '#4b5563'; planBtn.style.transform = 'scale(1.05)'; };
         planBtn.onmouseleave = () => { planBtn.style.background = '#f3f4f6'; planBtn.style.color = '#9ca3af'; planBtn.style.transform = 'none'; };
     }
-    
+
     planBtn.onclick = (e) => {
         e.stopPropagation();
         hidePlanCellMenu();
@@ -14960,7 +15480,7 @@ function showPlanCellMenu(td, siteId, year, month, hasData) {
     const cycleBtn = document.createElement('button');
     cycleBtn.type = 'button';
     cycleBtn.title = hasCycle ? 'ดูรายละเอียด / บันทึกรอบเครื่อง' : 'บันทึกรอบเครื่องใหม่';
-    
+
     if (hasCycle) {
         cycleBtn.innerHTML = '<i class="fa-solid fa-eye" style="font-size:0.75rem;"></i>';
         cycleBtn.style.cssText = 'width:26px; height:26px; display:flex; align-items:center; justify-content:center; background:#f3f4f6; color:#4b5563; border:1px solid #d1d5db; border-radius:6px; cursor:pointer; flex-shrink:0; transition:all 0.15s ease;';
@@ -15003,28 +15523,28 @@ function updateStaffCyclePreview() {
     const previewDiv = document.getElementById('cycle-form-preview');
     const statusText = document.getElementById('cycle-upload-status');
     if (!previewDiv || !statusText) return;
-    
+
     previewDiv.innerHTML = '';
     if (staffCycleMedia.length === 0) {
         previewDiv.style.display = 'none';
         statusText.textContent = 'ยังไม่ได้เลือกไฟล์';
         return;
     }
-    
+
     statusText.textContent = `เลือกแล้ว ${staffCycleMedia.length} ไฟล์`;
     previewDiv.style.display = 'flex';
-    
+
     staffCycleMedia.forEach((file, index) => {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             const wrapper = document.createElement('div');
             wrapper.style.cssText = 'position:relative; width:50px; height:50px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); flex-shrink:0;';
-            
+
             const img = document.createElement('img');
             img.src = e.target.result;
             img.style.cssText = 'width:100%; height:100%; object-fit:cover;';
             wrapper.appendChild(img);
-            
+
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';
             removeBtn.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
@@ -15044,11 +15564,11 @@ function updateStaffCyclePreview() {
 function initStaffCycleUpload() {
     const fileInput = document.getElementById('cycle-file-input');
     if (!fileInput) return;
-    
+
     const newFileInput = fileInput.cloneNode(true);
     fileInput.parentNode.replaceChild(newFileInput, fileInput);
-    
-    newFileInput.addEventListener('change', function(e) {
+
+    newFileInput.addEventListener('change', function (e) {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
         staffCycleMedia = [...staffCycleMedia, ...files];
@@ -15354,7 +15874,7 @@ function openCycleCountModal(siteId, year, month) {
     const countEl = document.getElementById('cycle-count-input');
     const dateEl = document.getElementById('cycle-date-input');
     const notesEl = document.getElementById('cycle-notes-input');
-    
+
     if (countEl) {
         countEl.value = ''; // Clean for new entry
         if (latestCycle > 0) {
@@ -15377,7 +15897,7 @@ function openCycleCountModal(siteId, year, month) {
             }
         }
     }
-    
+
     if (dateEl) {
         const yearAD = parseInt(year) - 543;
         const monthStr = String(month).padStart(2, '0');
@@ -15404,7 +15924,7 @@ function openCycleCountModal(siteId, year, month) {
     const historyList = document.getElementById('cycle-history-list');
     if (historyContainer && historyList) {
         historyList.innerHTML = '';
-        
+
         const allRecords = [];
         if (pd.cycleCount != null) {
             allRecords.push({
@@ -15445,8 +15965,8 @@ function openCycleCountModal(siteId, year, month) {
                 tr.onmouseleave = () => { tr.style.background = isVisualLatest ? 'rgba(17,17,17,0.03)' : ''; };
 
                 const isCustomerItem = item.source === 'customer' || item.source === 'public';
-                const itemBadge = isCustomerItem 
-                    ? `<span style="font-size:12px; font-weight:600; color:#1d4ed8; display:inline-block; white-space:nowrap;">ลูกค้า</span>` 
+                const itemBadge = isCustomerItem
+                    ? `<span style="font-size:12px; font-weight:600; color:#1d4ed8; display:inline-block; white-space:nowrap;">ลูกค้า</span>`
                     : `<span style="font-size:12px; font-weight:600; color:#10b981; display:inline-block; white-space:nowrap;">เจ้าหน้าที่</span>`;
 
                 // Photo cell
@@ -15647,7 +16167,7 @@ async function saveCycleCount() {
         }
 
         await FirestoreService.updateSite(siteId, { maintenancePlans: site.maintenancePlans });
-        
+
         // Reset staff upload variables
         staffCycleMedia = [];
         updateStaffCyclePreview();
@@ -15674,10 +16194,10 @@ async function clearCycleCount() {
     if (countEl) countEl.value = '';
     if (dateEl) dateEl.value = '';
     if (notesEl) notesEl.value = '';
-    
+
     staffCycleMedia = [];
     updateStaffCyclePreview();
-    
+
     await saveCycleCount();
 }
 window.clearCycleCount = clearCycleCount;
@@ -15720,7 +16240,7 @@ function openPlanDateModal(siteId, year, month) {
     if (!site) return;
     const monthKey = String(month);
     const existingPlan = (site.maintenancePlans && site.maintenancePlans[year] && site.maintenancePlans[year][monthKey]) || {};
-    
+
     _planDateModalState = { siteId, year, month };
     const modal = document.getElementById('modal-plan-date');
     const dateInput = document.getElementById('plan-date-input');
@@ -15780,7 +16300,7 @@ async function savePlanDate() {
         site.maintenancePlans[year] = migratePlanToObjectFormat(site.maintenancePlans[year]);
     }
     if (!site.maintenancePlans[year]) site.maintenancePlans[year] = {};
-    
+
     const monthKey = String(month);
     const existingPlan = site.maintenancePlans[year][monthKey] || {};
 
@@ -15828,7 +16348,7 @@ async function togglePlanStatus(siteId, year, month) {
     const site = state.sites.find(s => s.id === siteId);
     if (!site) return;
     const monthKey = String(month);
-    
+
     if (!site.maintenancePlans) site.maintenancePlans = {};
     if (Array.isArray(site.maintenancePlans[year])) {
         site.maintenancePlans[year] = migratePlanToObjectFormat(site.maintenancePlans[year]);
@@ -16036,32 +16556,32 @@ function showDeviceQR(siteId) {
                     const logoImg = await loadImg(logoDataUrl);
 
                     // ── Layout constants mirroring buildCardHtml (scaled × S) ──
-                    const accentH    = 4  * S;
-                    const bPadT      = 20 * S;   // body top padding
-                    const bPadH      = 20 * S;   // body horizontal padding (not used for clip, just reference)
-                    const bPadB      = 16 * S;   // body bottom padding
-                    const logoH      = 22 * S;   // logo image height (html: 22px)
-                    const logoGap    = 8  * S;   // gap between logo and company name
+                    const accentH = 4 * S;
+                    const bPadT = 20 * S;   // body top padding
+                    const bPadH = 20 * S;   // body horizontal padding (not used for clip, just reference)
+                    const bPadB = 16 * S;   // body bottom padding
+                    const logoH = 22 * S;   // logo image height (html: 22px)
+                    const logoGap = 8 * S;   // gap between logo and company name
                     const afterLogoRow = 12 * S; // margin-bottom on company row
-                    const qrBorder   = 1.5* S;
-                    const qrPad      = 8  * S;
-                    const qrSize     = 180 * S;
-                    const qrBoxR     = 10 * S;
-                    const qrBoxW     = qrSize + qrPad * 2;
-                    const qrBoxH     = qrSize + qrPad * 2;
+                    const qrBorder = 1.5 * S;
+                    const qrPad = 8 * S;
+                    const qrSize = 180 * S;
+                    const qrBoxR = 10 * S;
+                    const qrBoxW = qrSize + qrPad * 2;
+                    const qrBoxH = qrSize + qrPad * 2;
                     const afterQrBox = 14 * S;   // margin-bottom on QR box
-                    const hintPx     = Math.round(0.72 * 16 * S);
-                    const afterHint  = 12 * S;
-                    const namePx     = Math.round(0.95 * 16 * S);
-                    const locPx      = Math.round(0.75 * 16 * S);
-                    const badgePx    = Math.round(0.68 * 16 * S);
-                    const badgePadH  = 8  * S;
-                    const badgePadV  = 2  * S;
-                    const badgeR     = 6  * S;
-                    const badgeGap   = 6  * S;
-                    const hotlinePx  = Math.round(0.78 * 16 * S);
-                    const footerPadV = 7  * S;
-                    const footerPx   = Math.round(0.62 * 16 * S);
+                    const hintPx = Math.round(0.72 * 16 * S);
+                    const afterHint = 12 * S;
+                    const namePx = Math.round(0.95 * 16 * S);
+                    const locPx = Math.round(0.75 * 16 * S);
+                    const badgePx = Math.round(0.68 * 16 * S);
+                    const badgePadH = 8 * S;
+                    const badgePadV = 2 * S;
+                    const badgeR = 6 * S;
+                    const badgeGap = 6 * S;
+                    const hotlinePx = Math.round(0.78 * 16 * S);
+                    const footerPadV = 7 * S;
+                    const footerPx = Math.round(0.62 * 16 * S);
 
                     // Calculate total height
                     const hintH = hintPx * 2 + 2 * S;
@@ -16069,14 +16589,14 @@ function showDeviceQR(siteId) {
                     if (site.installLocation || site.villageName) bodyH += 4 * S + locPx;
                     const badges = [site.siteCode, site.serialNumber ? `S/N: ${site.serialNumber}` : ''].filter(Boolean);
                     if (badges.length) bodyH += 6 * S + badgePx + badgePadV * 2;
-                    if (hotline)       bodyH += 10 * S + hotlinePx;
+                    if (hotline) bodyH += 10 * S + hotlinePx;
                     bodyH += bPadB;
                     const footerH = footerPadV + footerPx + footerPadV;
-                    const totalH  = accentH + bodyH + footerH;
+                    const totalH = accentH + bodyH + footerH;
 
                     // ── Canvas setup ──
                     const oc = document.createElement('canvas');
-                    oc.width  = CW;
+                    oc.width = CW;
                     oc.height = totalH;
                     const ctx = oc.getContext('2d');
 
@@ -16349,18 +16869,18 @@ let publicCycleMedia = [];
 function updatePublicReportMediaPreview() {
     const preview = document.getElementById('report-media-preview');
     if (!preview) return;
-    
+
     const addButton = document.getElementById('btn-add-media');
     preview.innerHTML = '';
     if (addButton) preview.appendChild(addButton);
-    
+
     publicReportMedia.forEach((file, index) => {
         const isImage = file.type && file.type.startsWith('image/');
         const isVideo = file.type && file.type.startsWith('video/');
-        
+
         const card = document.createElement('div');
         card.className = 'media-preview-item';
-        
+
         if (isImage) {
             const img = document.createElement('img');
             img.src = URL.createObjectURL(file);
@@ -16370,7 +16890,7 @@ function updatePublicReportMediaPreview() {
             video.src = URL.createObjectURL(file);
             video.muted = true;
             card.appendChild(video);
-            
+
             const badge = document.createElement('span');
             badge.className = 'video-badge';
             badge.innerHTML = '<i class="fa-solid fa-video"></i>';
@@ -16381,7 +16901,7 @@ function updatePublicReportMediaPreview() {
             docIcon.innerHTML = '<i class="fa-solid fa-file-invoice" style="font-size: 1.5rem;"></i>';
             card.appendChild(docIcon);
         }
-        
+
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
         removeBtn.className = 'media-remove-btn';
@@ -16392,7 +16912,7 @@ function updatePublicReportMediaPreview() {
             updatePublicReportMediaPreview();
         };
         card.appendChild(removeBtn);
-        
+
         if (addButton) {
             preview.insertBefore(card, addButton);
         } else {
@@ -16404,19 +16924,19 @@ function updatePublicReportMediaPreview() {
 function updatePublicCycleMediaPreview() {
     const preview = document.getElementById('cycle-media-preview');
     if (!preview) return;
-    
+
     const addButton = document.getElementById('btn-add-cycle-media');
     preview.innerHTML = '';
     if (addButton) preview.appendChild(addButton);
-    
+
     publicCycleMedia.forEach((file, index) => {
         const card = document.createElement('div');
         card.className = 'media-preview-item';
-        
+
         const img = document.createElement('img');
         img.src = URL.createObjectURL(file);
         card.appendChild(img);
-        
+
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
         removeBtn.className = 'media-remove-btn';
@@ -16427,7 +16947,7 @@ function updatePublicCycleMediaPreview() {
             updatePublicCycleMediaPreview();
         };
         card.appendChild(removeBtn);
-        
+
         if (addButton) {
             preview.insertBefore(card, addButton);
         } else {
@@ -16486,7 +17006,7 @@ function initPublicReportPage() {
         el.style.display = 'none';
         el.classList.add('hidden');
     });
-    
+
     const reportView = document.getElementById('public-report-view');
     if (reportView) {
         reportView.style.display = 'flex';
@@ -16509,7 +17029,7 @@ function initPublicReportPage() {
     if (btnBackCycle) btnBackCycle.onclick = () => showPortalMode('selector');
 
     // Load device info anonymously
-    (async function() {
+    (async function () {
         try {
             // Sign in anonymously to access Firestore
             try {
@@ -16686,7 +17206,7 @@ function initPublicReportPage() {
             const form = document.getElementById('public-report-form');
             const submitBtn = document.getElementById('btn-public-report-submit');
             if (form && submitBtn) {
-                form.addEventListener('submit', async function(e) {
+                form.addEventListener('submit', async function (e) {
                     e.preventDefault();
 
                     const name = document.getElementById('report-name')?.value.trim();
@@ -16745,9 +17265,9 @@ function initPublicReportPage() {
                         const uploadedAttachments = await uploadMediaFiles(publicReportMedia, 'public');
 
                         const caseId = FirestoreService.generateCaseId();
-                        
+
                         const now = new Date();
-                        const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+                        const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
                         const logData = {
                             siteId: reportSiteId,
@@ -16792,7 +17312,7 @@ function initPublicReportPage() {
             const cycleForm = document.getElementById('public-cycle-form');
             const cycleSubmitBtn = document.getElementById('btn-public-cycle-submit');
             if (cycleForm && cycleSubmitBtn) {
-                cycleForm.addEventListener('submit', async function(e) {
+                cycleForm.addEventListener('submit', async function (e) {
                     e.preventDefault();
 
                     const name = document.getElementById('cycle-reporter-name')?.value.trim();
@@ -16972,18 +17492,18 @@ function exportAnnualPlanPDF() {
     const userLocale = navigator.language || 'th-TH';
     const usesBE = userLocale.startsWith('th');
     const displayYear = usesBE ? `พ.ศ. ${selectedBE}` : `${parseInt(selectedBE) - 543}`;
-    const monthNames = Array.from({length: 12}, (_, i) => new Date(2024, i, 1).toLocaleString(userLocale, { month: 'short' }));
+    const monthNames = Array.from({ length: 12 }, (_, i) => new Date(2024, i, 1).toLocaleString(userLocale, { month: 'short' }));
 
     const rowsHtml = (state.sites || []).map((site, idx) => {
         const siteColor = getSiteColor(site.name);
-        const cells = Array.from({length: 12}, (_, m) => {
+        const cells = Array.from({ length: 12 }, (_, m) => {
             const pd = getPlanMonthData(site, selectedBE, m + 1);
             const { planned, cycleCount, inputDate, planDate } = pd;
             if (!planned && cycleCount == null) return `<td style="text-align:center; padding:4px 2px; border:1px solid #ddd; background:#fff;"></td>`;
-            
+
             const cellBg = planned ? `${siteColor}0d` : '#fff';
             const cellBorder = 'border:1px solid #ddd;';
-            
+
             let planHtml = '';
             if (planned) {
                 planHtml = `<span style="background:${siteColor}15; color:${siteColor}; border:1px solid ${siteColor}35; font-size:6px; font-weight:700; padding:2px 5px; border-radius:2px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; white-space:nowrap;"><i class="fa-solid fa-wrench" style="font-size:6.5px;"></i>${planDate ? `<span style="font-size:5px; font-weight:500; margin-top:1px; opacity:0.85;">${planDate}</span>` : ''}</span>`;

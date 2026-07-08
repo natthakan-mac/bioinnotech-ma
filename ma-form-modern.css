@@ -613,3 +613,27 @@
     background: #eee;
     border-color: rgba(0,0,0,0.15);
 }
+
+/* Tailwind CSS Error State Best Practice */
+#form-log-maintenance input.is-invalid,
+#form-log-maintenance select.is-invalid,
+#form-log-maintenance textarea.is-invalid,
+#form-log-maintenance .autocomplete-wrapper.is-invalid {
+    border-color: #f87171 !important; /* border-red-400 */
+    background-color: #fef2f2 !important; /* bg-red-50 */
+    color: #991b1b !important; /* text-red-800 */
+}
+
+#form-log-maintenance input.is-invalid::placeholder,
+#form-log-maintenance textarea.is-invalid::placeholder {
+    color: #fca5a5 !important; /* placeholder-red-300 */
+}
+
+#form-log-maintenance input.is-invalid:focus,
+#form-log-maintenance select.is-invalid:focus,
+#form-log-maintenance textarea.is-invalid:focus,
+#form-log-maintenance .autocomplete-wrapper.is-invalid:focus-within {
+    border-color: #ef4444 !important; /* focus:border-red-500 */
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important; /* focus:ring-red-500/20 */
+    background-color: #fef2f2 !important;
+}
