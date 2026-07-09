@@ -6330,7 +6330,8 @@ function setupEventListeners() {
             // DO NOT allow clicking outside to close mandatory modals
             if (
                 overlay.id === "modal-force-password" ||
-                overlay.id === "modal-referral-gate"
+                overlay.id === "modal-referral-gate" ||
+                overlay.id === "modal-device-qr"
             )
                 return;
 
@@ -9294,7 +9295,7 @@ function renderSites() {
                          <i class="fa-solid fa-clipboard-list"></i>
                          <span>${logCount} รายการ</span>
                      </button>
-                     <button class="card-btn-action card-btn-qr" onclick="showDeviceQR('${site.id}')" title="QR Code แจ้งปัญหา">
+                     <button class="card-btn-action card-btn-qr" onclick="event.stopPropagation(); showDeviceQR('${site.id}')" title="QR Code แจ้งปัญหา">
                          <i class="fa-solid fa-qrcode"></i>
                      </button>
 
@@ -16650,29 +16651,26 @@ function getAppBaseUrl() {
 }
 
 function showDeviceQR(siteId) {
-    alert('[debug 1] showDeviceQR start: ' + siteId);
     try {
         const site = state.sites.find(s => s.id === siteId);
         if (!site) {
-            alert('[debug 2] Site not found! siteId=' + siteId);
             showToast('ไม่พบข้อมูลเครื่อง', 'error');
             return;
         }
-        alert('[debug 3] Site found: ' + site.name);
         const modal = document.getElementById('modal-device-qr');
-        if (!modal) {
-            alert('[debug 4] Modal element not found!');
-            return;
-        }
-        alert('[debug 5] Modal element found.');
+        if (!modal) return;
 
-        // Show modal and register close handlers immediately so the UI always pops up instantly
+        // Show modal immediately
         const btnClose = document.getElementById('btn-close-qr-modal');
         if (btnClose) btnClose.onclick = () => closeDeviceQRModal();
-        modal.onclick = (e) => { if (e.target === modal) closeDeviceQRModal(); };
         modal.classList.remove('hidden');
         modal.style.display = 'flex';
-        alert('[debug 6] Modal display set to flex.');
+
+        // Delay binding modal backdrop click to prevent the same click event from
+        // immediately closing the modal via event bubbling
+        setTimeout(() => {
+            modal.onclick = (e) => { if (e.target === modal) closeDeviceQRModal(); };
+        }, 0);
 
         const baseUrl = getAppBaseUrl();
         const reportUrl = `${baseUrl}index.html?report=${siteId}`;
@@ -16687,11 +16685,11 @@ function showDeviceQR(siteId) {
 
         // Load company settings, then render everything
         FirestoreService.getCompanySettings().then(company => {
-        const companyName = company.name || 'บริษัท ไบโอ อินโน เทค จำกัด';
-        const hotline = company.hotline || '';
+            const companyName = company.name || 'บริษัท ไบโอ อินโน เทค จำกัด';
+            const hotline = company.hotline || '';
 
-        // Build the unified card HTML (used for preview, print, and download)
-        const buildCardHtml = (qrSrc) => `
+            // Build the unified card HTML (used for preview, print, and download)
+            const buildCardHtml = (qrSrc) => `
             <div style="
                 font-family:'Sarabun',Arial,sans-serif;
                 width:280px;
@@ -16741,318 +16739,318 @@ function showDeviceQR(siteId) {
                 </div>
             </div>`;
 
-        // Render preview card in modal (replace canvas with card preview)
-        const canvas = document.getElementById('device-qr-canvas');
-        const cardPreviewEl = document.getElementById('qr-card-preview');
+            // Render preview card in modal (replace canvas with card preview)
+            const canvas = document.getElementById('device-qr-canvas');
+            const cardPreviewEl = document.getElementById('qr-card-preview');
 
-        // Generate QR then render card
-        let cachedQrDataUrl = ''; // store clean QR data URL to avoid tainted canvas
-        const renderCard = (qrDataUrl) => {
-            cachedQrDataUrl = qrDataUrl;
-            if (cardPreviewEl) {
-                cardPreviewEl.innerHTML = buildCardHtml(qrDataUrl);
+            // Generate QR then render card
+            let cachedQrDataUrl = ''; // store clean QR data URL to avoid tainted canvas
+            const renderCard = (qrDataUrl) => {
+                cachedQrDataUrl = qrDataUrl;
+                if (cardPreviewEl) {
+                    cardPreviewEl.innerHTML = buildCardHtml(qrDataUrl);
+                }
+            };
+
+            if (typeof QRCode !== 'undefined') {
+                const offscreen = document.createElement('canvas');
+                QRCode.toCanvas(offscreen, reportUrl, {
+                    width: 220, margin: 2,
+                    color: { dark: '#0f172a', light: '#ffffff' },
+                    errorCorrectionLevel: 'M'
+                }, (err) => {
+                    const qrDataUrl = err ? '' : offscreen.toDataURL('image/png');
+                    renderCard(qrDataUrl);
+                });
+            } else {
+                // Fetch external QR image as blob and convert to data URL to avoid tainted canvas
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(reportUrl)}`;
+                fetch(qrUrl)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        const reader = new FileReader();
+                        reader.onload = () => renderCard(reader.result);
+                        reader.onerror = () => renderCard(qrUrl); // fallback: show img but can't download
+                        reader.readAsDataURL(blob);
+                    })
+                    .catch(() => renderCard(qrUrl));
             }
-        };
-
-        if (typeof QRCode !== 'undefined') {
-            const offscreen = document.createElement('canvas');
-            QRCode.toCanvas(offscreen, reportUrl, {
-                width: 220, margin: 2,
-                color: { dark: '#0f172a', light: '#ffffff' },
-                errorCorrectionLevel: 'M'
-            }, (err) => {
-                const qrDataUrl = err ? '' : offscreen.toDataURL('image/png');
-                renderCard(qrDataUrl);
-            });
-        } else {
-            // Fetch external QR image as blob and convert to data URL to avoid tainted canvas
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(reportUrl)}`;
-            fetch(qrUrl)
-                .then(res => res.blob())
-                .then(blob => {
-                    const reader = new FileReader();
-                    reader.onload = () => renderCard(reader.result);
-                    reader.onerror = () => renderCard(qrUrl); // fallback: show img but can't download
-                    reader.readAsDataURL(blob);
-                })
-                .catch(() => renderCard(qrUrl));
-        }
 
 
-        // Download: render card PNG matching buildCardHtml exactly (2× scale)
-        const btnDownload = document.getElementById('btn-download-qr');
-        if (btnDownload) {
-            btnDownload.onclick = async () => {
-                try {
-                    const S = 2; // 2× retina scale
-                    const CW = 280 * S; // card width = 560px
+            // Download: render card PNG matching buildCardHtml exactly (2× scale)
+            const btnDownload = document.getElementById('btn-download-qr');
+            if (btnDownload) {
+                btnDownload.onclick = async () => {
+                    try {
+                        const S = 2; // 2× retina scale
+                        const CW = 280 * S; // card width = 560px
 
-                    // Helper: fetch any URL → blob → data URL (avoids tainted canvas)
-                    const toDataUrl = async (src) => {
-                        try {
-                            const blob = await fetch(src).then(r => r.blob());
-                            return await new Promise((res, rej) => {
-                                const fr = new FileReader();
-                                fr.onload = () => res(fr.result);
-                                fr.onerror = rej;
-                                fr.readAsDataURL(blob);
-                            });
-                        } catch { return null; }
-                    };
+                        // Helper: fetch any URL → blob → data URL (avoids tainted canvas)
+                        const toDataUrl = async (src) => {
+                            try {
+                                const blob = await fetch(src).then(r => r.blob());
+                                return await new Promise((res, rej) => {
+                                    const fr = new FileReader();
+                                    fr.onload = () => res(fr.result);
+                                    fr.onerror = rej;
+                                    fr.readAsDataURL(blob);
+                                });
+                            } catch { return null; }
+                        };
 
-                    const loadImg = (src) => new Promise(res => {
-                        if (!src) return res(null);
-                        const img = new Image();
-                        img.onload = () => res(img);
-                        img.onerror = () => res(null);
-                        img.src = src;
-                    });
+                        const loadImg = (src) => new Promise(res => {
+                            if (!src) return res(null);
+                            const img = new Image();
+                            img.onload = () => res(img);
+                            img.onerror = () => res(null);
+                            img.src = src;
+                        });
 
-                    // Pre-load logo and QR in parallel
-                    const [logoDataUrl, qrImg] = await Promise.all([
-                        toDataUrl('/bioinnotech.svg'),
-                        loadImg(cachedQrDataUrl),
-                    ]);
-                    const logoImg = await loadImg(logoDataUrl);
+                        // Pre-load logo and QR in parallel
+                        const [logoDataUrl, qrImg] = await Promise.all([
+                            toDataUrl('/bioinnotech.svg'),
+                            loadImg(cachedQrDataUrl),
+                        ]);
+                        const logoImg = await loadImg(logoDataUrl);
 
-                    // ── Layout constants mirroring buildCardHtml (scaled × S) ──
-                    const accentH = 4 * S;
-                    const bPadT = 20 * S;   // body top padding
-                    const bPadH = 20 * S;   // body horizontal padding (not used for clip, just reference)
-                    const bPadB = 16 * S;   // body bottom padding
-                    const logoH = 22 * S;   // logo image height (html: 22px)
-                    const logoGap = 8 * S;   // gap between logo and company name
-                    const afterLogoRow = 12 * S; // margin-bottom on company row
-                    const qrBorder = 1.5 * S;
-                    const qrPad = 8 * S;
-                    const qrSize = 180 * S;
-                    const qrBoxR = 10 * S;
-                    const qrBoxW = qrSize + qrPad * 2;
-                    const qrBoxH = qrSize + qrPad * 2;
-                    const afterQrBox = 14 * S;   // margin-bottom on QR box
-                    const hintPx = Math.round(0.72 * 16 * S);
-                    const afterHint = 12 * S;
-                    const namePx = Math.round(0.95 * 16 * S);
-                    const locPx = Math.round(0.75 * 16 * S);
-                    const badgePx = Math.round(0.68 * 16 * S);
-                    const badgePadH = 8 * S;
-                    const badgePadV = 2 * S;
-                    const badgeR = 6 * S;
-                    const badgeGap = 6 * S;
-                    const hotlinePx = Math.round(0.78 * 16 * S);
-                    const footerPadV = 7 * S;
-                    const footerPx = Math.round(0.62 * 16 * S);
+                        // ── Layout constants mirroring buildCardHtml (scaled × S) ──
+                        const accentH = 4 * S;
+                        const bPadT = 20 * S;   // body top padding
+                        const bPadH = 20 * S;   // body horizontal padding (not used for clip, just reference)
+                        const bPadB = 16 * S;   // body bottom padding
+                        const logoH = 22 * S;   // logo image height (html: 22px)
+                        const logoGap = 8 * S;   // gap between logo and company name
+                        const afterLogoRow = 12 * S; // margin-bottom on company row
+                        const qrBorder = 1.5 * S;
+                        const qrPad = 8 * S;
+                        const qrSize = 180 * S;
+                        const qrBoxR = 10 * S;
+                        const qrBoxW = qrSize + qrPad * 2;
+                        const qrBoxH = qrSize + qrPad * 2;
+                        const afterQrBox = 14 * S;   // margin-bottom on QR box
+                        const hintPx = Math.round(0.72 * 16 * S);
+                        const afterHint = 12 * S;
+                        const namePx = Math.round(0.95 * 16 * S);
+                        const locPx = Math.round(0.75 * 16 * S);
+                        const badgePx = Math.round(0.68 * 16 * S);
+                        const badgePadH = 8 * S;
+                        const badgePadV = 2 * S;
+                        const badgeR = 6 * S;
+                        const badgeGap = 6 * S;
+                        const hotlinePx = Math.round(0.78 * 16 * S);
+                        const footerPadV = 7 * S;
+                        const footerPx = Math.round(0.62 * 16 * S);
 
-                    // Calculate total height
-                    const hintH = hintPx * 2 + 2 * S;
-                    let bodyH = bPadT + logoH + afterLogoRow + qrBoxH + afterQrBox + hintH + afterHint + namePx;
-                    if (site.installLocation || site.villageName) bodyH += 4 * S + locPx;
-                    const badges = [site.siteCode, site.serialNumber ? `S/N: ${site.serialNumber}` : ''].filter(Boolean);
-                    if (badges.length) bodyH += 6 * S + badgePx + badgePadV * 2;
-                    if (hotline) bodyH += 10 * S + hotlinePx;
-                    bodyH += bPadB;
-                    const footerH = footerPadV + footerPx + footerPadV;
-                    const totalH = accentH + bodyH + footerH;
+                        // Calculate total height
+                        const hintH = hintPx * 2 + 2 * S;
+                        let bodyH = bPadT + logoH + afterLogoRow + qrBoxH + afterQrBox + hintH + afterHint + namePx;
+                        if (site.installLocation || site.villageName) bodyH += 4 * S + locPx;
+                        const badges = [site.siteCode, site.serialNumber ? `S/N: ${site.serialNumber}` : ''].filter(Boolean);
+                        if (badges.length) bodyH += 6 * S + badgePx + badgePadV * 2;
+                        if (hotline) bodyH += 10 * S + hotlinePx;
+                        bodyH += bPadB;
+                        const footerH = footerPadV + footerPx + footerPadV;
+                        const totalH = accentH + bodyH + footerH;
 
-                    // ── Canvas setup ──
-                    const oc = document.createElement('canvas');
-                    oc.width = CW;
-                    oc.height = totalH;
-                    const ctx = oc.getContext('2d');
+                        // ── Canvas setup ──
+                        const oc = document.createElement('canvas');
+                        oc.width = CW;
+                        oc.height = totalH;
+                        const ctx = oc.getContext('2d');
 
-                    // White background + rounded-rect clip (border-radius: 16px)
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, CW, totalH);
-                    const cardR = 16 * S;
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.moveTo(cardR, 0); ctx.lineTo(CW - cardR, 0);
-                    ctx.arcTo(CW, 0, CW, cardR, cardR);
-                    ctx.lineTo(CW, totalH - cardR);
-                    ctx.arcTo(CW, totalH, CW - cardR, totalH, cardR);
-                    ctx.lineTo(cardR, totalH);
-                    ctx.arcTo(0, totalH, 0, totalH - cardR, cardR);
-                    ctx.lineTo(0, cardR);
-                    ctx.arcTo(0, 0, cardR, 0, cardR);
-                    ctx.closePath();
-                    ctx.clip();
-
-                    // ── Accent bar ──
-                    const accentGrad = ctx.createLinearGradient(0, 0, CW, 0);
-                    accentGrad.addColorStop(0, '#8bc53f');
-                    accentGrad.addColorStop(1, '#38bdf8');
-                    ctx.fillStyle = accentGrad;
-                    ctx.fillRect(0, 0, CW, accentH);
-
-                    let y = accentH + bPadT;
-
-                    // ── Company row: logo img + gap + name (centered) ──
-                    {
-                        ctx.font = `700 ${Math.round(0.72 * 16 * S)}px Sarabun, Arial, sans-serif`;
-                        const textW = ctx.measureText(companyName).width;
-                        const logoDrawW = logoImg ? Math.round(logoH * (logoImg.width / logoImg.height)) : 0;
-                        const rowW = logoDrawW + (logoImg ? logoGap : 0) + textW;
-                        let rx = (CW - rowW) / 2;
-                        if (logoImg) {
-                            ctx.drawImage(logoImg, rx, y + (logoH - logoH) / 2, logoDrawW, logoH);
-                            rx += logoDrawW + logoGap;
-                        }
-                        ctx.fillStyle = '#374151';
-                        ctx.textAlign = 'left';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(companyName, rx, y + logoH / 2);
-                    }
-                    y += logoH + afterLogoRow;
-
-                    // ── QR box ──
-                    {
-                        const bx = (CW - qrBoxW) / 2;
-                        // Draw rounded box (border + fill)
-                        ctx.beginPath();
-                        ctx.moveTo(bx + qrBoxR, y);
-                        ctx.lineTo(bx + qrBoxW - qrBoxR, y);
-                        ctx.arcTo(bx + qrBoxW, y, bx + qrBoxW, y + qrBoxR, qrBoxR);
-                        ctx.lineTo(bx + qrBoxW, y + qrBoxH - qrBoxR);
-                        ctx.arcTo(bx + qrBoxW, y + qrBoxH, bx + qrBoxW - qrBoxR, y + qrBoxH, qrBoxR);
-                        ctx.lineTo(bx + qrBoxR, y + qrBoxH);
-                        ctx.arcTo(bx, y + qrBoxH, bx, y + qrBoxH - qrBoxR, qrBoxR);
-                        ctx.lineTo(bx, y + qrBoxR);
-                        ctx.arcTo(bx, y, bx + qrBoxR, y, qrBoxR);
-                        ctx.closePath();
+                        // White background + rounded-rect clip (border-radius: 16px)
                         ctx.fillStyle = '#ffffff';
-                        ctx.fill();
-                        ctx.strokeStyle = '#e5e7eb';
-                        ctx.lineWidth = qrBorder;
-                        ctx.stroke();
-                        if (qrImg) ctx.drawImage(qrImg, bx + qrPad, y + qrPad, qrSize, qrSize);
-                    }
-                    y += qrBoxH + afterQrBox;
+                        ctx.fillRect(0, 0, CW, totalH);
+                        const cardR = 16 * S;
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.moveTo(cardR, 0); ctx.lineTo(CW - cardR, 0);
+                        ctx.arcTo(CW, 0, CW, cardR, cardR);
+                        ctx.lineTo(CW, totalH - cardR);
+                        ctx.arcTo(CW, totalH, CW - cardR, totalH, cardR);
+                        ctx.lineTo(cardR, totalH);
+                        ctx.arcTo(0, totalH, 0, totalH - cardR, cardR);
+                        ctx.lineTo(0, cardR);
+                        ctx.arcTo(0, 0, cardR, 0, cardR);
+                        ctx.closePath();
+                        ctx.clip();
 
-                    // ── Scan hint ──
-                    ctx.font = `${hintPx}px Sarabun, Arial, sans-serif`;
-                    ctx.fillStyle = '#6b7280';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('สแกนเพื่อแจ้งปัญหาเครื่อง', CW / 2, y + hintPx / 2);
-                    ctx.fillText('หรือ บันทึก Cycle Count', CW / 2, y + hintPx * 1.5 + 2 * S);
-                    y += (hintPx * 2 + 2 * S) + afterHint;
+                        // ── Accent bar ──
+                        const accentGrad = ctx.createLinearGradient(0, 0, CW, 0);
+                        accentGrad.addColorStop(0, '#8bc53f');
+                        accentGrad.addColorStop(1, '#38bdf8');
+                        ctx.fillStyle = accentGrad;
+                        ctx.fillRect(0, 0, CW, accentH);
 
-                    // ── Device name ──
-                    ctx.font = `700 ${namePx}px Sarabun, Arial, sans-serif`;
-                    ctx.fillStyle = '#111111';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(site.name || '', CW / 2, y + namePx / 2);
-                    y += namePx;
+                        let y = accentH + bPadT;
 
-                    // ── Location ──
-                    if (site.installLocation || site.villageName) {
-                        y += 4 * S;
-                        ctx.font = `${locPx}px Sarabun, Arial, sans-serif`;
+                        // ── Company row: logo img + gap + name (centered) ──
+                        {
+                            ctx.font = `700 ${Math.round(0.72 * 16 * S)}px Sarabun, Arial, sans-serif`;
+                            const textW = ctx.measureText(companyName).width;
+                            const logoDrawW = logoImg ? Math.round(logoH * (logoImg.width / logoImg.height)) : 0;
+                            const rowW = logoDrawW + (logoImg ? logoGap : 0) + textW;
+                            let rx = (CW - rowW) / 2;
+                            if (logoImg) {
+                                ctx.drawImage(logoImg, rx, y + (logoH - logoH) / 2, logoDrawW, logoH);
+                                rx += logoDrawW + logoGap;
+                            }
+                            ctx.fillStyle = '#374151';
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(companyName, rx, y + logoH / 2);
+                        }
+                        y += logoH + afterLogoRow;
+
+                        // ── QR box ──
+                        {
+                            const bx = (CW - qrBoxW) / 2;
+                            // Draw rounded box (border + fill)
+                            ctx.beginPath();
+                            ctx.moveTo(bx + qrBoxR, y);
+                            ctx.lineTo(bx + qrBoxW - qrBoxR, y);
+                            ctx.arcTo(bx + qrBoxW, y, bx + qrBoxW, y + qrBoxR, qrBoxR);
+                            ctx.lineTo(bx + qrBoxW, y + qrBoxH - qrBoxR);
+                            ctx.arcTo(bx + qrBoxW, y + qrBoxH, bx + qrBoxW - qrBoxR, y + qrBoxH, qrBoxR);
+                            ctx.lineTo(bx + qrBoxR, y + qrBoxH);
+                            ctx.arcTo(bx, y + qrBoxH, bx, y + qrBoxH - qrBoxR, qrBoxR);
+                            ctx.lineTo(bx, y + qrBoxR);
+                            ctx.arcTo(bx, y, bx + qrBoxR, y, qrBoxR);
+                            ctx.closePath();
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fill();
+                            ctx.strokeStyle = '#e5e7eb';
+                            ctx.lineWidth = qrBorder;
+                            ctx.stroke();
+                            if (qrImg) ctx.drawImage(qrImg, bx + qrPad, y + qrPad, qrSize, qrSize);
+                        }
+                        y += qrBoxH + afterQrBox;
+
+                        // ── Scan hint ──
+                        ctx.font = `${hintPx}px Sarabun, Arial, sans-serif`;
                         ctx.fillStyle = '#6b7280';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(site.installLocation || site.villageName, CW / 2, y + locPx / 2);
-                        y += locPx;
-                    }
+                        ctx.fillText('สแกนเพื่อแจ้งปัญหาเครื่อง', CW / 2, y + hintPx / 2);
+                        ctx.fillText('หรือ บันทึก Cycle Count', CW / 2, y + hintPx * 1.5 + 2 * S);
+                        y += (hintPx * 2 + 2 * S) + afterHint;
 
-                    // ── Badges (pill-shaped, same as HTML) ──
-                    if (badges.length) {
-                        y += 6 * S;
-                        ctx.font = `600 ${badgePx}px Sarabun, Arial, sans-serif`;
-                        const bWs = badges.map(b => ctx.measureText(b).width + badgePadH * 2);
-                        const totalBW = bWs.reduce((a, b) => a + b, 0) + (badges.length - 1) * badgeGap;
-                        const bh = badgePx + badgePadV * 2;
-                        let bx = (CW - totalBW) / 2;
-                        badges.forEach((badge, i) => {
-                            const bw = bWs[i];
-                            ctx.beginPath();
-                            ctx.moveTo(bx + badgeR, y);
-                            ctx.lineTo(bx + bw - badgeR, y);
-                            ctx.arcTo(bx + bw, y, bx + bw, y + badgeR, badgeR);
-                            ctx.lineTo(bx + bw, y + bh - badgeR);
-                            ctx.arcTo(bx + bw, y + bh, bx + bw - badgeR, y + bh, badgeR);
-                            ctx.lineTo(bx + badgeR, y + bh);
-                            ctx.arcTo(bx, y + bh, bx, y + bh - badgeR, badgeR);
-                            ctx.lineTo(bx, y + badgeR);
-                            ctx.arcTo(bx, y, bx + badgeR, y, badgeR);
-                            ctx.closePath();
-                            ctx.fillStyle = '#f3f4f6';
-                            ctx.fill();
-                            ctx.fillStyle = '#374151';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            ctx.fillText(badge, bx + bw / 2, y + bh / 2);
-                            bx += bw + badgeGap;
-                        });
-                        y += bh;
-                    }
-
-                    // ── Hotline ──
-                    if (hotline) {
-                        y += 10 * S;
-                        ctx.font = `600 ${hotlinePx}px Sarabun, Arial, sans-serif`;
-                        ctx.fillStyle = '#000000';
+                        // ── Device name ──
+                        ctx.font = `700 ${namePx}px Sarabun, Arial, sans-serif`;
+                        ctx.fillStyle = '#111111';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(`สายด่วน: ${hotline}`, CW / 2, y + hotlinePx / 2);
-                        y += hotlinePx;
+                        ctx.fillText(site.name || '', CW / 2, y + namePx / 2);
+                        y += namePx;
+
+                        // ── Location ──
+                        if (site.installLocation || site.villageName) {
+                            y += 4 * S;
+                            ctx.font = `${locPx}px Sarabun, Arial, sans-serif`;
+                            ctx.fillStyle = '#6b7280';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(site.installLocation || site.villageName, CW / 2, y + locPx / 2);
+                            y += locPx;
+                        }
+
+                        // ── Badges (pill-shaped, same as HTML) ──
+                        if (badges.length) {
+                            y += 6 * S;
+                            ctx.font = `600 ${badgePx}px Sarabun, Arial, sans-serif`;
+                            const bWs = badges.map(b => ctx.measureText(b).width + badgePadH * 2);
+                            const totalBW = bWs.reduce((a, b) => a + b, 0) + (badges.length - 1) * badgeGap;
+                            const bh = badgePx + badgePadV * 2;
+                            let bx = (CW - totalBW) / 2;
+                            badges.forEach((badge, i) => {
+                                const bw = bWs[i];
+                                ctx.beginPath();
+                                ctx.moveTo(bx + badgeR, y);
+                                ctx.lineTo(bx + bw - badgeR, y);
+                                ctx.arcTo(bx + bw, y, bx + bw, y + badgeR, badgeR);
+                                ctx.lineTo(bx + bw, y + bh - badgeR);
+                                ctx.arcTo(bx + bw, y + bh, bx + bw - badgeR, y + bh, badgeR);
+                                ctx.lineTo(bx + badgeR, y + bh);
+                                ctx.arcTo(bx, y + bh, bx, y + bh - badgeR, badgeR);
+                                ctx.lineTo(bx, y + badgeR);
+                                ctx.arcTo(bx, y, bx + badgeR, y, badgeR);
+                                ctx.closePath();
+                                ctx.fillStyle = '#f3f4f6';
+                                ctx.fill();
+                                ctx.fillStyle = '#374151';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(badge, bx + bw / 2, y + bh / 2);
+                                bx += bw + badgeGap;
+                            });
+                            y += bh;
+                        }
+
+                        // ── Hotline ──
+                        if (hotline) {
+                            y += 10 * S;
+                            ctx.font = `600 ${hotlinePx}px Sarabun, Arial, sans-serif`;
+                            ctx.fillStyle = '#000000';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(`สายด่วน: ${hotline}`, CW / 2, y + hotlinePx / 2);
+                            y += hotlinePx;
+                        }
+
+                        y += bPadB;
+
+                        // ── Footer ──
+                        ctx.fillStyle = '#f9fafb';
+                        ctx.fillRect(0, y, CW, footerH);
+                        ctx.strokeStyle = '#e5e7eb';
+                        ctx.lineWidth = 1 * S;
+                        ctx.beginPath();
+                        ctx.moveTo(0, y); ctx.lineTo(CW, y);
+                        ctx.stroke();
+                        ctx.font = `${footerPx}px Sarabun, Arial, sans-serif`;
+                        ctx.fillStyle = '#9ca3af';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.letterSpacing = `${0.04 * footerPx}px`;
+                        ctx.fillText('CASP MAINTENANCE SYSTEM', CW / 2, y + footerH / 2);
+                        ctx.letterSpacing = '0px';
+
+                        ctx.restore(); // end clip
+
+                        // Trigger download
+                        const a = document.createElement('a');
+                        a.href = oc.toDataURL('image/png');
+                        a.download = `QR-${site.name || siteId}.png`;
+                        a.click();
+                        showToast('ดาวน์โหลดรูปภาพเรียบร้อย', 'success');
+                    } catch (e) {
+                        console.error('QR download error:', e);
+                        showToast('เกิดข้อผิดพลาดในการดาวน์โหลด', 'error');
                     }
+                };
+            }
 
-                    y += bPadB;
 
-                    // ── Footer ──
-                    ctx.fillStyle = '#f9fafb';
-                    ctx.fillRect(0, y, CW, footerH);
-                    ctx.strokeStyle = '#e5e7eb';
-                    ctx.lineWidth = 1 * S;
-                    ctx.beginPath();
-                    ctx.moveTo(0, y); ctx.lineTo(CW, y);
-                    ctx.stroke();
-                    ctx.font = `${footerPx}px Sarabun, Arial, sans-serif`;
-                    ctx.fillStyle = '#9ca3af';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.letterSpacing = `${0.04 * footerPx}px`;
-                    ctx.fillText('CASP MAINTENANCE SYSTEM', CW / 2, y + footerH / 2);
-                    ctx.letterSpacing = '0px';
-
-                    ctx.restore(); // end clip
-
-                    // Trigger download
-                    const a = document.createElement('a');
-                    a.href = oc.toDataURL('image/png');
-                    a.download = `QR-${site.name || siteId}.png`;
-                    a.click();
-                    showToast('ดาวน์โหลดรูปภาพเรียบร้อย', 'success');
-                } catch (e) {
-                    console.error('QR download error:', e);
-                    showToast('เกิดข้อผิดพลาดในการดาวน์โหลด', 'error');
-                }
+            // Copy link
+            const btnCopy = document.getElementById('btn-copy-qr-link');
+            if (btnCopy) btnCopy.onclick = () => {
+                navigator.clipboard.writeText(reportUrl).then(() => showToast('คัดลอกลิงก์เรียบร้อย', 'success')).catch(() => {
+                    const ta = document.createElement('textarea');
+                    ta.value = reportUrl;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    showToast('คัดลอกลิงก์เรียบร้อย', 'success');
+                });
             };
-        }
 
-
-        // Copy link
-        const btnCopy = document.getElementById('btn-copy-qr-link');
-        if (btnCopy) btnCopy.onclick = () => {
-            navigator.clipboard.writeText(reportUrl).then(() => showToast('คัดลอกลิงก์เรียบร้อย', 'success')).catch(() => {
-                const ta = document.createElement('textarea');
-                ta.value = reportUrl;
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-                showToast('คัดลอกลิงก์เรียบร้อย', 'success');
-            });
-        };
-
-        // Print
-        const btnPrint = document.getElementById('btn-print-qr');
-        if (btnPrint) btnPrint.onclick = () => {
-            const cardHtml = buildCardHtml(cachedQrDataUrl);
-            const printWin = window.open('', '_blank');
-            printWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+            // Print
+            const btnPrint = document.getElementById('btn-print-qr');
+            if (btnPrint) btnPrint.onclick = () => {
+                const cardHtml = buildCardHtml(cachedQrDataUrl);
+                const printWin = window.open('', '_blank');
+                printWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 @page{size:A6 portrait;margin:8mm;}
@@ -17060,10 +17058,10 @@ function showDeviceQR(siteId) {
 body{margin:0;padding:0;background:#fff;display:flex;justify-content:center;align-items:flex-start;}
 </style>
 </head><body>${cardHtml}</body></html>`);
-            printWin.document.close();
-            printWin.focus();
-            setTimeout(() => { printWin.print(); }, 500);
-        };
+                printWin.document.close();
+                printWin.focus();
+                setTimeout(() => { printWin.print(); }, 500);
+            };
         }).catch(err => {
             console.error("Firestore getCompanySettings error in showDeviceQR:", err);
         });

@@ -4564,41 +4564,5 @@
                 box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
             }
         </style>
-    <div id="floating-debug-console" style="position: fixed; bottom: 0; left: 0; right: 0; height: 180px; background: rgba(0,0,0,0.9); color: #00ff00; font-family: monospace; font-size: 11px; overflow-y: auto; z-index: 999999; padding: 10px; border-top: 2px solid #ef4444;">
-        <b>Debug Console:</b><br>
-    </div>
-    <script>
-        (function() {
-            const consoleDiv = document.getElementById('floating-debug-console');
-            function logToScreen(msg) {
-                const div = document.createElement('div');
-                div.style.borderBottom = '1px solid rgba(0,255,0,0.1)';
-                div.style.padding = '2px 0';
-                div.textContent = msg;
-                consoleDiv.appendChild(div);
-                consoleDiv.scrollTop = consoleDiv.scrollHeight;
-            }
-            window.logToScreen = logToScreen;
-            
-            const originalLog = console.log;
-            console.log = function(...args) {
-                originalLog.apply(console, args);
-                logToScreen('[LOG] ' + args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
-            };
-            
-            const originalError = console.error;
-            console.error = function(...args) {
-                originalError.apply(console, args);
-                logToScreen('[ERROR] ' + args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
-            };
-
-            window.addEventListener('error', function(e) {
-                logToScreen('[UNCAUGHT ERROR] ' + e.message + ' at ' + e.filename + ':' + e.lineno);
-            });
-            window.addEventListener('unhandledrejection', function(e) {
-                logToScreen('[UNHANDLED REJECTION] ' + e.reason);
-            });
-        })();
-    </script>
 </body>
 </html>
