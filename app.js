@@ -17097,11 +17097,23 @@ function showDeviceQR(siteId) {
         const modal = document.getElementById('modal-device-qr');
         if (!modal) return;
 
-        // Show modal immediately
+        // Move modal to end of <body> to avoid being clipped/constrained by any parent
+        // modal's stacking context (e.g. when opened from site detail modal)
+        if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+
+        // Show modal immediately with forced top-level z-index
         const btnClose = document.getElementById('btn-close-qr-modal');
         if (btnClose) btnClose.onclick = () => closeDeviceQRModal();
         modal.classList.remove('hidden');
         modal.style.display = 'flex';
+        modal.style.zIndex = '10050';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
 
         // Delay binding modal backdrop click to prevent the same click event from
         // immediately closing the modal via event bubbling
@@ -17511,7 +17523,11 @@ window.showDeviceQR = showDeviceQR;
 
 function closeDeviceQRModal() {
     const modal = document.getElementById('modal-device-qr');
-    if (modal) { modal.classList.add('hidden'); modal.style.display = ''; }
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+        modal.onclick = null;
+    }
 }
 window.closeDeviceQRModal = closeDeviceQRModal;
 
