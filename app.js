@@ -15917,73 +15917,19 @@ function getLatestCycleCountFromPlans(site) {
                     if (!isNaN(val) && val > maxVal) {
                         maxVal = val;
                     }
-                }
+}
                 if (pd && pd.history && Array.isArray(pd.history)) {
                     pd.history.forEach(item => {
                         if (item.cycleCount != null) {
                             const val = parseInt(item.cycleCount, 10);
-                            if (!isNaN(val) && val > maxVal) {
-                                maxVal = val;
+                            if (!isNaN(val)) {
+                                records.push({ val: val, date: item.inputDate || `${yearBE - 543}-${String(month).padStart(2, '0')}-01`, yearBE, month });
                             }
                         }
                     });
                 }
             });
         }
-    });
-    return maxVal;
-}
-
-function getPreviousCycleCount(site, currentYear, currentMonth) {
-    const currentCoords = { yearBE: parseInt(currentYear, 10), month: parseInt(currentMonth, 10) };
-    const records = [];
-
-    // 1. Collect from logs
-    const siteLogs = state.logs.filter(l => l.siteId === site.id);
-    siteLogs.forEach(log => {
-        if (log.cycleCount != null) {
-            const val = parseInt(log.cycleCount, 10);
-            if (!isNaN(val)) {
-                const logCoords = parseDateToTimelineCoords(log.date);
-                if (logCoords && isBeforeTimeline(logCoords, currentCoords)) {
-                    records.push({ val: val, date: log.date, yearBE: logCoords.yearBE, month: logCoords.month });
-                }
-            }
-        }
-    });
-
-    // 2. Collect from maintenancePlans
-    if (site.maintenancePlans) {
-        Object.keys(site.maintenancePlans).forEach(yStr => {
-            const planData = site.maintenancePlans[yStr];
-            if (planData && !Array.isArray(planData)) {
-                Object.keys(planData).forEach(mKey => {
-                    const yearBE = parseInt(yStr, 10);
-                    const month = parseInt(mKey, 10);
-                    const cellCoords = { yearBE, month };
-
-                    if (isBeforeTimeline(cellCoords, currentCoords)) {
-                        const pd = getPlanMonthData(site, yStr, mKey);
-                        if (pd.cycleCount != null) {
-                            const val = parseInt(pd.cycleCount, 10);
-                            if (!isNaN(val)) {
-                                records.push({ val: val, date: pd.inputDate || `${yearBE - 543}-${String(month).padStart(2, '0')}-01`, yearBE, month });
-                            }
-                        }
-                        if (pd.history && Array.isArray(pd.history)) {
-                            pd.history.forEach(item => {
-                                if (item.cycleCount != null) {
-                                    const val = parseInt(item.cycleCount, 10);
-                                    if (!isNaN(val)) {
-                                        records.push({ val: val, date: item.inputDate || `${yearBE - 543}-${String(month).padStart(2, '0')}-01`, yearBE, month });
-                                    }
-                                }
-                            });
-                        }
-                    }
-                });
-            }
-        });
     }
 
     if (records.length === 0) return { val: 0, date: '1970-01-01', yearBE: 0, month: 0 };
@@ -16687,11 +16633,11 @@ function showDeviceQR(siteId) {
 
         // Load company settings, then render everything
         FirestoreService.getCompanySettings().then(company => {
-        const companyName = company.name || 'บริษัท ไบโอ อินโน เทค จำกัด';
-        const hotline = company.hotline || '';
+            let companyName = company.name || 'บริษัท ไบโอ อินโน เทค จำกัด';
+            let hotline = company.hotline || '';
 
-        // Build the unified card HTML (used for preview, print, and download)
-        const buildCardHtml = (qrSrc) => `
+            // Build the unified card HTML (used for preview, print, and download)
+            let buildCardHtml = (qrSrc) => `
             <div style="
                 font-family:'Sarabun',Arial,sans-serif;
                 width:280px;
@@ -16741,318 +16687,318 @@ function showDeviceQR(siteId) {
                 </div>
             </div>`;
 
-        // Render preview card in modal (replace canvas with card preview)
-        const canvas = document.getElementById('device-qr-canvas');
-        const cardPreviewEl = document.getElementById('qr-card-preview');
+            // Render preview card in modal (replace canvas with card preview)
+            let canvas = document.getElementById('device-qr-canvas');
+            let cardPreviewEl = document.getElementById('qr-card-preview');
 
-        // Generate QR then render card
-        let cachedQrDataUrl = ''; // store clean QR data URL to avoid tainted canvas
-        const renderCard = (qrDataUrl) => {
-            cachedQrDataUrl = qrDataUrl;
-            if (cardPreviewEl) {
-                cardPreviewEl.innerHTML = buildCardHtml(qrDataUrl);
-            }
-        };
-
-        if (typeof QRCode !== 'undefined') {
-            const offscreen = document.createElement('canvas');
-            QRCode.toCanvas(offscreen, reportUrl, {
-                width: 220, margin: 2,
-                color: { dark: '#0f172a', light: '#ffffff' },
-                errorCorrectionLevel: 'M'
-            }, (err) => {
-                const qrDataUrl = err ? '' : offscreen.toDataURL('image/png');
-                renderCard(qrDataUrl);
-            });
-        } else {
-            // Fetch external QR image as blob and convert to data URL to avoid tainted canvas
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(reportUrl)}`;
-            fetch(qrUrl)
-                .then(res => res.blob())
-                .then(blob => {
-                    const reader = new FileReader();
-                    reader.onload = () => renderCard(reader.result);
-                    reader.onerror = () => renderCard(qrUrl); // fallback: show img but can't download
-                    reader.readAsDataURL(blob);
-                })
-                .catch(() => renderCard(qrUrl));
-        }
+            // Generate QR then render card
+            let cachedQrDataUrl = ''; // store clean QR data URL to avoid tainted canvas
+            let renderCard = (qrDataUrl) => {
+                cachedQrDataUrl = qrDataUrl;
+                if (cardPreviewEl) {
+                    cardPreviewEl.innerHTML = buildCardHtml(qrDataUrl);
 
 
-        // Download: render card PNG matching buildCardHtml exactly (2× scale)
-        const btnDownload = document.getElementById('btn-download-qr');
-        if (btnDownload) {
-            btnDownload.onclick = async () => {
-                try {
-                    const S = 2; // 2× retina scale
-                    const CW = 280 * S; // card width = 560px
 
-                    // Helper: fetch any URL → blob → data URL (avoids tainted canvas)
-                    const toDataUrl = async (src) => {
-                        try {
-                            const blob = await fetch(src).then(r => r.blob());
-                            return await new Promise((res, rej) => {
-                                const fr = new FileReader();
-                                fr.onload = () => res(fr.result);
-                                fr.onerror = rej;
-                                fr.readAsDataURL(blob);
-                            });
-                        } catch { return null; }
-                    };
+                typeof QRCode !== 'undefined') {
+            t offscreen = document.createElement('canvas');
+                    de.toCanvas(offscreen, reportUrl, {
+                        h: 220, margin: 2,
+                        r: { dark: '#0f172a', light: '#ffffff' },
+                        rCorrectionLevel: 'M'
+            err) => {
+                t qrDataUrl = err ? '' : offscreen.toDataURL('image/png');
+                        erCard(qrDataUrl);
+            
+        se {
+            etch external QR image as blob and convert to data URL to avoid tainted canvas
+            t qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(reportUrl)}`;
+                            h(qrUrl)
+                            n(res => res.blob())
+                            n(blob => {
+                    t reader = new FileReader();
+                                er.onload = () => renderCard(reader.result);
+                                er.onerror = () => renderCard(qrUrl); // fallback: show img but can't download
+                                er.readAsDataURL(blob);
 
-                    const loadImg = (src) => new Promise(res => {
-                        if (!src) return res(null);
-                        const img = new Image();
-                        img.onload = () => res(img);
-                        img.onerror = () => res(null);
-                        img.src = src;
-                    });
-
-                    // Pre-load logo and QR in parallel
-                    const [logoDataUrl, qrImg] = await Promise.all([
-                        toDataUrl('/bioinnotech.svg'),
-                        loadImg(cachedQrDataUrl),
-                    ]);
-                    const logoImg = await loadImg(logoDataUrl);
-
-                    // ── Layout constants mirroring buildCardHtml (scaled × S) ──
-                    const accentH = 4 * S;
-                    const bPadT = 20 * S;   // body top padding
-                    const bPadH = 20 * S;   // body horizontal padding (not used for clip, just reference)
-                    const bPadB = 16 * S;   // body bottom padding
-                    const logoH = 22 * S;   // logo image height (html: 22px)
-                    const logoGap = 8 * S;   // gap between logo and company name
-                    const afterLogoRow = 12 * S; // margin-bottom on company row
-                    const qrBorder = 1.5 * S;
-                    const qrPad = 8 * S;
-                    const qrSize = 180 * S;
-                    const qrBoxR = 10 * S;
-                    const qrBoxW = qrSize + qrPad * 2;
-                    const qrBoxH = qrSize + qrPad * 2;
-                    const afterQrBox = 14 * S;   // margin-bottom on QR box
-                    const hintPx = Math.round(0.72 * 16 * S);
-                    const afterHint = 12 * S;
-                    const namePx = Math.round(0.95 * 16 * S);
-                    const locPx = Math.round(0.75 * 16 * S);
-                    const badgePx = Math.round(0.68 * 16 * S);
-                    const badgePadH = 8 * S;
-                    const badgePadV = 2 * S;
-                    const badgeR = 6 * S;
-                    const badgeGap = 6 * S;
-                    const hotlinePx = Math.round(0.78 * 16 * S);
-                    const footerPadV = 7 * S;
-                    const footerPx = Math.round(0.62 * 16 * S);
-
-                    // Calculate total height
-                    const hintH = hintPx * 2 + 2 * S;
-                    let bodyH = bPadT + logoH + afterLogoRow + qrBoxH + afterQrBox + hintH + afterHint + namePx;
-                    if (site.installLocation || site.villageName) bodyH += 4 * S + locPx;
-                    const badges = [site.siteCode, site.serialNumber ? `S/N: ${site.serialNumber}` : ''].filter(Boolean);
-                    if (badges.length) bodyH += 6 * S + badgePx + badgePadV * 2;
-                    if (hotline) bodyH += 10 * S + hotlinePx;
-                    bodyH += bPadB;
-                    const footerH = footerPadV + footerPx + footerPadV;
-                    const totalH = accentH + bodyH + footerH;
-
-                    // ── Canvas setup ──
-                    const oc = document.createElement('canvas');
-                    oc.width = CW;
-                    oc.height = totalH;
-                    const ctx = oc.getContext('2d');
-
-                    // White background + rounded-rect clip (border-radius: 16px)
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, CW, totalH);
-                    const cardR = 16 * S;
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.moveTo(cardR, 0); ctx.lineTo(CW - cardR, 0);
-                    ctx.arcTo(CW, 0, CW, cardR, cardR);
-                    ctx.lineTo(CW, totalH - cardR);
-                    ctx.arcTo(CW, totalH, CW - cardR, totalH, cardR);
-                    ctx.lineTo(cardR, totalH);
-                    ctx.arcTo(0, totalH, 0, totalH - cardR, cardR);
-                    ctx.lineTo(0, cardR);
-                    ctx.arcTo(0, 0, cardR, 0, cardR);
-                    ctx.closePath();
-                    ctx.clip();
-
-                    // ── Accent bar ──
-                    const accentGrad = ctx.createLinearGradient(0, 0, CW, 0);
-                    accentGrad.addColorStop(0, '#8bc53f');
-                    accentGrad.addColorStop(1, '#38bdf8');
-                    ctx.fillStyle = accentGrad;
-                    ctx.fillRect(0, 0, CW, accentH);
-
-                    let y = accentH + bPadT;
-
-                    // ── Company row: logo img + gap + name (centered) ──
-                    {
-                        ctx.font = `700 ${Math.round(0.72 * 16 * S)}px Sarabun, Arial, sans-serif`;
-                        const textW = ctx.measureText(companyName).width;
-                        const logoDrawW = logoImg ? Math.round(logoH * (logoImg.width / logoImg.height)) : 0;
-                        const rowW = logoDrawW + (logoImg ? logoGap : 0) + textW;
-                        let rx = (CW - rowW) / 2;
-                        if (logoImg) {
-                            ctx.drawImage(logoImg, rx, y + (logoH - logoH) / 2, logoDrawW, logoH);
-                            rx += logoDrawW + logoGap;
-                        }
-                        ctx.fillStyle = '#374151';
-                        ctx.textAlign = 'left';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(companyName, rx, y + logoH / 2);
-                    }
-                    y += logoH + afterLogoRow;
-
-                    // ── QR box ──
-                    {
-                        const bx = (CW - qrBoxW) / 2;
-                        // Draw rounded box (border + fill)
-                        ctx.beginPath();
-                        ctx.moveTo(bx + qrBoxR, y);
-                        ctx.lineTo(bx + qrBoxW - qrBoxR, y);
-                        ctx.arcTo(bx + qrBoxW, y, bx + qrBoxW, y + qrBoxR, qrBoxR);
-                        ctx.lineTo(bx + qrBoxW, y + qrBoxH - qrBoxR);
-                        ctx.arcTo(bx + qrBoxW, y + qrBoxH, bx + qrBoxW - qrBoxR, y + qrBoxH, qrBoxR);
-                        ctx.lineTo(bx + qrBoxR, y + qrBoxH);
-                        ctx.arcTo(bx, y + qrBoxH, bx, y + qrBoxH - qrBoxR, qrBoxR);
-                        ctx.lineTo(bx, y + qrBoxR);
-                        ctx.arcTo(bx, y, bx + qrBoxR, y, qrBoxR);
-                        ctx.closePath();
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fill();
-                        ctx.strokeStyle = '#e5e7eb';
-                        ctx.lineWidth = qrBorder;
-                        ctx.stroke();
-                        if (qrImg) ctx.drawImage(qrImg, bx + qrPad, y + qrPad, qrSize, qrSize);
-                    }
-                    y += qrBoxH + afterQrBox;
-
-                    // ── Scan hint ──
-                    ctx.font = `${hintPx}px Sarabun, Arial, sans-serif`;
-                    ctx.fillStyle = '#6b7280';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('สแกนเพื่อแจ้งปัญหาเครื่อง', CW / 2, y + hintPx / 2);
-                    ctx.fillText('หรือ บันทึก Cycle Count', CW / 2, y + hintPx * 1.5 + 2 * S);
-                    y += (hintPx * 2 + 2 * S) + afterHint;
-
-                    // ── Device name ──
-                    ctx.font = `700 ${namePx}px Sarabun, Arial, sans-serif`;
-                    ctx.fillStyle = '#111111';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(site.name || '', CW / 2, y + namePx / 2);
-                    y += namePx;
-
-                    // ── Location ──
-                    if (site.installLocation || site.villageName) {
-                        y += 4 * S;
-                        ctx.font = `${locPx}px Sarabun, Arial, sans-serif`;
-                        ctx.fillStyle = '#6b7280';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(site.installLocation || site.villageName, CW / 2, y + locPx / 2);
-                        y += locPx;
-                    }
-
-                    // ── Badges (pill-shaped, same as HTML) ──
-                    if (badges.length) {
-                        y += 6 * S;
-                        ctx.font = `600 ${badgePx}px Sarabun, Arial, sans-serif`;
-                        const bWs = badges.map(b => ctx.measureText(b).width + badgePadH * 2);
-                        const totalBW = bWs.reduce((a, b) => a + b, 0) + (badges.length - 1) * badgeGap;
-                        const bh = badgePx + badgePadV * 2;
-                        let bx = (CW - totalBW) / 2;
-                        badges.forEach((badge, i) => {
-                            const bw = bWs[i];
-                            ctx.beginPath();
-                            ctx.moveTo(bx + badgeR, y);
-                            ctx.lineTo(bx + bw - badgeR, y);
-                            ctx.arcTo(bx + bw, y, bx + bw, y + badgeR, badgeR);
-                            ctx.lineTo(bx + bw, y + bh - badgeR);
-                            ctx.arcTo(bx + bw, y + bh, bx + bw - badgeR, y + bh, badgeR);
-                            ctx.lineTo(bx + badgeR, y + bh);
-                            ctx.arcTo(bx, y + bh, bx, y + bh - badgeR, badgeR);
-                            ctx.lineTo(bx, y + badgeR);
-                            ctx.arcTo(bx, y, bx + badgeR, y, badgeR);
-                            ctx.closePath();
-                            ctx.fillStyle = '#f3f4f6';
-                            ctx.fill();
-                            ctx.fillStyle = '#374151';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            ctx.fillText(badge, bx + bw / 2, y + bh / 2);
-                            bx += bw + badgeGap;
-                        });
-                        y += bh;
-                    }
-
-                    // ── Hotline ──
-                    if (hotline) {
-                        y += 10 * S;
-                        ctx.font = `600 ${hotlinePx}px Sarabun, Arial, sans-serif`;
-                        ctx.fillStyle = '#000000';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(`สายด่วน: ${hotline}`, CW / 2, y + hotlinePx / 2);
-                        y += hotlinePx;
-                    }
-
-                    y += bPadB;
-
-                    // ── Footer ──
-                    ctx.fillStyle = '#f9fafb';
-                    ctx.fillRect(0, y, CW, footerH);
-                    ctx.strokeStyle = '#e5e7eb';
-                    ctx.lineWidth = 1 * S;
-                    ctx.beginPath();
-                    ctx.moveTo(0, y); ctx.lineTo(CW, y);
-                    ctx.stroke();
-                    ctx.font = `${footerPx}px Sarabun, Arial, sans-serif`;
-                    ctx.fillStyle = '#9ca3af';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.letterSpacing = `${0.04 * footerPx}px`;
-                    ctx.fillText('CASP MAINTENANCE SYSTEM', CW / 2, y + footerH / 2);
-                    ctx.letterSpacing = '0px';
-
-                    ctx.restore(); // end clip
-
-                    // Trigger download
-                    const a = document.createElement('a');
-                    a.href = oc.toDataURL('image/png');
-                    a.download = `QR-${site.name || siteId}.png`;
-                    a.click();
-                    showToast('ดาวน์โหลดรูปภาพเรียบร้อย', 'success');
-                } catch (e) {
-                    console.error('QR download error:', e);
-                    showToast('เกิดข้อผิดพลาดในการดาวน์โหลด', 'error');
-                }
-            };
-        }
+                                ch(() => renderCard(qrUrl));
 
 
-        // Copy link
-        const btnCopy = document.getElementById('btn-copy-qr-link');
-        if (btnCopy) btnCopy.onclick = () => {
-            navigator.clipboard.writeText(reportUrl).then(() => showToast('คัดลอกลิงก์เรียบร้อย', 'success')).catch(() => {
-                const ta = document.createElement('textarea');
-                ta.value = reportUrl;
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-                showToast('คัดลอกลิงก์เรียบร้อย', 'success');
-            });
-        };
 
-        // Print
-        const btnPrint = document.getElementById('btn-print-qr');
-        if (btnPrint) btnPrint.onclick = () => {
-            const cardHtml = buildCardHtml(cachedQrDataUrl);
-            const printWin = window.open('', '_blank');
-            printWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+                                ownload: render card PNG matching buildCardHtml exactly(2× scale)
+        t btnDownload = document.getElementById('btn-download-qr');
+        btnDownload) {
+                                ownload.onclick = async () => {
+                                    {
+                    t S = 2; // 2× retina scale
+                    t CW = 280 * S; // card width = 560px
+
+                                        elper: fetch any URL → blob → data URL(avoids tainted canvas)
+                    t toDataUrl = async (src) => {
+                                            {
+                            t blob = await fetch(src).then(r => r.blob());
+                            rn await new Promise((res, rej) => {
+                                t fr = new FileReader();
+                                                nload = () => res(fr.result);
+                                                nerror = rej;
+                                                eadAsDataURL(blob);
+                            
+                        tch { return null; }
+                    
+
+                    t loadImg = (src) => new Promise(res => {
+                                                    !src) return res(null);
+                        t img = new Image();
+                                                onload = () => res(img);
+                                                onerror = () => res(null);
+                                                src = src;
+
+
+                                                re - load logo and QR in parallel
+                                                t[logoDataUrl, qrImg] = await Promise.all([
+                                                    taUrl('/bioinnotech.svg'),
+                                                    Img(cachedQrDataUrl),
+
+                                                    t logoImg = await loadImg(logoDataUrl);
+
+                    ─ Layout constants mirroring buildCardHtml(scaled × S) ──
+                    t accentH = 4 * S;
+                    t bPadT = 20 * S;   // body top padding
+                    t bPadH = 20 * S;   // body horizontal padding (not used for clip, just reference)
+                    t bPadB = 16 * S;   // body bottom padding
+                    t logoH = 22 * S;   // logo image height (html: 22px)
+                    t logoGap = 8 * S;   // gap between logo and company name
+                    t afterLogoRow = 12 * S; // margin-bottom on company row
+                    t qrBorder = 1.5 * S;
+                    t qrPad = 8 * S;
+                    t qrSize = 180 * S;
+                    t qrBoxR = 10 * S;
+                    t qrBoxW = qrSize + qrPad * 2;
+                    t qrBoxH = qrSize + qrPad * 2;
+                    t afterQrBox = 14 * S;   // margin-bottom on QR box
+                    t hintPx = Math.round(0.72 * 16 * S);
+                    t afterHint = 12 * S;
+                    t namePx = Math.round(0.95 * 16 * S);
+                    t locPx = Math.round(0.75 * 16 * S);
+                    t badgePx = Math.round(0.68 * 16 * S);
+                    t badgePadH = 8 * S;
+                    t badgePadV = 2 * S;
+                    t badgeR = 6 * S;
+                    t badgeGap = 6 * S;
+                    t hotlinePx = Math.round(0.78 * 16 * S);
+                    t footerPadV = 7 * S;
+                    t footerPx = Math.round(0.62 * 16 * S);
+
+                    alculate total height
+                    t hintH = hintPx * 2 + 2 * S;
+                                                bodyH = bPadT + logoH + afterLogoRow + qrBoxH + afterQrBox + hintH + afterHint + namePx;
+                                                site.installLocation || site.villageName) bodyH += 4 * S + locPx;
+                    t badges = [site.siteCode, site.serialNumber ? `S/N: ${site.serialNumber}` : ''].filter(Boolean);
+                                                badges.length) bodyH += 6 * S + badgePx + badgePadV * 2;
+                    hotline) bodyH += 10 * S + hotlinePx;
+                                                H += bPadB;
+                    t footerH = footerPadV + footerPx + footerPadV;
+                    t totalH = accentH + bodyH + footerH;
+
+                    ─ Canvas setup ──
+                    t oc = document.createElement('canvas');
+                                                idth = CW;
+                                                eight = totalH;
+                    t ctx = oc.getContext('2d');
+
+                    hite background + rounded - rect clip(border - radius: 16px)
+                                                fillStyle = '#ffffff';
+                                                fillRect(0, 0, CW, totalH);
+                    t cardR = 16 * S;
+                                                save();
+                                                beginPath();
+                                                moveTo(cardR, 0); ctx.lineTo(CW - cardR, 0);
+                                                arcTo(CW, 0, CW, cardR, cardR);
+                                                lineTo(CW, totalH - cardR);
+                                                arcTo(CW, totalH, CW - cardR, totalH, cardR);
+                                                lineTo(cardR, totalH);
+                                                arcTo(0, totalH, 0, totalH - cardR, cardR);
+                                                lineTo(0, cardR);
+                                                arcTo(0, 0, cardR, 0, cardR);
+                                                closePath();
+                                                clip();
+
+                    ─ Accent bar ──
+                    t accentGrad = ctx.createLinearGradient(0, 0, CW, 0);
+                                                ntGrad.addColorStop(0, '#8bc53f');
+                                                ntGrad.addColorStop(1, '#38bdf8');
+                                                fillStyle = accentGrad;
+                                                fillRect(0, 0, CW, accentH);
+
+                                                y = accentH + bPadT;
+
+                    ─ Company row: logo img + gap + name(centered) ──
+
+                                                font = `700 ${Math.round(0.72 * 16 * S)}px Sarabun, Arial, sans-serif`;
+                        t textW = ctx.measureText(companyName).width;
+                        t logoDrawW = logoImg ? Math.round(logoH * (logoImg.width / logoImg.height)) : 0;
+                        t rowW = logoDrawW + (logoImg ? logoGap : 0) + textW;
+                                                rx = (CW - rowW) / 2;
+                        logoImg) {
+                                                    drawImage(logoImg, rx, y + (logoH - logoH) / 2, logoDrawW, logoH);
+                            = logoDrawW + logoGap;
+
+                                                    fillStyle = '#374151';
+                                                    textAlign = 'left';
+                                                    textBaseline = 'middle';
+                                                    fillText(companyName, rx, y + logoH / 2);
+
+                                                    logoH + afterLogoRow;
+
+                    ─ QR box ──
+                    
+                        t bx = (CW - qrBoxW) / 2;
+                        raw rounded box(border + fill)
+                                                    beginPath();
+                                                    moveTo(bx + qrBoxR, y);
+                                                    lineTo(bx + qrBoxW - qrBoxR, y);
+                                                    arcTo(bx + qrBoxW, y, bx + qrBoxW, y + qrBoxR, qrBoxR);
+                                                    lineTo(bx + qrBoxW, y + qrBoxH - qrBoxR);
+                                                    arcTo(bx + qrBoxW, y + qrBoxH, bx + qrBoxW - qrBoxR, y + qrBoxH, qrBoxR);
+                                                    lineTo(bx + qrBoxR, y + qrBoxH);
+                                                    arcTo(bx, y + qrBoxH, bx, y + qrBoxH - qrBoxR, qrBoxR);
+                                                    lineTo(bx, y + qrBoxR);
+                                                    arcTo(bx, y, bx + qrBoxR, y, qrBoxR);
+                                                    closePath();
+                                                    fillStyle = '#ffffff';
+                                                    fill();
+                                                    strokeStyle = '#e5e7eb';
+                                                    lineWidth = qrBorder;
+                                                    stroke();
+                        qrImg) ctx.drawImage(qrImg, bx + qrPad, y + qrPad, qrSize, qrSize);
+
+                                                    qrBoxH + afterQrBox;
+
+                    ─ Scan hint ──
+                                                    font = `${hintPx}px Sarabun, Arial, sans-serif`;
+                                                    fillStyle = '#6b7280';
+                                                    textAlign = 'center';
+                                                    textBaseline = 'middle';
+                                                    fillText('สแกนเพื่อแจ้งปัญหาเครื่อง', CW / 2, y + hintPx / 2);
+                                                    fillText('หรือ บันทึก Cycle Count', CW / 2, y + hintPx * 1.5 + 2 * S);
+                                                    (hintPx * 2 + 2 * S) + afterHint;
+
+                    ─ Device name ──
+                     = `700 ${namePx}px Sarabun, Arial, sans-serif`;
+                                                    Style = '#111111';
+                                                    Align = 'center';
+                                                    Baseline = 'middle';
+                                                    Text(site.name || '', CW / 2, y + namePx / 2);
+                                                    ePx;
+
+                    ─ Location ──
+                                                    site.installLocation || site.villageName) {
+                                                        4 * S;
+                                                        font = `${locPx}px Sarabun, Arial, sans-serif`;
+                                                        fillStyle = '#6b7280';
+                                                        textAlign = 'center';
+                                                        textBaseline = 'middle';
+                                                        fillText(site.installLocation || site.villageName, CW / 2, y + locPx / 2);
+                                                        locPx;
+                    
+
+                    ─ Badges(pill - shaped, same as HTML) ──
+                                                        badges.length) {
+                                                            6 * S;
+                                                            font = `600 ${badgePx}px Sarabun, Arial, sans-serif`;
+                        t bWs = badges.map(b => ctx.measureText(b).width + badgePadH * 2);
+                        t totalBW = bWs.reduce((a, b) => a + b, 0) + (badges.length - 1) * badgeGap;
+                        t bh = badgePx + badgePadV * 2;
+                                                            bx = (CW - totalBW) / 2;
+                                                            es.forEach((badge, i) => {
+                            t bw = bWs[i];
+                                                                beginPath();
+                                                                moveTo(bx + badgeR, y);
+                                                                lineTo(bx + bw - badgeR, y);
+                                                                arcTo(bx + bw, y, bx + bw, y + badgeR, badgeR);
+                                                                lineTo(bx + bw, y + bh - badgeR);
+                                                                arcTo(bx + bw, y + bh, bx + bw - badgeR, y + bh, badgeR);
+                                                                lineTo(bx + badgeR, y + bh);
+                                                                arcTo(bx, y + bh, bx, y + bh - badgeR, badgeR);
+                                                                lineTo(bx, y + badgeR);
+                                                                arcTo(bx, y, bx + badgeR, y, badgeR);
+                                                                closePath();
+                                                                fillStyle = '#f3f4f6';
+                                                                fill();
+                                                                fillStyle = '#374151';
+                                                                textAlign = 'center';
+                                                                textBaseline = 'middle';
+                                                                fillText(badge, bx + bw / 2, y + bh / 2);
+                            = bw + badgeGap;
+
+                                                                bh;
+                    
+
+                    ─ Hotline ──
+                    hotline) {
+                                                                10 * S;
+                                                                font = `600 ${hotlinePx}px Sarabun, Arial, sans-serif`;
+                                                                fillStyle = '#000000';
+                                                                textAlign = 'center';
+                                                                textBaseline = 'middle';
+                                                                fillText(`สายด่วน: ${hotline}`, CW / 2, y + hotlinePx / 2);
+                                                                hotlinePx;
+
+
+                                                                bPadB;
+
+                    ─ Footer ──
+                                                                fillStyle = '#f9fafb';
+                                                                fillRect(0, y, CW, footerH);
+                                                                strokeStyle = '#e5e7eb';
+                                                                lineWidth = 1 * S;
+                                                                beginPath();
+                                                                moveTo(0, y); ctx.lineTo(CW, y);
+                                                                stroke();
+                                                                font = `${footerPx}px Sarabun, Arial, sans-serif`;
+                                                                fillStyle = '#9ca3af';
+                                                                textAlign = 'center';
+                                                                textBaseline = 'middle';
+                                                                letterSpacing = `${0.04 * footerPx}px`;
+                                                                fillText('CASP MAINTENANCE SYSTEM', CW / 2, y + footerH / 2);
+                                                                letterSpacing = '0px';
+
+                                                                restore(); // end clip
+
+                    rigger download
+                    t a = document.createElement('a');
+                                                                ef = oc.toDataURL('image/png');
+                                                                wnload = `QR-${site.name || siteId}.png`;
+                                                                ick();
+                                                                Toast('ดาวน์โหลดรูปภาพเรียบร้อย', 'success');
+                                                                tch(e) {
+                                                                    ole.error('QR download error:', e);
+                                                                    Toast('เกิดข้อผิดพลาดในการดาวน์โหลด', 'error');
+                
+            
+        
+
+
+        opy link
+        t btnCopy = document.getElementById('btn-copy-qr-link');
+        btnCopy) btnCopy.onclick = () => {
+                                                                        gator.clipboard.writeText(reportUrl).then(() => showToast('คัดลอกลิงก์เรียบร้อย', 'success')).catch(() => {
+                t ta = document.createElement('textarea');
+                                                                            alue = reportUrl;
+                                                                            ment.body.appendChild(ta);
+                                                                            elect();
+                                                                            ment.execCommand('copy');
+                                                                            ment.body.removeChild(ta);
+                                                                            Toast('คัดลอกลิงก์เรียบร้อย', 'success');
+
+
+
+                                                                            rint
+        t btnPrint = document.getElementById('btn-print-qr');
+        btnPrint) btnPrint.onclick = () => {
+            t cardHtml = buildCardHtml(cachedQrDataUrl);
+            t printWin = window.open('', '_blank');
+                                                                            tWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 @page{size:A6 portrait;margin:8mm;}
@@ -17060,34 +17006,34 @@ function showDeviceQR(siteId) {
 body{margin:0;padding:0;background:#fff;display:flex;justify-content:center;align-items:flex-start;}
 </style>
 </head><body>${cardHtml}</body></html>`);
-            printWin.document.close();
-            printWin.focus();
-            setTimeout(() => { printWin.print(); }, 500);
-        };
-        }).catch(err => {
-            console.error("Firestore getCompanySettings error in showDeviceQR:", err);
-        });
-    } catch (e) {
-        console.error("Error in showDeviceQR:", e);
-        alert("Error showing QR modal: " + e.message);
-    }
-}
-window.showDeviceQR = showDeviceQR;
+                                                                            tWin.document.close();
+                                                                            tWin.focus();
+                                                                            imeout(() => { printWin.print(); }, 500);
 
-function closeDeviceQRModal() {
-    const modal = document.getElementById('modal-device-qr');
-    if (modal) { modal.classList.add('hidden'); modal.style.display = ''; }
-}
-window.closeDeviceQRModal = closeDeviceQRModal;
+                                                                        }).catch (err => {
+                                                                            console.error("Firestore getCompanySettings error in showDeviceQR:", err);
+                                                                        });
+                                                                    } catch (e) {
+                                                                        console.error("Error in showDeviceQR:", e);
+                                                                        alert("Error showing QR modal: " + e.message);
+                                                                    }
+                                                                }
+                                                                window.showDeviceQR = showDeviceQR;
 
-function printDeviceQR(site, reportUrl, canvas) {
-    const qrDataUrl = canvas ? canvas.toDataURL('image/png') : '';
-    // Load company settings then print
-    FirestoreService.getCompanySettings().then(company => {
-        const companyName = company.name || 'บริษัท ไบโอ อินโน เทค จำกัด';
-        const hotline = company.hotline || '';
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>QR Code - ${site.name}</title>
+                                                                function closeDeviceQRModal() {
+                                                                    const modal = document.getElementById('modal-device-qr');
+                                                                    if (modal) { modal.classList.add('hidden'); modal.style.display = ''; }
+                                                                }
+                                                                window.closeDeviceQRModal = closeDeviceQRModal;
+
+                                                                function printDeviceQR(site, reportUrl, canvas) {
+                                                                    const qrDataUrl = canvas ? canvas.toDataURL('image/png') : '';
+                                                                    // Load company settings then print
+                                                                    FirestoreService.getCompanySettings().then(company => {
+                                                                        const companyName = company.name || 'บริษัท ไบโอ อินโน เทค จำกัด';
+                                                                        const hotline = company.hotline || '';
+                                                                        const printWindow = window.open('', '_blank');
+                                                                        printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>QR Code - ${site.name}</title>
 <style>
 body{font-family:'Sarabun',Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#fff;}
 .card{text-align:center;padding:24px 28px;border:2px solid #e5e7eb;border-radius:16px;max-width:320px;box-shadow:0 4px 16px rgba(0,0,0,0.08);}
@@ -17111,200 +17057,200 @@ ${site.serialNumber ? `<div class="code">S/N: ${site.serialNumber}</div>` : ''}
 ${hotline ? `<div class="hotline">สายด่วน: ${hotline}</div>` : ''}
 <div class="badge">CASP Maintenance System</div>
 </div></body></html>`);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => { printWindow.print(); }, 400);
-    });
-}
+                                                                        printWindow.document.close();
+                                                                        printWindow.focus();
+                                                                        setTimeout(() => { printWindow.print(); }, 400);
+                                                                    });
+                                                                }
 
-// ============================================================
-// PUBLIC INCIDENT REPORT PAGE (?report=DEVICE_ID)
-// ============================================================
+                                                                // ============================================================
+                                                                // PUBLIC INCIDENT REPORT PAGE (?report=DEVICE_ID)
+                                                                // ============================================================
 
-let publicReportMedia = [];
-let publicCycleMedia = [];
+                                                                let publicReportMedia = [];
+                                                                let publicCycleMedia = [];
 
-function updatePublicReportMediaPreview() {
-    const preview = document.getElementById('report-media-preview');
-    if (!preview) return;
+                                                                function updatePublicReportMediaPreview() {
+                                                                    const preview = document.getElementById('report-media-preview');
+                                                                    if (!preview) return;
 
-    const addButton = document.getElementById('btn-add-media');
-    preview.innerHTML = '';
-    if (addButton) preview.appendChild(addButton);
+                                                                    const addButton = document.getElementById('btn-add-media');
+                                                                    preview.innerHTML = '';
+                                                                    if (addButton) preview.appendChild(addButton);
 
-    publicReportMedia.forEach((file, index) => {
-        const isImage = file.type && file.type.startsWith('image/');
-        const isVideo = file.type && file.type.startsWith('video/');
+                                                                    publicReportMedia.forEach((file, index) => {
+                                                                        const isImage = file.type && file.type.startsWith('image/');
+                                                                        const isVideo = file.type && file.type.startsWith('video/');
 
-        const card = document.createElement('div');
-        card.className = 'media-preview-item';
+                                                                        const card = document.createElement('div');
+                                                                        card.className = 'media-preview-item';
 
-        if (isImage) {
-            const img = document.createElement('img');
-            img.src = URL.createObjectURL(file);
-            card.appendChild(img);
-        } else if (isVideo) {
-            const video = document.createElement('video');
-            video.src = URL.createObjectURL(file);
-            video.muted = true;
-            card.appendChild(video);
+                                                                        if (isImage) {
+                                                                            const img = document.createElement('img');
+                                                                            img.src = URL.createObjectURL(file);
+                                                                            card.appendChild(img);
+                                                                        } else if (isVideo) {
+                                                                            const video = document.createElement('video');
+                                                                            video.src = URL.createObjectURL(file);
+                                                                            video.muted = true;
+                                                                            card.appendChild(video);
 
-            const badge = document.createElement('span');
-            badge.className = 'video-badge';
-            badge.innerHTML = '<i class="fa-solid fa-video"></i>';
-            card.appendChild(badge);
-        } else {
-            const docIcon = document.createElement('div');
-            docIcon.style.cssText = 'width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #64748b;';
-            docIcon.innerHTML = '<i class="fa-solid fa-file-invoice" style="font-size: 1.5rem;"></i>';
-            card.appendChild(docIcon);
-        }
+                                                                            const badge = document.createElement('span');
+                                                                            badge.className = 'video-badge';
+                                                                            badge.innerHTML = '<i class="fa-solid fa-video"></i>';
+                                                                            card.appendChild(badge);
+                                                                        } else {
+                                                                            const docIcon = document.createElement('div');
+                                                                            docIcon.style.cssText = 'width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #64748b;';
+                                                                            docIcon.innerHTML = '<i class="fa-solid fa-file-invoice" style="font-size: 1.5rem;"></i>';
+                                                                            card.appendChild(docIcon);
+                                                                        }
 
-        const removeBtn = document.createElement('button');
-        removeBtn.type = 'button';
-        removeBtn.className = 'media-remove-btn';
-        removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
-        removeBtn.onclick = (e) => {
-            e.stopPropagation();
-            publicReportMedia.splice(index, 1);
-            updatePublicReportMediaPreview();
-        };
-        card.appendChild(removeBtn);
+                                                                        const removeBtn = document.createElement('button');
+                                                                        removeBtn.type = 'button';
+                                                                        removeBtn.className = 'media-remove-btn';
+                                                                        removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                                                                        removeBtn.onclick = (e) => {
+                                                                            e.stopPropagation();
+                                                                            publicReportMedia.splice(index, 1);
+                                                                            updatePublicReportMediaPreview();
+                                                                        };
+                                                                        card.appendChild(removeBtn);
 
-        if (addButton) {
-            preview.insertBefore(card, addButton);
-        } else {
-            preview.appendChild(card);
-        }
-    });
-}
+                                                                        if (addButton) {
+                                                                            preview.insertBefore(card, addButton);
+                                                                        } else {
+                                                                            preview.appendChild(card);
+                                                                        }
+                                                                    });
+                                                                }
 
-function updatePublicCycleMediaPreview() {
-    const preview = document.getElementById('cycle-media-preview');
-    if (!preview) return;
+                                                                function updatePublicCycleMediaPreview() {
+                                                                    const preview = document.getElementById('cycle-media-preview');
+                                                                    if (!preview) return;
 
-    const addButton = document.getElementById('btn-add-cycle-media');
-    preview.innerHTML = '';
-    if (addButton) preview.appendChild(addButton);
+                                                                    const addButton = document.getElementById('btn-add-cycle-media');
+                                                                    preview.innerHTML = '';
+                                                                    if (addButton) preview.appendChild(addButton);
 
-    publicCycleMedia.forEach((file, index) => {
-        const card = document.createElement('div');
-        card.className = 'media-preview-item';
+                                                                    publicCycleMedia.forEach((file, index) => {
+                                                                        const card = document.createElement('div');
+                                                                        card.className = 'media-preview-item';
 
-        const img = document.createElement('img');
-        img.src = URL.createObjectURL(file);
-        card.appendChild(img);
+                                                                        const img = document.createElement('img');
+                                                                        img.src = URL.createObjectURL(file);
+                                                                        card.appendChild(img);
 
-        const removeBtn = document.createElement('button');
-        removeBtn.type = 'button';
-        removeBtn.className = 'media-remove-btn';
-        removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
-        removeBtn.onclick = (e) => {
-            e.stopPropagation();
-            publicCycleMedia.splice(index, 1);
-            updatePublicCycleMediaPreview();
-        };
-        card.appendChild(removeBtn);
+                                                                        const removeBtn = document.createElement('button');
+                                                                        removeBtn.type = 'button';
+                                                                        removeBtn.className = 'media-remove-btn';
+                                                                        removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                                                                        removeBtn.onclick = (e) => {
+                                                                            e.stopPropagation();
+                                                                            publicCycleMedia.splice(index, 1);
+                                                                            updatePublicCycleMediaPreview();
+                                                                        };
+                                                                        card.appendChild(removeBtn);
 
-        if (addButton) {
-            preview.insertBefore(card, addButton);
-        } else {
-            preview.appendChild(card);
-        }
-    });
-}
+                                                                        if (addButton) {
+                                                                            preview.insertBefore(card, addButton);
+                                                                        } else {
+                                                                            preview.appendChild(card);
+                                                                        }
+                                                                    });
+                                                                }
 
-function showPortalMode(mode) {
-    const selector = document.getElementById('portal-mode-selector');
-    const reportForm = document.getElementById('public-report-form');
-    const cycleForm = document.getElementById('public-cycle-form');
-    const successMsg = document.getElementById('report-success-msg');
+                                                                function showPortalMode(mode) {
+                                                                    const selector = document.getElementById('portal-mode-selector');
+                                                                    const reportForm = document.getElementById('public-report-form');
+                                                                    const cycleForm = document.getElementById('public-cycle-form');
+                                                                    const successMsg = document.getElementById('report-success-msg');
 
-    // Hide everything first
-    if (selector) selector.style.display = 'none';
-    if (reportForm) reportForm.style.display = 'none';
-    if (cycleForm) cycleForm.style.display = 'none';
-    if (successMsg) successMsg.style.display = 'none';
+                                                                    // Hide everything first
+                                                                    if (selector) selector.style.display = 'none';
+                                                                    if (reportForm) reportForm.style.display = 'none';
+                                                                    if (cycleForm) cycleForm.style.display = 'none';
+                                                                    if (successMsg) successMsg.style.display = 'none';
 
-    if (mode === 'selector') {
-        if (selector) selector.style.display = 'block';
-    } else if (mode === 'report') {
-        if (reportForm) reportForm.style.display = 'flex';
-    } else if (mode === 'cycle') {
-        if (cycleForm) cycleForm.style.display = 'flex';
-    }
-}
+                                                                    if (mode === 'selector') {
+                                                                        if (selector) selector.style.display = 'block';
+                                                                    } else if (mode === 'report') {
+                                                                        if (reportForm) reportForm.style.display = 'flex';
+                                                                    } else if (mode === 'cycle') {
+                                                                        if (cycleForm) cycleForm.style.display = 'flex';
+                                                                    }
+                                                                }
 
-async function uploadMediaFiles(files, folder) {
-    const uploaded = [];
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const filename = `${Date.now()}_${file.name}`;
-        const storageRef = ref(storage, `logs/${folder}/${filename}`);
-        const uploadTask = await uploadBytes(storageRef, file);
-        const downloadUrl = await getDownloadURL(uploadTask.ref);
-        uploaded.push({
-            name: file.name,
-            url: downloadUrl,
-            type: file.type,
-            path: storageRef.fullPath
-        });
-    }
-    return uploaded;
-}
-window.uploadMediaFiles = uploadMediaFiles;
+                                                                async function uploadMediaFiles(files, folder) {
+                                                                    const uploaded = [];
+                                                                    for (let i = 0; i < files.length; i++) {
+                                                                        const file = files[i];
+                                                                        const filename = `${Date.now()}_${file.name}`;
+                                                                        const storageRef = ref(storage, `logs/${folder}/${filename}`);
+                                                                        const uploadTask = await uploadBytes(storageRef, file);
+                                                                        const downloadUrl = await getDownloadURL(uploadTask.ref);
+                                                                        uploaded.push({
+                                                                            name: file.name,
+                                                                            url: downloadUrl,
+                                                                            type: file.type,
+                                                                            path: storageRef.fullPath
+                                                                        });
+                                                                    }
+                                                                    return uploaded;
+                                                                }
+                                                                window.uploadMediaFiles = uploadMediaFiles;
 
-function initPublicReportPage() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const reportSiteId = urlParams.get('report');
-    if (!reportSiteId) return;
+                                                                function initPublicReportPage() {
+                                                                    const urlParams = new URLSearchParams(window.location.search);
+                                                                    const reportSiteId = urlParams.get('report');
+                                                                    if (!reportSiteId) return;
 
-    // This is a public page - hide login, main app views, and loaders
-    document.querySelectorAll('.app-container, #login-view, #loading-splash').forEach(el => {
-        el.style.display = 'none';
-        el.classList.add('hidden');
-    });
+                                                                    // This is a public page - hide login, main app views, and loaders
+                                                                    document.querySelectorAll('.app-container, #login-view, #loading-splash').forEach(el => {
+                                                                        el.style.display = 'none';
+                                                                        el.classList.add('hidden');
+                                                                    });
 
-    const reportView = document.getElementById('public-report-view');
-    if (reportView) {
-        reportView.style.display = 'flex';
-        reportView.classList.remove('hidden');
-    }
+                                                                    const reportView = document.getElementById('public-report-view');
+                                                                    if (reportView) {
+                                                                        reportView.style.display = 'flex';
+                                                                        reportView.classList.remove('hidden');
+                                                                    }
 
-    // Show mode selector by default
-    showPortalMode('selector');
+                                                                    // Show mode selector by default
+                                                                    showPortalMode('selector');
 
-    // Mode selector buttons
-    const btnReport = document.getElementById('btn-mode-report');
-    const btnCycle = document.getElementById('btn-mode-cycle');
-    if (btnReport) btnReport.onclick = () => showPortalMode('report');
-    if (btnCycle) btnCycle.onclick = () => showPortalMode('cycle');
+                                                                    // Mode selector buttons
+                                                                    const btnReport = document.getElementById('btn-mode-report');
+                                                                    const btnCycle = document.getElementById('btn-mode-cycle');
+                                                                    if (btnReport) btnReport.onclick = () => showPortalMode('report');
+                                                                    if (btnCycle) btnCycle.onclick = () => showPortalMode('cycle');
 
-    // Back buttons
-    const btnBackReport = document.getElementById('btn-back-from-report');
-    const btnBackCycle = document.getElementById('btn-back-from-cycle');
-    if (btnBackReport) btnBackReport.onclick = () => showPortalMode('selector');
-    if (btnBackCycle) btnBackCycle.onclick = () => showPortalMode('selector');
+                                                                    // Back buttons
+                                                                    const btnBackReport = document.getElementById('btn-back-from-report');
+                                                                    const btnBackCycle = document.getElementById('btn-back-from-cycle');
+                                                                    if (btnBackReport) btnBackReport.onclick = () => showPortalMode('selector');
+                                                                    if (btnBackCycle) btnBackCycle.onclick = () => showPortalMode('selector');
 
-    // Load device info anonymously
-    (async function () {
-        try {
-            // Sign in anonymously to access Firestore
-            try {
-                if (!auth.currentUser) {
-                    await signInAnonymously(auth);
-                }
-            } catch (e) {
-                console.warn('Anonymous auth failed:', e);
-            }
+                                                                    // Load device info anonymously
+                                                                    (async function () {
+                                                                        try {
+                                                                            // Sign in anonymously to access Firestore
+                                                                            try {
+                                                                                if (!auth.currentUser) {
+                                                                                    await signInAnonymously(auth);
+                                                                                }
+                                                                            } catch (e) {
+                                                                                console.warn('Anonymous auth failed:', e);
+                                                                            }
 
-            const deviceInfoEl = document.getElementById('report-device-info');
-            try {
-                const docSnap = await getDoc(doc(db, 'sites', reportSiteId));
-                if (docSnap.exists()) {
-                    const site = { id: docSnap.id, ...docSnap.data() };
-                    if (deviceInfoEl) {
-                        deviceInfoEl.innerHTML = `
+                                                                            const deviceInfoEl = document.getElementById('report-device-info');
+                                                                            try {
+                                                                                const docSnap = await getDoc(doc(db, 'sites', reportSiteId));
+                                                                                if (docSnap.exists()) {
+                                                                                    const site = { id: docSnap.id, ...docSnap.data() };
+                                                                                    if (deviceInfoEl) {
+                                                                                        deviceInfoEl.innerHTML = `
                             <div class="report-device-loaded-unified">
                                 <div class="report-device-icon-unified"><i class="fa-solid fa-microchip"></i></div>
                                 <div class="report-device-details-unified">
@@ -17317,486 +17263,486 @@ function initPublicReportPage() {
                                 </div>
                             </div>
                         `;
-                    }
+                                                                                    }
 
-                    // Calculate and render latest cycle count dynamically
-                    const maxVal = getLatestCycleCountFromPlans(site);
-                    if (maxVal > 0) {
-                        const reportDescEl = document.getElementById('report-cycle-latest-desc');
-                        if (reportDescEl) {
-                            reportDescEl.textContent = `(ล่าสุด: ${maxVal.toLocaleString()} รอบ)`;
-                        }
-                        const reportInput = document.getElementById('report-cycle-count');
-                        if (reportInput) {
-                            reportInput.min = maxVal;
-                            reportInput.placeholder = `ต้องมีค่าอย่างน้อย ${maxVal.toLocaleString()} รอบ`;
-                        }
+                                                                                    // Calculate and render latest cycle count dynamically
+                                                                                    const maxVal = getLatestCycleCountFromPlans(site);
+                                                                                    if (maxVal > 0) {
+                                                                                        const reportDescEl = document.getElementById('report-cycle-latest-desc');
+                                                                                        if (reportDescEl) {
+                                                                                            reportDescEl.textContent = `(ล่าสุด: ${maxVal.toLocaleString()} รอบ)`;
+                                                                                        }
+                                                                                        const reportInput = document.getElementById('report-cycle-count');
+                                                                                        if (reportInput) {
+                                                                                            reportInput.min = maxVal;
+                                                                                            reportInput.placeholder = `ต้องมีค่าอย่างน้อย ${maxVal.toLocaleString()} รอบ`;
+                                                                                        }
 
-                        const cycleDescEl = document.getElementById('cycle-latest-desc');
-                        if (cycleDescEl) {
-                            cycleDescEl.textContent = `(ล่าสุด: ${maxVal.toLocaleString()} รอบ)`;
-                        }
-                        const cycleInput = document.getElementById('cycle-count-value');
-                        if (cycleInput) {
-                            cycleInput.min = maxVal;
-                            cycleInput.placeholder = `ต้องมีค่าอย่างน้อย ${maxVal.toLocaleString()} รอบ`;
-                        }
-                    }
-                } else {
-                    if (deviceInfoEl) {
-                        deviceInfoEl.innerHTML = `
+                                                                                        const cycleDescEl = document.getElementById('cycle-latest-desc');
+                                                                                        if (cycleDescEl) {
+                                                                                            cycleDescEl.textContent = `(ล่าสุด: ${maxVal.toLocaleString()} รอบ)`;
+                                                                                        }
+                                                                                        const cycleInput = document.getElementById('cycle-count-value');
+                                                                                        if (cycleInput) {
+                                                                                            cycleInput.min = maxVal;
+                                                                                            cycleInput.placeholder = `ต้องมีค่าอย่างน้อย ${maxVal.toLocaleString()} รอบ`;
+                                                                                        }
+                                                                                    }
+                                                                                } else {
+                                                                                    if (deviceInfoEl) {
+                                                                                        deviceInfoEl.innerHTML = `
                             <div class="report-device-error-unified">
                                 <i class="fa-solid fa-triangle-exclamation"></i>
                                 <span>ไม่พบข้อมูลเครื่องในระบบ</span>
                             </div>
                         `;
-                    }
-                }
-            } catch (e) {
-                console.warn('Could not load device info:', e);
-                if (deviceInfoEl) {
-                    deviceInfoEl.innerHTML = `
+                                                                                    }
+                                                                                }
+                                                                            } catch (e) {
+                                                                                console.warn('Could not load device info:', e);
+                                                                                if (deviceInfoEl) {
+                                                                                    deviceInfoEl.innerHTML = `
                         <div class="report-device-error-unified">
                             <i class="fa-solid fa-circle-exclamation"></i>
                             <span>ไม่สามารถโหลดข้อมูลเครื่องได้</span>
                         </div>
                     `;
-                }
-            }
+                                                                                }
+                                                                            }
 
-            // ===== REPORT MODE: Bind media picker =====
-            const mediaInput = document.getElementById('report-media');
-            const addMediaBtn = document.getElementById('btn-add-media');
-            if (mediaInput && addMediaBtn) {
-                addMediaBtn.onclick = () => mediaInput.click();
-                mediaInput.onchange = (e) => {
-                    const files = Array.from(e.target.files);
-                    if (files.length > 0) {
-                        const validFiles = files.filter(f => f.size <= 20 * 1024 * 1024);
-                        if (validFiles.length < files.length) {
-                            alert('บางไฟล์มีขนาดเกิน 20MB และถูกข้าม');
-                        }
-                        publicReportMedia.push(...validFiles);
-                        updatePublicReportMediaPreview();
-                    }
-                    e.target.value = '';
-                };
-            }
+                                                                            // ===== REPORT MODE: Bind media picker =====
+                                                                            const mediaInput = document.getElementById('report-media');
+                                                                            const addMediaBtn = document.getElementById('btn-add-media');
+                                                                            if (mediaInput && addMediaBtn) {
+                                                                                addMediaBtn.onclick = () => mediaInput.click();
+                                                                                mediaInput.onchange = (e) => {
+                                                                                    const files = Array.from(e.target.files);
+                                                                                    if (files.length > 0) {
+                                                                                        const validFiles = files.filter(f => f.size <= 20 * 1024 * 1024);
+                                                                                        if (validFiles.length < files.length) {
+                                                                                            alert('บางไฟล์มีขนาดเกิน 20MB และถูกข้าม');
+                                                                                        }
+                                                                                        publicReportMedia.push(...validFiles);
+                                                                                        updatePublicReportMediaPreview();
+                                                                                    }
+                                                                                    e.target.value = '';
+                                                                                };
+                                                                            }
 
-            // ===== CYCLE MODE: Bind media picker =====
-            const cycleMediaInput = document.getElementById('cycle-media');
-            const addCycleMediaBtn = document.getElementById('btn-add-cycle-media');
-            if (cycleMediaInput && addCycleMediaBtn) {
-                addCycleMediaBtn.onclick = () => cycleMediaInput.click();
-                cycleMediaInput.onchange = (e) => {
-                    const files = Array.from(e.target.files);
-                    if (files.length > 0) {
-                        const validFiles = files.filter(f => f.size <= 20 * 1024 * 1024);
-                        if (validFiles.length < files.length) {
-                            alert('บางไฟล์มีขนาดเกิน 20MB และถูกข้าม');
-                        }
-                        publicCycleMedia.push(...validFiles);
-                        updatePublicCycleMediaPreview();
-                    }
-                    e.target.value = '';
-                };
-            }
+                                                                            // ===== CYCLE MODE: Bind media picker =====
+                                                                            const cycleMediaInput = document.getElementById('cycle-media');
+                                                                            const addCycleMediaBtn = document.getElementById('btn-add-cycle-media');
+                                                                            if (cycleMediaInput && addCycleMediaBtn) {
+                                                                                addCycleMediaBtn.onclick = () => cycleMediaInput.click();
+                                                                                cycleMediaInput.onchange = (e) => {
+                                                                                    const files = Array.from(e.target.files);
+                                                                                    if (files.length > 0) {
+                                                                                        const validFiles = files.filter(f => f.size <= 20 * 1024 * 1024);
+                                                                                        if (validFiles.length < files.length) {
+                                                                                            alert('บางไฟล์มีขนาดเกิน 20MB และถูกข้าม');
+                                                                                        }
+                                                                                        publicCycleMedia.push(...validFiles);
+                                                                                        updatePublicCycleMediaPreview();
+                                                                                    }
+                                                                                    e.target.value = '';
+                                                                                };
+                                                                            }
 
-            // Phone input validations: allow numbers only
-            const reportTelInput = document.getElementById('report-tel');
-            if (reportTelInput) {
-                reportTelInput.addEventListener('input', (e) => {
-                    e.target.value = e.target.value.replace(/\D/g, '');
-                });
-            }
-            const cycleTelInput = document.getElementById('cycle-reporter-tel');
-            if (cycleTelInput) {
-                cycleTelInput.addEventListener('input', (e) => {
-                    e.target.value = e.target.value.replace(/\D/g, '');
-                });
-            }
+                                                                            // Phone input validations: allow numbers only
+                                                                            const reportTelInput = document.getElementById('report-tel');
+                                                                            if (reportTelInput) {
+                                                                                reportTelInput.addEventListener('input', (e) => {
+                                                                                    e.target.value = e.target.value.replace(/\D/g, '');
+                                                                                });
+                                                                            }
+                                                                            const cycleTelInput = document.getElementById('cycle-reporter-tel');
+                                                                            if (cycleTelInput) {
+                                                                                cycleTelInput.addEventListener('input', (e) => {
+                                                                                    e.target.value = e.target.value.replace(/\D/g, '');
+                                                                                });
+                                                                            }
 
-            // Clear warning labels on input
-            const reportCycleInput = document.getElementById('report-cycle-count');
-            if (reportCycleInput) {
-                reportCycleInput.addEventListener('input', () => {
-                    const warningEl = document.getElementById('report-cycle-warning-msg');
-                    if (warningEl) warningEl.style.display = 'none';
-                });
-            }
-            const cycleInput = document.getElementById('cycle-count-value');
-            if (cycleInput) {
-                cycleInput.addEventListener('input', () => {
-                    const warningEl = document.getElementById('cycle-warning-msg');
-                    if (warningEl) warningEl.style.display = 'none';
-                });
-            }
+                                                                            // Clear warning labels on input
+                                                                            const reportCycleInput = document.getElementById('report-cycle-count');
+                                                                            if (reportCycleInput) {
+                                                                                reportCycleInput.addEventListener('input', () => {
+                                                                                    const warningEl = document.getElementById('report-cycle-warning-msg');
+                                                                                    if (warningEl) warningEl.style.display = 'none';
+                                                                                });
+                                                                            }
+                                                                            const cycleInput = document.getElementById('cycle-count-value');
+                                                                            if (cycleInput) {
+                                                                                cycleInput.addEventListener('input', () => {
+                                                                                    const warningEl = document.getElementById('cycle-warning-msg');
+                                                                                    if (warningEl) warningEl.style.display = 'none';
+                                                                                });
+                                                                            }
 
 
 
-            // Helper: show success message
-            function showSuccessMessage(title, text, caseId) {
-                const reportForm = document.getElementById('public-report-form');
-                const cycleForm = document.getElementById('public-cycle-form');
-                if (reportForm) reportForm.style.display = 'none';
-                if (cycleForm) cycleForm.style.display = 'none';
+                                                                            // Helper: show success message
+                                                                            function showSuccessMessage(title, text, caseId) {
+                                                                                const reportForm = document.getElementById('public-report-form');
+                                                                                const cycleForm = document.getElementById('public-cycle-form');
+                                                                                if (reportForm) reportForm.style.display = 'none';
+                                                                                if (cycleForm) cycleForm.style.display = 'none';
 
-                const successEl = document.getElementById('report-success-msg');
-                const titleEl = document.getElementById('report-success-title');
-                const textEl = document.getElementById('report-success-text');
-                const caseIdDisplay = document.getElementById('report-case-id-display');
-                const displayCaseId = caseId ? caseId.replace(/^CASE-/, '') : '';
+                                                                                const successEl = document.getElementById('report-success-msg');
+                                                                                const titleEl = document.getElementById('report-success-title');
+                                                                                const textEl = document.getElementById('report-success-text');
+                                                                                const caseIdDisplay = document.getElementById('report-case-id-display');
+                                                                                const displayCaseId = caseId ? caseId.replace(/^CASE-/, '') : '';
 
-                if (titleEl) titleEl.textContent = title;
-                if (textEl) textEl.innerHTML = text;
-                if (caseIdDisplay) {
-                    if (caseId) {
-                        caseIdDisplay.innerHTML = `<i class="fa-solid fa-ticket"></i> รหัสเคส: <strong>${displayCaseId}</strong>`;
-                        caseIdDisplay.style.display = 'flex';
-                    } else {
-                        caseIdDisplay.style.display = 'none';
-                    }
-                }
-                if (successEl) successEl.style.display = 'flex';
-            }
+                                                                                if (titleEl) titleEl.textContent = title;
+                                                                                if (textEl) textEl.innerHTML = text;
+                                                                                if (caseIdDisplay) {
+                                                                                    if (caseId) {
+                                                                                        caseIdDisplay.innerHTML = `<i class="fa-solid fa-ticket"></i> รหัสเคส: <strong>${displayCaseId}</strong>`;
+                                                                                        caseIdDisplay.style.display = 'flex';
+                                                                                    } else {
+                                                                                        caseIdDisplay.style.display = 'none';
+                                                                                    }
+                                                                                }
+                                                                                if (successEl) successEl.style.display = 'flex';
+                                                                            }
 
-            // ===== REPORT FORM SUBMISSION =====
-            const form = document.getElementById('public-report-form');
-            const submitBtn = document.getElementById('btn-public-report-submit');
-            if (form && submitBtn) {
-                form.addEventListener('submit', async function (e) {
-                    e.preventDefault();
+                                                                            // ===== REPORT FORM SUBMISSION =====
+                                                                            const form = document.getElementById('public-report-form');
+                                                                            const submitBtn = document.getElementById('btn-public-report-submit');
+                                                                            if (form && submitBtn) {
+                                                                                form.addEventListener('submit', async function (e) {
+                                                                                    e.preventDefault();
 
-                    const name = document.getElementById('report-name')?.value.trim();
-                    const tel = document.getElementById('report-tel')?.value.trim();
-                    const position = document.getElementById('report-position')?.value.trim();
-                    const description = document.getElementById('report-description')?.value.trim();
-                    const cycleCountVal = document.getElementById('report-cycle-count')?.value.trim();
+                                                                                    const name = document.getElementById('report-name')?.value.trim();
+                                                                                    const tel = document.getElementById('report-tel')?.value.trim();
+                                                                                    const position = document.getElementById('report-position')?.value.trim();
+                                                                                    const description = document.getElementById('report-description')?.value.trim();
+                                                                                    const cycleCountVal = document.getElementById('report-cycle-count')?.value.trim();
 
-                    if (!name || !tel || !description) {
-                        alert('กรุณากรอกข้อมูลให้ครบถ้วน');
-                        return;
-                    }
+                                                                                    if (!name || !tel || !description) {
+                                                                                        alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+                                                                                        return;
+                                                                                    }
 
-                    let cycleCountNum = null;
-                    if (cycleCountVal) {
-                        cycleCountNum = parseInt(cycleCountVal, 10);
-                    }
+                                                                                    let cycleCountNum = null;
+                                                                                    if (cycleCountVal) {
+                                                                                        cycleCountNum = parseInt(cycleCountVal, 10);
+                                                                                    }
 
-                    submitBtn.disabled = true;
-                    const btnIcon = submitBtn.querySelector('i');
-                    const btnText = submitBtn.querySelector('span');
-                    if (btnIcon) btnIcon.className = 'fa-solid fa-circle-notch fa-spin';
-                    if (btnText) btnText.textContent = 'กำลังส่ง...';
+                                                                                    submitBtn.disabled = true;
+                                                                                    const btnIcon = submitBtn.querySelector('i');
+                                                                                    const btnText = submitBtn.querySelector('span');
+                                                                                    if (btnIcon) btnIcon.className = 'fa-solid fa-circle-notch fa-spin';
+                                                                                    if (btnText) btnText.textContent = 'กำลังส่ง...';
 
-                    try {
-                        if (!auth.currentUser) await signInAnonymously(auth);
+                                                                                    try {
+                                                                                        if (!auth.currentUser) await signInAnonymously(auth);
 
-                        // Validate cycle count if provided
-                        if (cycleCountNum !== null && !isNaN(cycleCountNum)) {
-                            const siteSnap = await getDoc(doc(db, 'sites', reportSiteId));
-                            if (siteSnap.exists()) {
-                                const site = { id: siteSnap.id, ...siteSnap.data() };
-                                const nowVal = new Date();
-                                const yearBE = String(nowVal.getFullYear() + 543);
-                                const monthKey = String(nowVal.getMonth() + 1);
-                                const maxVal = getLatestCycleCountFromPlans(site);
-                                const warningEl = document.getElementById('report-cycle-warning-msg');
+                                                                                        // Validate cycle count if provided
+                                                                                        if (cycleCountNum !== null && !isNaN(cycleCountNum)) {
+                                                                                            const siteSnap = await getDoc(doc(db, 'sites', reportSiteId));
+                                                                                            if (siteSnap.exists()) {
+                                                                                                const site = { id: siteSnap.id, ...siteSnap.data() };
+                                                                                                const nowVal = new Date();
+                                                                                                const yearBE = String(nowVal.getFullYear() + 543);
+                                                                                                const monthKey = String(nowVal.getMonth() + 1);
+                                                                                                const maxVal = getLatestCycleCountFromPlans(site);
+                                                                                                const warningEl = document.getElementById('report-cycle-warning-msg');
 
-                                if (maxVal > 0 && cycleCountNum < maxVal) {
-                                    const errMsg = `(ไม่ต่ำกว่า ${maxVal.toLocaleString()} รอบ)`;
-                                    if (warningEl) {
-                                        warningEl.textContent = errMsg;
-                                        warningEl.style.display = 'inline-block';
-                                    }
-                                    alert(`จำนวนรอบเครื่องต้องไม่น้อยกว่าค่าก่อนหน้า (${maxVal.toLocaleString()} รอบ)`);
-                                    submitBtn.disabled = false;
-                                    if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
-                                    if (btnText) btnText.textContent = 'ส่งคำร้อง';
-                                    return;
-                                } else {
-                                    if (warningEl) warningEl.style.display = 'none';
-                                }
-                            }
-                        }
+                                                                                                if (maxVal > 0 && cycleCountNum < maxVal) {
+                                                                                                    const errMsg = `(ไม่ต่ำกว่า ${maxVal.toLocaleString()} รอบ)`;
+                                                                                                    if (warningEl) {
+                                                                                                        warningEl.textContent = errMsg;
+                                                                                                        warningEl.style.display = 'inline-block';
+                                                                                                    }
+                                                                                                    alert(`จำนวนรอบเครื่องต้องไม่น้อยกว่าค่าก่อนหน้า (${maxVal.toLocaleString()} รอบ)`);
+                                                                                                    submitBtn.disabled = false;
+                                                                                                    if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
+                                                                                                    if (btnText) btnText.textContent = 'ส่งคำร้อง';
+                                                                                                    return;
+                                                                                                } else {
+                                                                                                    if (warningEl) warningEl.style.display = 'none';
+                                                                                                }
+                                                                                            }
+                                                                                        }
 
-                        const uploadedAttachments = await uploadMediaFiles(publicReportMedia, 'public');
+                                                                                        const uploadedAttachments = await uploadMediaFiles(publicReportMedia, 'public');
 
-                        const caseId = FirestoreService.generateCaseId();
+                                                                                        const caseId = FirestoreService.generateCaseId();
 
-                        const now = new Date();
-                        const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                                                                                        const now = new Date();
+                                                                                        const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-                        const logData = {
-                            siteId: reportSiteId,
-                            caseId: caseId,
-                            category: 'ซ่อม',
-                            status: 'Open',
-                            objective: description,
-                            details: description,
-                            date: dateStr,
-                            timestamp: now.toISOString(),
-                            recordedBy: name,
-                            recorderId: 'public',
-                            reporterName: name,
-                            reporterPhone: tel,
-                            reporterPosition: position || '',
-                            isPublicReport: true,
-                            cycleCount: cycleCountVal ? parseInt(cycleCountVal, 10) : null,
-                            lineItems: [],
-                            attachments: uploadedAttachments,
-                            attachmentsBefore: [],
-                            attachmentsAfter: [],
-                            statusHistory: { 'Open': now.toISOString() }
-                        };
+                                                                                        const logData = {
+                                                                                            siteId: reportSiteId,
+                                                                                            caseId: caseId,
+                                                                                            category: 'ซ่อม',
+                                                                                            status: 'Open',
+                                                                                            objective: description,
+                                                                                            details: description,
+                                                                                            date: dateStr,
+                                                                                            timestamp: now.toISOString(),
+                                                                                            recordedBy: name,
+                                                                                            recorderId: 'public',
+                                                                                            reporterName: name,
+                                                                                            reporterPhone: tel,
+                                                                                            reporterPosition: position || '',
+                                                                                            isPublicReport: true,
+                                                                                            cycleCount: cycleCountVal ? parseInt(cycleCountVal, 10) : null,
+                                                                                            lineItems: [],
+                                                                                            attachments: uploadedAttachments,
+                                                                                            attachmentsBefore: [],
+                                                                                            attachmentsAfter: [],
+                                                                                            statusHistory: { 'Open': now.toISOString() }
+                                                                                        };
 
-                        await addDoc(collection(db, 'logs'), logData);
-                        showSuccessMessage(
-                            'ส่งคำร้องสำเร็จ!',
-                            'ทีมงานได้รับคำร้องของคุณแล้ว<br>และจะติดต่อกลับโดยเร็วที่สุด',
-                            caseId
-                        );
-                    } catch (err) {
-                        console.error('Public report submission failed:', err);
-                        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง\n' + err.message);
-                        submitBtn.disabled = false;
-                        if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
-                        if (btnText) btnText.textContent = 'ส่งคำร้อง';
-                    }
-                });
-            }
+                                                                                        await addDoc(collection(db, 'logs'), logData);
+                                                                                        showSuccessMessage(
+                                                                                            'ส่งคำร้องสำเร็จ!',
+                                                                                            'ทีมงานได้รับคำร้องของคุณแล้ว<br>และจะติดต่อกลับโดยเร็วที่สุด',
+                                                                                            caseId
+                                                                                        );
+                                                                                    } catch (err) {
+                                                                                        console.error('Public report submission failed:', err);
+                                                                                        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง\n' + err.message);
+                                                                                        submitBtn.disabled = false;
+                                                                                        if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
+                                                                                        if (btnText) btnText.textContent = 'ส่งคำร้อง';
+                                                                                    }
+                                                                                });
+                                                                            }
 
-            // ===== CYCLE COUNT FORM SUBMISSION =====
-            const cycleForm = document.getElementById('public-cycle-form');
-            const cycleSubmitBtn = document.getElementById('btn-public-cycle-submit');
-            if (cycleForm && cycleSubmitBtn) {
-                cycleForm.addEventListener('submit', async function (e) {
-                    e.preventDefault();
+                                                                            // ===== CYCLE COUNT FORM SUBMISSION =====
+                                                                            const cycleForm = document.getElementById('public-cycle-form');
+                                                                            const cycleSubmitBtn = document.getElementById('btn-public-cycle-submit');
+                                                                            if (cycleForm && cycleSubmitBtn) {
+                                                                                cycleForm.addEventListener('submit', async function (e) {
+                                                                                    e.preventDefault();
 
-                    const name = document.getElementById('cycle-reporter-name')?.value.trim();
-                    const tel = document.getElementById('cycle-reporter-tel')?.value.trim();
-                    const cycleVal = document.getElementById('cycle-count-value')?.value.trim();
-                    const note = document.getElementById('cycle-note')?.value.trim();
+                                                                                    const name = document.getElementById('cycle-reporter-name')?.value.trim();
+                                                                                    const tel = document.getElementById('cycle-reporter-tel')?.value.trim();
+                                                                                    const cycleVal = document.getElementById('cycle-count-value')?.value.trim();
+                                                                                    const note = document.getElementById('cycle-note')?.value.trim();
 
-                    if (!name || !tel || !cycleVal) {
-                        alert('กรุณากรอกชื่อ เบอร์โทร และจำนวนรอบเครื่องให้ครบถ้วน');
-                        return;
-                    }
+                                                                                    if (!name || !tel || !cycleVal) {
+                                                                                        alert('กรุณากรอกชื่อ เบอร์โทร และจำนวนรอบเครื่องให้ครบถ้วน');
+                                                                                        return;
+                                                                                    }
 
-                    if (publicCycleMedia.length === 0) {
-                        alert('กรุณาถ่ายรูปหน้าจอ Cycle Count อย่างน้อย 1 รูป');
-                        return;
-                    }
+                                                                                    if (publicCycleMedia.length === 0) {
+                                                                                        alert('กรุณาถ่ายรูปหน้าจอ Cycle Count อย่างน้อย 1 รูป');
+                                                                                        return;
+                                                                                    }
 
-                    cycleSubmitBtn.disabled = true;
-                    const btnIcon = cycleSubmitBtn.querySelector('i');
-                    const btnText = cycleSubmitBtn.querySelector('span');
-                    if (btnIcon) btnIcon.className = 'fa-solid fa-circle-notch fa-spin';
-                    if (btnText) btnText.textContent = 'กำลังบันทึก...';
+                                                                                    cycleSubmitBtn.disabled = true;
+                                                                                    const btnIcon = cycleSubmitBtn.querySelector('i');
+                                                                                    const btnText = cycleSubmitBtn.querySelector('span');
+                                                                                    if (btnIcon) btnIcon.className = 'fa-solid fa-circle-notch fa-spin';
+                                                                                    if (btnText) btnText.textContent = 'กำลังบันทึก...';
 
-                    try {
-                        if (!auth.currentUser) await signInAnonymously(auth);
+                                                                                    try {
+                                                                                        if (!auth.currentUser) await signInAnonymously(auth);
 
-                        const siteSnap = await getDoc(doc(db, 'sites', reportSiteId));
-                        if (!siteSnap.exists()) {
-                            alert('ไม่พบข้อมูลเครื่องในระบบ');
-                            cycleSubmitBtn.disabled = false;
-                            if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
-                            if (btnText) btnText.textContent = 'บันทึก Cycle Count';
-                            return;
-                        }
-                        const site = { id: siteSnap.id, ...siteSnap.data() };
+                                                                                        const siteSnap = await getDoc(doc(db, 'sites', reportSiteId));
+                                                                                        if (!siteSnap.exists()) {
+                                                                                            alert('ไม่พบข้อมูลเครื่องในระบบ');
+                                                                                            cycleSubmitBtn.disabled = false;
+                                                                                            if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
+                                                                                            if (btnText) btnText.textContent = 'บันทึก Cycle Count';
+                                                                                            return;
+                                                                                        }
+                                                                                        const site = { id: siteSnap.id, ...siteSnap.data() };
 
-                        const now = new Date();
-                        const currentYear = now.getFullYear();
-                        const yearBE = String(currentYear + 543);
-                        const monthKey = String(now.getMonth() + 1);
-                        const cycleCountNum = parseInt(cycleVal, 10);
+                                                                                        const now = new Date();
+                                                                                        const currentYear = now.getFullYear();
+                                                                                        const yearBE = String(currentYear + 543);
+                                                                                        const monthKey = String(now.getMonth() + 1);
+                                                                                        const cycleCountNum = parseInt(cycleVal, 10);
 
-                        // Validate that cycle count is not less than the previous recorded count
-                        const maxVal = getLatestCycleCountFromPlans(site);
-                        const warningEl = document.getElementById('cycle-warning-msg');
-                        if (maxVal > 0 && cycleCountNum < maxVal) {
-                            const errMsg = `(ไม่ต่ำกว่า ${maxVal.toLocaleString()} รอบ)`;
-                            if (warningEl) {
-                                warningEl.textContent = errMsg;
-                                warningEl.style.display = 'inline-block';
-                            }
-                            alert(`จำนวนรอบต้องไม่น้อยกว่าค่าก่อนหน้า (${maxVal.toLocaleString()} รอบ)`);
-                            cycleSubmitBtn.disabled = false;
-                            if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
-                            if (btnText) btnText.textContent = 'บันทึก Cycle Count';
-                            return;
-                        } else {
-                            if (warningEl) warningEl.style.display = 'none';
-                        }
+                                                                                        // Validate that cycle count is not less than the previous recorded count
+                                                                                        const maxVal = getLatestCycleCountFromPlans(site);
+                                                                                        const warningEl = document.getElementById('cycle-warning-msg');
+                                                                                        if (maxVal > 0 && cycleCountNum < maxVal) {
+                                                                                            const errMsg = `(ไม่ต่ำกว่า ${maxVal.toLocaleString()} รอบ)`;
+                                                                                            if (warningEl) {
+                                                                                                warningEl.textContent = errMsg;
+                                                                                                warningEl.style.display = 'inline-block';
+                                                                                            }
+                                                                                            alert(`จำนวนรอบต้องไม่น้อยกว่าค่าก่อนหน้า (${maxVal.toLocaleString()} รอบ)`);
+                                                                                            cycleSubmitBtn.disabled = false;
+                                                                                            if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
+                                                                                            if (btnText) btnText.textContent = 'บันทึก Cycle Count';
+                                                                                            return;
+                                                                                        } else {
+                                                                                            if (warningEl) warningEl.style.display = 'none';
+                                                                                        }
 
-                        const uploadedAttachments = await uploadMediaFiles(publicCycleMedia, 'public-cycle');
+                                                                                        const uploadedAttachments = await uploadMediaFiles(publicCycleMedia, 'public-cycle');
 
-                        const dateStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                                                                                        const dateStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
-                        if (!site.maintenancePlans) site.maintenancePlans = {};
-                        if (Array.isArray(site.maintenancePlans[yearBE])) {
-                            const migratePlanToObjectFormat = (existingPlan) => {
-                                if (Array.isArray(existingPlan)) {
-                                    const obj = {};
-                                    existingPlan.forEach(m => { obj[String(m)] = { planned: true, cycleCount: null, inputDate: null, notes: null }; });
-                                    return obj;
-                                }
-                                return existingPlan || {};
-                            };
-                            site.maintenancePlans[yearBE] = migratePlanToObjectFormat(site.maintenancePlans[yearBE]);
-                        }
-                        if (!site.maintenancePlans[yearBE]) site.maintenancePlans[yearBE] = {};
+                                                                                        if (!site.maintenancePlans) site.maintenancePlans = {};
+                                                                                        if (Array.isArray(site.maintenancePlans[yearBE])) {
+                                                                                            const migratePlanToObjectFormat = (existingPlan) => {
+                                                                                                if (Array.isArray(existingPlan)) {
+                                                                                                    const obj = {};
+                                                                                                    existingPlan.forEach(m => { obj[String(m)] = { planned: true, cycleCount: null, inputDate: null, notes: null }; });
+                                                                                                    return obj;
+                                                                                                }
+                                                                                                return existingPlan || {};
+                                                                                            };
+                                                                                            site.maintenancePlans[yearBE] = migratePlanToObjectFormat(site.maintenancePlans[yearBE]);
+                                                                                        }
+                                                                                        if (!site.maintenancePlans[yearBE]) site.maintenancePlans[yearBE] = {};
 
-                        const existingPlan = site.maintenancePlans[yearBE][monthKey] || {};
-                        const planned = existingPlan.planned ?? false;
-                        const history = existingPlan.history || [];
+                                                                                        const existingPlan = site.maintenancePlans[yearBE][monthKey] || {};
+                                                                                        const planned = existingPlan.planned ?? false;
+                                                                                        const history = existingPlan.history || [];
 
-                        // Push previous count to history if it has changed
-                        if (existingPlan.cycleCount != null) {
-                            history.push({
-                                cycleCount: existingPlan.cycleCount,
-                                inputDate: existingPlan.inputDate,
-                                notes: existingPlan.notes,
-                                attachments: existingPlan.attachments || [],
-                                source: existingPlan.source || 'staff',
-                                reporterName: existingPlan.reporterName || null,
-                                reporterPhone: existingPlan.reporterPhone || null
-                            });
-                        }
+                                                                                        // Push previous count to history if it has changed
+                                                                                        if (existingPlan.cycleCount != null) {
+                                                                                            history.push({
+                                                                                                cycleCount: existingPlan.cycleCount,
+                                                                                                inputDate: existingPlan.inputDate,
+                                                                                                notes: existingPlan.notes,
+                                                                                                attachments: existingPlan.attachments || [],
+                                                                                                source: existingPlan.source || 'staff',
+                                                                                                reporterName: existingPlan.reporterName || null,
+                                                                                                reporterPhone: existingPlan.reporterPhone || null
+                                                                                            });
+                                                                                        }
 
-                        site.maintenancePlans[yearBE][monthKey] = {
-                            planned: planned,
-                            cycleCount: parseInt(cycleVal, 10),
-                            inputDate: dateStr,
-                            planDate: existingPlan.planDate || null,
-                            notes: note || existingPlan.notes || null,
-                            attachments: uploadedAttachments,
-                            history: history,
-                            source: 'public',
-                            reporterName: name,
-                            reporterPhone: tel
-                        };
+                                                                                        site.maintenancePlans[yearBE][monthKey] = {
+                                                                                            planned: planned,
+                                                                                            cycleCount: parseInt(cycleVal, 10),
+                                                                                            inputDate: dateStr,
+                                                                                            planDate: existingPlan.planDate || null,
+                                                                                            notes: note || existingPlan.notes || null,
+                                                                                            attachments: uploadedAttachments,
+                                                                                            history: history,
+                                                                                            source: 'public',
+                                                                                            reporterName: name,
+                                                                                            reporterPhone: tel
+                                                                                        };
 
-                        await FirestoreService.updateSite(reportSiteId, {
-                            name: site.name,
-                            maintenancePlans: site.maintenancePlans
-                        });
+                                                                                        await FirestoreService.updateSite(reportSiteId, {
+                                                                                            name: site.name,
+                                                                                            maintenancePlans: site.maintenancePlans
+                                                                                        });
 
-                        showSuccessMessage(
-                            'บันทึก Cycle Count สำเร็จ!',
-                            `รอบเครื่อง: <strong>${parseInt(cycleVal, 10).toLocaleString()}</strong> รอบ<br>ข้อมูลถูกบันทึกเรียบร้อยแล้ว`,
-                            null
-                        );
-                    } catch (err) {
-                        console.error('Public cycle count submission failed:', err);
-                        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง\n' + err.message);
-                        cycleSubmitBtn.disabled = false;
-                        if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
-                        if (btnText) btnText.textContent = 'บันทึก Cycle Count';
-                    }
-                });
-            }
-        } catch (err) {
-            console.error('Public report page init error:', err);
-        }
-    })();
-}
+                                                                                        showSuccessMessage(
+                                                                                            'บันทึก Cycle Count สำเร็จ!',
+                                                                                            `รอบเครื่อง: <strong>${parseInt(cycleVal, 10).toLocaleString()}</strong> รอบ<br>ข้อมูลถูกบันทึกเรียบร้อยแล้ว`,
+                                                                                            null
+                                                                                        );
+                                                                                    } catch (err) {
+                                                                                        console.error('Public cycle count submission failed:', err);
+                                                                                        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง\n' + err.message);
+                                                                                        cycleSubmitBtn.disabled = false;
+                                                                                        if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
+                                                                                        if (btnText) btnText.textContent = 'บันทึก Cycle Count';
+                                                                                    }
+                                                                                });
+                                                                            }
+                                                                        } catch (err) {
+                                                                            console.error('Public report page init error:', err);
+                                                                        }
+                                                                    })();
+                                                                }
 
-// Re-add initCycleCountModal call to setupEventListeners via init
-// (called from init() after setupEventListeners)
+                                                                // Re-add initCycleCountModal call to setupEventListeners via init
+                                                                // (called from init() after setupEventListeners)
 
-// --- Shared PDF Preview ---
-function showPdfPreview(html, title) {
-    let pdfModal = document.getElementById('pdf-preview-modal');
-    if (!pdfModal) {
-        pdfModal = document.createElement('div');
-        pdfModal.id = 'pdf-preview-modal';
-        pdfModal.style.cssText = 'display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; padding:16px;';
-        pdfModal.innerHTML = '<div style="position:relative; width:100%; max-width:1100px; height:90vh; background:#fff; border-radius:12px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.3);">'
-            + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
-            + '<span id="pdf-preview-title" style="font-weight:700; font-size:12px; color:#333;">PDF Preview</span>'
-            + '<div style="display:flex; gap:8px;">'
-            + '<button id="pdf-btn-print" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; background:#ffffff; color:#111111; border:1.5px solid #111111; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1); white-space:nowrap;" onmouseover="this.style.background=\'#111111\';this.style.color=\'#ffffff\';this.style.transform=\'scale(1.03)\';" onmouseout="this.style.background=\'#ffffff\';this.style.color=\'#111111\';this.style.transform=\'none\';"><i class="fa-solid fa-print"></i> พิมพ์</button>'
-            + '<button id="pdf-btn-close" style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; background:#ffffff; color:#111111; border:1.5px solid #e5e5e5; border-radius:8px; font-size:16px; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1);" onmouseover="this.style.background=\'#f3f4f6\';this.style.borderColor=\'#d1d5db\';this.style.transform=\'scale(1.05)\';" onmouseout="this.style.background=\'#ffffff\';this.style.borderColor=\'#e5e5e5\';this.style.transform=\'none\';"><i class="fa-solid fa-xmark"></i></button>'
-            + '</div></div>'
-            + '<iframe id="pdf-preview-iframe" style="flex:1; border:none; width:100%; background:#fff;"></iframe>'
-            + '</div>';
-        document.body.appendChild(pdfModal);
-        document.getElementById('pdf-btn-close').onclick = () => { pdfModal.style.display = 'none'; };
-        pdfModal.onclick = (e) => { if (e.target === pdfModal) pdfModal.style.display = 'none'; };
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && pdfModal.style.display === 'flex') pdfModal.style.display = 'none'; });
-    }
-    const iframe = document.getElementById('pdf-preview-iframe');
-    const titleEl = document.getElementById('pdf-preview-title');
-    if (titleEl) titleEl.textContent = title;
-    if (iframe) iframe.srcdoc = html;
-    pdfModal.style.display = 'flex';
-    const printBtn = document.getElementById('pdf-btn-print');
-    if (printBtn) {
-        const newPrint = printBtn.cloneNode(true);
-        printBtn.parentNode.replaceChild(newPrint, printBtn);
-        newPrint.id = 'pdf-btn-print';
-        newPrint.onclick = () => { if (iframe) iframe.contentWindow.print(); };
-    }
-}
-window.showPdfPreview = showPdfPreview;
+                                                                // --- Shared PDF Preview ---
+                                                                function showPdfPreview(html, title) {
+                                                                    let pdfModal = document.getElementById('pdf-preview-modal');
+                                                                    if (!pdfModal) {
+                                                                        pdfModal = document.createElement('div');
+                                                                        pdfModal.id = 'pdf-preview-modal';
+                                                                        pdfModal.style.cssText = 'display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; padding:16px;';
+                                                                        pdfModal.innerHTML = '<div style="position:relative; width:100%; max-width:1100px; height:90vh; background:#fff; border-radius:12px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.3);">'
+                                                                            + '<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #e5e7eb; background:#f9fafb; flex-shrink:0;">'
+                                                                            + '<span id="pdf-preview-title" style="font-weight:700; font-size:12px; color:#333;">PDF Preview</span>'
+                                                                            + '<div style="display:flex; gap:8px;">'
+                                                                            + '<button id="pdf-btn-print" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; background:#ffffff; color:#111111; border:1.5px solid #111111; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1); white-space:nowrap;" onmouseover="this.style.background=\'#111111\';this.style.color=\'#ffffff\';this.style.transform=\'scale(1.03)\';" onmouseout="this.style.background=\'#ffffff\';this.style.color=\'#111111\';this.style.transform=\'none\';"><i class="fa-solid fa-print"></i> พิมพ์</button>'
+                                                                            + '<button id="pdf-btn-close" style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; background:#ffffff; color:#111111; border:1.5px solid #e5e5e5; border-radius:8px; font-size:16px; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1);" onmouseover="this.style.background=\'#f3f4f6\';this.style.borderColor=\'#d1d5db\';this.style.transform=\'scale(1.05)\';" onmouseout="this.style.background=\'#ffffff\';this.style.borderColor=\'#e5e5e5\';this.style.transform=\'none\';"><i class="fa-solid fa-xmark"></i></button>'
+                                                                            + '</div></div>'
+                                                                            + '<iframe id="pdf-preview-iframe" style="flex:1; border:none; width:100%; background:#fff;"></iframe>'
+                                                                            + '</div>';
+                                                                        document.body.appendChild(pdfModal);
+                                                                        document.getElementById('pdf-btn-close').onclick = () => { pdfModal.style.display = 'none'; };
+                                                                        pdfModal.onclick = (e) => { if (e.target === pdfModal) pdfModal.style.display = 'none'; };
+                                                                        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && pdfModal.style.display === 'flex') pdfModal.style.display = 'none'; });
+                                                                    }
+                                                                    const iframe = document.getElementById('pdf-preview-iframe');
+                                                                    const titleEl = document.getElementById('pdf-preview-title');
+                                                                    if (titleEl) titleEl.textContent = title;
+                                                                    if (iframe) iframe.srcdoc = html;
+                                                                    pdfModal.style.display = 'flex';
+                                                                    const printBtn = document.getElementById('pdf-btn-print');
+                                                                    if (printBtn) {
+                                                                        const newPrint = printBtn.cloneNode(true);
+                                                                        printBtn.parentNode.replaceChild(newPrint, printBtn);
+                                                                        newPrint.id = 'pdf-btn-print';
+                                                                        newPrint.onclick = () => { if (iframe) iframe.contentWindow.print(); };
+                                                                    }
+                                                                }
+                                                                window.showPdfPreview = showPdfPreview;
 
-// --- Annual Plan PDF Export ---
-function exportAnnualPlanPDF() {
-    const yearSelect = document.getElementById('plan-year-select');
-    const selectedBE = yearSelect ? yearSelect.value : String(new Date().getFullYear() + 543);
-    const userLocale = navigator.language || 'th-TH';
-    const usesBE = userLocale.startsWith('th');
-    const displayYear = usesBE ? `พ.ศ. ${selectedBE}` : `${parseInt(selectedBE) - 543}`;
-    const monthNames = Array.from({ length: 12 }, (_, i) => new Date(2024, i, 1).toLocaleString(userLocale, { month: 'short' }));
+                                                                // --- Annual Plan PDF Export ---
+                                                                function exportAnnualPlanPDF() {
+                                                                    const yearSelect = document.getElementById('plan-year-select');
+                                                                    const selectedBE = yearSelect ? yearSelect.value : String(new Date().getFullYear() + 543);
+                                                                    const userLocale = navigator.language || 'th-TH';
+                                                                    const usesBE = userLocale.startsWith('th');
+                                                                    const displayYear = usesBE ? `พ.ศ. ${selectedBE}` : `${parseInt(selectedBE) - 543}`;
+                                                                    const monthNames = Array.from({ length: 12 }, (_, i) => new Date(2024, i, 1).toLocaleString(userLocale, { month: 'short' }));
 
-    const rowsHtml = (state.sites || []).map((site, idx) => {
-        const siteColor = getSiteColor(site.name);
-        const cells = Array.from({ length: 12 }, (_, m) => {
-            const pd = getPlanMonthData(site, selectedBE, m + 1);
-            const { planned, cycleCount, inputDate, planDate } = pd;
-            if (!planned && cycleCount == null) return `<td style="text-align:center; padding:4px 2px; border:1px solid #ddd; background:#fff;"></td>`;
+                                                                    const rowsHtml = (state.sites || []).map((site, idx) => {
+                                                                        const siteColor = getSiteColor(site.name);
+                                                                        const cells = Array.from({ length: 12 }, (_, m) => {
+                                                                            const pd = getPlanMonthData(site, selectedBE, m + 1);
+                                                                            const { planned, cycleCount, inputDate, planDate } = pd;
+                                                                            if (!planned && cycleCount == null) return `<td style="text-align:center; padding:4px 2px; border:1px solid #ddd; background:#fff;"></td>`;
 
-            const cellBg = planned ? `${siteColor}0d` : '#fff';
-            const cellBorder = 'border:1px solid #ddd;';
+                                                                            const cellBg = planned ? `${siteColor}0d` : '#fff';
+                                                                            const cellBorder = 'border:1px solid #ddd;';
 
-            let planHtml = '';
-            if (planned) {
-                planHtml = `<span style="background:${siteColor}15; color:${siteColor}; border:1px solid ${siteColor}35; font-size:6px; font-weight:700; padding:2px 5px; border-radius:2px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; white-space:nowrap;"><i class="fa-solid fa-wrench" style="font-size:6.5px;"></i>${planDate ? `<span style="font-size:5px; font-weight:500; margin-top:1px; opacity:0.85;">${planDate}</span>` : ''}</span>`;
-            }
+                                                                            let planHtml = '';
+                                                                            if (planned) {
+                                                                                planHtml = `<span style="background:${siteColor}15; color:${siteColor}; border:1px solid ${siteColor}35; font-size:6px; font-weight:700; padding:2px 5px; border-radius:2px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; white-space:nowrap;"><i class="fa-solid fa-wrench" style="font-size:6.5px;"></i>${planDate ? `<span style="font-size:5px; font-weight:500; margin-top:1px; opacity:0.85;">${planDate}</span>` : ''}</span>`;
+                                                                            }
 
-            let cycleHtml = '';
-            if (cycleCount != null) {
-                const datePart = inputDate ? inputDate.split('T')[0] : '';
-                const dateHtml = datePart ? `<span style="font-size:5px; color:${siteColor}; opacity:0.8; display:block; margin-top:1px; font-weight:normal;">${datePart}</span>` : '';
-                cycleHtml = `<span style="background:#fff; color:${siteColor}; border:1px dashed ${siteColor}50; font-size:6px; font-weight:700; padding:2px 5px; border-radius:2px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; white-space:nowrap;"><span style="font-size:6px; font-weight:700;">${Number(cycleCount).toLocaleString()}</span>${dateHtml}</span>`;
-            }
+                                                                            let cycleHtml = '';
+                                                                            if (cycleCount != null) {
+                                                                                const datePart = inputDate ? inputDate.split('T')[0] : '';
+                                                                                const dateHtml = datePart ? `<span style="font-size:5px; color:${siteColor}; opacity:0.8; display:block; margin-top:1px; font-weight:normal;">${datePart}</span>` : '';
+                                                                                cycleHtml = `<span style="background:#fff; color:${siteColor}; border:1px dashed ${siteColor}50; font-size:6px; font-weight:700; padding:2px 5px; border-radius:2px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; white-space:nowrap;"><span style="font-size:6px; font-weight:700;">${Number(cycleCount).toLocaleString()}</span>${dateHtml}</span>`;
+                                                                            }
 
-            return `<td style="position:relative; text-align:center; padding:3px 2px; ${cellBorder} background:${cellBg}; vertical-align:middle;">
+                                                                            return `<td style="position:relative; text-align:center; padding:3px 2px; ${cellBorder} background:${cellBg}; vertical-align:middle;">
                 <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
                     ${planHtml}
                     ${cycleHtml}
                 </div>
             </td>`;
-        }).join('');
-        const warranty = site.insuranceStartDate && site.insuranceEndDate ? `${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : '-';
-        const subtleInfo = [
-            site.brand || site.model ? '<span style="font-weight:600;">รุ่น:</span> ' + [site.brand, site.model].filter(Boolean).join(' ') : '',
-            site.serialNumber ? '<span style="font-weight:600;">S/N:</span> ' + site.serialNumber : '',
-            '<span style="font-weight:600;">ประกัน:</span> ' + warranty,
-            site.province ? '<span style="font-weight:600;">จ.</span>' + site.province : ''
-        ].filter(Boolean).join(' | ');
-        return `<tr>
+                                                                        }).join('');
+                                                                        const warranty = site.insuranceStartDate && site.insuranceEndDate ? `${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : '-';
+                                                                        const subtleInfo = [
+                                                                            site.brand || site.model ? '<span style="font-weight:600;">รุ่น:</span> ' + [site.brand, site.model].filter(Boolean).join(' ') : '',
+                                                                            site.serialNumber ? '<span style="font-weight:600;">S/N:</span> ' + site.serialNumber : '',
+                                                                            '<span style="font-weight:600;">ประกัน:</span> ' + warranty,
+                                                                            site.province ? '<span style="font-weight:600;">จ.</span>' + site.province : ''
+                                                                        ].filter(Boolean).join(' | ');
+                                                                        return `<tr>
             <td style="text-align:center; padding:5px 4px; border:1px solid #ddd; font-size:9px; font-weight:600;">${idx + 1}</td>
             <td style="text-align:center; padding:5px 4px; border:1px solid #ddd; font-size:8px; white-space:nowrap;">${site.siteCode || '-'}</td>
             <td style="padding:5px 8px; border:1px solid #ddd; border-left:4px solid ${siteColor}; font-size:9px;"><b>${site.name}</b><div style="font-size:7px; color:#999; margin-top:1px;">${subtleInfo}</div></td>
             ${cells}
         </tr>`;
-    }).join('');
+                                                                    }).join('');
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+                                                                    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>Annual Maintenance Plan ${displayYear}</title>
 <style>
     @page { size: A4 landscape; margin: 0; }
@@ -17847,33 +17793,33 @@ function exportAnnualPlanPDF() {
 </div>
 </body></html>`;
 
-    showPdfPreview(html, `แผนการบำรุงรักษาประจำปี ${displayYear}`);
-}
-window.exportAnnualPlanPDF = exportAnnualPlanPDF;
+                                                                    showPdfPreview(html, `แผนการบำรุงรักษาประจำปี ${displayYear}`);
+                                                                }
+                                                                window.exportAnnualPlanPDF = exportAnnualPlanPDF;
 
-// --- Case History PDF Export ---
-async function exportCaseHistoryPDF(siteId) {
-    const site = state.sites.find(s => s.id === siteId);
-    if (!site) { showToast('ไม่พบข้อมูลเครื่อง', 'error'); return; }
+                                                                // --- Case History PDF Export ---
+                                                                async function exportCaseHistoryPDF(siteId) {
+                                                                    const site = state.sites.find(s => s.id === siteId);
+                                                                    if (!site) { showToast('ไม่พบข้อมูลเครื่อง', 'error'); return; }
 
-    const siteLogs = (state.logs || [])
-        .filter(l => l.siteId === siteId)
-        .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+                                                                    const siteLogs = (state.logs || [])
+                                                                        .filter(l => l.siteId === siteId)
+                                                                        .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
-    const userLocale = navigator.language || 'th-TH';
-    const thaiDate = (d) => d ? new Date(d).toLocaleDateString(userLocale, { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+                                                                    const userLocale = navigator.language || 'th-TH';
+                                                                    const thaiDate = (d) => d ? new Date(d).toLocaleDateString(userLocale, { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
 
-    const statusColor = (s) => {
-        if (!s) return '#6b7280';
-        if (s === 'Case Closed') return '#16a34a';
-        if (s === 'Open') return '#ef4444';
-        if (s === 'กำลังดำเนินการ') return '#f59e0b';
-        return '#6b7280';
-    };
+                                                                    const statusColor = (s) => {
+                                                                        if (!s) return '#6b7280';
+                                                                        if (s === 'Case Closed') return '#16a34a';
+                                                                        if (s === 'Open') return '#ef4444';
+                                                                        if (s === 'กำลังดำเนินการ') return '#f59e0b';
+                                                                        return '#6b7280';
+                                                                    };
 
-    const rowsHtml = siteLogs.length === 0
-        ? '<tr><td colspan="6" style="text-align:center; padding:1rem; color:#999; font-style:italic;">ไม่มีประวัติเคส</td></tr>'
-        : siteLogs.map((log, idx) => `
+                                                                    const rowsHtml = siteLogs.length === 0
+                                                                        ? '<tr><td colspan="6" style="text-align:center; padding:1rem; color:#999; font-style:italic;">ไม่มีประวัติเคส</td></tr>'
+                                                                        : siteLogs.map((log, idx) => `
             <tr style="background:${idx % 2 === 0 ? '#fff' : '#f9fafb'};">
                 <td style="padding:5px 8px; border:1px solid #e5e7eb; font-size:9px; text-align:center; font-weight:600; color:#555;">${idx + 1}</td>
                 <td style="padding:5px 8px; border:1px solid #e5e7eb; font-size:9px; font-family:monospace;">${log.caseId || '-'}</td>
@@ -17886,7 +17832,7 @@ async function exportCaseHistoryPDF(siteId) {
             </tr>
         `).join('');
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+                                                                    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>ประวัติเคส - ${site.name}</title>
 <style>
     @page { size: A4 landscape; margin: 0; }
@@ -17952,66 +17898,66 @@ async function exportCaseHistoryPDF(siteId) {
 </div>
 </body></html>`;
 
-    showPdfPreview(html, `ประวัติการซ่อมเครื่อง — ${site.name}`);
-}
-window.exportCaseHistoryPDF = exportCaseHistoryPDF;
+                                                                    showPdfPreview(html, `ประวัติการซ่อมเครื่อง — ${site.name}`);
+                                                                }
+                                                                window.exportCaseHistoryPDF = exportCaseHistoryPDF;
 
-// --- Company Settings ---
-async function setupCompanySettingsForm() {
-    // Load existing settings
-    const settings = await FirestoreService.getCompanySettings();
-    const nameEl = document.getElementById('company-name-input');
-    const hotlineEl = document.getElementById('company-hotline-input');
-    const addressEl = document.getElementById('company-address-input');
-    if (nameEl && settings.name) nameEl.value = settings.name;
-    if (hotlineEl && settings.hotline) hotlineEl.value = settings.hotline;
-    if (addressEl && settings.address) addressEl.value = settings.address;
+                                                                // --- Company Settings ---
+                                                                async function setupCompanySettingsForm() {
+                                                                    // Load existing settings
+                                                                    const settings = await FirestoreService.getCompanySettings();
+                                                                    const nameEl = document.getElementById('company-name-input');
+                                                                    const hotlineEl = document.getElementById('company-hotline-input');
+                                                                    const addressEl = document.getElementById('company-address-input');
+                                                                    if (nameEl && settings.name) nameEl.value = settings.name;
+                                                                    if (hotlineEl && settings.hotline) hotlineEl.value = settings.hotline;
+                                                                    if (addressEl && settings.address) addressEl.value = settings.address;
 
-    // Save button
-    const saveBtn = document.getElementById('btn-save-company-settings');
-    if (saveBtn) {
-        const newBtn = saveBtn.cloneNode(true);
-        saveBtn.parentNode.replaceChild(newBtn, saveBtn);
-        newBtn.addEventListener('click', async () => {
-            const data = {
-                name: nameEl?.value.trim() || 'บริษัท ไบโอ อินโน เทค จำกัด',
-                hotline: hotlineEl?.value.trim() || '',
-                address: addressEl?.value.trim() || '',
-            };
-            newBtn.disabled = true;
-            newBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังบันทึก...';
-            try {
-                await FirestoreService.updateCompanySettings(data);
-                showToast('บันทึกข้อมูลบริษัทสำเร็จ', 'success');
-            } catch (e) {
-                showToast('เกิดข้อผิดพลาด', 'error');
-            } finally {
-                newBtn.disabled = false;
-                newBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูลบริษัท';
-            }
-        });
-    }
-}
-window.setupCompanySettingsForm = setupCompanySettingsForm;
+                                                                    // Save button
+                                                                    const saveBtn = document.getElementById('btn-save-company-settings');
+                                                                    if (saveBtn) {
+                                                                        const newBtn = saveBtn.cloneNode(true);
+                                                                        saveBtn.parentNode.replaceChild(newBtn, saveBtn);
+                                                                        newBtn.addEventListener('click', async () => {
+                                                                            const data = {
+                                                                                name: nameEl?.value.trim() || 'บริษัท ไบโอ อินโน เทค จำกัด',
+                                                                                hotline: hotlineEl?.value.trim() || '',
+                                                                                address: addressEl?.value.trim() || '',
+                                                                            };
+                                                                            newBtn.disabled = true;
+                                                                            newBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังบันทึก...';
+                                                                            try {
+                                                                                await FirestoreService.updateCompanySettings(data);
+                                                                                showToast('บันทึกข้อมูลบริษัทสำเร็จ', 'success');
+                                                                            } catch (e) {
+                                                                                showToast('เกิดข้อผิดพลาด', 'error');
+                                                                            } finally {
+                                                                                newBtn.disabled = false;
+                                                                                newBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูลบริษัท';
+                                                                            }
+                                                                        });
+                                                                    }
+                                                                }
+                                                                window.setupCompanySettingsForm = setupCompanySettingsForm;
 
-// --- Devices List PDF Export ---
-function exportDevicesPDF() {
-    if (!state.sites || state.sites.length === 0) {
-        showToast('ไม่มีข้อมูลเครื่อง', 'error');
-        return;
-    }
+                                                                // --- Devices List PDF Export ---
+                                                                function exportDevicesPDF() {
+                                                                    if (!state.sites || state.sites.length === 0) {
+                                                                        showToast('ไม่มีข้อมูลเครื่อง', 'error');
+                                                                        return;
+                                                                    }
 
-    const userLocale = navigator.language || 'th-TH';
-    const thaiDate = (d) => d ? new Date(d).toLocaleDateString(userLocale, { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+                                                                    const userLocale = navigator.language || 'th-TH';
+                                                                    const thaiDate = (d) => d ? new Date(d).toLocaleDateString(userLocale, { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
 
-    const rowsHtml = state.sites.map((site, idx) => {
-        const siteColor = getSiteColor(site.name);
-        const warranty = site.insuranceStartDate && site.insuranceEndDate
-            ? `${thaiDate(site.insuranceStartDate)} ~ ${thaiDate(site.insuranceEndDate)}` : '-';
-        const address = [site.subdistrict, site.district, site.province].filter(Boolean).join(', ') || '-';
-        const installLog = (state.logs || []).find(l => l.siteId === site.id && l.category === 'ติดตั้ง');
-        const installDate = installLog ? thaiDate(installLog.date) : '-';
-        return `<tr style="background:${idx % 2 === 0 ? '#fff' : '#f9fafb'};">
+                                                                    const rowsHtml = state.sites.map((site, idx) => {
+                                                                        const siteColor = getSiteColor(site.name);
+                                                                        const warranty = site.insuranceStartDate && site.insuranceEndDate
+                                                                            ? `${thaiDate(site.insuranceStartDate)} ~ ${thaiDate(site.insuranceEndDate)}` : '-';
+                                                                        const address = [site.subdistrict, site.district, site.province].filter(Boolean).join(', ') || '-';
+                                                                        const installLog = (state.logs || []).find(l => l.siteId === site.id && l.category === 'ติดตั้ง');
+                                                                        const installDate = installLog ? thaiDate(installLog.date) : '-';
+                                                                        return `<tr style="background:${idx % 2 === 0 ? '#fff' : '#f9fafb'};">
             <td style="text-align:center; padding:4px 6px; border:1px solid #e5e7eb; font-size:9px; font-weight:600;">${idx + 1}</td>
             <td style="padding:4px 6px; border:1px solid #e5e7eb; font-size:9px;">${site.siteCode || '-'}</td>
             <td style="padding:4px 6px; border:1px solid #e5e7eb; border-left:3px solid ${siteColor}; font-size:9px;">
@@ -18028,9 +17974,9 @@ function exportDevicesPDF() {
             <td style="padding:4px 6px; border:1px solid #e5e7eb; font-size:9px;">${warranty}</td>
             <td style="padding:4px 6px; border:1px solid #e5e7eb; font-size:9px;">${site.warrantyNumber || '-'}</td>
         </tr>`;
-    }).join('');
+                                                                    }).join('');
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+                                                                    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>ทะเบียนเครื่องมือ</title>
 <style>
     @page { size: A4 landscape; margin: 0; }
@@ -18088,6 +18034,6 @@ function exportDevicesPDF() {
 </div>
 </body></html>`;
 
-    showPdfPreview(html, 'ทะเบียนเครื่องมือ');
-}
-window.exportDevicesPDF = exportDevicesPDF;
+                                                                    showPdfPreview(html, 'ทะเบียนเครื่องมือ');
+                                                                }
+                                                                window.exportDevicesPDF = exportDevicesPDF;
