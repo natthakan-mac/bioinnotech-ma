@@ -486,7 +486,7 @@ function showCancelReasonDialog(title = "ยกเลิกเคส") {
         modal.style.justifyContent = 'center';
         modal.style.zIndex = '9999';
         modal.style.transition = 'opacity 0.2s ease';
-        
+
         modal.innerHTML = `
             <div style="background: #ffffff; border-radius: 16px; padding: 2rem; width: 90%; max-width: 450px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.05); font-family: 'Outfit', 'Prompt', sans-serif;">
                 <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
@@ -505,7 +505,7 @@ function showCancelReasonDialog(title = "ยกเลิกเคส") {
         `;
 
         document.body.appendChild(modal);
-        
+
         const textarea = modal.querySelector('#cancel-reason-textarea');
         if (textarea) textarea.focus();
 
@@ -7303,6 +7303,36 @@ function getCategorySpecificDoneFields(data) {
             if (!isFilled(getFieldValue(data, 'installType'))) {
                 missing.push('ประเภทการติดตั้ง/รื้อถอน');
             }
+
+            // Site layout / details validation
+            if (!isFilled(getFieldValue(data, 'useRamp'))) {
+                missing.push('ข้อมูลมีทางลาดหรือไม่');
+            } else if (getFieldValue(data, 'useRamp') === 'yes') {
+                if (!isFilled(getFieldValue(data, 'rampWidth'))) missing.push('ความกว้างทางลาด');
+            }
+
+            if (!isFilled(getFieldValue(data, 'useElevator'))) {
+                missing.push('ข้อมูลมีลิฟต์หรือไม่');
+            } else if (getFieldValue(data, 'useElevator') === 'yes') {
+                if (!isFilled(getFieldValue(data, 'elevatorCapacity'))) missing.push('น้ำหนักรับได้ของลิฟต์');
+                if (!isFilled(getFieldValue(data, 'elevatorDoorWidth'))) missing.push('ความกว้างประตูลิฟต์');
+                if (!isFilled(getFieldValue(data, 'elevatorDoorHeight'))) missing.push('ความสูงประตูลิฟต์');
+            }
+
+            if (!isFilled(getFieldValue(data, 'walkwayWidth'))) missing.push('ความกว้างช่องทางเดิน (ที่แคบที่สุด)');
+            if (!isFilled(getFieldValue(data, 'walkwayHeight'))) missing.push('ความสูงช่องทางเดิน (ที่แคบที่สุด)');
+
+            const doorCountVal = parseInt(getFieldValue(data, 'doorCount')) || 0;
+            for (let i = 1; i <= doorCountVal; i++) {
+                if (!isFilled(getFieldValue(data, `doorWidth_${i}`))) missing.push(`ความกว้างประตูที่ ${i}`);
+                if (!isFilled(getFieldValue(data, `doorHeight_${i}`))) missing.push(`ความสูงประตูที่ ${i}`);
+            }
+
+            if (!isFilled(getFieldValue(data, 'needWiring'))) missing.push('ข้อมูลต้องเดินสายไฟหรือไม่');
+            if (!isFilled(getFieldValue(data, 'needPowerPlug'))) missing.push('ข้อมูลต้องเดิน Power Plug หรือไม่');
+            if (!isFilled(getFieldValue(data, 'wireDistance'))) missing.push('ระยะทางจากตู้ไฟไปยังเครื่อง');
+            if (!isFilled(getFieldValue(data, 'needDrillWall'))) missing.push('ข้อมูลเจาะกำแพงหรือไม่');
+            if (!isFilled(getFieldValue(data, 'wireThroughCeiling'))) missing.push('ข้อมูลสายไฟเดินลอดฝ้าหรือไม่');
         }
 
         if (category === 'ติดตั้ง' && !isHospitalTechCase) {
@@ -7468,9 +7498,10 @@ function getIncompleteDoneFieldKeys(data) {
                 missingKeys.push('precheckDate');
             }
             const precheckFields = [
-                'precheck_physicalCondition', 'precheck_electricalSafety', 'precheck_cycleTest',
-                'precheck_rfLeakageTest', 'precheck_h2o2LeakageTest', 'precheck_doorOperation',
-                'precheck_pmSensorTest', 'precheck_biologicalIndicator', 'precheck_trainingCompleted'
+                'precheck_electrical', 'precheck_wiring', 'precheck_grounding', 'precheck_doorMotor',
+                'precheck_connectors', 'precheck_vacuumPump', 'precheck_leakTest', 'precheck_chemical',
+                'precheck_sensors', 'precheck_sterilize', 'precheck_gasResidual', 'precheck_interior',
+                'precheck_exterior'
             ];
             precheckFields.forEach((key) => {
                 if (!isFilled(getFieldValue(data, key))) {
@@ -7478,12 +7509,74 @@ function getIncompleteDoneFieldKeys(data) {
                 }
             });
         }
+
+        let installPhotos = [];
+        let preInstallPhotos = [];
+        if (data instanceof FormData) {
+            if (typeof installPhotoPending !== 'undefined' && Array.isArray(installPhotoPending)) {
+                installPhotos = installPhotoPending;
+            }
+            if (typeof preInstallPhotoPending !== 'undefined' && Array.isArray(preInstallPhotoPending)) {
+                preInstallPhotos = preInstallPhotoPending;
+            }
+        } else {
+            installPhotos = Array.isArray(data.installPhotos) ? data.installPhotos : [];
+            preInstallPhotos = Array.isArray(data.preInstallPhotos) ? data.preInstallPhotos : [];
+        }
+        if (preInstallPhotos.length === 0) {
+            missingKeys.push('preInstallPhotos');
+        }
+        if (installPhotos.length === 0) {
+            missingKeys.push('installPhotos');
+        }
     }
 
     if (category === 'ซ่อม' || category === 'ซ่อมบำรุง') {
-        const repairPhotos = getFieldValue(data, 'repairPhotos') || [];
-        if (Array.isArray(repairPhotos) && repairPhotos.length === 0) {
+        const checklist = parseRepairChecklist(data).filter((item) => item && (isFilled(item.label) || isFilled(item.status) || isFilled(item.note)));
+        if (checklist.length === 0) {
+            missingKeys.push('repair-checklist-rows');
+        }
+
+        const hasFailedItem = checklist.some((item) => String(item.status || '').trim().toLowerCase() === 'fail');
+        const machineStatusAfter = String(getFieldValue(data, 'machineStatusAfter') || '').trim();
+        if (hasFailedItem && machineStatusAfter !== 'ready') {
+            missingKeys.push('machineStatusAfter');
+        }
+
+        let repairPhotos = [];
+        if (data instanceof FormData) {
+            if (typeof repairPhotoPending !== 'undefined' && Array.isArray(repairPhotoPending)) {
+                repairPhotos = repairPhotoPending;
+            }
+        } else {
+            repairPhotos = Array.isArray(data.repairPhotos) ? data.repairPhotos : [];
+        }
+        if (repairPhotos.length === 0) {
             missingKeys.push('repairPhotos');
+        }
+    }
+
+    const useESignature = data instanceof FormData
+        ? (data.get('useESignature') === 'on' || data.get('useESignature') === 'true' || document.getElementById("use-esignature-toggle")?.checked || false)
+        : (data.useESignature || false);
+
+    if (!useESignature) {
+        let signedDocs = [];
+        if (data instanceof FormData) {
+            const existingJSON = data.get("existingSignedDocsJSON");
+            if (existingJSON) {
+                try {
+                    signedDocs = JSON.parse(existingJSON);
+                } catch (e) { }
+            }
+            if (typeof pendingSignedDocs !== 'undefined' && Array.isArray(pendingSignedDocs)) {
+                signedDocs = signedDocs.concat(pendingSignedDocs);
+            }
+        } else {
+            signedDocs = data.signedDocAttachments || [];
+        }
+        if (signedDocs.length === 0) {
+            missingKeys.push('signed-doc-upload-section');
         }
     }
 
@@ -7494,7 +7587,7 @@ function highlightIncompleteFields(form, missingKeys) {
     if (!form) return;
 
     // Clear previous highlights
-    const elements = form.querySelectorAll('input, select, textarea, .autocomplete-wrapper');
+    const elements = form.querySelectorAll('input, select, textarea, .autocomplete-wrapper, .check-pill-group, #pre-install-photo-preview, #install-photo-preview, #repair-photo-preview, #signed-doc-preview, #btn-pre-install-photo, #btn-install-photo, #btn-repair-photo, #btn-attach-signed-doc');
     elements.forEach(el => {
         el.classList.remove('is-invalid');
     });
@@ -7523,31 +7616,155 @@ function highlightIncompleteFields(form, missingKeys) {
             return;
         }
 
+        // Custom Highlight: Pre-install Photos
+        if (key === 'preInstallPhotos') {
+            const preview = document.getElementById('pre-install-photo-preview');
+            const btn = document.getElementById('btn-pre-install-photo');
+            if (preview) preview.classList.add('is-invalid');
+            if (btn) btn.classList.add('is-invalid');
+
+            const removeHighlight = () => {
+                if (preview) preview.classList.remove('is-invalid');
+                if (btn) btn.classList.remove('is-invalid');
+                const fileInput = document.getElementById('pre-install-photo-input');
+                if (fileInput) fileInput.removeEventListener('change', removeHighlight);
+            };
+            const fileInput = document.getElementById('pre-install-photo-input');
+            if (fileInput) fileInput.addEventListener('change', removeHighlight);
+            return;
+        }
+
+        // Custom Highlight: Install Photos
+        if (key === 'installPhotos') {
+            const preview = document.getElementById('install-photo-preview');
+            const btn = document.getElementById('btn-install-photo');
+            if (preview) preview.classList.add('is-invalid');
+            if (btn) btn.classList.add('is-invalid');
+
+            const removeHighlight = () => {
+                if (preview) preview.classList.remove('is-invalid');
+                if (btn) btn.classList.remove('is-invalid');
+                const fileInput = document.getElementById('install-photo-input');
+                if (fileInput) fileInput.removeEventListener('change', removeHighlight);
+            };
+            const fileInput = document.getElementById('install-photo-input');
+            if (fileInput) fileInput.addEventListener('change', removeHighlight);
+            return;
+        }
+
+        // Custom Highlight: Repair Photos
+        if (key === 'repairPhotos') {
+            const preview = document.getElementById('repair-photo-preview');
+            const btn = document.getElementById('btn-repair-photo');
+            if (preview) preview.classList.add('is-invalid');
+            if (btn) btn.classList.add('is-invalid');
+
+            const removeHighlight = () => {
+                if (preview) preview.classList.remove('is-invalid');
+                if (btn) btn.classList.remove('is-invalid');
+                const fileInput = document.getElementById('repair-photo-input');
+                if (fileInput) fileInput.removeEventListener('change', removeHighlight);
+            };
+            const fileInput = document.getElementById('repair-photo-input');
+            if (fileInput) fileInput.addEventListener('change', removeHighlight);
+            return;
+        }
+
+        // Custom Highlight: Signed Document Copy Upload
+        if (key === 'signed-doc-upload-section') {
+            const preview = document.getElementById('signed-doc-preview');
+            const btn = document.getElementById('btn-attach-signed-doc');
+            if (preview) preview.classList.add('is-invalid');
+            if (btn) btn.classList.add('is-invalid');
+
+            const removeHighlight = () => {
+                if (preview) preview.classList.remove('is-invalid');
+                if (btn) btn.classList.remove('is-invalid');
+                const fileInput = document.getElementById('signed-doc-input');
+                if (fileInput) fileInput.removeEventListener('change', removeHighlight);
+            };
+            const fileInput = document.getElementById('signed-doc-input');
+            if (fileInput) fileInput.addEventListener('change', removeHighlight);
+            return;
+        }
+
+        // Custom Highlight: Repair Checklist dynamic rows
+        if (key === 'repair-checklist-rows') {
+            const container = document.getElementById('repair-checklist-rows');
+            const btn = document.getElementById('btn-add-repair-row');
+            if (container) container.classList.add('is-invalid');
+            if (btn) btn.classList.add('is-invalid');
+
+            const removeHighlight = () => {
+                if (container) container.classList.remove('is-invalid');
+                if (btn) btn.classList.remove('is-invalid');
+                if (btn) btn.removeEventListener('click', removeHighlight);
+            };
+            if (btn) btn.addEventListener('click', removeHighlight);
+            return;
+        }
+
+        // Default Highlights (inputs, check-pill-groups, etc.)
         const el = form.querySelector(`[name="${key}"]`) || document.getElementById(key);
         if (el) {
-            el.classList.add('is-invalid');
+            const checkPillGroup = el.closest('.check-pill-group');
+            const targetEl = checkPillGroup || el;
+
+            targetEl.classList.add('is-invalid');
 
             // Remove highlight on input
             const removeHighlight = () => {
-                el.classList.remove('is-invalid');
-                el.removeEventListener('input', removeHighlight);
-                el.removeEventListener('change', removeHighlight);
+                targetEl.classList.remove('is-invalid');
+                if (checkPillGroup) {
+                    checkPillGroup.querySelectorAll('input').forEach(input => {
+                        input.removeEventListener('input', removeHighlight);
+                        input.removeEventListener('change', removeHighlight);
+                    });
+                } else {
+                    el.removeEventListener('input', removeHighlight);
+                    el.removeEventListener('change', removeHighlight);
+                }
             };
-            el.addEventListener('input', removeHighlight);
-            el.addEventListener('change', removeHighlight);
+
+            if (checkPillGroup) {
+                checkPillGroup.querySelectorAll('input').forEach(input => {
+                    input.addEventListener('input', removeHighlight);
+                    input.addEventListener('change', removeHighlight);
+                });
+            } else {
+                el.addEventListener('input', removeHighlight);
+                el.addEventListener('change', removeHighlight);
+            }
         }
     });
 
     // Scroll the first invalid element into view and focus it
     if (missingKeys.length > 0) {
         let firstKey = missingKeys[0];
-        let firstEl = firstKey === 'siteId'
-            ? (document.getElementById('log-site-input') || form.querySelector('.autocomplete-wrapper'))
-            : (form.querySelector(`[name="${firstKey}"]`) || document.getElementById(firstKey));
+        let firstEl;
+
+        if (firstKey === 'siteId') {
+            firstEl = document.getElementById('log-site-input') || form.querySelector('.autocomplete-wrapper');
+        } else if (firstKey === 'preInstallPhotos') {
+            firstEl = document.getElementById('btn-pre-install-photo') || document.getElementById('pre-install-photo-preview');
+        } else if (firstKey === 'installPhotos') {
+            firstEl = document.getElementById('btn-install-photo') || document.getElementById('install-photo-preview');
+        } else if (firstKey === 'repairPhotos') {
+            firstEl = document.getElementById('btn-repair-photo') || document.getElementById('repair-photo-preview');
+        } else if (firstKey === 'signed-doc-upload-section') {
+            firstEl = document.getElementById('btn-attach-signed-doc') || document.getElementById('signed-doc-preview');
+        } else if (firstKey === 'repair-checklist-rows') {
+            firstEl = document.getElementById('btn-add-repair-row') || document.getElementById('repair-checklist-rows');
+        } else {
+            firstEl = form.querySelector(`[name="${firstKey}"]`) || document.getElementById(firstKey);
+        }
+
         if (firstEl) {
+            const checkPillGroup = firstEl.closest?.('.check-pill-group');
+            const scrollEl = checkPillGroup || firstEl;
             setTimeout(() => {
-                firstEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                firstEl.focus();
+                scrollEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstEl.focus?.();
             }, 200);
         }
     }
@@ -8175,7 +8392,7 @@ function showDayDetails(dateStr, logs) {
             <td class="cell-site" data-label="สถานที่" style="font-weight: 500;">
                 <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                     <span class="value">${site.siteCode ? site.siteCode + ' - ' : ''}${site.name}</span>
-                    <button class="site-filter-btn desktop-only" onclick="event.stopPropagation(); viewSiteLogs('${site.id}')" title="กรองเฉพาะสถานที่นี้" style="display:inline-flex; align-items:center; justify-content:center; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.35); color:#0369a1; border-radius:6px; padding:2px 6px; font-size:0.7rem; cursor:pointer; gap:3px; white-space:nowrap; transition:background 0.15s;"><i class="fa-solid fa-filter" style="font-size:0.65rem;"></i></button>
+                    <button class="site-filter-btn desktop-only" onclick="viewSiteLogs('${site.id}')" title="กรองเฉพาะสถานที่นี้" style="display:inline-flex; align-items:center; justify-content:center; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.35); color:#0369a1; border-radius:6px; padding:2px 6px; font-size:0.7rem; cursor:pointer; gap:3px; white-space:nowrap; transition:background 0.15s;"><i class="fa-solid fa-filter" style="font-size:0.65rem;"></i></button>
                 </div>
             </td>
             <td class="cell-category" data-label="หมวดหมู่"><span class="value">${catBadge}</span></td>
@@ -9077,7 +9294,7 @@ function renderSites() {
                          <i class="fa-solid fa-clipboard-list"></i>
                          <span>${logCount} รายการ</span>
                      </button>
-                     <button class="card-btn-action card-btn-qr" onclick="event.stopPropagation(); showDeviceQR('${site.id}')" title="QR Code แจ้งปัญหา">
+                     <button class="card-btn-action card-btn-qr" onclick="showDeviceQR('${site.id}')" title="QR Code แจ้งปัญหา">
                          <i class="fa-solid fa-qrcode"></i>
                      </button>
 
@@ -9085,7 +9302,7 @@ function renderSites() {
                  <div style="display: flex; gap: 0.5rem;">
                      ${site.locationUrl
                 ? `
-                     <a href="${site.locationUrl}" target="_blank" onclick="event.stopPropagation();" title="เปิด Google Maps"
+                     <a href="${site.locationUrl}" target="_blank" title="เปิด Google Maps"
                         class="card-btn-action card-btn-maps">
                          <i class="fa-solid fa-map-location-dot"></i>
                      </a>`
@@ -9093,7 +9310,7 @@ function renderSites() {
             }
                      ${site.contactPhone
                 ? `
-                     <a href="tel:${site.contactPhone}" onclick="event.stopPropagation();" title="โทร ${site.contactPhone}"
+                     <a href="tel:${site.contactPhone}" title="โทร ${site.contactPhone}"
                         class="card-btn-action card-btn-call">
                          <i class="fa-solid fa-phone"></i>
                      </a>`
@@ -13622,7 +13839,30 @@ async function handleLogout() {
 
 // --- Auth Observers & Listeners ---
 const loginForm = document.getElementById("login-form");
-if (loginForm) loginForm.addEventListener("submit", handleLogin);
+if (loginForm) {
+    loginForm.addEventListener("submit", handleLogin);
+
+    // Auto-login when both email/phone and 6-digit PIN are filled
+    const loginEmail = document.getElementById("login-email");
+    const loginPassword = document.getElementById("login-password");
+    if (loginEmail && loginPassword) {
+        const checkAutoLogin = () => {
+            const emailVal = loginEmail.value.trim();
+            const passVal = loginPassword.value;
+            if (emailVal.length > 0 && passVal.length === 6) {
+                console.log("Auto-login triggered as fields are filled.");
+                if (typeof loginForm.requestSubmit === "function") {
+                    loginForm.requestSubmit();
+                } else {
+                    const mockEvent = { preventDefault: () => { } };
+                    handleLogin(mockEvent);
+                }
+            }
+        };
+        loginEmail.addEventListener("input", checkAutoLogin);
+        loginPassword.addEventListener("input", checkAutoLogin);
+    }
+}
 
 const btnLineLogin = document.getElementById("btn-line-login");
 if (btnLineLogin) btnLineLogin.addEventListener("click", handleLineLogin);
@@ -16356,22 +16596,33 @@ function getAppBaseUrl() {
 }
 
 function showDeviceQR(siteId) {
-    const site = state.sites.find(s => s.id === siteId);
-    if (!site) { showToast('ไม่พบข้อมูลเครื่อง', 'error'); return; }
-    const modal = document.getElementById('modal-device-qr');
-    if (!modal) return;
-    const baseUrl = getAppBaseUrl();
-    const reportUrl = `${baseUrl}index.html?report=${siteId}`;
+    alert('[debug 1] showDeviceQR start: ' + siteId);
+    try {
+        const site = state.sites.find(s => s.id === siteId);
+        if (!site) {
+            alert('[debug 2] Site not found! siteId=' + siteId);
+            showToast('ไม่พบข้อมูลเครื่อง', 'error');
+            return;
+        }
+        alert('[debug 3] Site found: ' + site.name);
+        const modal = document.getElementById('modal-device-qr');
+        if (!modal) {
+            alert('[debug 4] Modal element not found!');
+            return;
+        }
+        alert('[debug 5] Modal element found.');
 
-    // Set modal header
-    const nameEl = document.getElementById('qr-modal-device-name');
-    if (nameEl) nameEl.textContent = site.name || 'QR Code เครื่อง';
+        // Show modal and register close handlers immediately so the UI always pops up instantly
+        const btnClose = document.getElementById('btn-close-qr-modal');
+        if (btnClose) btnClose.onclick = () => closeDeviceQRModal();
+        modal.onclick = (e) => { if (e.target === modal) closeDeviceQRModal(); };
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+        alert('[debug 6] Modal display set to flex.');
 
-    // Show URL
-    const urlEl = document.getElementById('qr-url-display');
-    if (urlEl) urlEl.textContent = reportUrl;
+        const baseUrl = getAppBaseUrl();
+        const reportUrl = `${baseUrl}index.html?report=${siteId}`;
 
-<<<<<<< HEAD
         // Set modal header
         const nameEl = document.getElementById('qr-modal-device-name');
         if (nameEl) nameEl.textContent = site.name || 'QR Code เครื่อง';
@@ -16384,12 +16635,6 @@ function showDeviceQR(siteId) {
         FirestoreService.getCompanySettings().then(company => {
             let companyName = company.name || 'บริษัท ไบโอ อินโน เทค จำกัด';
             let hotline = company.hotline || '';
-=======
-    // Load company settings, then render everything
-    FirestoreService.getCompanySettings().then(company => {
-        const companyName = company.name || 'บริษัท ไบโอ อินโน เทค จำกัด';
-        const hotline = company.hotline || '';
->>>>>>> parent of 33b5bdf (pang)
 
             // Build the unified card HTML (used for preview, print, and download)
             let buildCardHtml = (qrSrc) => `
@@ -16761,27 +17006,9 @@ function showDeviceQR(siteId) {
 body{margin:0;padding:0;background:#fff;display:flex;justify-content:center;align-items:flex-start;}
 </style>
 </head><body>${cardHtml}</body></html>`);
-<<<<<<< HEAD
                                                                             tWin.document.close();
                                                                             tWin.focus();
                                                                             imeout(() => { printWin.print(); }, 500);
-=======
-            printWin.document.close();
-            printWin.focus();
-            setTimeout(() => { printWin.print(); }, 500);
-        };
-    });
-
-    // Close handlers
-    const btnClose = document.getElementById('btn-close-qr-modal');
-    if (btnClose) btnClose.onclick = () => closeDeviceQRModal();
-    modal.onclick = (e) => { if (e.target === modal) closeDeviceQRModal(); };
-
-    modal.classList.remove('hidden');
-    modal.style.display = 'flex';
-}
-window.showDeviceQR = showDeviceQR;
->>>>>>> parent of 33b5bdf (pang)
 
                                                                         }).catch (err => {
                                                                             console.error("Firestore getCompanySettings error in showDeviceQR:", err);

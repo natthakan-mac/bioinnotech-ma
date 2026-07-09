@@ -618,10 +618,61 @@
 #form-log-maintenance input.is-invalid,
 #form-log-maintenance select.is-invalid,
 #form-log-maintenance textarea.is-invalid,
-#form-log-maintenance .autocomplete-wrapper.is-invalid {
+#form-log-maintenance .autocomplete-wrapper.is-invalid,
+#form-log-maintenance .check-pill-group.is-invalid,
+#form-log-maintenance #pre-install-photo-preview.is-invalid,
+#form-log-maintenance #install-photo-preview.is-invalid,
+#form-log-maintenance #repair-photo-preview.is-invalid,
+#form-log-maintenance #signed-doc-preview.is-invalid,
+#form-log-maintenance #btn-pre-install-photo.is-invalid,
+#form-log-maintenance #btn-install-photo.is-invalid,
+#form-log-maintenance #btn-repair-photo.is-invalid,
+#form-log-maintenance #btn-attach-signed-doc.is-invalid {
     border-color: #f87171 !important; /* border-red-400 */
     background-color: #fef2f2 !important; /* bg-red-50 */
     color: #991b1b !important; /* text-red-800 */
+}
+
+#form-log-maintenance .check-pill-group.is-invalid .check-pill {
+    background-color: #fef2f2 !important;
+    color: #991b1b !important;
+}
+
+#form-log-maintenance .check-pill-group.is-invalid .check-pill span {
+    color: #991b1b !important;
+}
+
+/* Keep the checked options high-contrast and readable */
+#form-log-maintenance .check-pill-group.is-invalid .check-pill.pass:has(input:checked),
+#form-log-maintenance .check-pill-group.is-invalid .check-pill.insp-check:has(input:checked) {
+    background-color: #22c55e !important;
+}
+#form-log-maintenance .check-pill-group.is-invalid .check-pill.pass:has(input:checked) span,
+#form-log-maintenance .check-pill-group.is-invalid .check-pill.insp-check:has(input:checked) span {
+    color: #ffffff !important;
+}
+
+#form-log-maintenance .check-pill-group.is-invalid .check-pill.fail:has(input:checked),
+#form-log-maintenance .check-pill-group.is-invalid .check-pill.insp-replace:has(input:checked) {
+    background-color: #ef4444 !important;
+}
+#form-log-maintenance .check-pill-group.is-invalid .check-pill.fail:has(input:checked) span,
+#form-log-maintenance .check-pill-group.is-invalid .check-pill.insp-replace:has(input:checked) span {
+    color: #ffffff !important;
+}
+
+#form-log-maintenance .check-pill-group.is-invalid .check-pill.neutral:has(input:checked) {
+    background-color: #111111 !important;
+}
+#form-log-maintenance .check-pill-group.is-invalid .check-pill.neutral:has(input:checked) span {
+    color: #ffffff !important;
+}
+
+#form-log-maintenance .check-pill-group.is-invalid .check-pill.insp-service:has(input:checked) {
+    background-color: #f59e0b !important;
+}
+#form-log-maintenance .check-pill-group.is-invalid .check-pill.insp-service:has(input:checked) span {
+    color: #ffffff !important;
 }
 
 #form-log-maintenance input.is-invalid::placeholder,
