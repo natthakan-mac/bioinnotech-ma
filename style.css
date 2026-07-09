@@ -7971,3 +7971,126 @@ input::placeholder, textarea::placeholder {
         font-size: 0.65rem !important;
     }
 }
+
+/* ============================================================
+   CASE TYPE DASHBOARD STYLES
+   ============================================================ */
+.interactive-card:hover {
+    transform: translateY(-2px) !important;
+    border-color: var(--primary-color, #38bdf8) !important;
+    box-shadow: 0 6px 20px rgba(56, 189, 248, 0.08) !important;
+}
+
+/* ============================================================
+   D3 MAP STYLES
+   ============================================================ */
+#device-map svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+}
+
+.map-province {
+    fill: var(--body-bg, #f8fafc);
+    stroke: var(--glass-border, #cbd5e1);
+    stroke-width: 0.75px;
+    transition: fill 0.25s ease, stroke 0.25s ease;
+    cursor: pointer;
+}
+
+.map-province:hover {
+    fill: rgba(56, 189, 248, 0.12) !important;
+    stroke: var(--primary-color, #0284c7) !important;
+    stroke-width: 1.2px;
+}
+
+.map-device-dot {
+    fill: var(--primary-color, #0284c7);
+    stroke: #ffffff;
+    stroke-width: 1.5px;
+    cursor: pointer;
+    transition: r 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), fill 0.25s ease, filter 0.25s ease;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+
+.map-device-dot:hover {
+    fill: #10b981 !important;
+    stroke: #ffffff !important;
+    stroke-width: 2px !important;
+    filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.6)) !important;
+}
+
+/* Tooltip design */
+.map-tooltip {
+    position: absolute;
+    z-index: 10000;
+    pointer-events: none;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    color: #1e293b;
+    max-width: 300px;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    opacity: 0;
+    transform: scale(0.95);
+    font-family: inherit;
+    line-height: 1.4;
+    box-sizing: border-box;
+}
+
+.map-tooltip-header {
+    font-weight: 700;
+    color: var(--primary-color, #0284c7);
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    padding-bottom: 4px;
+}
+
+.map-tooltip-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.map-tooltip-item {
+    font-size: 0.8rem;
+    color: #475569;
+}
+
+.map-tooltip-item strong {
+    color: #1e293b;
+}
+
+/* Dark mode override for tooltip */
+body.dark-mode .map-tooltip {
+    background: rgba(30, 41, 59, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .map-tooltip-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+body.dark-mode .map-tooltip-item {
+    color: #cbd5e1;
+}
+
+body.dark-mode .map-tooltip-item strong {
+    color: #f1f5f9;
+}
+
+body.dark-mode .map-province {
+    fill: #1e293b;
+    stroke: #334155;
+}
+
+

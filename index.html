@@ -1074,6 +1074,9 @@
     <script async defer
         src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBzSXcsX2Jb-4cPhk5zd-qHdrKVt6nwSRU&v=weekly&libraries=places,marker&loading=async"></script>
 
+    <!-- D3.js Library for Map Visualization -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
     <!-- App Scripts (Type Module for Firebase 9+) -->
     <script src="hospital-data.js"></script>
     <script type="module" src="app.js?v=1.0.4"></script>
@@ -2010,6 +2013,17 @@
                     </div>
                 </div>
 
+                <!-- Map Container (D3.js Thailand Map) -->
+                <div id="device-map-container" class="glass-panel" style="margin-bottom: 1.5rem; padding: 1.25rem; border-radius: var(--radius-lg); width: 100%; box-sizing: border-box; background: var(--card-bg); border: 1px solid var(--glass-border); box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
+                     <h3 style="margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem; color: var(--text-color); font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                         <i class="fa-solid fa-map-location-dot" style="color: var(--primary-color);"></i>
+                         <span>แผนที่แสดงจุดติดตั้งเครื่อง (Device Location Map)</span>
+                     </h3>
+                     <div id="device-map" style="width: 100%; height: 500px; position: relative; background: rgba(0, 0, 0, 0.01); border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--glass-border);">
+                         <!-- SVG map will be injected here dynamically -->
+                     </div>
+                </div>
+
                 <!-- Mobile Search Box (Always Visible) -->
                 <div class="filter-group mobile-only" style="width: 100%; margin-bottom: 1rem;">
                     <input type="text" id="site-search-input-mobile" placeholder="รหัสเครื่อง, ชื่อ, ประเภท, ยี่ห้อ..."
@@ -2175,6 +2189,66 @@
                                 <i class="fa-solid fa-file-excel"></i> <span>ส่งออก</span>
                             </button>
 
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard แยกตามประเภทเคส (Case Type Dashboard) -->
+                <div id="case-type-dashboard" class="case-dashboard-container" style="margin-top: 0.5rem; margin-bottom: 1.5rem; width: 100%;">
+                    <div class="dashboard-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; width: 100%;">
+                        <!-- Card 1: ทั้งหมด -->
+                        <div class="dashboard-card interactive-card" data-category="all" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s; cursor: pointer;">
+                            <div class="dashboard-card-icon" style="background: rgba(148, 163, 184, 0.1); color: #64748b; border: 1px solid rgba(148, 163, 184, 0.2); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                                <i class="fa-solid fa-list-check"></i>
+                            </div>
+                            <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
+                                <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500;">ทั้งหมด</span>
+                                <span id="dash-case-all" style="font-size: 1.5rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: บำรุงรักษาตามรอบ -->
+                        <div class="dashboard-card interactive-card" data-category="บำรุงรักษาตามรอบ" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s; cursor: pointer;">
+                            <div class="dashboard-card-icon" style="background: rgba(34, 197, 94, 0.1); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.2); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                                <i class="fa-solid fa-calendar-check"></i>
+                            </div>
+                            <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
+                                <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500;">บำรุงรักษาตามรอบ</span>
+                                <span id="dash-case-pm" style="font-size: 1.5rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 3: ติดตั้ง -->
+                        <div class="dashboard-card interactive-card" data-category="ติดตั้ง" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s; cursor: pointer;">
+                            <div class="dashboard-card-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.2); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                                <i class="fa-solid fa-toolbox"></i>
+                            </div>
+                            <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
+                                <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500;">ติดตั้ง</span>
+                                <span id="dash-case-install" style="font-size: 1.5rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 4: ซ่อม -->
+                        <div class="dashboard-card interactive-card" data-category="ซ่อม" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s; cursor: pointer;">
+                            <div class="dashboard-card-icon" style="background: rgba(249, 115, 22, 0.1); color: #f97316; border: 1px solid rgba(249, 115, 22, 0.2); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                                <i class="fa-solid fa-screwdriver-wrench"></i>
+                            </div>
+                            <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
+                                <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500;">ซ่อม</span>
+                                <span id="dash-case-repair" style="font-size: 1.5rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 5: รื้อถอน -->
+                        <div class="dashboard-card interactive-card" data-category="รื้อถอน" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s; cursor: pointer;">
+                            <div class="dashboard-card-icon" style="background: rgba(244, 63, 94, 0.1); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.2); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                                <i class="fa-solid fa-circle-minus"></i>
+                            </div>
+                            <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
+                                <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500;">รื้อถอน</span>
+                                <span id="dash-case-deinstall" style="font-size: 1.5rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0</span>
+                            </div>
                         </div>
                     </div>
                 </div>

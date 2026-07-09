@@ -707,6 +707,7 @@ function setupAuthStateListener() {
                 }
 
                 let userDoc = await FirestoreService.getUser(user.uid);
+                currentUserRole = userDoc?.role || 'user';
 
                 // Auto-Register New Users (Except LINE)
                 if (!userDoc) {
@@ -732,6 +733,7 @@ function setupAuthStateListener() {
                     console.log("New user detected, registering...");
                     await FirestoreService.addUser(user);
                     userDoc = await FirestoreService.getUser(user.uid);
+                    currentUserRole = userDoc?.role || 'user';
                     // Suppressed Welcome Toast here (moved to explicit login)
                 } else {
                     // --- Sync LINE profile photo if it changed ---
@@ -802,6 +804,7 @@ function setupAuthStateListener() {
                 if (splash) setTimeout(() => splash.classList.add("hidden"), 500);
             } else {
                 console.log("Auth State Changed: No User");
+                currentUserRole = "user";
                 if (views.login) views.login.classList.remove("hidden");
                 const appContainer = document.querySelector(".app-container");
                 if (appContainer) appContainer.classList.add("hidden");
@@ -6028,7 +6031,7 @@ async function generateMockLogs() {
 async function loadAddressData() {
     try {
         const response = await fetch(
-            "https://raw.githubusercontent.com/kongvut/thai-province-data/master/api/latest/province_with_district_and_sub_district.json",
+            "https://cdn.jsdelivr.net/gh/kongvut/thai-province-data@master/api/latest/province_with_district_and_sub_district.json",
         );
         const rawData = await response.json();
 
@@ -6393,6 +6396,21 @@ function setupEventListeners() {
 
     if (selects.filterCategory)
         selects.filterCategory.addEventListener("change", renderCurrentView);
+
+    // Case Dashboard Card Click Listeners
+    const caseDashboard = document.getElementById("case-type-dashboard");
+    if (caseDashboard) {
+        caseDashboard.querySelectorAll(".interactive-card").forEach(card => {
+            card.addEventListener("click", () => {
+                const cat = card.getAttribute("data-category");
+                if (selects.filterCategory) {
+                    selects.filterCategory.value = cat;
+                    selects.filterCategory.dispatchEvent(new Event("change"));
+                }
+            });
+        });
+    }
+
 
     // Status Filter
     const statusFilter = document.getElementById("filter-status");
@@ -6779,6 +6797,29 @@ function populateResponderDropdown(selectedId = "") {
 async function checkEditPermission(logId, status, isDelete = false) {
     const log = state.logs.find((l) => l.id === logId);
     if (!log) return;
+
+    // Check delete permission (only admin and manager are allowed to delete cases)
+    if (isDelete) {
+        const user = auth.currentUser;
+        if (!user) {
+            showToast('กรุณาเข้าสู่ระบบก่อน', 'error');
+            return;
+        }
+
+        try {
+            const userDoc = await FirestoreService.getUser(user.uid);
+            const isAdminOrManager = userDoc?.role === 'admin' || userDoc?.role === 'manager';
+
+            if (!isAdminOrManager) {
+                showToast('เฉพาะผู้จัดการและผู้ดูแลระบบเท่านั้นที่สามารถลบเคสได้', 'error');
+                return;
+            }
+        } catch (error) {
+            console.error('Error checking user role for deletion:', error);
+            showToast('เกิดข้อผิดพลาดในการตรวจสอบสิทธิ์', 'error');
+            return;
+        }
+    }
 
     // If case is closed, check if user is admin or manager
     if (status === 'Case Closed') {
@@ -7871,6 +7912,7 @@ function renderCurrentView() {
     if (planView && planView.classList.contains("active")) {
         if (typeof renderMaintenancePlan === 'function') renderMaintenancePlan();
     }
+    updateCaseDashboard();
 }
 
 // --- Calendar Logic ---
@@ -8421,9 +8463,11 @@ function showDayDetails(dateStr, logs) {
                         <button class="mc-btn" onclick="event.stopPropagation(); checkEditPermission('${log.id}', '${log.status}')" title="แก้ไข">
                             <i class="fa-solid fa-pen"></i>
                         </button>
+                        ${currentUserRole === 'admin' || currentUserRole === 'manager' ? `
                         <button class="mc-btn" onclick="event.stopPropagation(); checkEditPermission('${log.id}', '${log.status}', true)" title="ลบ">
                             <i class="fa-solid fa-trash"></i>
                         </button>
+                        ` : ''}
                     </span>
                 </div>
             </td>
@@ -8432,9 +8476,11 @@ function showDayDetails(dateStr, logs) {
                     <button class="btn-icon action-edit" onclick="event.stopPropagation(); checkEditPermission('${log.id}', '${log.status}')" title="แก้ไข">
                         <i class="fa-solid fa-pen" style="font-size: 0.9rem;"></i>
                     </button>
+                    ${currentUserRole === 'admin' || currentUserRole === 'manager' ? `
                     <button class="btn-icon action-delete" onclick="event.stopPropagation(); checkEditPermission('${log.id}', '${log.status}', true)" title="ลบ">
                         <i class="fa-solid fa-trash" style="font-size: 0.9rem;"></i>
                     </button>
+                    ` : ''}
                 </div>
             </td>
         `;
@@ -9084,6 +9130,300 @@ function populateSiteFilters() {
     }
 }
 
+// D3.js Thailand Map for Device Locations
+let thailandGeoJSON = null; // Cache for the map GeoJSON
+
+const provinceTranslationMap = {
+    "Amnat Charoen": "อำนาจเจริญ",
+    "Ang Thong": "อ่างทอง",
+    "Bangkok": "กรุงเทพมหานคร",
+    "Bueng Kan": "บึงกาฬ",
+    "Buri Ram": "บุรีรัมย์",
+    "Chachoengsao": "ฉะเชิงเทรา",
+    "Chai Nat": "ชัยนาท",
+    "Chaiyaphum": "ชัยภูมิ",
+    "Chanthaburi": "จันทบุรี",
+    "Chiang Mai": "เชียงใหม่",
+    "Chiang Rai": "เชียงราย",
+    "Chon Buri": "ชลบุรี",
+    "Chumphon": "ชุมพร",
+    "Kalasin": "กาฬสินธุ์",
+    "Kamphaeng Phet": "กำแพงเพชร",
+    "Kanchanaburi": "กาญจนบุรี",
+    "Khon Kaen": "ขอนแก่น",
+    "Krabi": "กระบี่",
+    "Lampang": "ลำปาง",
+    "Lamphun": "ลำพูน",
+    "Loei": "เลย",
+    "Lop Buri": "ลพบุรี",
+    "Mae Hong Son": "แม่ฮ่องสอน",
+    "Maha Sarakham": "มหาสารคาม",
+    "Mukdahan": "มุกดาหาร",
+    "Nakhon Nayok": "นครนายก",
+    "Nakhon Pathom": "นครปฐม",
+    "Nakhon Phanom": "นครพนม",
+    "Nakhon Ratchasima": "นครราชสีมา",
+    "Nakhon Sawan": "นครสวรรค์",
+    "Nakhon Si Thammarat": "นครศรีธรรมราช",
+    "Nan": "น่าน",
+    "Narathiwat": "นราธิวาส",
+    "Nong Bua Lam Phu": "หนองบัวลำภู",
+    "Nong Khai": "หนองคาย",
+    "Nonthaburi": "นนทบุรี",
+    "Pathum Thani": "ปทุมธานี",
+    "Pattani": "ปัตตานี",
+    "Phangnga": "พังงา",
+    "Phatthalung": "พัทลุง",
+    "Phayao": "พะเยา",
+    "Phetchabun": "เพชรบูรณ์",
+    "Phetchaburi": "เพชรบุรี",
+    "Phichit": "พิจิตร",
+    "Phitsanulok": "พิษณุโลก",
+    "Phra Nakhon Si Ayutthaya": "พระนครศรีอยุธยา",
+    "Phrae": "แพร่",
+    "Phuket": "ภูเก็ต",
+    "Prachin Buri": "ปราจีนบุรี",
+    "Prachuap Khiri Khan": "ประจวบคีรีขันธ์",
+    "Ranong": "ระนอง",
+    "Ratchaburi": "ราชบุรี",
+    "Rayong": "ระยอง",
+    "Roi Et": "ร้อยเอ็ด",
+    "Sa Kaeo": "สระแก้ว",
+    "Sakon Nakhon": "สกลนคร",
+    "Samut Prakan": "สมุทรปราการ",
+    "Samut Sakhon": "สมุทรสาคร",
+    "Samut Songkhram": "สมุทรสงคราม",
+    "Saraburi": "สระบุรี",
+    "Satun": "สตูล",
+    "Si Sa Ket": "ศรีสะเกษ",
+    "Sing Buri": "สิงห์บุรี",
+    "Songkhla": "สงขลา",
+    "Sukhothai": "สุโขทัย",
+    "Suphan Buri": "สุพรรณบุรี",
+    "Surat Thani": "สุราษฎร์ธานี",
+    "Surin": "สุรินทร์",
+    "Tak": "ตาก",
+    "Trang": "ตรัง",
+    "Trat": "ตราด",
+    "Ubon Ratchathani": "อุบลราชธานี",
+    "Udon Thani": "อุดรธานี",
+    "Uthai Thani": "อุทัยธานี",
+    "Uttaradit": "อุตรดิตถ์",
+    "Yala": "ยะลา",
+    "Yasothon": "ยโสธร"
+};
+
+function cleanProvinceName(name) {
+    if (!name) return "";
+    return name.toString().replace(/^(จังหวัด|จ\.)\s*/, "").trim();
+}
+
+async function renderDeviceMap(sitesToRender) {
+    const container = document.getElementById("device-map");
+    if (!container) return;
+
+    if (typeof d3 === "undefined") {
+        console.error("D3.js is not loaded yet.");
+        container.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--text-muted);">กำลังโหลดแผนที่ (D3.js ไม่พร้อมใช้งาน)...</div>`;
+        return;
+    }
+
+    // Create Tooltip if it doesn't exist
+    let tooltip = document.getElementById("map-tooltip-element");
+    if (!tooltip) {
+        tooltip = document.createElement("div");
+        tooltip.id = "map-tooltip-element";
+        tooltip.className = "map-tooltip";
+        document.body.appendChild(tooltip);
+    }
+
+    try {
+        if (!thailandGeoJSON) {
+            container.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px;"></i>กำลังโหลดข้อมูลแผนที่ประเทศไทย...</div>`;
+            const geojsonUrl = "thailand-provinces.geojson";
+            thailandGeoJSON = await d3.json(geojsonUrl);
+        }
+
+        container.innerHTML = ""; // Clear loader
+
+        const width = container.clientWidth || 500;
+        const height = container.clientHeight || 500;
+
+        const svg = d3.create("svg")
+            .attr("viewBox", [0, 0, width, height])
+            .attr("width", "100%")
+            .attr("height", "100%");
+
+        // Setup Map Projection (Mercator) auto-fitted to Thailand GeoJSON
+        const projection = d3.geoMercator()
+            .fitSize([width - 40, height - 40], thailandGeoJSON);
+
+        const pathGenerator = d3.geoPath().projection(projection);
+
+        // Group element for zoom & panning
+        const g = svg.append("g");
+
+        // Map provinces
+        g.selectAll("path")
+            .data(thailandGeoJSON.features)
+            .enter()
+            .append("path")
+            .attr("class", "map-province")
+            .attr("d", pathGenerator)
+            .append("title")
+            .text(d => {
+                const enName = d.properties.name;
+                return provinceTranslationMap[enName] || enName;
+            });
+
+        // Compute province centroid map for quick access
+        const provinceCentroids = {};
+        thailandGeoJSON.features.forEach(feature => {
+            const enName = feature.properties.name;
+            const thName = provinceTranslationMap[enName];
+            if (thName) {
+                const pixelCentroid = pathGenerator.centroid(feature);
+                provinceCentroids[cleanProvinceName(thName)] = projection.invert(pixelCentroid);
+            }
+        });
+
+        // Draw Device Dots
+        const dotsData = [];
+        const locationJitter = {}; // Track duplicate coordinates to apply jitter
+
+        sitesToRender.forEach(site => {
+            let lat = null;
+            let lng = null;
+
+            // 1. Try parsed coordinates
+            if (site.locationUrl) {
+                const parsed = parseLocationUrl(site.locationUrl);
+                if (parsed) {
+                    lat = parsed.lat;
+                    lng = parsed.lng;
+                }
+            }
+
+            // 2. Fallback to province centroid
+            if (lat === null || lng === null) {
+                const cleanProvince = cleanProvinceName(site.province);
+                const centroid = provinceCentroids[cleanProvince];
+                if (centroid) {
+                    lng = centroid[0];
+                    lat = centroid[1];
+                }
+            }
+
+            if (lat !== null && lng !== null) {
+                // Apply jitter to avoid overlaps at the same location
+                const coordKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+                if (!locationJitter[coordKey]) {
+                    locationJitter[coordKey] = 0;
+                }
+                const offsetCount = locationJitter[coordKey]++;
+                
+                // Add spiral/circular jitter based on repeat count
+                let offsetX = 0;
+                let offsetY = 0;
+                if (offsetCount > 0) {
+                    const angle = (offsetCount * 0.8) * Math.PI; // Spiral angle
+                    const radius = 6 + (offsetCount * 1.5); // Jitter radius
+                    offsetX = Math.cos(angle) * radius;
+                    offsetY = Math.sin(angle) * radius;
+                }
+
+                const projected = projection([lng, lat]);
+                if (projected) {
+                    dotsData.push({
+                        site: site,
+                        cx: projected[0] + offsetX,
+                        cy: projected[1] + offsetY
+                    });
+                }
+            }
+        });
+
+        // Plot dots
+        const dots = g.selectAll("circle")
+            .data(dotsData)
+            .enter()
+            .append("circle")
+            .attr("class", "map-device-dot")
+            .attr("cx", d => d.cx)
+            .attr("cy", d => d.cy)
+            .attr("r", 6)
+            .on("mouseover", function(event, d) {
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .attr("r", 9)
+                    .style("fill", "#10b981")
+                    .style("filter", "drop-shadow(0 0 10px rgba(16, 185, 129, 0.8))");
+
+                const cleanProvince = cleanProvinceName(d.site.province) || "-";
+                const cleanDistrict = d.site.district || "-";
+                const cleanSubdistrict = d.site.subdistrict || "-";
+                const detailLoc = [cleanSubdistrict, cleanDistrict, cleanProvince].filter(item => item && item !== "-").join(", ");
+
+                const tooltipHtml = `
+                    <div class="map-tooltip-header">${d.site.name}</div>
+                    <div class="map-tooltip-body">
+                        <div class="map-tooltip-item"><strong>รหัสเครื่อง:</strong> ${d.site.siteCode || "-"}</div>
+                        <div class="map-tooltip-item"><strong>อุปกรณ์:</strong> ${d.site.deviceType || "-"}</div>
+                        <div class="map-tooltip-item"><strong>รุ่น/ยี่ห้อ:</strong> ${[d.site.brand, d.site.model].filter(Boolean).join(" ") || "-"}</div>
+                        <div class="map-tooltip-item"><strong>สถานที่:</strong> ${detailLoc}</div>
+                        <div class="map-tooltip-item" style="color:var(--primary-color); font-weight:600; margin-top:4px; font-size:0.75rem;"><i class="fa-solid fa-circle-info"></i> แตะเพื่อดูรายละเอียดเครื่อง</div>
+                    </div>
+                `;
+
+                d3.select(tooltip)
+                    .html(tooltipHtml)
+                    .style("opacity", 1)
+                    .style("transform", "scale(1)");
+            })
+            .on("mousemove", function(event) {
+                d3.select(tooltip)
+                    .style("left", (event.pageX + 15) + "px")
+                    .style("top", (event.pageY - 15) + "px");
+            })
+            .on("mouseout", function(event, d) {
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .attr("r", 6)
+                    .style("fill", "")
+                    .style("filter", "");
+
+                d3.select(tooltip)
+                    .style("opacity", 0)
+                    .style("transform", "scale(0.95)");
+            })
+            .on("click", function(event, d) {
+                d3.select(tooltip).style("opacity", 0);
+                if (typeof viewSiteDetails === "function") {
+                    viewSiteDetails(d.site.id);
+                }
+            });
+
+        // Add D3 Zoom support
+        const zoom = d3.zoom()
+            .scaleExtent([1, 8])
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform);
+            });
+
+        svg.call(zoom);
+
+        container.appendChild(svg.node());
+
+    } catch (error) {
+        console.error("Error rendering D3 Thailand map:", error);
+        container.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--text-muted);"><i class="fa-solid fa-circle-exclamation" style="color:var(--danger-color); margin-right:8px;"></i>เกิดข้อผิดพลาดในการโหลดแผนที่: ${error.message}</div>`;
+    }
+}
+
+window.renderDeviceMap = renderDeviceMap;
+
 function renderSites() {
     if (!grids.sites) return;
     grids.sites.innerHTML = "";
@@ -9132,6 +9472,9 @@ function renderSites() {
 
         return isSearchMatch && isProvinceMatch && isContractMatch;
     });
+
+    // Render D3 map dynamically
+    renderDeviceMap(sitesToRender);
 
     // Update Dashboard Stats dynamically
     const totalDevicesEl = document.getElementById("dash-total-devices");
@@ -13453,6 +13796,96 @@ function updateLogStats(filteredLogs, globalSummary = null) {
     }
 }
 
+function updateCaseDashboard() {
+    const dashboard = document.getElementById("case-type-dashboard");
+    if (!dashboard) return;
+
+    const calendarView = document.getElementById("logs-calendar-view");
+    const isCalendar = calendarView && !calendarView.classList.contains("hidden");
+    const sourceLogs = isCalendar ? (state.calendarLogs || []) : (state.logs || []);
+
+    const siteSearchQuery = document.getElementById("site-filter-input")
+        ? document.getElementById("site-filter-input").value
+        : "";
+    const siteId = selects.filterHidden
+        ? selects.filterHidden.value
+        : "all";
+    const statusFilter = document.getElementById("filter-status")
+        ? document.getElementById("filter-status").value
+        : "all";
+    const searchQuery = document.getElementById("log-search-input")
+        ? document.getElementById("log-search-input").value
+        : "";
+
+    // For Calendar, the month is already implicit in state.calendarLogs, so we don't need additional date filters.
+    // For List view, we apply the selected date filter range.
+    const startDate = !isCalendar && selects.filterStart && selects.filterStart.value
+        ? new Date(selects.filterStart.value)
+        : null;
+    const endDate = !isCalendar && selects.filterEnd && selects.filterEnd.value
+        ? new Date(selects.filterEnd.value)
+        : null;
+
+    const logsForDashboard = filterLogsClientSide(sourceLogs, {
+        siteId,
+        siteSearchQuery,
+        startDate,
+        endDate,
+        category: "all", // IGNORE category filter
+        status: statusFilter,
+        minPrice: 0,
+        maxPrice: Infinity,
+        searchQuery,
+    });
+
+    // Calculate count for each category
+    const counts = {
+        all: logsForDashboard.length,
+        pm: 0,
+        install: 0,
+        repair: 0,
+        deinstall: 0
+    };
+
+    logsForDashboard.forEach(log => {
+        const cat = log.category;
+        if (cat === "บำรุงรักษาตามรอบ") counts.pm++;
+        else if (cat === "ติดตั้ง") counts.install++;
+        else if (cat === "ซ่อม") counts.repair++;
+        else if (cat === "รื้อถอน") counts.deinstall++;
+    });
+
+    // Update UI elements
+    const dashAll = document.getElementById("dash-case-all");
+    const dashPm = document.getElementById("dash-case-pm");
+    const dashInstall = document.getElementById("dash-case-install");
+    const dashRepair = document.getElementById("dash-case-repair");
+    const dashDeinstall = document.getElementById("dash-case-deinstall");
+
+    if (dashAll) dashAll.textContent = counts.all;
+    if (dashPm) dashPm.textContent = counts.pm;
+    if (dashInstall) dashInstall.textContent = counts.install;
+    if (dashRepair) dashRepair.textContent = counts.repair;
+    if (dashDeinstall) dashDeinstall.textContent = counts.deinstall;
+
+    // Highlight active card
+    const activeCategory = selects.filterCategory ? selects.filterCategory.value : "all";
+    dashboard.querySelectorAll(".dashboard-card").forEach(card => {
+        const cardCategory = card.getAttribute("data-category");
+        if (cardCategory === activeCategory) {
+            card.style.borderColor = "var(--primary-color, #38bdf8)";
+            card.style.background = "rgba(56, 189, 248, 0.05)";
+            card.style.transform = "translateY(-2px)";
+            card.style.boxShadow = "0 6px 20px rgba(56, 189, 248, 0.08)";
+        } else {
+            card.style.borderColor = "var(--glass-border)";
+            card.style.background = "var(--card-bg)";
+            card.style.transform = "none";
+            card.style.boxShadow = "0 4px 15px rgba(0,0,0,0.03)";
+        }
+    });
+}
+
 function renderLogs() {
     if (!grids.logs) return;
     grids.logs.innerHTML = "";
@@ -13770,9 +14203,11 @@ function appendLogRows(newLogs, targetTbody = null) {
                         <button class="mc-btn" onclick="event.stopPropagation(); checkEditPermission('${log.id}', '${log.status}')" title="แก้ไข">
                             <i class="fa-solid fa-pen"></i>
                         </button>
+                        ${currentUserRole === 'admin' || currentUserRole === 'manager' ? `
                         <button class="mc-btn" onclick="event.stopPropagation(); checkEditPermission('${log.id}', '${log.status}', true)" title="ลบ">
                             <i class="fa-solid fa-trash"></i>
                         </button>
+                        ` : ''}
                     </span>
                 </div>
             </td>
@@ -13781,9 +14216,11 @@ function appendLogRows(newLogs, targetTbody = null) {
                     <button class="btn-icon action-edit" onclick="event.stopPropagation(); checkEditPermission('${log.id}', '${log.status}')" title="แก้ไข">
                         <i class="fa-solid fa-pen" style="font-size: 0.9rem;"></i>
                     </button>
+                    ${currentUserRole === 'admin' || currentUserRole === 'manager' ? `
                     <button class="btn-icon action-delete" onclick="event.stopPropagation(); checkEditPermission('${log.id}', '${log.status}', true)" title="ลบ">
                         <i class="fa-solid fa-trash" style="font-size: 0.9rem;"></i>
                     </button>
+                    ` : ''}
                 </div>
             </td>
         `;
