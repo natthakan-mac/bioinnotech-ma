@@ -8093,4 +8093,15 @@ body.dark-mode .map-province {
     stroke: #334155;
 }
 
+/* Force table container to stretch 100% width and remove any right space */
+.table-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box !important;
+}
 
+.table-container table {
+    width: 100% !important;
+}

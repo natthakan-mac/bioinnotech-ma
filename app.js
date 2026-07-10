@@ -9263,6 +9263,29 @@ async function renderDeviceMap(sitesToRender) {
         // Group element for zoom & panning
         const g = svg.append("g");
 
+        // 1. Calculate province colors based on open cases
+        const provinceColorMap = {}; 
+        
+        if (state.logs && state.sites) {
+            state.logs.forEach(log => {
+                const isClosed = ['Case Closed', 'ปิดเคส', 'Done', 'เสร็จสิ้น', 'Completed', 'Cancel', 'ยกเลิก'].includes(log.status);
+                if (!isClosed) {
+                    const site = state.sites.find(s => s.id === log.siteId);
+                    if (site && site.province) {
+                        const prov = cleanProvinceName(site.province);
+                        
+                        if (log.category === "ซ่อม") {
+                            provinceColorMap[prov] = "rgba(220, 38, 38, 0.5)"; // Red
+                        } else if (isMaCategory(log.category)) {
+                            if (provinceColorMap[prov] !== "rgba(220, 38, 38, 0.5)") {
+                                provinceColorMap[prov] = "rgba(3, 105, 161, 0.5)"; // Blue
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         // Map provinces
         g.selectAll("path")
             .data(thailandGeoJSON.features)
@@ -9270,6 +9293,12 @@ async function renderDeviceMap(sitesToRender) {
             .append("path")
             .attr("class", "map-province")
             .attr("d", pathGenerator)
+            .style("fill", d => {
+                const enName = d.properties.name;
+                const thName = provinceTranslationMap[enName] || enName;
+                const cleanName = cleanProvinceName(thName);
+                return provinceColorMap[cleanName] || null;
+            })
             .append("title")
             .text(d => {
                 const enName = d.properties.name;
@@ -9321,7 +9350,7 @@ async function renderDeviceMap(sitesToRender) {
                     locationJitter[coordKey] = 0;
                 }
                 const offsetCount = locationJitter[coordKey]++;
-                
+
                 // Add spiral/circular jitter based on repeat count
                 let offsetX = 0;
                 let offsetY = 0;
@@ -9352,11 +9381,13 @@ async function renderDeviceMap(sitesToRender) {
             .attr("cx", d => d.cx)
             .attr("cy", d => d.cy)
             .attr("r", 6)
-            .on("mouseover", function(event, d) {
+            .attr("vector-effect", "non-scaling-stroke")
+            .on("mouseover", function (event, d) {
+                const currentK = d3.zoomTransform(svg.node()).k;
                 d3.select(this)
                     .transition()
                     .duration(200)
-                    .attr("r", 9)
+                    .attr("r", 9 / currentK)
                     .style("fill", "#10b981")
                     .style("filter", "drop-shadow(0 0 10px rgba(16, 185, 129, 0.8))");
 
@@ -9381,16 +9412,17 @@ async function renderDeviceMap(sitesToRender) {
                     .style("opacity", 1)
                     .style("transform", "scale(1)");
             })
-            .on("mousemove", function(event) {
+            .on("mousemove", function (event) {
                 d3.select(tooltip)
                     .style("left", (event.pageX + 15) + "px")
                     .style("top", (event.pageY - 15) + "px");
             })
-            .on("mouseout", function(event, d) {
+            .on("mouseout", function (event, d) {
+                const currentK = d3.zoomTransform(svg.node()).k;
                 d3.select(this)
                     .transition()
                     .duration(200)
-                    .attr("r", 6)
+                    .attr("r", 6 / currentK)
                     .style("fill", "")
                     .style("filter", "");
 
@@ -9398,7 +9430,7 @@ async function renderDeviceMap(sitesToRender) {
                     .style("opacity", 0)
                     .style("transform", "scale(0.95)");
             })
-            .on("click", function(event, d) {
+            .on("click", function (event, d) {
                 d3.select(tooltip).style("opacity", 0);
                 if (typeof viewSiteDetails === "function") {
                     viewSiteDetails(d.site.id);
@@ -9410,6 +9442,12 @@ async function renderDeviceMap(sitesToRender) {
             .scaleExtent([1, 8])
             .on("zoom", (event) => {
                 g.attr("transform", event.transform);
+                // Keep dots the same visual size on screen when zooming
+                g.selectAll("circle.map-device-dot")
+                    .attr("r", 6 / event.transform.k);
+                // Keep province borders thin
+                g.selectAll("path.map-province")
+                    .style("stroke-width", (1 / event.transform.k) + "px");
             });
 
         svg.call(zoom);
@@ -13868,15 +13906,80 @@ function updateCaseDashboard() {
     if (dashRepair) dashRepair.textContent = counts.repair;
     if (dashDeinstall) dashDeinstall.textContent = counts.deinstall;
 
+    // --- Update Pie Chart ---
+    const ctx = document.getElementById('case-type-pie-chart');
+    if (ctx) {
+        if (window.caseTypePieChart instanceof Chart) {
+            window.caseTypePieChart.data.datasets[0].data = [counts.pm, counts.install, counts.repair, counts.deinstall];
+            window.caseTypePieChart.update();
+        } else {
+            window.caseTypePieChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['บำรุงรักษา', 'ติดตั้ง', 'ซ่อม', 'รื้อถอน'],
+                    datasets: [{
+                        data: [counts.pm, counts.install, counts.repair, counts.deinstall],
+                        backgroundColor: [
+                            'rgba(3, 105, 161, 0.8)', // PM - Blue
+                            'rgba(21, 128, 61, 0.8)', // Install - Green
+                            'rgba(220, 38, 38, 0.8)', // Repair - Red
+                            'rgba(180, 83, 9, 0.8)'   // Deinstall - Amber
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: {
+                                    family: "'Kanit', sans-serif",
+                                    size: 11
+                                },
+                                usePointStyle: true,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    let label = context.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed !== null) label += context.parsed + ' งาน';
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
     // Highlight active card
     const activeCategory = selects.filterCategory ? selects.filterCategory.value : "all";
+    
+    const categoryColors = {
+        "บำรุงรักษาตามรอบ": { border: "#0369a1", bg: "rgba(3, 105, 161, 0.05)", shadow: "rgba(3, 105, 161, 0.08)" },
+        "ติดตั้ง": { border: "#15803d", bg: "rgba(21, 128, 61, 0.05)", shadow: "rgba(21, 128, 61, 0.08)" },
+        "ซ่อม": { border: "#dc2626", bg: "rgba(220, 38, 38, 0.05)", shadow: "rgba(220, 38, 38, 0.08)" },
+        "รื้อถอน": { border: "#b45309", bg: "rgba(180, 83, 9, 0.05)", shadow: "rgba(180, 83, 9, 0.08)" }
+    };
+    const defaultColor = { border: "var(--primary-color, #38bdf8)", bg: "rgba(56, 189, 248, 0.05)", shadow: "rgba(56, 189, 248, 0.08)" };
+
     dashboard.querySelectorAll(".dashboard-card").forEach(card => {
         const cardCategory = card.getAttribute("data-category");
         if (cardCategory === activeCategory) {
-            card.style.borderColor = "var(--primary-color, #38bdf8)";
-            card.style.background = "rgba(56, 189, 248, 0.05)";
+            const colors = categoryColors[cardCategory] || defaultColor;
+            card.style.borderColor = colors.border;
+            card.style.background = colors.bg;
             card.style.transform = "translateY(-2px)";
-            card.style.boxShadow = "0 6px 20px rgba(56, 189, 248, 0.08)";
+            card.style.boxShadow = `0 6px 20px ${colors.shadow}`;
         } else {
             card.style.borderColor = "var(--glass-border)";
             card.style.background = "var(--card-bg)";
