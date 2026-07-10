@@ -8021,6 +8021,16 @@ input::placeholder, textarea::placeholder {
     filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.6)) !important;
 }
 
+.map-pulse-ring {
+    animation: map-pulse-ring-anim 2s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+    transform-origin: center;
+    transform-box: fill-box;
+    pointer-events: none;
+}
+@keyframes map-pulse-ring-anim {
+    0% { transform: scale(1); opacity: 0.6; stroke-width: 2px; }
+    100% { transform: scale(3.5); opacity: 0; stroke-width: 0px; }
+}
 /* Tooltip design */
 .map-tooltip {
     position: absolute;

@@ -9237,6 +9237,27 @@ async function renderDeviceMap(sitesToRender) {
         document.body.appendChild(tooltip);
     }
 
+    // Create Province Hover Tooltip
+    let provTooltip = document.getElementById("map-prov-tooltip-element");
+    if (!provTooltip) {
+        provTooltip = document.createElement("div");
+        provTooltip.id = "map-prov-tooltip-element";
+        provTooltip.style.position = "absolute";
+        provTooltip.style.background = "rgba(15, 23, 42, 0.85)";
+        provTooltip.style.color = "white";
+        provTooltip.style.padding = "4px 10px";
+        provTooltip.style.borderRadius = "6px";
+        provTooltip.style.fontSize = "0.75rem";
+        provTooltip.style.fontWeight = "500";
+        provTooltip.style.pointerEvents = "none";
+        provTooltip.style.opacity = 0;
+        provTooltip.style.transition = "opacity 0.2s, transform 0.2s";
+        provTooltip.style.transform = "scale(0.95)";
+        provTooltip.style.zIndex = "1000";
+        provTooltip.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+        document.body.appendChild(provTooltip);
+    }
+
     try {
         if (!thailandGeoJSON) {
             container.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px;"></i>กำลังโหลดข้อมูลแผนที่ประเทศไทย...</div>`;
@@ -9263,23 +9284,20 @@ async function renderDeviceMap(sitesToRender) {
         // Group element for zoom & panning
         const g = svg.append("g");
 
-        // 1. Calculate province colors based on open cases
-        const provinceColorMap = {}; 
+        // 1. Calculate site colors based on Scheduled PM/Repair this month
+        const siteColorMap = {}; 
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
         
-        if (state.logs && state.sites) {
+        if (state.logs) {
             state.logs.forEach(log => {
-                const isClosed = ['Case Closed', 'ปิดเคส', 'Done', 'เสร็จสิ้น', 'Completed', 'Cancel', 'ยกเลิก'].includes(log.status);
-                if (!isClosed) {
-                    const site = state.sites.find(s => s.id === log.siteId);
-                    if (site && site.province) {
-                        const prov = cleanProvinceName(site.province);
-                        
+                if (log.date) {
+                    const logDate = new Date(log.date);
+                    if (!isNaN(logDate.getTime()) && logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear) {
                         if (log.category === "ซ่อม") {
-                            provinceColorMap[prov] = "rgba(220, 38, 38, 0.5)"; // Red
-                        } else if (isMaCategory(log.category)) {
-                            if (provinceColorMap[prov] !== "rgba(220, 38, 38, 0.5)") {
-                                provinceColorMap[prov] = "rgba(3, 105, 161, 0.5)"; // Blue
-                            }
+                            siteColorMap[log.siteId] = "#dc2626"; // Red (takes priority)
+                        } else if (log.category === "บำรุงรักษาตามรอบ" && siteColorMap[log.siteId] !== "#dc2626") {
+                            siteColorMap[log.siteId] = "#0369a1"; // Blue
                         }
                     }
                 }
@@ -9293,16 +9311,24 @@ async function renderDeviceMap(sitesToRender) {
             .append("path")
             .attr("class", "map-province")
             .attr("d", pathGenerator)
-            .style("fill", d => {
+            .style("fill", null)
+            .on("mouseover", function(event, d) {
                 const enName = d.properties.name;
                 const thName = provinceTranslationMap[enName] || enName;
-                const cleanName = cleanProvinceName(thName);
-                return provinceColorMap[cleanName] || null;
+                d3.select(provTooltip)
+                    .text(thName)
+                    .style("opacity", 1)
+                    .style("transform", "scale(1)");
             })
-            .append("title")
-            .text(d => {
-                const enName = d.properties.name;
-                return provinceTranslationMap[enName] || enName;
+            .on("mousemove", function(event) {
+                d3.select(provTooltip)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY + 10) + "px");
+            })
+            .on("mouseout", function() {
+                d3.select(provTooltip)
+                    .style("opacity", 0)
+                    .style("transform", "scale(0.95)");
             });
 
         // Compute province centroid map for quick access
@@ -9366,14 +9392,28 @@ async function renderDeviceMap(sitesToRender) {
                     dotsData.push({
                         site: site,
                         cx: projected[0] + offsetX,
-                        cy: projected[1] + offsetY
+                        cy: projected[1] + offsetY,
+                        pinColor: siteColorMap[site.id] || null
                     });
                 }
             }
         });
 
+        // Pulse Rings for pins meeting conditions
+        g.selectAll("circle.map-pulse-ring")
+            .data(dotsData.filter(d => d.pinColor))
+            .enter()
+            .append("circle")
+            .attr("class", "map-pulse-ring")
+            .attr("cx", d => d.cx)
+            .attr("cy", d => d.cy)
+            .attr("r", 6)
+            .attr("vector-effect", "non-scaling-stroke")
+            .style("fill", "none")
+            .style("stroke", d => d.pinColor);
+
         // Plot dots
-        const dots = g.selectAll("circle")
+        const dots = g.selectAll("circle.map-device-dot")
             .data(dotsData)
             .enter()
             .append("circle")
@@ -9382,6 +9422,7 @@ async function renderDeviceMap(sitesToRender) {
             .attr("cy", d => d.cy)
             .attr("r", 6)
             .attr("vector-effect", "non-scaling-stroke")
+            .style("fill", d => d.pinColor || "")
             .on("mouseover", function (event, d) {
                 const currentK = d3.zoomTransform(svg.node()).k;
                 d3.select(this)
@@ -9423,7 +9464,7 @@ async function renderDeviceMap(sitesToRender) {
                     .transition()
                     .duration(200)
                     .attr("r", 6 / currentK)
-                    .style("fill", "")
+                    .style("fill", d => d.pinColor || "")
                     .style("filter", "");
 
                 d3.select(tooltip)
@@ -9442,12 +9483,17 @@ async function renderDeviceMap(sitesToRender) {
             .scaleExtent([1, 8])
             .on("zoom", (event) => {
                 g.attr("transform", event.transform);
+                const k = event.transform.k;
+                
                 // Keep dots the same visual size on screen when zooming
                 g.selectAll("circle.map-device-dot")
-                    .attr("r", 6 / event.transform.k);
+                    .attr("r", 6 / k);
+                g.selectAll("circle.map-pulse-ring")
+                    .attr("r", 6 / k);
+                
                 // Keep province borders thin
                 g.selectAll("path.map-province")
-                    .style("stroke-width", (1 / event.transform.k) + "px");
+                    .style("stroke-width", (1 / k) + "px");
             });
 
         svg.call(zoom);
@@ -9550,6 +9596,40 @@ function renderSites() {
 
     if (totalClientsEl) {
         totalClientsEl.innerHTML = `${clients.size} <span style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">ราย</span>`;
+    }
+
+    const pmThisMonthEl = document.getElementById("dash-pm-this-month");
+    const repairThisMonthEl = document.getElementById("dash-repair-this-month");
+
+    if (pmThisMonthEl || repairThisMonthEl) {
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+        let pmCount = 0;
+        let repairCount = 0;
+        
+        const siteIds = new Set(sitesToRender.map(s => s.id));
+
+        if (state && state.logs) {
+            state.logs.forEach(log => {
+                if (siteIds.has(log.siteId) && log.date) {
+                    const logDate = new Date(log.date);
+                    if (!isNaN(logDate.getTime()) && logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear) {
+                        if (log.category === "บำรุงรักษาตามรอบ") {
+                            pmCount++;
+                        } else if (log.category === "ซ่อม") {
+                            repairCount++;
+                        }
+                    }
+                }
+            });
+        }
+
+        if (pmThisMonthEl) {
+            pmThisMonthEl.innerHTML = `${pmCount} <span style="font-size:0.9rem; font-weight:500; color:var(--text-muted);">เคส</span>`;
+        }
+        if (repairThisMonthEl) {
+            repairThisMonthEl.innerHTML = `${repairCount} <span style="font-size:0.9rem; font-weight:500; color:var(--text-muted);">เคส</span>`;
+        }
     }
 
 
@@ -12337,6 +12417,13 @@ function filterLogsClientSide(logsToFilter, filters) {
 
             // Get first comment (description) if exists
             const firstComment = l.comments && l.comments.length > 0 ? l.comments[0].text.toLowerCase() : "";
+            
+            const recorderName = (l.updatedBy ||
+                (state.users && l.recorderId && state.users[l.recorderId]
+                    ? state.users[l.recorderId].displayName ||
+                    state.users[l.recorderId].email ||
+                    l.recordedBy
+                    : l.recordedBy || "")).toLowerCase();
 
             return (
                 siteName.includes(q) ||
@@ -12344,7 +12431,8 @@ function filterLogsClientSide(logsToFilter, filters) {
                 caseId.includes(q) ||
                 objective.includes(q) ||
                 details.includes(q) ||
-                firstComment.includes(q)
+                firstComment.includes(q) ||
+                recorderName.includes(q)
             );
         });
     }
@@ -14045,13 +14133,28 @@ function renderLogs() {
     const table = document.createElement("table");
     table.className = "data-table";
 
+    window.logsDateSortOrder = window.logsDateSortOrder || 'desc';
+    const sortIcon = window.logsDateSortOrder === 'desc' ? '<i class="fa-solid fa-sort-down"></i>' : '<i class="fa-solid fa-sort-up"></i>';
+
+    // Apply sorting to logsToRender before rendering
+    logsToRender.sort((a, b) => {
+        const dateA = new Date(a.date).getTime() || 0;
+        const dateB = new Date(b.date).getTime() || 0;
+        return window.logsDateSortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+    });
+
+    window.toggleLogsDateSort = function() {
+        window.logsDateSortOrder = window.logsDateSortOrder === 'desc' ? 'asc' : 'desc';
+        renderLogs();
+    };
+
     // Header
     table.innerHTML = `
         <thead>
             <tr>
                 <th style="width: 5%;" class="desktop-only">ที่</th>
                 <th style="width: 1%; white-space: nowrap;">รหัสเคส</th>
-                <th style="width: 1%; white-space: nowrap;">วันที่</th>
+                <th style="width: 1%; white-space: nowrap; cursor: pointer; user-select: none;" onclick="toggleLogsDateSort()" title="คลิกเพื่อสลับการเรียงลำดับวันที่">วันที่ ${sortIcon}</th>
                 <th style="width: 30%;">สถานที่</th>
                 <th style="width: 12%;">หมวดหมู่</th>
                 <th style="width: 10%;">สถานะ</th>
@@ -14387,11 +14490,18 @@ if (loginForm) {
     const loginEmail = document.getElementById("login-email");
     const loginPassword = document.getElementById("login-password");
     if (loginEmail && loginPassword) {
-        const checkAutoLogin = () => {
+        const checkAutoLogin = (e) => {
+            // ป้องกัน auto-login หากเป็น browser autofill
+            if (e && e.type === "input") {
+                if (!e.inputType || e.inputType === "insertReplacementText") {
+                    return; // Ignore autofill events
+                }
+            }
+
             const emailVal = loginEmail.value.trim();
             const passVal = loginPassword.value;
             if (emailVal.length > 0 && passVal.length === 6) {
-                console.log("Auto-login triggered as fields are filled.");
+                console.log("Auto-login triggered as fields are filled manually.");
                 if (typeof loginForm.requestSubmit === "function") {
                     loginForm.requestSubmit();
                 } else {
