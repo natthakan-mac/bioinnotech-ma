@@ -6400,7 +6400,7 @@ function setupEventListeners() {
     // Case Dashboard Card Click Listeners
     const caseDashboard = document.getElementById("case-type-dashboard");
     if (caseDashboard) {
-        caseDashboard.querySelectorAll(".interactive-card").forEach(card => {
+        caseDashboard.querySelectorAll(".interactive-card, .custom-chart-legend .legend-item").forEach(card => {
             card.addEventListener("click", () => {
                 const cat = card.getAttribute("data-category");
                 if (selects.filterCategory) {
@@ -9285,10 +9285,10 @@ async function renderDeviceMap(sitesToRender) {
         const g = svg.append("g");
 
         // 1. Calculate site colors based on Scheduled PM/Repair this month
-        const siteColorMap = {}; 
+        const siteColorMap = {};
         const currentMonth = new Date().getMonth();
         const currentYear = new Date().getFullYear();
-        
+
         if (state.logs) {
             state.logs.forEach(log => {
                 if (log.date) {
@@ -9312,7 +9312,7 @@ async function renderDeviceMap(sitesToRender) {
             .attr("class", "map-province")
             .attr("d", pathGenerator)
             .style("fill", null)
-            .on("mouseover", function(event, d) {
+            .on("mouseover", function (event, d) {
                 const enName = d.properties.name;
                 const thName = provinceTranslationMap[enName] || enName;
                 d3.select(provTooltip)
@@ -9320,12 +9320,12 @@ async function renderDeviceMap(sitesToRender) {
                     .style("opacity", 1)
                     .style("transform", "scale(1)");
             })
-            .on("mousemove", function(event) {
+            .on("mousemove", function (event) {
                 d3.select(provTooltip)
                     .style("left", (event.pageX + 10) + "px")
                     .style("top", (event.pageY + 10) + "px");
             })
-            .on("mouseout", function() {
+            .on("mouseout", function () {
                 d3.select(provTooltip)
                     .style("opacity", 0)
                     .style("transform", "scale(0.95)");
@@ -9484,13 +9484,13 @@ async function renderDeviceMap(sitesToRender) {
             .on("zoom", (event) => {
                 g.attr("transform", event.transform);
                 const k = event.transform.k;
-                
+
                 // Keep dots the same visual size on screen when zooming
                 g.selectAll("circle.map-device-dot")
                     .attr("r", 6 / k);
                 g.selectAll("circle.map-pulse-ring")
                     .attr("r", 6 / k);
-                
+
                 // Keep province borders thin
                 g.selectAll("path.map-province")
                     .style("stroke-width", (1 / k) + "px");
@@ -9498,7 +9498,84 @@ async function renderDeviceMap(sitesToRender) {
 
         svg.call(zoom);
 
+        // Auto-fit zoom to filtered device pins
+        if (dotsData.length > 0) {
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            dotsData.forEach(d => {
+                if (d.cx < minX) minX = d.cx;
+                if (d.cx > maxX) maxX = d.cx;
+                if (d.cy < minY) minY = d.cy;
+                if (d.cy > maxY) maxY = d.cy;
+            });
+
+            if (minX !== Infinity) {
+                const dx = maxX - minX;
+                const dy = maxY - minY;
+                const centerX = (minX + maxX) / 2;
+                const centerY = (minY + maxY) / 2;
+
+                // Adjust zoom level dynamically based on data bounds spread
+                let scale;
+                if (dx < 12 && dy < 12) {
+                    scale = 3.5; // Single city or close group zoom-in
+                } else {
+                    scale = Math.max(1, Math.min(5, 0.8 / Math.max(dx / width, dy / height)));
+                }
+
+                // If showing all sites, reset zoom to scale 1
+                const isAllSites = sitesToRender.length === state.sites.length;
+                const targetScale = isAllSites ? 1 : scale;
+                const targetTranslate = isAllSites 
+                    ? [0, 0] 
+                    : [width / 2 - targetScale * centerX, height / 2 - targetScale * centerY];
+
+                const initialTransform = d3.zoomIdentity
+                    .translate(targetTranslate[0], targetTranslate[1])
+                    .scale(targetScale);
+
+                svg.call(zoom.transform, initialTransform);
+            }
+        }
+
         container.appendChild(svg.node());
+
+        // Create Reset Zoom Button overlay
+        const resetBtn = document.createElement("button");
+        resetBtn.id = "btn-reset-map-zoom";
+        resetBtn.className = "btn-secondary";
+        resetBtn.innerHTML = '<i class="fa-solid fa-compress"></i> <span>ล้างซูม</span>';
+        resetBtn.style.position = "absolute";
+        resetBtn.style.top = "10px";
+        resetBtn.style.right = "10px";
+        resetBtn.style.zIndex = "10";
+        resetBtn.style.padding = "6px 12px";
+        resetBtn.style.borderRadius = "8px";
+        resetBtn.style.fontSize = "0.75rem";
+        resetBtn.style.fontWeight = "600";
+        resetBtn.style.display = "flex";
+        resetBtn.style.alignItems = "center";
+        resetBtn.style.gap = "4px";
+        resetBtn.style.background = "var(--card-bg)";
+        resetBtn.style.border = "1px solid var(--glass-border)";
+        resetBtn.style.color = "var(--text-color)";
+        resetBtn.style.cursor = "pointer";
+        resetBtn.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)";
+        resetBtn.style.transition = "all 0.2s ease";
+        
+        resetBtn.addEventListener("mouseover", () => {
+            resetBtn.style.background = "rgba(0, 0, 0, 0.04)";
+        });
+        resetBtn.addEventListener("mouseout", () => {
+            resetBtn.style.background = "var(--card-bg)";
+        });
+        
+        resetBtn.addEventListener("click", () => {
+            svg.transition()
+                .duration(750)
+                .call(zoom.transform, d3.zoomIdentity);
+        });
+        
+        container.appendChild(resetBtn);
 
     } catch (error) {
         console.error("Error rendering D3 Thailand map:", error);
@@ -9591,11 +9668,11 @@ function renderSites() {
     });
 
     if (totalProvincesEl) {
-        totalProvincesEl.innerHTML = `${provinces.size} <span style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">จังหวัด</span>`;
+        totalProvincesEl.textContent = provinces.size;
     }
 
     if (totalClientsEl) {
-        totalClientsEl.innerHTML = `${clients.size} <span style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">ราย</span>`;
+        totalClientsEl.textContent = clients.size;
     }
 
     const pmThisMonthEl = document.getElementById("dash-pm-this-month");
@@ -9606,7 +9683,7 @@ function renderSites() {
         const currentYear = new Date().getFullYear();
         let pmCount = 0;
         let repairCount = 0;
-        
+
         const siteIds = new Set(sitesToRender.map(s => s.id));
 
         if (state && state.logs) {
@@ -9615,7 +9692,10 @@ function renderSites() {
                     const logDate = new Date(log.date);
                     if (!isNaN(logDate.getTime()) && logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear) {
                         if (log.category === "บำรุงรักษาตามรอบ") {
-                            pmCount++;
+                            // Only count if case is not closed or cancelled
+                            if (log.status !== "Case Closed" && log.status !== "Cancel") {
+                                pmCount++;
+                            }
                         } else if (log.category === "ซ่อม") {
                             repairCount++;
                         }
@@ -9625,10 +9705,18 @@ function renderSites() {
         }
 
         if (pmThisMonthEl) {
-            pmThisMonthEl.innerHTML = `${pmCount} <span style="font-size:0.9rem; font-weight:500; color:var(--text-muted);">เคส</span>`;
+            pmThisMonthEl.textContent = pmCount;
+            const pmDescEl = document.querySelector("#device-dashboard .dashboard-card:nth-child(3) .dashboard-card-content > span:nth-child(3)");
+            if (pmDescEl) {
+                pmDescEl.textContent = "จำนวนเครื่องที่ถึงรอบ PM ในเดือนปัจจุบันและยังไม่ปิดเคส";
+            }
         }
         if (repairThisMonthEl) {
-            repairThisMonthEl.innerHTML = `${repairCount} <span style="font-size:0.9rem; font-weight:500; color:var(--text-muted);">เคส</span>`;
+            repairThisMonthEl.textContent = repairCount;
+            const repairDescEl = document.querySelector("#device-dashboard .dashboard-card:nth-child(4) .dashboard-card-content > span:nth-child(3)");
+            if (repairDescEl) {
+                repairDescEl.textContent = "จำนวนเคสแจ้งซ่อมประจำเดือนปัจจุบัน";
+            }
         }
     }
 
@@ -12417,7 +12505,7 @@ function filterLogsClientSide(logsToFilter, filters) {
 
             // Get first comment (description) if exists
             const firstComment = l.comments && l.comments.length > 0 ? l.comments[0].text.toLowerCase() : "";
-            
+
             const recorderName = (l.updatedBy ||
                 (state.users && l.recorderId && state.users[l.recorderId]
                     ? state.users[l.recorderId].displayName ||
@@ -13994,44 +14082,124 @@ function updateCaseDashboard() {
     if (dashRepair) dashRepair.textContent = counts.repair;
     if (dashDeinstall) dashDeinstall.textContent = counts.deinstall;
 
-    // --- Update Pie Chart ---
+    // --- Update Gradient Doughnut Chart ---
     const ctx = document.getElementById('case-type-pie-chart');
     if (ctx) {
-        if (window.caseTypePieChart instanceof Chart) {
+        const canvasCtx = ctx.getContext('2d');
+        
+        // Define canvas gradients matching the category card colors
+        const pmGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
+        pmGrad.addColorStop(0, '#38bdf8');
+        pmGrad.addColorStop(1, '#0369a1');
+
+        const installGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
+        installGrad.addColorStop(0, '#4ade80');
+        installGrad.addColorStop(1, '#15803d');
+
+        const repairGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
+        repairGrad.addColorStop(0, '#f87171');
+        repairGrad.addColorStop(1, '#dc2626');
+
+        const deinstallGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
+        deinstallGrad.addColorStop(0, '#fbbf24');
+        deinstallGrad.addColorStop(1, '#b45309');
+
+        const bgColors = [pmGrad, installGrad, repairGrad, deinstallGrad];
+
+        // Define custom doughnut labels plugin
+        const doughnutLabelsPlugin = {
+            id: 'doughnutLabels',
+            afterDraw(chart) {
+                const { ctx } = chart;
+                const isDarkMode = document.body.classList.contains("dark-mode");
+                
+                chart.data.datasets.forEach((dataset, i) => {
+                    const meta = chart.getDatasetMeta(i);
+                    meta.data.forEach((element, index) => {
+                        const value = dataset.data[index];
+                        if (value === 0) return; // Don't draw if count is zero
+                        
+                        const { x, y, outerRadius, startAngle, endAngle } = element;
+                        const midAngle = startAngle + (endAngle - startAngle) / 2;
+                        
+                        // 1. Line start point (at boundary of doughnut slice)
+                        const startX = Math.cos(midAngle) * outerRadius + x;
+                        const startY = Math.sin(midAngle) * outerRadius + y;
+                        
+                        // 2. Line inflection point (extend outward)
+                        const extendLength = 14;
+                        const infX = Math.cos(midAngle) * (outerRadius + extendLength) + x;
+                        const infY = Math.sin(midAngle) * (outerRadius + extendLength) + y;
+                        
+                        // 3. Line end point (horizontal tail)
+                        const isRight = infX > x;
+                        const tailLength = 8;
+                        const endX = infX + (isRight ? tailLength : -tailLength);
+                        const endY = infY;
+                        
+                        // 4. Draw polyline callout
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.moveTo(startX, startY);
+                        ctx.lineTo(infX, infY);
+                        ctx.lineTo(endX, endY);
+                        
+                        ctx.strokeStyle = isDarkMode ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.15)';
+                        ctx.lineWidth = 1.2;
+                        ctx.stroke();
+                        
+                        // 5. Draw text label
+                        const label = chart.data.labels[index];
+                        const text = `${label} (${value})`;
+                        ctx.font = "bold 11px 'Kanit', 'Prompt', sans-serif";
+                        ctx.fillStyle = isDarkMode ? '#cbd5e1' : '#475569';
+                        ctx.textAlign = isRight ? 'left' : 'right';
+                        ctx.textBaseline = 'middle';
+                        
+                        const textX = endX + (isRight ? 6 : -6);
+                        const textY = endY;
+                        ctx.fillText(text, textX, textY);
+                        ctx.restore();
+                    });
+                });
+            }
+        };
+
+        if (window.caseTypePieChart instanceof Chart && window.caseTypePieChart.config.type === 'pie') {
             window.caseTypePieChart.data.datasets[0].data = [counts.pm, counts.install, counts.repair, counts.deinstall];
+            window.caseTypePieChart.data.datasets[0].backgroundColor = bgColors;
+            window.caseTypePieChart.data.datasets[0].hoverOffset = 12;
             window.caseTypePieChart.update();
         } else {
+            if (window.caseTypePieChart instanceof Chart) {
+                window.caseTypePieChart.destroy();
+            }
             window.caseTypePieChart = new Chart(ctx, {
-                type: 'doughnut',
+                type: 'pie',
+                plugins: [doughnutLabelsPlugin],
                 data: {
                     labels: ['บำรุงรักษา', 'ติดตั้ง', 'ซ่อม', 'รื้อถอน'],
                     datasets: [{
                         data: [counts.pm, counts.install, counts.repair, counts.deinstall],
-                        backgroundColor: [
-                            'rgba(3, 105, 161, 0.8)', // PM - Blue
-                            'rgba(21, 128, 61, 0.8)', // Install - Green
-                            'rgba(220, 38, 38, 0.8)', // Repair - Red
-                            'rgba(180, 83, 9, 0.8)'   // Deinstall - Amber
-                        ],
+                        backgroundColor: bgColors,
                         borderWidth: 0,
-                        hoverOffset: 4
+                        hoverOffset: 12
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '65%',
+                    layout: {
+                        padding: {
+                            top: 10,
+                            bottom: 10,
+                            left: 45,
+                            right: 45
+                        }
+                    },
                     plugins: {
                         legend: {
-                            position: 'bottom',
-                            labels: {
-                                font: {
-                                    family: "'Kanit', sans-serif",
-                                    size: 11
-                                },
-                                usePointStyle: true,
-                                padding: 15
-                            }
+                            display: false // DISABLE default legend
                         },
                         tooltip: {
                             callbacks: {
@@ -14049,30 +14217,63 @@ function updateCaseDashboard() {
         }
     }
 
-    // Highlight active card
+    // Highlight active card and update dynamic descriptions
     const activeCategory = selects.filterCategory ? selects.filterCategory.value : "all";
-    
-    const categoryColors = {
-        "บำรุงรักษาตามรอบ": { border: "#0369a1", bg: "rgba(3, 105, 161, 0.05)", shadow: "rgba(3, 105, 161, 0.08)" },
-        "ติดตั้ง": { border: "#15803d", bg: "rgba(21, 128, 61, 0.05)", shadow: "rgba(21, 128, 61, 0.08)" },
-        "ซ่อม": { border: "#dc2626", bg: "rgba(220, 38, 38, 0.05)", shadow: "rgba(220, 38, 38, 0.08)" },
-        "รื้อถอน": { border: "#b45309", bg: "rgba(180, 83, 9, 0.05)", shadow: "rgba(180, 83, 9, 0.08)" }
-    };
-    const defaultColor = { border: "var(--primary-color, #38bdf8)", bg: "rgba(56, 189, 248, 0.05)", shadow: "rgba(56, 189, 248, 0.08)" };
+
+    // 1. Get Status Text
+    let statusText = "ทุกสถานะ";
+    if (statusFilter !== "all") {
+        const statusMap = {
+            "Open": "เปิดงาน",
+            "On Process": "กำลังดำเนินการ",
+            "Done": "เสร็จสิ้น",
+            "Case Closed": "ปิดเคส",
+            "Cancel": "ยกเลิก"
+        };
+        statusText = statusMap[statusFilter] || statusFilter;
+    }
+
+    // 2. Get Period Text
+    let periodText = "ทุกช่วงเวลา";
+    if (isCalendar) {
+        const calHeader = document.getElementById("cal-current-month");
+        if (calHeader) {
+            periodText = `ประจำเดือน ${calHeader.textContent.trim()}`;
+        }
+    } else if (startDate || endDate) {
+        const formatThaiDate = (date) => {
+            if (!date) return "";
+            return date.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" });
+        };
+        if (startDate && endDate) {
+            periodText = `ช่วง ${formatThaiDate(startDate)} - ${formatThaiDate(endDate)}`;
+        } else if (startDate) {
+            periodText = `ตั้งแต่ ${formatThaiDate(startDate)}`;
+        } else if (endDate) {
+            periodText = `ถึง ${formatThaiDate(endDate)}`;
+        }
+    }
+
+    const filterDetails = `สถานะ: ${statusText} • ${periodText}`;
 
     dashboard.querySelectorAll(".dashboard-card").forEach(card => {
         const cardCategory = card.getAttribute("data-category");
+        
+        // Remove all active states
+        card.classList.remove("active-card", "active-pm", "active-install", "active-repair", "active-deinstall");
+        
         if (cardCategory === activeCategory) {
-            const colors = categoryColors[cardCategory] || defaultColor;
-            card.style.borderColor = colors.border;
-            card.style.background = colors.bg;
-            card.style.transform = "translateY(-2px)";
-            card.style.boxShadow = `0 6px 20px ${colors.shadow}`;
-        } else {
-            card.style.borderColor = "var(--glass-border)";
-            card.style.background = "var(--card-bg)";
-            card.style.transform = "none";
-            card.style.boxShadow = "0 4px 15px rgba(0,0,0,0.03)";
+            card.classList.add("active-card");
+            if (cardCategory === "บำรุงรักษาตามรอบ") card.classList.add("active-pm");
+            else if (cardCategory === "ติดตั้ง") card.classList.add("active-install");
+            else if (cardCategory === "ซ่อม") card.classList.add("active-repair");
+            else if (cardCategory === "รื้อถอน") card.classList.add("active-deinstall");
+        }
+
+        // Update description dynamically
+        const descEl = card.querySelector(".dashboard-card-content > span:nth-child(3)");
+        if (descEl) {
+            descEl.textContent = filterDetails;
         }
     });
 }
@@ -14143,7 +14344,7 @@ function renderLogs() {
         return window.logsDateSortOrder === 'desc' ? dateB - dateA : dateA - dateB;
     });
 
-    window.toggleLogsDateSort = function() {
+    window.toggleLogsDateSort = function () {
         window.logsDateSortOrder = window.logsDateSortOrder === 'desc' ? 'asc' : 'desc';
         renderLogs();
     };
