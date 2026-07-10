@@ -919,6 +919,7 @@ function clearSessionTimeout() {
 
 // --- State Management ---
 let state = {
+    isInitialLoading: true,
     sites: [],
     logs: [],
     addressData: [], // Raw JSON data
@@ -2042,6 +2043,8 @@ async function refreshData() {
 
         populateSiteFilters(); // Populate filters after loading sites
         updateLogDetailsDatalist(); // Populate autocomplete for line items
+        
+        state.isInitialLoading = false;
         renderAll();
     } catch (error) {
         console.error("Error fetching data:", error);
@@ -14075,12 +14078,15 @@ function updateCaseDashboard() {
     const dashInstall = document.getElementById("dash-case-install");
     const dashRepair = document.getElementById("dash-case-repair");
     const dashDeinstall = document.getElementById("dash-case-deinstall");
+    const displayVal = (val) => state.isInitialLoading ? '<i class="fa-solid fa-spinner fa-spin text-muted" style="font-size: 0.8em; opacity: 0.5;"></i>' : val;
 
-    if (dashAll) dashAll.textContent = counts.all;
-    if (dashPm) dashPm.textContent = counts.pm;
-    if (dashInstall) dashInstall.textContent = counts.install;
-    if (dashRepair) dashRepair.textContent = counts.repair;
-    if (dashDeinstall) dashDeinstall.textContent = counts.deinstall;
+    if (dashAll) dashAll.innerHTML = displayVal(counts.all);
+    if (dashPm) dashPm.innerHTML = displayVal(counts.pm);
+    if (dashInstall) dashInstall.innerHTML = displayVal(counts.install);
+    if (dashRepair) dashRepair.innerHTML = displayVal(counts.repair);
+    if (dashDeinstall) dashDeinstall.innerHTML = displayVal(counts.deinstall);
+
+    if (state.isInitialLoading) return; // Skip updating chart while loading
 
     // --- Update Gradient Doughnut Chart ---
     const ctx = document.getElementById('case-type-pie-chart');
