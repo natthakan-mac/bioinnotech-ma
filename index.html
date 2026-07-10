@@ -1977,75 +1977,50 @@
                     </div>
                 </div>
 
-                <!-- Device Dashboard Section -->
-                <div id="device-dashboard" class="device-dashboard-container"
-                    style="margin-bottom: 1.5rem; width: 100%;">
-                    <div class="dashboard-grid"
-                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; width: 100%;">
-
-                        <!-- Card 1: Total Devices -->
-                        <div class="dashboard-card"
-                            style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s;">
-                            <div class="dashboard-card-icon"
-                                style="background: rgba(56, 189, 248, 0.1); color: var(--primary-color); border: 1px solid rgba(56, 189, 248, 0.2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
-                                <i class="fa-solid fa-microchip"></i>
-                            </div>
-                            <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
-                                <span
-                                    style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500;">เครื่องทั้งหมด</span>
-                                <span id="dash-total-devices"
-                                    style="font-size: 1.75rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0</span>
-                            </div>
-                        </div>
-
-                        <!-- Card 2: Provinces Count -->
-                        <div class="dashboard-card"
-                            style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s;">
-                            <div class="dashboard-card-icon" id="dash-provinces-icon"
-                                style="background: rgba(22, 163, 74, 0.1); color: #16a34a; border: 1px solid rgba(22, 163, 74, 0.2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
-                                <i class="fa-solid fa-earth-asia"></i>
-                            </div>
-                            <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
-                                <span
-                                    style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500;">พื้นที่ติดตั้ง</span>
-                                <span id="dash-total-provinces"
-                                    style="font-size: 1.75rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0
-                                    <span
-                                        style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">จังหวัด</span></span>
-                            </div>
-                        </div>
-
-
-
-                        <!-- Card 4: Clients Count -->
-                        <div class="dashboard-card"
-                            style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s;">
-                            <div class="dashboard-card-icon"
-                                style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
-                                <i class="fa-solid fa-building-user"></i>
-                            </div>
-                            <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
-                                <span
-                                    style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500;">ลูกค้าทั้งหมด</span>
-                                <span id="dash-total-clients"
-                                    style="font-size: 1.75rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0
-                                    <span
-                                        style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">ราย</span></span>
-                            </div>
-                        </div>
-
+                <!-- Devices Overview Layout -->
+                <div class="sites-overview-container" style="margin-bottom: 1.5rem; width: 100%; display: flex; flex-direction: row; gap: 2rem; align-items: stretch; flex-wrap: wrap;">
+                    
+                    <!-- Map Container (Left) -->
+                    <div id="device-map-container" class="glass-panel" style="flex: 1.2; min-width: 320px; display: flex; flex-direction: column; padding: 1.25rem; border-radius: var(--radius-lg); box-sizing: border-box; background: var(--card-bg); border: 1px solid var(--glass-border); box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
+                         <h3 style="margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem; color: var(--text-color); font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                             <i class="fa-solid fa-map-location-dot" style="color: var(--primary-color);"></i>
+                             <span>แผนที่แสดงจุดติดตั้งเครื่อง (Device Location Map)</span>
+                         </h3>
+                         <div id="device-map" style="width: 100%; flex: 1; min-height: 400px; position: relative; background: rgba(0, 0, 0, 0.01); border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--glass-border);">
+                             <!-- SVG map will be injected here dynamically -->
+                         </div>
                     </div>
-                </div>
 
-                <!-- Map Container (D3.js Thailand Map) -->
-                <div id="device-map-container" class="glass-panel" style="margin-bottom: 1.5rem; padding: 1.25rem; border-radius: var(--radius-lg); width: 100%; box-sizing: border-box; background: var(--card-bg); border: 1px solid var(--glass-border); box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
-                     <h3 style="margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem; color: var(--text-color); font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
-                         <i class="fa-solid fa-map-location-dot" style="color: var(--primary-color);"></i>
-                         <span>แผนที่แสดงจุดติดตั้งเครื่อง (Device Location Map)</span>
-                     </h3>
-                     <div id="device-map" style="width: 100%; height: 500px; position: relative; background: rgba(0, 0, 0, 0.01); border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--glass-border);">
-                         <!-- SVG map will be injected here dynamically -->
-                     </div>
+                    <!-- Device Dashboard Section (Right) -->
+                    <div id="device-dashboard" class="device-dashboard-container" style="flex: 1; min-width: 320px; display: flex; flex-direction: column;">
+                        <div class="dashboard-grid" style="display: grid; grid-template-columns: repeat(1, 1fr); gap: 1rem; width: 100%; flex: 1;">
+
+                            <!-- Card 2: Provinces Count -->
+                            <div class="dashboard-card" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.5rem; display: flex; align-items: center; gap: 1.25rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s;">
+                                <div class="dashboard-card-icon" id="dash-provinces-icon" style="background: rgba(22, 163, 74, 0.1); color: #16a34a; border: 1px solid rgba(22, 163, 74, 0.2); width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+                                    <i class="fa-solid fa-earth-asia"></i>
+                                </div>
+                                <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 1rem; color: var(--text-muted); font-weight: 600;">พื้นที่ติดตั้ง</span>
+                                    <span id="dash-total-provinces" style="font-size: 2.25rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 4px;">0
+                                        <span style="font-size:0.9rem; font-weight:500; color:var(--text-muted);">จังหวัด</span></span>
+                                </div>
+                            </div>
+
+                            <!-- Card 4: Clients Count -->
+                            <div class="dashboard-card" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.5rem; display: flex; align-items: center; gap: 1.25rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s;">
+                                <div class="dashboard-card-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+                                    <i class="fa-solid fa-building-user"></i>
+                                </div>
+                                <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 1rem; color: var(--text-muted); font-weight: 600;">ลูกค้าทั้งหมด</span>
+                                    <span id="dash-total-clients" style="font-size: 2.25rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 4px;">0
+                                        <span style="font-size:0.9rem; font-weight:500; color:var(--text-muted);">ราย</span></span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Mobile Search Box (Always Visible) -->
@@ -2218,56 +2193,56 @@
                 </div>
 
                 <!-- Dashboard แยกตามประเภทเคส (Case Type Dashboard) -->
-                <div id="case-type-dashboard" class="case-dashboard-container" style="margin-top: 0.5rem; margin-bottom: 1.5rem; width: 100%; display: flex; flex-direction: row; gap: 2rem; align-items: center; flex-wrap: wrap;">
-                    <div style="flex: 1.2; min-width: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
+                <div id="case-type-dashboard" class="case-dashboard-container" style="margin-top: 0.5rem; margin-bottom: 1.5rem; width: 100%; display: flex; flex-direction: row; gap: 2rem; align-items: stretch; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
                         <h4 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1rem; color: var(--text-color); font-weight: 600; text-align: center;">สัดส่วนงานซ่อมบำรุง</h4>
                         <div style="position: relative; width: 100%; max-width: 280px; aspect-ratio: 1/1;">
                             <canvas id="case-type-pie-chart"></canvas>
                         </div>
                     </div>
-                    <div style="flex: 1; min-width: 320px; display: flex; flex-direction: column; justify-content: center;">
-                    <div class="dashboard-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; width: 100%;">
+                    <div style="flex: 1; min-width: 320px; display: flex; flex-direction: column;">
+                    <div class="dashboard-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; width: 100%; flex: 1;">
                         <!-- Card 2: บำรุงรักษาตามรอบ -->
-                        <div class="dashboard-card interactive-card" data-category="บำรุงรักษาตามรอบ" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s; cursor: pointer;">
-                            <div class="dashboard-card-icon" style="background: rgba(3, 105, 161, 0.1); color: #0369a1; border: 1px solid rgba(3, 105, 161, 0.2); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                        <div class="dashboard-card interactive-card" data-category="บำรุงรักษาตามรอบ" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.5rem; display: flex; align-items: center; gap: 1.25rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s; cursor: pointer;">
+                            <div class="dashboard-card-icon" style="background: rgba(3, 105, 161, 0.1); color: #0369a1; border: 1px solid rgba(3, 105, 161, 0.2); width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
                                 <i class="fa-solid fa-calendar-check"></i>
                             </div>
                             <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
-                                <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500;">บำรุงรักษาตามรอบ</span>
-                                <span id="dash-case-pm" style="font-size: 1.5rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0</span>
+                                <span style="font-size: 1rem; color: var(--text-muted); font-weight: 600;">บำรุงรักษาตามรอบ</span>
+                                <span id="dash-case-pm" style="font-size: 2.25rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 4px;">0</span>
                             </div>
                         </div>
 
                         <!-- Card 3: ติดตั้ง -->
-                        <div class="dashboard-card interactive-card" data-category="ติดตั้ง" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s; cursor: pointer;">
-                            <div class="dashboard-card-icon" style="background: rgba(21, 128, 61, 0.1); color: #15803d; border: 1px solid rgba(21, 128, 61, 0.2); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                        <div class="dashboard-card interactive-card" data-category="ติดตั้ง" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.5rem; display: flex; align-items: center; gap: 1.25rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s; cursor: pointer;">
+                            <div class="dashboard-card-icon" style="background: rgba(21, 128, 61, 0.1); color: #15803d; border: 1px solid rgba(21, 128, 61, 0.2); width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
                                 <i class="fa-solid fa-toolbox"></i>
                             </div>
                             <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
-                                <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500;">ติดตั้ง</span>
-                                <span id="dash-case-install" style="font-size: 1.5rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0</span>
+                                <span style="font-size: 1rem; color: var(--text-muted); font-weight: 600;">ติดตั้ง</span>
+                                <span id="dash-case-install" style="font-size: 2.25rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 4px;">0</span>
                             </div>
                         </div>
 
                         <!-- Card 4: ซ่อม -->
-                        <div class="dashboard-card interactive-card" data-category="ซ่อม" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s; cursor: pointer;">
-                            <div class="dashboard-card-icon" style="background: rgba(220, 38, 38, 0.1); color: #dc2626; border: 1px solid rgba(220, 38, 38, 0.2); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                        <div class="dashboard-card interactive-card" data-category="ซ่อม" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.5rem; display: flex; align-items: center; gap: 1.25rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s; cursor: pointer;">
+                            <div class="dashboard-card-icon" style="background: rgba(220, 38, 38, 0.1); color: #dc2626; border: 1px solid rgba(220, 38, 38, 0.2); width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
                                 <i class="fa-solid fa-screwdriver-wrench"></i>
                             </div>
                             <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
-                                <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500;">ซ่อม</span>
-                                <span id="dash-case-repair" style="font-size: 1.5rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0</span>
+                                <span style="font-size: 1rem; color: var(--text-muted); font-weight: 600;">ซ่อม</span>
+                                <span id="dash-case-repair" style="font-size: 2.25rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 4px;">0</span>
                             </div>
                         </div>
 
                         <!-- Card 5: รื้อถอน -->
-                        <div class="dashboard-card interactive-card" data-category="รื้อถอน" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s; cursor: pointer;">
-                            <div class="dashboard-card-icon" style="background: rgba(180, 83, 9, 0.1); color: #b45309; border: 1px solid rgba(180, 83, 9, 0.2); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                        <div class="dashboard-card interactive-card" data-category="รื้อถอน" style="background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.5rem; display: flex; align-items: center; gap: 1.25rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s; cursor: pointer;">
+                            <div class="dashboard-card-icon" style="background: rgba(180, 83, 9, 0.1); color: #b45309; border: 1px solid rgba(180, 83, 9, 0.2); width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
                                 <i class="fa-solid fa-circle-minus"></i>
                             </div>
                             <div class="dashboard-card-content" style="display: flex; flex-direction: column;">
-                                <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500;">รื้อถอน</span>
-                                <span id="dash-case-deinstall" style="font-size: 1.5rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 2px;">0</span>
+                                <span style="font-size: 1rem; color: var(--text-muted); font-weight: 600;">รื้อถอน</span>
+                                <span id="dash-case-deinstall" style="font-size: 2.25rem; font-weight: 700; color: var(--text-color); line-height: 1.2; margin-top: 4px;">0</span>
                             </div>
                         </div>
                     </div>
