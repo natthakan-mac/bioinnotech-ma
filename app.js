@@ -797,11 +797,23 @@ function setupAuthStateListener() {
                 const navSites = document.getElementById("nav-sites");
                 if (navSites) navSites.classList.remove("hidden"); // Always show to logged-in users
 
-                init();
+                // Show loading splash while data loads
+                const splash = document.getElementById("loading-splash");
+                if (splash) {
+                    splash.classList.remove("hidden");
+                    const splashText = splash.querySelector("p");
+                    if (splashText) splashText.textContent = "กำลังโหลดข้อมูล...";
+                }
+
+                // Wait for init (data loading) to complete before hiding splash
+                await init();
                 renderProfile(user);
                 setupSessionTimeout(); // Start inactivity monitor
-                const splash = document.getElementById("loading-splash");
-                if (splash) setTimeout(() => splash.classList.add("hidden"), 500);
+
+                if (splash) {
+                    // Small delay for smooth transition
+                    setTimeout(() => splash.classList.add("hidden"), 300);
+                }
             } else {
                 console.log("Auth State Changed: No User");
                 currentUserRole = "user";
@@ -832,7 +844,7 @@ initAuthWorkflow();
 
 // --- Session Timeout Logic ---
 let idleTimer;
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const SESSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 let lastIdleStorageUpdate = 0;
 
 function resetIdleTimer() {
@@ -864,7 +876,7 @@ async function handleSessionTimeout() {
         await signOut(auth);
 
         await showDialog(
-            "เซสชันหมดอายุเนื่องจากไม่มีการใช้งานเกิน 30 นาที\nกรุณาเข้าสู่ระบบใหม่",
+            "เซสชันหมดอายุเนื่องจากไม่มีการใช้งานเกิน 5 นาที\nกรุณาเข้าสู่ระบบใหม่",
             { title: "Session Expired" },
         );
         window.location.reload();
@@ -2043,7 +2055,7 @@ async function refreshData() {
 
         populateSiteFilters(); // Populate filters after loading sites
         updateLogDetailsDatalist(); // Populate autocomplete for line items
-        
+
         state.isInitialLoading = false;
         renderAll();
     } catch (error) {
@@ -2673,8 +2685,12 @@ function switchView(viewName) {
         if (el) el.classList.remove("active");
     });
 
-    if (views.admin && viewName === "admin-view")
+    if (views.admin && viewName === "admin-view") {
         views.admin.classList.add("active");
+        // Re-render sites & map so the SVG uses correct container dimensions
+        // (fixes dashboard sizing when navigating back from a different view after F5)
+        if (typeof renderSites === 'function') renderSites();
+    }
     if (views.engineer && viewName === "engineer-view")
         views.engineer.classList.add("active");
     if (views.profile && viewName === "profile-view") {
@@ -9402,6 +9418,16 @@ async function renderDeviceMap(sitesToRender) {
             }
         });
 
+        // Helper functions for radius to keep pins tap-able on mobile when zoomed
+        const getDotRadius = (k) => {
+            const isMobile = window.innerWidth <= 768;
+            return isMobile ? 6 / Math.sqrt(k) : 6 / k;
+        };
+        const getHoverRadius = (k) => {
+            const isMobile = window.innerWidth <= 768;
+            return isMobile ? 9 / Math.sqrt(k) : 9 / k;
+        };
+
         // Pulse Rings for pins meeting conditions
         g.selectAll("circle.map-pulse-ring")
             .data(dotsData.filter(d => d.pinColor))
@@ -9410,7 +9436,7 @@ async function renderDeviceMap(sitesToRender) {
             .attr("class", "map-pulse-ring")
             .attr("cx", d => d.cx)
             .attr("cy", d => d.cy)
-            .attr("r", 6)
+            .attr("r", getDotRadius(1))
             .attr("vector-effect", "non-scaling-stroke")
             .style("fill", "none")
             .style("stroke", d => d.pinColor);
@@ -9423,7 +9449,7 @@ async function renderDeviceMap(sitesToRender) {
             .attr("class", "map-device-dot")
             .attr("cx", d => d.cx)
             .attr("cy", d => d.cy)
-            .attr("r", 6)
+            .attr("r", getDotRadius(1))
             .attr("vector-effect", "non-scaling-stroke")
             .style("fill", d => d.pinColor || "")
             .on("mouseover", function (event, d) {
@@ -9431,7 +9457,7 @@ async function renderDeviceMap(sitesToRender) {
                 d3.select(this)
                     .transition()
                     .duration(200)
-                    .attr("r", 9 / currentK)
+                    .attr("r", getHoverRadius(currentK))
                     .style("fill", "#10b981")
                     .style("filter", "drop-shadow(0 0 10px rgba(16, 185, 129, 0.8))");
 
@@ -9466,7 +9492,7 @@ async function renderDeviceMap(sitesToRender) {
                 d3.select(this)
                     .transition()
                     .duration(200)
-                    .attr("r", 6 / currentK)
+                    .attr("r", getDotRadius(currentK))
                     .style("fill", d => d.pinColor || "")
                     .style("filter", "");
 
@@ -9488,11 +9514,11 @@ async function renderDeviceMap(sitesToRender) {
                 g.attr("transform", event.transform);
                 const k = event.transform.k;
 
-                // Keep dots the same visual size on screen when zooming
+                // Keep dots the same visual size on screen when zooming (or scale slightly on mobile)
                 g.selectAll("circle.map-device-dot")
-                    .attr("r", 6 / k);
+                    .attr("r", getDotRadius(k));
                 g.selectAll("circle.map-pulse-ring")
-                    .attr("r", 6 / k);
+                    .attr("r", getDotRadius(k));
 
                 // Keep province borders thin
                 g.selectAll("path.map-province")
@@ -9528,8 +9554,8 @@ async function renderDeviceMap(sitesToRender) {
                 // If showing all sites, reset zoom to scale 1
                 const isAllSites = sitesToRender.length === state.sites.length;
                 const targetScale = isAllSites ? 1 : scale;
-                const targetTranslate = isAllSites 
-                    ? [0, 0] 
+                const targetTranslate = isAllSites
+                    ? [0, 0]
                     : [width / 2 - targetScale * centerX, height / 2 - targetScale * centerY];
 
                 const initialTransform = d3.zoomIdentity
@@ -9564,20 +9590,20 @@ async function renderDeviceMap(sitesToRender) {
         resetBtn.style.cursor = "pointer";
         resetBtn.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)";
         resetBtn.style.transition = "all 0.2s ease";
-        
+
         resetBtn.addEventListener("mouseover", () => {
             resetBtn.style.background = "rgba(0, 0, 0, 0.04)";
         });
         resetBtn.addEventListener("mouseout", () => {
             resetBtn.style.background = "var(--card-bg)";
         });
-        
+
         resetBtn.addEventListener("click", () => {
             svg.transition()
                 .duration(750)
                 .call(zoom.transform, d3.zoomIdentity);
         });
-        
+
         container.appendChild(resetBtn);
 
     } catch (error) {
@@ -13163,42 +13189,42 @@ async function exportCasePDF(logId) {
         }
         inspHtml += '</div>';
 
-        // ตรวจสอบรายละเอียดก่อนส่งมอบ section (For รื้อถอน, show as "ไม่จำเป็น" (no need))
-        var precheckItems = [
-            ['precheck_electrical', 'ระบบไฟฟ้าภายในเครื่อง'],
-            ['precheck_wiring', 'ระบบการเดินสายไฟ'],
-            ['precheck_grounding', 'ระบบสายดิน'],
-            ['precheck_doorMotor', 'ระบบประตู, มอเตอร์'],
-            ['precheck_connectors', 'ระบบข้อต่อ'],
-            ['precheck_vacuumPump', 'ระบบปั้มสุญญากาศ'],
-            ['precheck_leakTest', 'การตรวจการรั่วไหล'],
-            ['precheck_chemical', 'การตรวจปริมาณน้ำยาที่ฉีด'],
-            ['precheck_sensors', 'ระบบ Sensor ต่างๆ'],
-            ['precheck_sterilize', 'การตรวจ Sterilize ด้วย CI, CI PCD'],
-            ['precheck_gasResidual', 'การตรวจปริมาณแก๊สตกค้าง'],
-            ['precheck_interior', 'การตรวจความเรียบร้อยภายในเครื่อง'],
-            ['precheck_exterior', 'การตรวจความเรียบร้อยภายนอกเครื่อง']
-        ];
-        var precheckBadge = function (val) {
-            if (isBlank) return renderPillGroup([{ label: 'ผ่าน', color: '#22c55e' }, { label: 'ไม่ผ่าน', color: '#ef4444' }, { label: 'ไม่จำเป็น', color: '#94a3b8' }]);
-            if (val === 'noneed') return '<span style="background:#94a3b8; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ไม่จำเป็น</span>';
-            if (!val || val === 'pending') return '<span style="background:#f59e0b; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">รอตรวจ</span>';
-            if (val === 'pass') return '<span style="background:#22c55e; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ผ่าน</span>';
-            return '<span style="background:#ef4444; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ไม่ผ่าน</span>';
-        };
-        var precheckDateStr = log.precheckDate ? formatDateTimeDDMMYYYY(log.precheckDate) : '-';
-        if (log.category === 'รื้อถอน') precheckDateStr = '-';
-        inspHtml += '<div class="section-block"><h2>ตรวจสอบรายละเอียดก่อนส่งมอบ (กรณีติดตั้งเครื่องเท่านั้น) <span style="font-weight:400; font-size:9px; color:#666; margin-left:8px;">วันที่ตรวจ: ' + precheckDateStr + '</span></h2>';
-        inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; width:100%;">';
-        inspHtml += '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px; width:25px;">ลำดับ</th><th style="padding:4px 8px; width:160px;">รายการตรวจสอบ</th><th style="padding:4px 8px; width:' + (isBlank ? '160px' : '55px') + '; text-align:center;">ผลตรวจ</th><th style="padding:4px 8px;">หมายเหตุ</th></tr></thead>';
-        inspHtml += '<tbody>';
-        precheckItems.forEach(function (item, idx) {
-            var val = log[item[0]] || 'pending';
-            if (log.category === 'รื้อถอน') val = 'noneed';
-            var note = log.category === 'รื้อถอน' ? '-' : (log[item[0] + '_note'] || '-');
-            inspHtml += '<tr style="border-bottom:1px solid #eee;"><td style="padding:3px 8px; text-align:center;">' + (idx + 1) + '</td><td style="padding:3px 8px;">' + item[1] + '</td><td style="padding:3px 8px; text-align:center;">' + precheckBadge(val) + '</td><td style="padding:3px 8px; color:#666;">' + note + '</td></tr>';
-        });
-        inspHtml += '</tbody></table></div>';
+        // ตรวจสอบรายละเอียดก่อนส่งมอบ section
+        if (log.category !== 'รื้อถอน') {
+            var precheckItems = [
+                ['precheck_electrical', 'ระบบไฟฟ้าภายในเครื่อง'],
+                ['precheck_wiring', 'ระบบการเดินสายไฟ'],
+                ['precheck_grounding', 'ระบบสายดิน'],
+                ['precheck_doorMotor', 'ระบบประตู, มอเตอร์'],
+                ['precheck_connectors', 'ระบบข้อต่อ'],
+                ['precheck_vacuumPump', 'ระบบปั้มสุญญากาศ'],
+                ['precheck_leakTest', 'การตรวจการรั่วไหล'],
+                ['precheck_chemical', 'การตรวจปริมาณน้ำยาที่ฉีด'],
+                ['precheck_sensors', 'ระบบ Sensor ต่างๆ'],
+                ['precheck_sterilize', 'การตรวจ Sterilize ด้วย CI, CI PCD'],
+                ['precheck_gasResidual', 'การตรวจปริมาณแก๊สตกค้าง'],
+                ['precheck_interior', 'การตรวจความเรียบร้อยภายในเครื่อง'],
+                ['precheck_exterior', 'การตรวจความเรียบร้อยภายนอกเครื่อง']
+            ];
+            var precheckBadge = function (val) {
+                if (isBlank) return renderPillGroup([{ label: 'ผ่าน', color: '#22c55e' }, { label: 'ไม่ผ่าน', color: '#ef4444' }, { label: 'ไม่จำเป็น', color: '#94a3b8' }]);
+                if (val === 'noneed') return '<span style="background:#94a3b8; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ไม่จำเป็น</span>';
+                if (!val || val === 'pending') return '<span style="background:#f59e0b; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">รอตรวจ</span>';
+                if (val === 'pass') return '<span style="background:#22c55e; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ผ่าน</span>';
+                return '<span style="background:#ef4444; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:600; display:inline-block; min-width:42px; text-align:center;">ไม่ผ่าน</span>';
+            };
+            var precheckDateStr = log.precheckDate ? formatDateTimeDDMMYYYY(log.precheckDate) : '-';
+            inspHtml += '<div class="section-block"><h2>ตรวจสอบรายละเอียดก่อนส่งมอบ (กรณีติดตั้งเครื่องเท่านั้น) <span style="font-weight:400; font-size:9px; color:#666; margin-left:8px;">วันที่ตรวจ: ' + precheckDateStr + '</span></h2>';
+            inspHtml += '<table style="border:1px solid #ddd; border-radius:6px; font-size:10px; width:100%;">';
+            inspHtml += '<thead><tr style="border-bottom:1px solid #ddd;"><th style="padding:4px 8px; width:25px;">ลำดับ</th><th style="padding:4px 8px; width:160px;">รายการตรวจสอบ</th><th style="padding:4px 8px; width:' + (isBlank ? '160px' : '55px') + '; text-align:center;">ผลตรวจ</th><th style="padding:4px 8px;">หมายเหตุ</th></tr></thead>';
+            inspHtml += '<tbody>';
+            precheckItems.forEach(function (item, idx) {
+                var val = log[item[0]] || 'pending';
+                var note = log[item[0] + '_note'] || '-';
+                inspHtml += '<tr style="border-bottom:1px solid #eee;"><td style="padding:3px 8px; text-align:center;">' + (idx + 1) + '</td><td style="padding:3px 8px;">' + item[1] + '</td><td style="padding:3px 8px; text-align:center;">' + precheckBadge(val) + '</td><td style="padding:3px 8px; color:#666;">' + note + '</td></tr>';
+            });
+            inspHtml += '</tbody></table></div>';
+        }
 
     }
 
@@ -14092,7 +14118,7 @@ function updateCaseDashboard() {
     const ctx = document.getElementById('case-type-pie-chart');
     if (ctx) {
         const canvasCtx = ctx.getContext('2d');
-        
+
         // Define canvas gradients matching the category card colors
         const pmGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
         pmGrad.addColorStop(0, '#38bdf8');
@@ -14118,42 +14144,42 @@ function updateCaseDashboard() {
             afterDraw(chart) {
                 const { ctx } = chart;
                 const isDarkMode = document.body.classList.contains("dark-mode");
-                
+
                 chart.data.datasets.forEach((dataset, i) => {
                     const meta = chart.getDatasetMeta(i);
                     meta.data.forEach((element, index) => {
                         const value = dataset.data[index];
                         if (value === 0) return; // Don't draw if count is zero
-                        
+
                         const { x, y, outerRadius, startAngle, endAngle } = element;
                         const midAngle = startAngle + (endAngle - startAngle) / 2;
-                        
+
                         // 1. Line start point (at boundary of doughnut slice)
                         const startX = Math.cos(midAngle) * outerRadius + x;
                         const startY = Math.sin(midAngle) * outerRadius + y;
-                        
+
                         // 2. Line inflection point (extend outward)
                         const extendLength = 14;
                         const infX = Math.cos(midAngle) * (outerRadius + extendLength) + x;
                         const infY = Math.sin(midAngle) * (outerRadius + extendLength) + y;
-                        
+
                         // 3. Line end point (horizontal tail)
                         const isRight = infX > x;
                         const tailLength = 8;
                         const endX = infX + (isRight ? tailLength : -tailLength);
                         const endY = infY;
-                        
+
                         // 4. Draw polyline callout
                         ctx.save();
                         ctx.beginPath();
                         ctx.moveTo(startX, startY);
                         ctx.lineTo(infX, infY);
                         ctx.lineTo(endX, endY);
-                        
+
                         ctx.strokeStyle = isDarkMode ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.15)';
                         ctx.lineWidth = 1.2;
                         ctx.stroke();
-                        
+
                         // 5. Draw text label
                         const label = chart.data.labels[index];
                         const text = `${label} (${value})`;
@@ -14161,7 +14187,7 @@ function updateCaseDashboard() {
                         ctx.fillStyle = isDarkMode ? '#cbd5e1' : '#475569';
                         ctx.textAlign = isRight ? 'left' : 'right';
                         ctx.textBaseline = 'middle';
-                        
+
                         const textX = endX + (isRight ? 6 : -6);
                         const textY = endY;
                         ctx.fillText(text, textX, textY);
@@ -14264,10 +14290,10 @@ function updateCaseDashboard() {
 
     dashboard.querySelectorAll(".dashboard-card").forEach(card => {
         const cardCategory = card.getAttribute("data-category");
-        
+
         // Remove all active states
         card.classList.remove("active-card", "active-pm", "active-install", "active-repair", "active-deinstall");
-        
+
         if (cardCategory === activeCategory) {
             card.classList.add("active-card");
             if (cardCategory === "บำรุงรักษาตามรอบ") card.classList.add("active-pm");
@@ -18672,11 +18698,12 @@ function exportAnnualPlanPDF() {
 <style>
     @page { size: A4 landscape; margin: 0; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 8mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
+    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 8mm 10mm 25mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
     .page-content { flex: 1; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    tr { page-break-inside: avoid; break-inside: avoid; }
     th { background: #f5f5f5 !important; font-size: 9px; padding: 5px 3px; border: 1px solid #ddd; }
-    .page-footer { margin-top: auto; }
+    .fixed-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; padding: 4mm 10mm; box-sizing: border-box; z-index: 100; }
     .footer-line { position: relative; height: 2px; background: #ddd !important; }
     .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
     .footer-text { display: flex; justify-content: space-between; font-size: 8px; color: #333; padding: 4px 0; }
@@ -18699,23 +18726,55 @@ function exportAnnualPlanPDF() {
 <p style="text-align:center; font-size:9px; color:#666; margin:0 0 10px;">Annual Maintenance Plan — จำนวนอุปกรณ์ ${(state.sites || []).length} เครื่อง</p>
 <table>
     <thead>
+        <tr><td colspan="15" style="height: 12mm; border: none; padding: 0;"></td></tr>
         <tr>
-            <th style="text-align:center; width:3.5%;">No.</th>
-            <th style="text-align:center; width:6.5%;">รหัส</th>
-            <th style="text-align:left; width:22%;">อุปกรณ์ (Device)</th>
-            ${monthNames.map(m => `<th style="width:5.66%; text-align:center;">${m}</th>`).join('')}
+            <th style="text-align:center; width:2.5%;">No.</th>
+            <th style="text-align:center; width:4.5%;">รหัส</th>
+            <th style="text-align:left; width:39%;">อุปกรณ์ (Device)</th>
+            ${monthNames.map(m => `<th style="width:4.5%; text-align:center;">${m}</th>`).join('')}
         </tr>
     </thead>
     <tbody>${rowsHtml}</tbody>
+    <tfoot>
+        <tr><td colspan="15" style="height: 25mm; border: none; padding: 0;"></td></tr>
+    </tfoot>
 </table>
 </div>
-<div class="page-footer">
+</div>
+<div class="fixed-footer">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent('https://water-plant-maintenance.web.app')}" alt="QR" style="width:45px; height:45px;">
+            <div>
+                <div style="font-size:8px; font-weight:700; color:#333;">สแกนเพื่อเข้าสู่ระบบบำรุงรักษา</div>
+                <div style="font-size:7px; color:#888;">Scan to access maintenance system</div>
+            </div>
+        </div>
+        <span id="page-info2" style="font-size:8px; color:#333;"></span>
+    </div>
     <div class="footer-line"></div>
     <div class="footer-text">
         <span>บริษัท ไบโอ อินโน เทค จำกัด</span>
         <span>FM-SER-04 Rev.00 Effective date : 02-02-2026</span>
     </div>
 </div>
+<script>
+window.onload = function() {
+    var contentHeight = document.body.scrollHeight;
+    var pageHeight = 210 * 3.78;
+    var totalPages = Math.max(1, Math.ceil(contentHeight / pageHeight));
+    var pageNumStyle = 'position:absolute; right:10mm; font-size:8px; color:#333; z-index:100; background:#fff; padding:0 4px;';
+    var pagePx = 210 * 3.78;
+    var footerOffset = 22 * 3.78;
+    for (var p = 1; p <= totalPages; p++) {
+        var marker = document.createElement('div');
+        marker.style.cssText = pageNumStyle;
+        marker.style.top = (p * pagePx - footerOffset) + 'px';
+        marker.textContent = 'หน้า ' + p + ' จาก ' + totalPages;
+        document.body.appendChild(marker);
+    }
+};
+</script>
 </body></html>`;
 
     showPdfPreview(html, `แผนการบำรุงรักษาประจำปี ${displayYear}`);
@@ -18763,8 +18822,9 @@ async function exportCaseHistoryPDF(siteId) {
     @page { size: A4 landscape; margin: 0; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 8mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
-    .page-content { flex: 1; }
+    .page-content { flex: 1; margin-bottom: 30px; }
     table { width: 100%; border-collapse: collapse; }
+    tr { page-break-inside: avoid; break-inside: avoid; }
     th { background: #f3f4f6 !important; font-size: 9px; padding: 6px 8px; border: 1px solid #e5e7eb; text-align: left; font-weight: 700; }
     .header-line { margin-bottom: 10px; position: relative; height: 2px; background: #ddd !important; }
     .header-line::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
@@ -18802,6 +18862,7 @@ async function exportCaseHistoryPDF(siteId) {
 
     <table>
         <thead>
+            <tr><td colspan="6" style="height: 12mm; border: none; padding: 0;"></td></tr>
             <tr>
                 <th style="width:4%; text-align:center;">#</th>
                 <th style="width:14%;">รหัสเคส</th>
@@ -18812,6 +18873,9 @@ async function exportCaseHistoryPDF(siteId) {
             </tr>
         </thead>
         <tbody>${rowsHtml}</tbody>
+        <tfoot>
+            <tr><td colspan="6" style="height: 15mm; border: none; padding: 0;"></td></tr>
+        </tfoot>
     </table>
 </div>
 <div class="page-footer">
@@ -18907,7 +18971,7 @@ function exportDevicesPDF() {
     @page { size: A4 landscape; margin: 0; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 8mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
-    .page-content { flex: 1; }
+    .page-content { flex: 1; margin-bottom: 30px; }
     table { width: 100%; border-collapse: collapse; }
     th { background: #f3f4f6 !important; font-size: 9px; padding: 5px 6px; border: 1px solid #e5e7eb; text-align: left; font-weight: 700; }
     .header-line { margin-bottom: 10px; position: relative; height: 2px; background: #ddd !important; }

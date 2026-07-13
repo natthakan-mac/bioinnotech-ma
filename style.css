@@ -8454,7 +8454,42 @@ h4 {
 
 @media (max-width: 640px) {
     .dashboard-grid {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.75rem !important;
+    }
+
+    /* Scale card internals for 2-column mobile layout */
+    .dashboard-card {
+        padding: 1rem !important;
+        min-height: 120px !important;
+        gap: 0.75rem !important;
+    }
+
+    .dashboard-card-icon {
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 1.05rem !important;
+        border-radius: 10px !important;
+    }
+
+    .dashboard-card-content > span:nth-child(2),
+    .dashboard-card-content > span:nth-child(2) > span:first-child {
+        font-size: 2.75rem !important;
+    }
+
+    .dashboard-card-content > span:first-child {
+        font-size: 0.78rem !important;
+    }
+
+    .dashboard-card-content > span:nth-child(2) > span:last-child {
+        font-size: 0.82rem !important;
+        margin-left: 4px !important;
+    }
+
+    .dashboard-card-content > span:nth-child(3) {
+        font-size: 0.65rem !important;
+        margin-top: 0.5rem !important;
+        padding-top: 0.5rem !important;
     }
 }
 
