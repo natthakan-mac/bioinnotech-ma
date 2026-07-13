@@ -844,7 +844,7 @@ initAuthWorkflow();
 
 // --- Session Timeout Logic ---
 let idleTimer;
-const SESSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 let lastIdleStorageUpdate = 0;
 
 function resetIdleTimer() {
@@ -960,6 +960,36 @@ const FirestoreService = {
         const q = query(collection(db, "sites"), orderBy("updatedAt", "desc")); // Simplified sort
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    },
+
+    async fetchFilteredLogs(filters) {
+        try {
+            let q = query(collection(db, "logs"));
+            const constraints = [];
+
+            if (filters.siteId && filters.siteId !== "all") {
+                constraints.push(where("siteId", "==", filters.siteId));
+            }
+
+            if (filters.startDate) {
+                const startStr = filters.startDate.toISOString().split("T")[0];
+                constraints.push(where("date", ">=", startStr));
+            }
+            if (filters.endDate) {
+                const endStr = filters.endDate.toISOString().split("T")[0];
+                constraints.push(where("date", "<=", endStr));
+            }
+
+            if (constraints.length > 0) {
+                q = query(q, ...constraints);
+            }
+
+            const querySnapshot = await getDocs(q);
+            return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        } catch (e) {
+            console.error("fetchFilteredLogs failed:", e);
+            throw e;
+        }
     },
 
     async fetchLogsByMonth(year, month) {
@@ -9589,13 +9619,13 @@ async function renderDeviceMap(sitesToRender) {
                                 const icon = isRepair ? "fa-wrench" : "fa-clipboard-check";
                                 
                                 html += `
-                                    <div class="cluster-item" data-id="${s.id}" style="display:flex; flex-direction:column; padding:12px; border:2px solid ${borderColor}; border-radius:8px; cursor:pointer; background:${bgColor}; transition:all 0.2s; position:relative; overflow:hidden;">
+                                    <div class="cluster-item" data-id="${s.id}" data-log-id="${log.id}" style="display:flex; flex-direction:column; padding:12px; border:2px solid ${borderColor}; border-radius:8px; cursor:pointer; background:${bgColor}; transition:all 0.2s; position:relative; overflow:hidden;">
                                         <div style="position:absolute; top:0; right:0; background:${borderColor}; color:white; font-size:0.7rem; font-weight:bold; padding:3px 8px; border-bottom-left-radius:8px;">
                                             <i class="fa-solid ${icon}"></i> ${log.category}
                                         </div>
                                         <div style="font-weight:600; color:#0f172a; margin-bottom:4px; padding-right:75px;">${s.name}</div>
                                         <div style="font-size:0.85rem; color:#64748b; margin-bottom:6px;">
-                                            <span style="display:inline-block; margin-right:8px;"><i class="fa-solid fa-hashtag"></i> รหัส: ${s.siteCode || '-'}</span>
+                                            <span style="display:inline-block; margin-right:8px;"><i class="fa-solid fa-hashtag"></i> รหัสเคส: ${log.caseId || '-'}</span>
                                             <span style="display:inline-block;"><i class="fa-solid fa-microchip"></i> ชนิด: ${s.deviceType || '-'}</span>
                                         </div>
                                         <div style="font-size:0.85rem; color:#334155; font-weight:500; background:rgba(255,255,255,0.7); padding:6px; border-radius:4px; border: 1px solid rgba(0,0,0,0.05);">
@@ -9610,7 +9640,7 @@ async function renderDeviceMap(sitesToRender) {
                                 <div class="cluster-item" data-id="${s.id}" style="display:flex; flex-direction:column; padding:12px; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; background:#f8fafc; transition:all 0.2s;">
                                     <div style="font-weight:600; color:#0f172a; margin-bottom:4px;">${s.name}</div>
                                     <div style="font-size:0.85rem; color:#64748b;">
-                                        <span style="display:inline-block; margin-right:8px;"><i class="fa-solid fa-hashtag"></i> รหัส: ${s.siteCode || '-'}</span>
+                                        <span style="display:inline-block; margin-right:8px;"><i class="fa-solid fa-hashtag"></i> รหัสเครื่อง: ${s.siteCode || '-'}</span>
                                         <span style="display:inline-block;"><i class="fa-solid fa-microchip"></i> ชนิด: ${s.deviceType || '-'}</span>
                                     </div>
                                 </div>
@@ -9632,15 +9662,40 @@ async function renderDeviceMap(sitesToRender) {
                     items.forEach(item => {
                         item.onclick = function() {
                             document.body.removeChild(overlay);
-                            if (typeof viewSiteDetails === "function") {
+                            const logId = this.getAttribute('data-log-id');
+                            if (logId && typeof viewLogDetails === "function") {
+                                viewLogDetails(logId);
+                            } else if (typeof viewSiteDetails === "function") {
                                 viewSiteDetails(this.getAttribute('data-id'));
                             }
                         };
-                        item.onmouseover = function() { this.style.borderColor = "var(--primary-color)"; this.style.background = "#fff"; this.style.transform = "translateY(-1px)"; this.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)"; };
-                        item.onmouseout = function() { this.style.borderColor = "#e2e8f0"; this.style.background = "#f8fafc"; this.style.transform = "none"; this.style.boxShadow = "none"; };
+                        item.onmouseover = function() { this.style.transform = "translateY(-1px)"; this.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)"; };
+                        item.onmouseout = function() { this.style.transform = "none"; this.style.boxShadow = "none"; };
                     });
                 } else {
-                    if (typeof viewSiteDetails === "function") {
+                    let logOpened = false;
+                    if (d.pinColor && state.logs) {
+                        const currentMonth = new Date().getMonth();
+                        const currentYear = new Date().getFullYear();
+                        
+                        const targetLog = state.logs.find(log => {
+                            if (log.siteId === d.site.id && log.date) {
+                                const logDate = new Date(log.date);
+                                if (!isNaN(logDate.getTime()) && logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear) {
+                                    if (d.pinColor === "#dc2626" && log.category === "ซ่อม") return true;
+                                    if (d.pinColor === "#0369a1" && log.category === "บำรุงรักษาตามรอบ") return true;
+                                }
+                            }
+                            return false;
+                        });
+                        
+                        if (targetLog && typeof viewLogDetails === "function") {
+                            viewLogDetails(targetLog.id);
+                            logOpened = true;
+                        }
+                    }
+                    
+                    if (!logOpened && typeof viewSiteDetails === "function") {
                         viewSiteDetails(d.site.id);
                     }
                 }
@@ -14178,13 +14233,48 @@ function updateLogStats(filteredLogs, globalSummary = null) {
     }
 }
 
+let currentDashboardFetchPromise = null;
+
 function updateCaseDashboard() {
     const dashboard = document.getElementById("case-type-dashboard");
     if (!dashboard) return;
 
+    if (state.isInitialLoading) {
+        dashboard.style.display = 'none';
+        return;
+    }
+
     const calendarView = document.getElementById("logs-calendar-view");
     const isCalendar = calendarView && !calendarView.classList.contains("hidden");
-    const sourceLogs = isCalendar ? (state.calendarLogs || []) : (state.logs || []);
+
+    if (isCalendar) {
+        dashboard.style.display = 'flex';
+        const sourceLogs = state.calendarLogs || [];
+        processDashboardLogs(sourceLogs);
+    } else {
+        const currentFilters = {
+            siteId: selects.filterHidden ? selects.filterHidden.value : "all",
+            startDate: selects.filterStart && selects.filterStart.value ? new Date(selects.filterStart.value) : null,
+            endDate: selects.filterEnd && selects.filterEnd.value ? new Date(selects.filterEnd.value) : null,
+        };
+
+        dashboard.style.display = 'none';
+
+        const fetchPromise = FirestoreService.fetchFilteredLogs(currentFilters);
+        currentDashboardFetchPromise = fetchPromise;
+
+        fetchPromise.then((fullLogs) => {
+            if (currentDashboardFetchPromise !== fetchPromise) return;
+            dashboard.style.display = 'flex';
+            processDashboardLogs(fullLogs);
+        }).catch((err) => {
+            console.error("Error updating case dashboard:", err);
+            dashboard.style.display = 'flex';
+            processDashboardLogs(state.logs || []);
+        });
+    }
+
+    function processDashboardLogs(sourceLogs) {
 
     const siteSearchQuery = document.getElementById("site-filter-input")
         ? document.getElementById("site-filter-input").value
@@ -14447,6 +14537,7 @@ function updateCaseDashboard() {
             descEl.textContent = filterDetails;
         }
     });
+    }
 }
 
 function renderLogs() {
