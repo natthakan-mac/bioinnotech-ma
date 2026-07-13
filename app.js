@@ -9389,29 +9389,52 @@ async function renderDeviceMap(sitesToRender) {
             }
 
             if (lat !== null && lng !== null) {
-                // Apply jitter to avoid overlaps at the same location
-                const coordKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
-                if (!locationJitter[coordKey]) {
-                    locationJitter[coordKey] = 0;
+                // Apply jitter to avoid overlaps for locations that are very close (~2km radius)
+                let clusterFound = null;
+                for (let key in locationJitter) {
+                    const cluster = locationJitter[key];
+                    // Calculate rough distance in degrees. 0.02 degrees is roughly 2.2 km.
+                    const dist = Math.sqrt(Math.pow(lat - cluster.lat, 2) + Math.pow(lng - cluster.lng, 2));
+                    if (dist < 0.02) { 
+                        clusterFound = cluster;
+                        break;
+                    }
                 }
-                const offsetCount = locationJitter[coordKey]++;
+
+                if (!clusterFound) {
+                    const coordKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+                    const projected = projection([lng, lat]);
+                    clusterFound = { 
+                        lat: lat, 
+                        lng: lng, 
+                        count: 0, 
+                        sites: [], // Store all sites in this cluster
+                        centerX: projected ? projected[0] : 0, 
+                        centerY: projected ? projected[1] : 0 
+                    };
+                    locationJitter[coordKey] = clusterFound;
+                }
+
+                clusterFound.sites.push(site);
+                const offsetCount = clusterFound.count++;
 
                 // Add spiral/circular jitter based on repeat count
                 let offsetX = 0;
                 let offsetY = 0;
                 if (offsetCount > 0) {
                     const angle = (offsetCount * 0.8) * Math.PI; // Spiral angle
-                    const radius = 6 + (offsetCount * 1.5); // Jitter radius
+                    // Increased jitter spread slightly to accommodate mobile zooming
+                    const radius = 8 + (offsetCount * 2.5); 
                     offsetX = Math.cos(angle) * radius;
                     offsetY = Math.sin(angle) * radius;
                 }
 
-                const projected = projection([lng, lat]);
-                if (projected) {
+                if (clusterFound.centerX || clusterFound.centerY) {
                     dotsData.push({
                         site: site,
-                        cx: projected[0] + offsetX,
-                        cy: projected[1] + offsetY,
+                        cluster: clusterFound,
+                        cx: clusterFound.centerX + offsetX,
+                        cy: clusterFound.centerY + offsetY,
                         pinColor: siteColorMap[site.id] || null
                     });
                 }
@@ -9502,8 +9525,124 @@ async function renderDeviceMap(sitesToRender) {
             })
             .on("click", function (event, d) {
                 d3.select(tooltip).style("opacity", 0);
-                if (typeof viewSiteDetails === "function") {
-                    viewSiteDetails(d.site.id);
+                
+                // Find all visually overlapping sites based on current zoom
+                const currentK = d3.zoomTransform(svg.node()).k;
+                const threshold = getDotRadius(currentK) * 2.5;
+                
+                const overlappingSites = [];
+                dotsData.forEach(other => {
+                    const dist = Math.sqrt(Math.pow(d.cx - other.cx, 2) + Math.pow(d.cy - other.cy, 2));
+                    if (dist <= threshold) {
+                        overlappingSites.push(other.site);
+                    }
+                });
+
+                if (overlappingSites.length > 1) {
+                    // Create overlay and popup
+                    const overlay = document.createElement("div");
+                    overlay.style.position = "fixed";
+                    overlay.style.top = "0";
+                    overlay.style.left = "0";
+                    overlay.style.width = "100%";
+                    overlay.style.height = "100%";
+                    overlay.style.backgroundColor = "rgba(0,0,0,0.5)";
+                    overlay.style.zIndex = "9998";
+                    overlay.style.display = "flex";
+                    overlay.style.alignItems = "center";
+                    overlay.style.justifyContent = "center";
+                    overlay.style.backdropFilter = "blur(2px)";
+                    
+                    const popup = document.createElement("div");
+                    popup.style.background = "#fff";
+                    popup.style.padding = "20px";
+                    popup.style.borderRadius = "12px";
+                    popup.style.width = "90%";
+                    popup.style.maxWidth = "400px";
+                    popup.style.maxHeight = "80vh";
+                    popup.style.overflowY = "auto";
+                    popup.style.boxShadow = "0 10px 25px rgba(0,0,0,0.2)";
+                    popup.style.zIndex = "9999";
+                    
+                    let html = `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:15px;">
+                        <h3 style="margin:0; font-size:1.1rem; color:#1e293b;"><i class="fa-solid fa-map-location-dot" style="margin-right:8px; color:var(--primary-color);"></i>มีอุปกรณ์ ${overlappingSites.length} เครื่องในบริเวณนี้</h3>
+                        <button id="close-cluster-popup" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#94a3b8; padding:0; display:flex; align-items:center; justify-content:center;">&times;</button>
+                    </div><div style="display:flex; flex-direction:column; gap:10px;">`;
+                    
+                    const currentMonth = new Date().getMonth();
+                    const currentYear = new Date().getFullYear();
+
+                    overlappingSites.forEach(s => {
+                        const siteLogs = (state.logs || []).filter(log => {
+                            if (log.siteId === s.id && log.date) {
+                                const logDate = new Date(log.date);
+                                return !isNaN(logDate.getTime()) && logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear && (log.category === "ซ่อม" || log.category === "บำรุงรักษาตามรอบ");
+                            }
+                            return false;
+                        });
+
+                        if (siteLogs.length > 0) {
+                            siteLogs.forEach(log => {
+                                const isRepair = log.category === "ซ่อม";
+                                const borderColor = isRepair ? "#dc2626" : "#0369a1";
+                                const bgColor = isRepair ? "#fef2f2" : "#f0f9ff";
+                                const icon = isRepair ? "fa-wrench" : "fa-clipboard-check";
+                                
+                                html += `
+                                    <div class="cluster-item" data-id="${s.id}" style="display:flex; flex-direction:column; padding:12px; border:2px solid ${borderColor}; border-radius:8px; cursor:pointer; background:${bgColor}; transition:all 0.2s; position:relative; overflow:hidden;">
+                                        <div style="position:absolute; top:0; right:0; background:${borderColor}; color:white; font-size:0.7rem; font-weight:bold; padding:3px 8px; border-bottom-left-radius:8px;">
+                                            <i class="fa-solid ${icon}"></i> ${log.category}
+                                        </div>
+                                        <div style="font-weight:600; color:#0f172a; margin-bottom:4px; padding-right:75px;">${s.name}</div>
+                                        <div style="font-size:0.85rem; color:#64748b; margin-bottom:6px;">
+                                            <span style="display:inline-block; margin-right:8px;"><i class="fa-solid fa-hashtag"></i> รหัส: ${s.siteCode || '-'}</span>
+                                            <span style="display:inline-block;"><i class="fa-solid fa-microchip"></i> ชนิด: ${s.deviceType || '-'}</span>
+                                        </div>
+                                        <div style="font-size:0.85rem; color:#334155; font-weight:500; background:rgba(255,255,255,0.7); padding:6px; border-radius:4px; border: 1px solid rgba(0,0,0,0.05);">
+                                            <div style="margin-bottom:2px;"><i class="fa-regular fa-calendar" style="color:#64748b; width:16px;"></i> วันที่: ${new Date(log.date).toLocaleDateString('th-TH')}</div>
+                                            ${log.status ? `<div><i class="fa-solid fa-circle-info" style="color:${log.status === 'เสร็จสิ้น' ? '#10b981' : '#f59e0b'}; width:16px;"></i> สถานะ: ${log.status}</div>` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            html += `
+                                <div class="cluster-item" data-id="${s.id}" style="display:flex; flex-direction:column; padding:12px; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; background:#f8fafc; transition:all 0.2s;">
+                                    <div style="font-weight:600; color:#0f172a; margin-bottom:4px;">${s.name}</div>
+                                    <div style="font-size:0.85rem; color:#64748b;">
+                                        <span style="display:inline-block; margin-right:8px;"><i class="fa-solid fa-hashtag"></i> รหัส: ${s.siteCode || '-'}</span>
+                                        <span style="display:inline-block;"><i class="fa-solid fa-microchip"></i> ชนิด: ${s.deviceType || '-'}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    });
+                    html += `</div>`;
+                    
+                    popup.innerHTML = html;
+                    overlay.appendChild(popup);
+                    document.body.appendChild(overlay);
+                    
+                    document.getElementById("close-cluster-popup").onclick = () => document.body.removeChild(overlay);
+                    overlay.onclick = (e) => {
+                        if (e.target === overlay) document.body.removeChild(overlay);
+                    };
+                    
+                    const items = popup.querySelectorAll('.cluster-item');
+                    items.forEach(item => {
+                        item.onclick = function() {
+                            document.body.removeChild(overlay);
+                            if (typeof viewSiteDetails === "function") {
+                                viewSiteDetails(this.getAttribute('data-id'));
+                            }
+                        };
+                        item.onmouseover = function() { this.style.borderColor = "var(--primary-color)"; this.style.background = "#fff"; this.style.transform = "translateY(-1px)"; this.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)"; };
+                        item.onmouseout = function() { this.style.borderColor = "#e2e8f0"; this.style.background = "#f8fafc"; this.style.transform = "none"; this.style.boxShadow = "none"; };
+                    });
+                } else {
+                    if (typeof viewSiteDetails === "function") {
+                        viewSiteDetails(d.site.id);
+                    }
                 }
             });
 
@@ -18680,6 +18819,7 @@ function exportAnnualPlanPDF() {
         }).join('');
         const warranty = site.insuranceStartDate && site.insuranceEndDate ? `${site.insuranceStartDate} ~ ${site.insuranceEndDate}` : '-';
         const subtleInfo = [
+            '<span style="font-weight:600; color:#333;">รหัส: ' + (site.siteCode || '-') + '</span>',
             site.brand || site.model ? '<span style="font-weight:600;">รุ่น:</span> ' + [site.brand, site.model].filter(Boolean).join(' ') : '',
             site.serialNumber ? '<span style="font-weight:600;">S/N:</span> ' + site.serialNumber : '',
             '<span style="font-weight:600;">ประกัน:</span> ' + warranty,
@@ -18687,8 +18827,7 @@ function exportAnnualPlanPDF() {
         ].filter(Boolean).join(' | ');
         return `<tr>
             <td style="text-align:center; padding:5px 4px; border:1px solid #ddd; font-size:9px; font-weight:600;">${idx + 1}</td>
-            <td style="text-align:center; padding:5px 4px; border:1px solid #ddd; font-size:8px; white-space:nowrap;">${site.siteCode || '-'}</td>
-            <td style="padding:5px 8px; border:1px solid #ddd; border-left:4px solid ${siteColor}; font-size:9px;"><b>${site.name}</b><div style="font-size:7px; color:#999; margin-top:1px;">${subtleInfo}</div></td>
+            <td style="padding:5px 8px; border:1px solid #ddd; border-left:4px solid ${siteColor}; font-size:9px;"><b>${site.name}</b><div style="font-size:7px; color:#999; margin-top:2px;">${subtleInfo}</div></td>
             ${cells}
         </tr>`;
     }).join('');
@@ -18712,25 +18851,32 @@ function exportAnnualPlanPDF() {
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
 </head><body>
-<div style="display:flex; align-items:center; gap:12px; padding-bottom:10px;">
-    <img src="/bioinnotech.svg" alt="Logo" style="height:55px; width:auto;">
-    <div style="flex:1; text-align:right; font-size:9px; color:#333; line-height:1.6;">
-        <b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>
-        36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>
-        โทรศัพท์ 02-152-5405 เลขประจำตัวผู้เสียภาษี 0105557108369
-    </div>
-</div>
-<div class="header-line"></div>
 <div class="page-content">
-<h1 style="text-align:center; font-size:12px; margin:0 0 8px;">แผนการบำรุงรักษาประจำปี ${displayYear}</h1>
-<p style="text-align:center; font-size:9px; color:#666; margin:0 0 10px;">Annual Maintenance Plan — จำนวนอุปกรณ์ ${(state.sites || []).length} เครื่อง</p>
 <table>
+    <colgroup>
+        <col style="width: 2.5%;">
+        <col style="width: 43.5%;">
+        ${monthNames.map(() => '<col style="width: 4.5%;">').join('')}
+    </colgroup>
     <thead>
-        <tr><td colspan="15" style="height: 12mm; border: none; padding: 0;"></td></tr>
+        <tr>
+            <td colspan="14" style="border: none; padding: 0;">
+                <div style="display:flex; align-items:center; gap:12px; padding-bottom:10px;">
+                    <img src="/bioinnotech.svg" alt="Logo" style="height:55px; width:auto;">
+                    <div style="flex:1; text-align:right; font-size:9px; color:#333; line-height:1.6;">
+                        <b>บริษัท ไบโอ อินโน เทค จำกัด</b><br>
+                        36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150<br>
+                        โทรศัพท์ 02-152-5405 เลขประจำตัวผู้เสียภาษี 0105557108369
+                    </div>
+                </div>
+                <div class="header-line"></div>
+                <h1 style="text-align:center; font-size:12px; margin:0 0 8px;">แผนการบำรุงรักษาประจำปี ${displayYear}</h1>
+                <p style="text-align:center; font-size:9px; color:#666; margin:0 0 10px;">Annual Maintenance Plan — จำนวนอุปกรณ์ ${(state.sites || []).length} เครื่อง</p>
+            </td>
+        </tr>
         <tr>
             <th style="text-align:center; width:2.5%;">No.</th>
-            <th style="text-align:center; width:4.5%;">รหัส</th>
-            <th style="text-align:left; width:39%;">อุปกรณ์ (Device)</th>
+            <th style="text-align:left; width:43.5%;">อุปกรณ์ (Device)</th>
             ${monthNames.map(m => `<th style="width:4.5%; text-align:center;">${m}</th>`).join('')}
         </tr>
     </thead>

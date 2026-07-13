@@ -35,6 +35,11 @@
     /* Reduced to standard size */
 }
 
+html, body {
+    overflow-x: hidden;
+    width: 100%;
+}
+
 body {
     background-color: var(--bg-color);
     background-image: none;
