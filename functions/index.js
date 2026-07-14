@@ -101,207 +101,7 @@ async function sendTelegramNotification(botToken, chatId, siteInfo) {
     }
 }
 
-// Send LINE notification
-async function sendLineNotification(channelAccessToken, userId, siteInfo) {
-    try {
-        // Construct URLs
-        const appUrl = "https://casp-ma.web.app";
-        const viewSiteUrl = `${appUrl}?siteId=${siteInfo.id}`;
-        const hasLocation = siteInfo.locationUrl && siteInfo.locationUrl !== "#" && siteInfo.locationUrl.startsWith("http");
-        const locationUrl = hasLocation ? siteInfo.locationUrl : viewSiteUrl;
-            
-            // Build footer buttons
-            const footerContents = [
-                {
-                    type: "text",
-                    text: `เพิ่มเมื่อ: ${siteInfo.timestamp}`,
-                    size: "xs",
-                    color: "#aaaaaa",
-                    margin: "md"
-                }
-            ];
 
-            // Primary action buttons - only show location button if valid URL exists
-            if (hasLocation) {
-                footerContents.push({
-                    type: "box",
-                    layout: "horizontal",
-                    contents: [
-                        {
-                            type: "button",
-                            action: {
-                                type: "uri",
-                                label: "📍 ดูตำแหน่ง",
-                                uri: locationUrl
-                            },
-                            style: "primary",
-                            color: "#17c1e8",
-                            height: "sm"
-                        },
-                        {
-                            type: "button",
-                            action: {
-                                type: "uri",
-                                label: "🏢 ดูข้อมูล",
-                                uri: viewSiteUrl
-                            },
-                            style: "primary",
-                            color: "#17c1e8",
-                            height: "sm"
-                        }
-                    ],
-                    spacing: "sm",
-                    margin: "md"
-                });
-            } else {
-                footerContents.push({
-                    type: "button",
-                    action: {
-                        type: "uri",
-                        label: "🏢 ดูข้อมูล",
-                        uri: viewSiteUrl
-                    },
-                    style: "primary",
-                    color: "#17c1e8",
-                    height: "sm",
-                    margin: "md"
-                });
-            }
-
-            const flexMessage = {
-                type: "flex",
-                altText: `[NEW SITE] มีการเพิ่มสถานที่ใหม่: ${siteInfo.name}`,
-                contents: {
-                    type: "bubble",
-                    header: {
-                        type: "box",
-                        layout: "vertical",
-                        contents: [
-                            {
-                                type: "text",
-                                text: "🏢 [NEW SITE] มีการเพิ่มสถานที่ใหม่!",
-                                weight: "bold",
-                                size: "lg",
-                                color: "#ffffff"
-                            }
-                        ],
-                        backgroundColor: "#17c1e8"
-                    },
-                    body: {
-                        type: "box",
-                        layout: "vertical",
-                        contents: [
-                            {
-                                type: "box",
-                                layout: "baseline",
-                                contents: [
-                                    { type: "text", text: "รหัส:", size: "sm", color: "#aaaaaa", flex: 3 },
-                                    { type: "text", text: siteInfo.siteCode || "-", size: "sm", wrap: true, flex: 5 }
-                                ]
-                            },
-                            {
-                                type: "box",
-                                layout: "baseline",
-                                contents: [
-                                    { type: "text", text: "ชื่อ:", size: "sm", color: "#aaaaaa", flex: 3 },
-                                    { type: "text", text: siteInfo.name || "-", size: "sm", wrap: true, flex: 5, weight: "bold" }
-                                ]
-                            },
-                            {
-                                type: "box",
-                                layout: "baseline",
-                                contents: [
-                                    { type: "text", text: "รายละเอียด:", size: "sm", color: "#aaaaaa", flex: 3 },
-                                    { type: "text", text: siteInfo.description || "-", size: "sm", wrap: true, flex: 5 }
-                                ]
-                            },
-                            {
-                                type: "box",
-                                layout: "baseline",
-                                contents: [
-                                    { type: "text", text: "ที่อยู่:", size: "sm", color: "#aaaaaa", flex: 3 },
-                                    { type: "text", text: siteInfo.fullAddress || "-", size: "sm", wrap: true, flex: 5 }
-                                ]
-                            },
-                            {
-                                type: "box",
-                                layout: "baseline",
-                                contents: [
-                                    { type: "text", text: "หน่วยงาน:", size: "sm", color: "#aaaaaa", flex: 3 },
-                                    { type: "text", text: siteInfo.agency || "-", size: "sm", wrap: true, flex: 5 }
-                                ]
-                            },
-                            {
-                                type: "box",
-                                layout: "baseline",
-                                contents: [
-                                    { type: "text", text: "เบอร์โทร:", size: "sm", color: "#aaaaaa", flex: 3 },
-                                    { type: "text", text: siteInfo.contactPhone || "-", size: "sm", wrap: true, flex: 5 }
-                                ]
-                            },
-                            {
-                                type: "box",
-                                layout: "baseline",
-                                contents: [
-                                    { type: "text", text: "ประกันเริ่ม:", size: "sm", color: "#aaaaaa", flex: 3 },
-                                    { type: "text", text: siteInfo.insuranceStartDate || "-", size: "sm", wrap: true, flex: 5 }
-                                ]
-                            },
-                            {
-                                type: "box",
-                                layout: "baseline",
-                                contents: [
-                                    { type: "text", text: "ประกันสิ้นสุด:", size: "sm", color: "#aaaaaa", flex: 3 },
-                                    { type: "text", text: siteInfo.insuranceEndDate || "-", size: "sm", wrap: true, flex: 5 }
-                                ]
-                            },
-                            {
-                                type: "box",
-                                layout: "baseline",
-                                contents: [
-                                    { type: "text", text: "รอบซ่อมบำรุง:", size: "sm", color: "#aaaaaa", flex: 3 },
-                                    { type: "text", text: siteInfo.maintenanceCycle || "-", size: "sm", wrap: true, flex: 5 }
-                                ]
-                            },
-                            {
-                                type: "box",
-                                layout: "baseline",
-                                contents: [
-                                    { type: "text", text: "MA ครั้งแรก:", size: "sm", color: "#aaaaaa", flex: 3 },
-                                    { type: "text", text: siteInfo.firstMaDate || "-", size: "sm", wrap: true, flex: 5 }
-                                ]
-                            }
-                        ],
-                        spacing: "md"
-                    },
-                    footer: {
-                        type: "box",
-                        layout: "vertical",
-                        contents: footerContents
-                    }
-                }
-            };
-
-        const payload = {
-            to: userId,
-            messages: [flexMessage]
-        };
-
-        console.log("Sending LINE site notification. Payload:", JSON.stringify(payload).substring(0, 500));
-
-        const response = await axios.post("https://api.line.me/v2/bot/message/push", payload, {
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${channelAccessToken}`
-            }
-        });
-        console.log("LINE notification sent successfully for:", siteInfo.name);
-        return response.data;
-    } catch (error) {
-        console.error("Error sending LINE notification:", error.response ? error.response.data : error.message);
-        throw error;
-    }
-}
 
 // Send Email notification for new site
 async function sendEmailNotification(smtpSettings, siteInfo) {
@@ -496,138 +296,7 @@ async function sendTelegramMANotification(botToken, chatId, maInfo, isNew = true
     }
 }
 
-// Send LINE notification for MA record
-async function sendLineMANotification(channelAccessToken, userId, maInfo, isNew = true) {
-    try {
-        const headerText = isNew ? "📝 [NEW CASE] มีการเปิดเคสใหม่!" : "🔄 [UPDATE CASE] มีการอัปเดตสถานะเคส!";
-        const headerColor = isNew ? "#82b440" : "#f39c12";
-            
-            const bodyContents = [
-                {
-                    type: "box",
-                    layout: "baseline",
-                    contents: [
-                        { type: "text", text: "รหัสเคส:", size: "sm", color: "#aaaaaa", flex: 2 },
-                        { type: "text", text: maInfo.caseId, size: "sm", wrap: true, flex: 5, weight: "bold" }
-                    ]
-                },
-                {
-                    type: "box",
-                    layout: "baseline",
-                    contents: [
-                        { type: "text", text: "สถานที่:", size: "sm", color: "#aaaaaa", flex: 2 },
-                        { type: "text", text: maInfo.siteName, size: "sm", wrap: true, flex: 5 }
-                    ]
-                },
-                {
-                    type: "box",
-                    layout: "baseline",
-                    contents: [
-                        { type: "text", text: "ประเภท:", size: "sm", color: "#aaaaaa", flex: 2 },
-                        { type: "text", text: maInfo.category, size: "sm", wrap: true, flex: 5 }
-                    ]
-                },
-                {
-                    type: "box",
-                    layout: "baseline",
-                    contents: [
-                        { type: "text", text: "สถานะ:", size: "sm", color: "#aaaaaa", flex: 2 },
-                        { type: "text", text: maInfo.status, size: "sm", wrap: true, flex: 5, weight: "bold", color: "#17c1e8" }
-                    ]
-                },
-                {
-                    type: "box",
-                    layout: "baseline",
-                    contents: [
-                        { type: "text", text: "วันที่:", size: "sm", color: "#aaaaaa", flex: 2 },
-                        { type: "text", text: maInfo.date, size: "sm", wrap: true, flex: 5 }
-                    ]
-                }
-            ];
 
-            // Add objective if exists
-            if (maInfo.objective) {
-                bodyContents.push({
-                    type: "box",
-                    layout: "baseline",
-                    contents: [
-                        { type: "text", text: "รายละเอียด:", size: "sm", color: "#aaaaaa", flex: 2 },
-                        { type: "text", text: maInfo.objective, size: "sm", wrap: true, flex: 5 }
-                    ]
-                });
-            }
-
-            const flexMessage = {
-                type: "flex",
-                altText: `${headerText} ${maInfo.caseId}`,
-                contents: {
-                    type: "bubble",
-                    header: {
-                        type: "box",
-                        layout: "vertical",
-                        contents: [
-                            {
-                                type: "text",
-                                text: headerText,
-                                weight: "bold",
-                                size: "lg",
-                                color: "#ffffff"
-                            }
-                        ],
-                        backgroundColor: headerColor
-                    },
-                    body: {
-                        type: "box",
-                        layout: "vertical",
-                        contents: bodyContents,
-                        spacing: "md"
-                    },
-                    footer: {
-                        type: "box",
-                        layout: "vertical",
-                        contents: [
-                            {
-                                type: "text",
-                                text: `${isNew ? 'เปิดเคสเมื่อ' : 'อัปเดตเมื่อ'}: ${maInfo.timestamp}`,
-                                size: "xs",
-                                color: "#aaaaaa",
-                                margin: "md"
-                            },
-                            {
-                                type: "button",
-                                action: {
-                                    type: "uri",
-                                    label: "📋 ดูเคส",
-                                    uri: `https://casp-ma.web.app?logId=${maInfo.logId}`
-                                },
-                                style: "primary",
-                                color: headerColor,
-                                height: "sm",
-                                margin: "md"
-                            }
-                        ]
-                    }
-                }
-            };
-
-        const payload = {
-            to: userId,
-            messages: [flexMessage]
-        };
-
-        const response = await axios.post("https://api.line.me/v2/bot/message/push", payload, {
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${channelAccessToken}`
-            }
-        });
-        console.log("LINE MA notification sent successfully for:", maInfo.caseId);
-        return response.data;
-    } catch (error) {
-        console.error("Error sending LINE MA notification:", error.response ? error.response.data : error.message);
-        throw error;
-    }
-}
 
 // ─── HTTPS Callable Notification Functions ───────────────────────────────────
 // These replace Firestore triggers because asia-southeast3 (Bangkok) does not
@@ -676,9 +345,7 @@ exports.notifyNewSite = onCall({ cors: true }, async (request) => {
     if (settings.telegram && settings.telegram.enabled && settings.telegram.botToken && settings.telegram.chatId) {
         notifications.push(sendTelegramNotification(settings.telegram.botToken, settings.telegram.chatId, siteInfo));
     }
-    if (settings.line && settings.line.enabled && settings.line.channelAccessToken && settings.line.userId) {
-        notifications.push(sendLineNotification(settings.line.channelAccessToken, settings.line.userId, siteInfo));
-    }
+
     if (settings.smtp && settings.smtp.enabled && settings.smtp.host && settings.smtp.user) {
         notifications.push(sendEmailNotification(settings.smtp, siteInfo));
     }
@@ -730,9 +397,7 @@ exports.notifyNewMARecord = onCall({ cors: true }, async (request) => {
     if (settings.telegram && settings.telegram.enabled && settings.telegram.botToken && settings.telegram.chatId) {
         notifications.push(sendTelegramMANotification(settings.telegram.botToken, settings.telegram.chatId, maInfo, true));
     }
-    if (settings.line && settings.line.enabled && settings.line.channelAccessToken && settings.line.userId) {
-        notifications.push(sendLineMANotification(settings.line.channelAccessToken, settings.line.userId, maInfo, true));
-    }
+
     if (settings.smtp && settings.smtp.enabled && settings.smtp.host && settings.smtp.user && settings.smtp.recipients && settings.smtp.recipients.length > 0) {
         notifications.push(sendEmailMANotification(settings.smtp, maInfo, true));
     }
@@ -789,14 +454,57 @@ exports.notifyMAStatusUpdate = onCall({ cors: true }, async (request) => {
     if (settings.telegram && settings.telegram.enabled && settings.telegram.botToken && settings.telegram.chatId) {
         notifications.push(sendTelegramMANotification(settings.telegram.botToken, settings.telegram.chatId, maInfo, false));
     }
-    if (settings.line && settings.line.enabled && settings.line.channelAccessToken && settings.line.userId) {
-        notifications.push(sendLineMANotification(settings.line.channelAccessToken, settings.line.userId, maInfo, false));
-    }
+
     if (settings.smtp && settings.smtp.enabled && settings.smtp.host && settings.smtp.user && settings.smtp.recipients && settings.smtp.recipients.length > 0) {
         notifications.push(sendEmailMANotification(settings.smtp, maInfo, false));
     }
 
     await Promise.allSettled(notifications);
     return { success: true, message: "MA status update notifications processed" };
+});
+
+
+exports.loginWithLineLiff = onCall({ cors: true }, async (request) => {
+    const { accessToken } = request.data;
+    if (!accessToken) {
+        throw new functions.https.HttpsError('invalid-argument', 'accessToken is required');
+    }
+
+    try {
+        // Verify token with LINE API
+        const verifyRes = await axios.get('https://api.line.me/oauth2/v2.1/verify?access_token=' + accessToken);
+        const clientId = verifyRes.data.client_id;
+        
+        // Optional: you can verify clientId against your LIFF Channel ID here if needed
+        // if (clientId !== '2010697063') throw new Error('Invalid client ID');
+
+        // Get user profile from LINE
+        const profileRes = await axios.get('https://api.line.me/v2/profile', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const lineUserId = profileRes.data.userId;
+
+        if (!lineUserId) {
+            throw new functions.https.HttpsError('unauthenticated', 'Cannot retrieve LINE user ID');
+        }
+
+        // Search for user in Firestore
+        const usersSnapshot = await db.collection('users').where('lineUserId', '==', lineUserId).limit(1).get();
+        if (usersSnapshot.empty) {
+            throw new functions.https.HttpsError('not-found', '????? LINE ?????????????????????????????? ??????????????????????????????????????????????????????????');
+        }
+
+        const uid = usersSnapshot.docs[0].id;
+        
+        // Generate Custom Token
+        const customToken = await admin.auth().createCustomToken(uid);
+        return { success: true, customToken: customToken };
+    } catch (error) {
+        console.error('LINE LIFF Login Error:', error.response ? error.response.data : error.message);
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        }
+        throw new functions.https.HttpsError('internal', error.message || 'Internal error during LINE login');
+    }
 });
 

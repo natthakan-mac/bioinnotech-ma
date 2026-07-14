@@ -28,6 +28,9 @@
     <link rel="icon" type="image/svg+xml" href="app-ico.svg">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
+    <!-- LINE LIFF SDK -->
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
     <script>
         window.DEBUG_LOGS = [];
         function log(msg) {
@@ -1718,7 +1721,7 @@
                                         <i class="fa-solid fa-bell"></i>
                                         ตั้งค่าการแจ้งเตือน
                                     </h2>
-                                    <p class="text-muted">กำหนดค่าการแจ้งเตือนผ่าน Email, LINE และ Telegram</p>
+                                    <p class="text-muted">กำหนดค่าการแจ้งเตือนผ่าน Email และ Telegram</p>
                                 </div>
 
                                 <form id="notification-settings-form" autocomplete="off">
@@ -1802,42 +1805,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- LINE Messaging API Settings -->
-                                    <div class="notification-section">
-                                        <div
-                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                            <h3 class="profile-subsection-title"
-                                                style="margin: 0; display: flex; align-items: center; gap: 0.75rem;">
-                                                <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg"
-                                                    alt="LINE" style="width: 32px; height: 32px; object-fit: contain;">
-                                                <span>LINE Messaging API</span>
-                                            </h3>
-                                            <label class="toggle-switch">
-                                                <input type="checkbox" id="line-enabled">
-                                                <span class="toggle-slider"></span>
-                                            </label>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="line-channel-access-token"><i class="fa-solid fa-key"></i>
-                                                Channel
-                                                Access Token</label>
-                                            <input type="text" id="line-channel-access-token"
-                                                placeholder="Your LINE Channel Access Token" autocomplete="off">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="line-channel-secret"><i class="fa-solid fa-lock"></i> Channel
-                                                Secret</label>
-                                            <input type="password" id="line-channel-secret"
-                                                placeholder="Your LINE Channel Secret" autocomplete="off">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="line-user-id"><i class="fa-solid fa-user"></i> Default User ID
-                                                (Optional)</label>
-                                            <input type="text" id="line-user-id" placeholder="U1234567890abcdef..."
-                                                autocomplete="off">
-                                            <small class="text-muted">ใช้สำหรับส่งข้อความถึงผู้ใช้เฉพาะ</small>
-                                        </div>
-                                    </div>
 
                                     <!-- Telegram Bot Settings -->
                                     <div class="notification-section">

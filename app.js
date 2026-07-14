@@ -51,6 +51,7 @@ import {
     getAuth,
     onAuthStateChanged,
     signInWithEmailAndPassword,
+    signInWithCustomToken,
     updateProfile,
     unlink,
     signOut,
@@ -322,6 +323,19 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 const auth = getAuth(app);
 const functions = getFunctions(app, "asia-southeast1");
+
+// Initialize LIFF
+document.addEventListener("DOMContentLoaded", () => {
+    try {
+        liff.init({ liffId: "2010697063-kIdzAXLc" }).then(() => {
+            console.log("LIFF initialized successfully");
+        }).catch((err) => {
+            console.error("LIFF initialization failed", err);
+        });
+    } catch (e) {
+        console.error("LIFF SDK not found or failed to load", e);
+    }
+});
 
 
 // --- Auth Workflow Initialization ---
@@ -596,26 +610,7 @@ async function handleRedirectFlow() {
         if (result) {
             console.log("Redirect Auth Success:", result.user.email);
 
-            // --- RESTRICT NEW USERS (LINE) ---
-            if (
-                result.providerId === "oidc.line" ||
-                result.user.providerData.some((p) => p.providerId === "oidc.line")
-            ) {
-                const additionalInfo = getAdditionalUserInfo(result);
-                if (additionalInfo && additionalInfo.isNewUser) {
-                    console.warn(
-                        "New User Registration via LINE is NOT ALLOWED. Deleting user...",
-                    );
-                    await deleteUser(result.user);
-                    await signOut(auth);
-                    await showDialog(
-                        "ไม่อนุญาตให้ลงทะเบียนบัญชีใหม่ด้วย LINE\n(กรุณาติดต่อผู้ดูแลระบบ)",
-                        { title: "Access Denied" },
-                    );
-                    return; // Stop processing
-                }
-            }
-            // -------------------------------
+
             if (result.operationType === "link") {
                 await showDialog("เชื่อมต่อ LINE Account สำเร็จ!");
                 if (!result.user.photoURL) {
@@ -654,16 +649,9 @@ async function handleRedirectFlow() {
                 error.code,
             );
             // Show error dialog as requested, but make it helpful
-            if (isLineBrowser()) {
-                await showDialog(
-                    "พบปัญหาการยืนยันตัวตน (Auth State)\n\nระบบไม่สามารถจำสถานะการล็อกอินได้เนื่องจากข้อจำกัดของ Browser นี้\n\nกรุณากดเมนูและเลือก 'เปิดในเบราว์เซอร์เริ่มต้น' (Open in Browser) เพื่อใช้งาน",
-                    { title: "ข้อจำกัดของ Browser" },
-                );
-            } else {
-                await showDialog(
-                    "ไม่สามารถเข้าสู่ระบบได้ (" + error.code + "): " + error.message,
-                );
-            }
+            await showDialog(
+                "ไม่สามารถเข้าสู่ระบบได้ (" + error.code + "): " + error.message,
+            );
             return;
         } else if (
             error.code === "auth/popup-closed-by-user" ||
@@ -676,10 +664,7 @@ async function handleRedirectFlow() {
             );
         }
 
-        const btn = document.getElementById("btn-login-line");
-        if (btn) btn.disabled = false;
-        const btnLink = document.getElementById("btn-link-line");
-        if (btnLink) btnLink.disabled = false;
+
     }
 }
 
@@ -712,56 +697,12 @@ function setupAuthStateListener() {
                 // Auto-Register New Users (Except LINE)
                 if (!userDoc) {
 
-                    // Check if user authenticated via LINE
-                    const isLineUser = user.providerData.some(
-                        (p) => p.providerId === "oidc.line",
-                    );
-
-                    if (isLineUser) {
-                        console.warn(
-                            "New User Registration via LINE is NOT ALLOWED. Deleting user...",
-                        );
-                        await deleteUser(user);
-                        await signOut(auth);
-                        await showDialog(
-                            "ไม่อนุญาตให้ลงทะเบียนบัญชีใหม่ด้วย LINE\n(กรุณาติดต่อผู้ดูแลระบบ)",
-                            { title: "Access Denied" },
-                        );
-                        return; // Stop processing
-                    }
-
                     console.log("New user detected, registering...");
                     await FirestoreService.addUser(user);
                     userDoc = await FirestoreService.getUser(user.uid);
                     currentUserRole = userDoc?.role || 'user';
                     // Suppressed Welcome Toast here (moved to explicit login)
                 } else {
-                    // --- Sync LINE profile photo if it changed ---
-                    // Firebase Auth's providerData contains the LATEST photo from LINE
-                    // at the moment the user signed in. If the user changed their LINE
-                    // profile picture, this value will differ from the stored user.photoURL.
-                    const lineProvider = user.providerData.find(
-                        (p) => p.providerId === "oidc.line",
-                    );
-                    if (
-                        lineProvider &&
-                        lineProvider.photoURL &&
-                        lineProvider.photoURL !== user.photoURL
-                    ) {
-                        console.log(
-                            "LINE photo changed, syncing new photo from LINE provider...",
-                        );
-                        try {
-                            await updateProfile(user, { photoURL: lineProvider.photoURL });
-                            console.log("Firebase Auth photoURL updated from LINE provider.");
-                        } catch (photoErr) {
-                            console.warn(
-                                "Could not update Auth photoURL from LINE:",
-                                photoErr,
-                            );
-                        }
-                    }
-
                     // Sync Profile Data for existing users (Auth -> Firestore)
                     // Re-read user.photoURL AFTER possible updateProfile above
                     const freshPhotoURL = auth.currentUser?.photoURL || user.photoURL;
@@ -6137,62 +6078,53 @@ async function loadAddressData() {
 // --- LINE Login with OIDC ---
 // --- LINE Login with OIDC (Restricted) ---
 async function handleLineLogin() {
-    console.log("Starting LINE Login via OIDC...");
-
-    // [NEW] Restriction Logic
-    if (isMobile() && !isLineInAppBrowser()) {
-        await showDialog(
-            "การเข้าสู่ระบบด้วย LINE บนมือถือ\nรองรับเฉพาะการเปิดผ่านแอป LINE เท่านั้น\n\nกรุณากดเมนูและเลือก 'Login via LINE' บน Rich Menu\nหรือใช้งานผ่านคอมพิวเตอร์",
-            { title: "Browser ไม่รองรับ" },
-        );
-        return;
-    }
-
-    const provider = new OAuthProvider("oidc.line");
-    provider.addScope("openid");
-    provider.addScope("profile");
-    provider.addScope("email");
-
+    console.log("Starting LINE Login via LIFF...");
+    const btn = document.getElementById("btn-line-login");
+    const originalText = btn.innerHTML;
     try {
-        // Use Popup for Desktop, Redirect for Mobile (better UX/compatibility)
-        if (isMobile()) {
-            await signInWithRedirect(auth, provider);
-            // Logic pauses here as page redirects
-        } else {
-            const result = await signInWithPopup(auth, provider);
-            // Result comes back immediately
-            const user = result.user;
-            console.log("LINE Login Success:", user);
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังดำเนินการ...';
+        btn.disabled = true;
 
-            // --- RESTRICT NEW USERS (LINE Popup) ---
-            const additionalInfo = getAdditionalUserInfo(result);
-            if (additionalInfo && additionalInfo.isNewUser) {
-                console.warn(
-                    "New User Registration via LINE is NOT ALLOWED. Deleting user...",
-                );
-                await deleteUser(result.user);
-                await signOut(auth);
-                await showDialog(
-                    "ไม่อนุญาตให้ลงทะเบียนบัญชีใหม่ด้วย LINE\n(กรุณาติดต่อผู้ดูแลระบบ)",
-                    { title: "Access Denied" },
-                );
-                return; // Stop processing
-            }
-            // ----------------------------------------
+        if (!liff.isInClient() && !liff.isLoggedIn()) {
+            liff.login({ redirectUri: window.location.href });
+            return; // Wait for redirect back
+        }
 
-            // The onAuthStateChanged will handle the UI switch
+        const accessToken = liff.getAccessToken();
+        if (!accessToken) {
+            throw new Error("No access token found from LIFF");
+        }
+
+        const loginWithLineLiff = httpsCallable(functions, "loginWithLineLiff");
+        const result = await loginWithLineLiff({ accessToken });
+
+        if (result.data.success && result.data.customToken) {
+            await signInWithCustomToken(auth, result.data.customToken);
+            showToast("เข้าสู่ระบบด้วย LINE สำเร็จ!", "success");
             await FirestoreService.logAction(
                 "AUTH",
                 "LOGIN",
-                "User logged in via LINE (OIDC)",
+                "User logged in via LINE (LIFF)",
             );
-            showToast("เข้าสู่ระบบสำเร็จ!", "success");
+        } else {
+            throw new Error("Invalid response from server");
         }
+
     } catch (error) {
         console.error("LINE Login Error:", error);
-        await showDialog("การเข้าสู่ระบบผ่าน LINE ล้มเหลว: " + error.message);
+        let msg = error.message;
+        if (error.code === 'functions/not-found' || error.message.includes('บัญชี LINE นี้ยังไม่ได้ผูก')) {
+            msg = "บัญชี LINE นี้ยังไม่ได้ผูกกับผู้ใช้ในระบบ กรุณาเข้าสู่ระบบด้วยอีเมลแล้วไปที่หน้าโปรไฟล์เพื่อผูกบัญชี";
+        }
+        await showDialog("การเข้าสู่ระบบผ่าน LINE ล้มเหลว: " + msg);
+        // Force liff logout so they can try again easily
+        if (liff.isLoggedIn()) liff.logout();
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
     }
 }
+
 
 async function handleLogin(e) {
     e.preventDefault();
@@ -15339,12 +15271,7 @@ if (notificationSettingsForm) {
                     secure: document.getElementById("smtp-secure")?.checked || false,
                     recipients: getEmailRecipients()
                 },
-                line: {
-                    enabled: document.getElementById("line-enabled")?.checked || false,
-                    channelAccessToken: document.getElementById("line-channel-access-token")?.value.trim() || "",
-                    channelSecret: document.getElementById("line-channel-secret")?.value || "",
-                    userId: document.getElementById("line-user-id")?.value.trim() || ""
-                },
+
                 telegram: {
                     enabled: document.getElementById("telegram-enabled")?.checked || false,
                     botToken: document.getElementById("telegram-bot-token")?.value.trim() || "",
@@ -15399,11 +15326,6 @@ if (btnClearNotificationSettings) {
             document.getElementById("smtp-from").value = "";
             document.getElementById("smtp-secure").checked = false;
             loadEmailRecipients([]);
-
-            document.getElementById("line-enabled").checked = false;
-            document.getElementById("line-channel-access-token").value = "";
-            document.getElementById("line-channel-secret").value = "";
-            document.getElementById("line-user-id").value = "";
 
             document.getElementById("telegram-enabled").checked = false;
             document.getElementById("telegram-bot-token").value = "";
@@ -15952,9 +15874,7 @@ async function renderProfile(userArg = null) {
     const linkedContainer = document.getElementById("linked-accounts-container");
     console.log("Found linked container:", linkedContainer); // Debug
     if (linkedContainer) {
-        const isLineLinked =
-            user.providerData &&
-            user.providerData.some((p) => p.providerId === "oidc.line");
+        const isLineLinked = !!currentUserDoc?.lineUserId;
 
         // Define UI based on status
         const statusHtml = isLineLinked
@@ -16111,17 +16031,6 @@ async function loadNotificationSettings() {
                 loadEmailRecipients([]);
             }
 
-            // Load LINE settings
-            if (settings.line) {
-                document.getElementById("line-enabled").checked = settings.line.enabled || false;
-                document.getElementById("line-channel-access-token").value = settings.line.channelAccessToken || "";
-                document.getElementById("line-channel-secret").value = settings.line.channelSecret || "";
-                document.getElementById("line-user-id").value = settings.line.userId || "";
-            } else {
-                // Default to OFF if no settings
-                document.getElementById("line-enabled").checked = false;
-            }
-
             // Load Telegram settings
             if (settings.telegram) {
                 document.getElementById("telegram-enabled").checked = settings.telegram.enabled || false;
@@ -16134,7 +16043,7 @@ async function loadNotificationSettings() {
         } else {
             // No settings found - default all toggles to OFF
             document.getElementById("email-enabled").checked = false;
-            document.getElementById("line-enabled").checked = false;
+
             document.getElementById("telegram-enabled").checked = false;
             loadEmailRecipients([]);
         }
