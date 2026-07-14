@@ -15605,36 +15605,47 @@ async function handleLinkLineAccount() {
     const user = auth.currentUser;
     if (!user) return;
 
-    // Restriction for external mobile browsers
-    if (isMobile() && !isLineInAppBrowser()) {
-        await showDialog(
-            "การเชื่อมต่อบัญชี LINE บนมือถือ\nรองรับเฉพาะการเปิดผ่านแอป LINE เท่านั้น\n\nกรุณาใช้งานผ่านแอป LINE หรือใช้งานผ่านคอมพิวเตอร์",
-            { title: "Browser ไม่รองรับ" },
-        );
-        return;
-    }
-
     try {
-        const provider = new OAuthProvider("oidc.line");
-        provider.addScope("openid");
-        provider.addScope("profile");
-        provider.addScope("email");
+        if (!liff.isInClient() && !liff.isLoggedIn()) {
+            liff.login({ redirectUri: window.location.href });
+            return;
+        }
 
-        await linkWithPopup(user, provider);
+        const liffProfile = await liff.getProfile();
+        const lineUserId = liffProfile.userId;
+
+        if (!lineUserId) {
+            throw new Error("Cannot get LINE User ID from LIFF");
+        }
+
+        // Check if this LINE ID is already used by someone else
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("lineUserId", "==", lineUserId), limit(1));
+        const usersSnapshot = await getDocs(q);
+        
+        if (!usersSnapshot.empty && usersSnapshot.docs[0].id !== user.uid) {
+            await showDialog("บัญชี LINE นี้ถูกเชื่อมต่อกับผู้ใช้อื่นแล้ว");
+            return;
+        }
+
+        // Update Firestore
+        await updateDoc(doc(db, "users", user.uid), {
+            lineUserId: lineUserId
+        });
+
         await FirestoreService.logAction(
             "USER",
             "CONNECT_LINE",
-            "Connected LINE account",
+            "Connected LINE account via LIFF",
         );
         showToast("เชื่อมต่อบัญชี LINE สำเร็จ!", "success");
-        renderProfile(); // Re-render to update UI
+        
+        // Re-render profile
+        const userDoc = await FirestoreService.getUser(user.uid);
+        renderProfile(user); 
     } catch (error) {
         console.error("Link LINE Error:", error);
-        if (error.code === "auth/credential-already-in-use") {
-            await showDialog("บัญชี LINE นี้ถูกเชื่อมต่อกับผู้ใช้อื่นแล้ว");
-        } else {
-            await showDialog("เชื่อมต่อบัญชีไม่สำเร็จ: " + error.message);
-        }
+        await showDialog("เชื่อมต่อบัญชีไม่สำเร็จ: " + error.message);
     }
 }
 
@@ -15675,15 +15686,11 @@ async function handleSyncLinePhoto() {
     if (!user) return;
 
     try {
-        // Find LINE provider data
-        const lineProvider = user.providerData.find(
-            (p) => p.providerId === "oidc.line",
-        );
-        if (!lineProvider || !lineProvider.photoURL) {
-            await showDialog("ไม่พบรูปโปรไฟล์จาก LINE");
-            return;
+        if (!liff.isLoggedIn()) {
+             await showDialog("กรุณาเชื่อมต่อ LINE อีกครั้งเพื่อซิงค์รูป");
+             return;
         }
-
+        
         if (
             !(await showDialog("คุณต้องการใช้รูปโปรไฟล์จาก LINE ใช่หรือไม่?", {
                 type: "confirm",
@@ -15691,38 +15698,33 @@ async function handleSyncLinePhoto() {
         )
             return;
 
-        // Update Profile
-        await updateProfile(user, { photoURL: lineProvider.photoURL });
+        const profile = await liff.getProfile();
+        if (!profile.pictureUrl) {
+            await showDialog("ไม่พบรูปโปรไฟล์จาก LINE");
+            return;
+        }
 
-        // Update Firestore (Consistency)
-        await updateDoc(doc(db, "users", user.uid), {
-            photoURL: lineProvider.photoURL,
-        });
+        const photoURL = profile.pictureUrl;
+        await updateProfile(user, { photoURL });
+        await updateDoc(doc(db, "users", user.uid), { photoURL });
+        await user.reload(); // Force refresh
 
         await FirestoreService.logAction(
             "USER",
             "UPDATE_PHOTO",
             "Synced profile photo from LINE",
         );
-        showToast("อัปเดตรูปโปรไฟล์เรียบร้อย", "success");
+        showToast("ซิงค์รูปโปรไฟล์จาก LINE สำเร็จ", "success");
         renderProfile();
     } catch (error) {
         console.error("Sync Photo Error:", error);
-        await showDialog("ไม่สามารถซิงค์รูปได้: " + error.message);
+        await showDialog("ดึงรูปภาพไม่สำเร็จ: " + error.message);
     }
 }
 
 async function handleUnlinkLineAccount() {
     const user = auth.currentUser;
     if (!user) return;
-
-    // Safety Check: Don't unlink if it's the only provider
-    if (user.providerData.length <= 1) {
-        await showDialog(
-            "ไม่สามารถยกเลิกการเชื่อมต่อได้ เนื่องจากเป็นบัญชีเดียวที่ใช้เข้าระบบ",
-        );
-        return;
-    }
 
     if (
         !(await showDialog("คุณต้องการยกเลิกการเชื่อมต่อบัญชี LINE ใช่หรือไม่?", {
@@ -15732,14 +15734,19 @@ async function handleUnlinkLineAccount() {
         return;
 
     try {
-        // Find correct provider ID for LINE
-        // Assuming 'oidc.line' based on setup, but checking providerData is safer if needed
-        await unlink(user, "oidc.line");
+        // Remove lineUserId from Firestore
+        await updateDoc(doc(db, "users", user.uid), {
+            lineUserId: null
+        });
+
         await FirestoreService.logAction(
             "USER",
             "DISCONNECT_LINE",
             "Disconnected LINE account",
         );
+        
+        if (liff.isLoggedIn()) liff.logout();
+
         showToast("ยกเลิกการเชื่อมต่อ LINE สำเร็จ", "success");
         renderProfile();
     } catch (error) {
