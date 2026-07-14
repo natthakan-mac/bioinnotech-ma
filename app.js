@@ -9569,38 +9569,67 @@ async function renderDeviceMap(sitesToRender) {
                 });
 
                 if (overlappingSites.length > 1) {
-                    // Create overlay and popup
+                    // Create overlay and popup styled to match site system
                     const overlay = document.createElement("div");
-                    overlay.style.position = "fixed";
-                    overlay.style.top = "0";
-                    overlay.style.left = "0";
-                    overlay.style.width = "100%";
-                    overlay.style.height = "100%";
-                    overlay.style.backgroundColor = "rgba(0,0,0,0.5)";
-                    overlay.style.zIndex = "9998";
-                    overlay.style.display = "flex";
-                    overlay.style.alignItems = "center";
-                    overlay.style.justifyContent = "center";
-                    overlay.style.backdropFilter = "blur(2px)";
+                    overlay.className = "modal-overlay modal-layer-top";
                     
                     const popup = document.createElement("div");
-                    popup.style.background = "#fff";
-                    popup.style.padding = "20px";
-                    popup.style.borderRadius = "12px";
+                    popup.className = "modal glass-panel";
+                    popup.style.maxWidth = "450px";
                     popup.style.width = "90%";
-                    popup.style.maxWidth = "400px";
                     popup.style.maxHeight = "80vh";
-                    popup.style.overflowY = "auto";
-                    popup.style.boxShadow = "0 10px 25px rgba(0,0,0,0.2)";
-                    popup.style.zIndex = "9999";
+                    popup.style.display = "flex";
+                    popup.style.flexDirection = "column";
+                    popup.style.padding = "2rem";
                     
-                    let html = `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:15px;">
-                        <h3 style="margin:0; font-size:1.1rem; color:#1e293b;"><i class="fa-solid fa-map-location-dot" style="margin-right:8px; color:var(--primary-color);"></i>มีอุปกรณ์ ${overlappingSites.length} เครื่องในบริเวณนี้</h3>
-                        <button id="close-cluster-popup" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#94a3b8; padding:0; display:flex; align-items:center; justify-content:center;">&times;</button>
-                    </div><div style="display:flex; flex-direction:column; gap:10px;">`;
-                    
+                    // Helpers for badges in the popup to match site style
+                    const getCategoryBadge = (cat) => {
+                        let catColor = '#64748b';
+                        let catBg = 'rgba(100,116,139,0.12)';
+                        if (typeof isMaCategory === "function" && isMaCategory(cat)) {
+                            catColor = '#0369a1';
+                            catBg = '#e0f2fe';
+                        } else if (cat === "ติดตั้ง") {
+                            catColor = '#15803d';
+                            catBg = '#dcfce7';
+                        } else if (cat === "รื้อถอน") {
+                            catColor = '#b45309';
+                            catBg = '#fef3c7';
+                        } else if (cat === "ซ่อม") {
+                            catColor = '#dc2626';
+                            catBg = '#fee2e2';
+                        } else if (cat === "ตามสัญญาจ้าง") {
+                            catColor = '#7c3aed';
+                            catBg = '#ede9fe';
+                        } else if (cat === "ตามใบสั่งซื้อ") {
+                            catColor = '#0891b2';
+                            catBg = '#cffafe';
+                        }
+                        return `<span style="background:${catBg}; color:${catColor}; padding:2.5px 8px; border-radius:12px; font-size:0.72rem; font-weight:600; white-space:nowrap;">${cat}</span>`;
+                    };
+
+                    const getStatusBadge = (status) => {
+                        const statusColors = {
+                            Open: { bg: "rgba(234,179,8,0.15)", color: "#ca8a04", label: "เปิดงาน" },
+                            "On Process": { bg: "rgba(249,115,22,0.15)", color: "#f97316", label: "กำลังดำเนินการ" },
+                            Cancel: { bg: "rgba(239,68,68,0.15)", color: "#ef4444", label: "ยกเลิก" },
+                            Done: { bg: "rgba(168,85,247,0.15)", color: "#a855f7", label: "เสร็จสิ้น" },
+                            "Case Closed": { bg: "rgba(34,197,94,0.15)", color: "#22c55e", label: "ปิดเคส" },
+                            Completed: { bg: "rgba(168,85,247,0.15)", color: "#a855f7", label: "เสร็จสิ้น" }
+                        };
+                        const s = statusColors[status] || {
+                            bg: "rgba(100,116,139,0.15)",
+                            color: "var(--text-muted)",
+                            label: status || "เปิดงาน"
+                        };
+                        return `<span style="background:${s.bg}; color:${s.color}; padding:2.5px 8px; border-radius:12px; font-size:0.72rem; font-weight:600; white-space:nowrap;">${s.label}</span>`;
+                    };
+
                     const currentMonth = new Date().getMonth();
                     const currentYear = new Date().getFullYear();
+                    
+                    let casesHtml = "";
+                    let devicesHtml = "";
 
                     overlappingSites.forEach(s => {
                         const siteLogs = (state.logs || []).filter(log => {
@@ -9615,38 +9644,71 @@ async function renderDeviceMap(sitesToRender) {
                             siteLogs.forEach(log => {
                                 const isRepair = log.category === "ซ่อม";
                                 const borderColor = isRepair ? "#dc2626" : "#0369a1";
-                                const bgColor = isRepair ? "#fef2f2" : "#f0f9ff";
-                                const icon = isRepair ? "fa-wrench" : "fa-clipboard-check";
                                 
-                                html += `
-                                    <div class="cluster-item" data-id="${s.id}" data-log-id="${log.id}" style="display:flex; flex-direction:column; padding:12px; border:2px solid ${borderColor}; border-radius:8px; cursor:pointer; background:${bgColor}; transition:all 0.2s; position:relative; overflow:hidden;">
-                                        <div style="position:absolute; top:0; right:0; background:${borderColor}; color:white; font-size:0.7rem; font-weight:bold; padding:3px 8px; border-bottom-left-radius:8px;">
-                                            <i class="fa-solid ${icon}"></i> ${log.category}
+                                casesHtml += `
+                                    <div class="cluster-item" data-id="${s.id}" data-log-id="${log.id}" style="display: flex; flex-direction: column; padding: 1rem; border: 1.5px solid var(--border-color); border-left: 4px solid ${borderColor} !important; border-radius: var(--radius-md); cursor: pointer; background: var(--surface-bg); transition: all 0.2s ease; position: relative; box-shadow: var(--shadow-sm); margin-bottom: 2px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <div style="font-weight: 600; color: var(--text-color); font-size: 0.92rem; line-height: 1.3; padding-right: 4px;">${s.name}</div>
+                                            <div style="flex-shrink: 0;">${getCategoryBadge(log.category)}</div>
                                         </div>
-                                        <div style="font-weight:600; color:#0f172a; margin-bottom:4px; padding-right:75px;">${s.name}</div>
-                                        <div style="font-size:0.85rem; color:#64748b; margin-bottom:6px;">
-                                            <span style="display:inline-block; margin-right:8px;"><i class="fa-solid fa-hashtag"></i> รหัสเคส: ${log.caseId || '-'}</span>
-                                            <span style="display:inline-block;"><i class="fa-solid fa-microchip"></i> ชนิด: ${s.deviceType || '-'}</span>
-                                        </div>
-                                        <div style="font-size:0.85rem; color:#334155; font-weight:500; background:rgba(255,255,255,0.7); padding:6px; border-radius:4px; border: 1px solid rgba(0,0,0,0.05);">
-                                            <div style="margin-bottom:2px;"><i class="fa-regular fa-calendar" style="color:#64748b; width:16px;"></i> วันที่: ${new Date(log.date).toLocaleDateString('th-TH')}</div>
-                                            ${log.status ? `<div><i class="fa-solid fa-circle-info" style="color:${log.status === 'เสร็จสิ้น' ? '#10b981' : '#f59e0b'}; width:16px;"></i> สถานะ: ${log.status}</div>` : ''}
+                                        <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem;">
+                                            <div><i class="fa-solid fa-hashtag" style="width: 14px; text-align: center;"></i> รหัสเคส: ${log.caseId ? log.caseId.replace('CASE-', '') : '-'}</div>
+                                            <div><i class="fa-solid fa-microchip" style="width: 14px; text-align: center;"></i> ชนิด: ${s.deviceType || '-'}</div>
+                                            <div style="margin-top: 0.4rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background: var(--bg-color); padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid var(--border-color);">
+                                                <span style="font-weight: 500; font-size: 0.75rem; color: var(--text-color);"><i class="fa-regular fa-calendar" style="color: var(--text-muted); margin-right: 4px;"></i>วันที่: ${new Date(log.date).toLocaleDateString('th-TH')}</span>
+                                                ${log.status ? getStatusBadge(log.status) : ''}
+                                            </div>
                                         </div>
                                     </div>
                                 `;
                             });
                         } else {
-                            html += `
-                                <div class="cluster-item" data-id="${s.id}" style="display:flex; flex-direction:column; padding:12px; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; background:#f8fafc; transition:all 0.2s;">
-                                    <div style="font-weight:600; color:#0f172a; margin-bottom:4px;">${s.name}</div>
-                                    <div style="font-size:0.85rem; color:#64748b;">
-                                        <span style="display:inline-block; margin-right:8px;"><i class="fa-solid fa-hashtag"></i> รหัสเครื่อง: ${s.siteCode || '-'}</span>
-                                        <span style="display:inline-block;"><i class="fa-solid fa-microchip"></i> ชนิด: ${s.deviceType || '-'}</span>
+                            devicesHtml += `
+                                <div class="cluster-item" data-id="${s.id}" style="display: flex; flex-direction: column; padding: 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); cursor: pointer; background: var(--surface-bg); transition: all 0.2s ease; box-shadow: var(--shadow-sm); margin-bottom: 2px;">
+                                    <div style="font-weight: 600; color: var(--text-color); font-size: 0.92rem; line-height: 1.3; margin-bottom: 0.5rem;">${s.name}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem;">
+                                        <div><i class="fa-solid fa-hashtag" style="width: 14px; text-align: center;"></i> รหัสเครื่อง: ${s.siteCode || '-'}</div>
+                                        <div><i class="fa-solid fa-microchip" style="width: 14px; text-align: center;"></i> ชนิด: ${s.deviceType || '-'}</div>
                                     </div>
                                 </div>
                             `;
                         }
                     });
+
+                    let html = `
+                    <div class="modal-header" style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <h3 style="color: var(--primary-color); margin: 0; font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-map-location-dot" style="color: var(--primary-color);"></i> อุปกรณ์ในบริเวณนี้
+                            </h3>
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 400;">
+                                พบอุปกรณ์ทั้งหมด ${overlappingSites.length} เครื่องใกล้เคียงกัน
+                            </p>
+                        </div>
+                        <button class="close-modal" id="close-cluster-popup" style="padding: 0; line-height: 1; font-size: 1.5rem; margin-top: -4px;">&times;</button>
+                    </div>
+                    <div class="modal-body" style="overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; flex: 1;">`;
+
+                    if (casesHtml) {
+                        html += `
+                        <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+                            <i class="fa-solid fa-wrench" style="color: #dc2626; font-size: 0.75rem;"></i> งานซ่อมบำรุงในเดือนนี้
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 6px;">
+                            ${casesHtml}
+                        </div>`;
+                    }
+
+                    if (devicesHtml) {
+                        html += `
+                        <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px; margin-bottom: 2px; ${casesHtml ? 'margin-top: 10px;' : ''}">
+                            <i class="fa-solid fa-desktop" style="color: var(--primary-color); font-size: 0.75rem;"></i> รายการเครื่องทั้งหมด
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            ${devicesHtml}
+                        </div>`;
+                    }
+
                     html += `</div>`;
                     
                     popup.innerHTML = html;
@@ -9669,8 +9731,16 @@ async function renderDeviceMap(sitesToRender) {
                                 viewSiteDetails(this.getAttribute('data-id'));
                             }
                         };
-                        item.onmouseover = function() { this.style.transform = "translateY(-1px)"; this.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)"; };
-                        item.onmouseout = function() { this.style.transform = "none"; this.style.boxShadow = "none"; };
+                        item.onmouseover = function() { 
+                            this.style.transform = "translateY(-2px)"; 
+                            this.style.boxShadow = "var(--shadow-md)";
+                            this.style.borderColor = "var(--primary-color)";
+                        };
+                        item.onmouseout = function() { 
+                            this.style.transform = "none"; 
+                            this.style.boxShadow = "var(--shadow-sm)";
+                            this.style.borderColor = "var(--border-color)";
+                        };
                     });
                 } else {
                     let logOpened = false;
@@ -18926,19 +18996,22 @@ function exportAnnualPlanPDF() {
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>Annual Maintenance Plan ${displayYear}</title>
 <style>
-    @page { size: A4 landscape; margin: 0; }
+    @page { size: A4 landscape; margin: 12mm 10mm 0 10mm; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 8mm 10mm 25mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
+    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 0 0 25mm 0; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
     .page-content { flex: 1; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     tr { page-break-inside: avoid; break-inside: avoid; }
     th { background: #f5f5f5 !important; font-size: 9px; padding: 5px 3px; border: 1px solid #ddd; }
-    .fixed-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; padding: 4mm 10mm; box-sizing: border-box; z-index: 100; }
+    .fixed-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; padding: 4mm 0; box-sizing: border-box; z-index: 100; }
     .footer-line { position: relative; height: 2px; background: #ddd !important; }
     .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
     .footer-text { display: flex; justify-content: space-between; font-size: 8px; color: #333; padding: 4px 0; }
     .header-line { margin-bottom: 10px; position: relative; height: 2px; background: #ddd !important; }
     .header-line::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
+    @media screen {
+        body { padding: 12mm 10mm 25mm 10mm; }
+    }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
 </head><body>
@@ -18998,10 +19071,10 @@ function exportAnnualPlanPDF() {
 <script>
 window.onload = function() {
     var contentHeight = document.body.scrollHeight;
-    var pageHeight = 210 * 3.78;
+    var pageHeight = 198 * 3.78;
     var totalPages = Math.max(1, Math.ceil(contentHeight / pageHeight));
-    var pageNumStyle = 'position:absolute; right:10mm; font-size:8px; color:#333; z-index:100; background:#fff; padding:0 4px;';
-    var pagePx = 210 * 3.78;
+    var pageNumStyle = 'position:absolute; right:0; font-size:8px; color:#333; z-index:100; background:#fff; padding:0 4px;';
+    var pagePx = 198 * 3.78;
     var footerOffset = 22 * 3.78;
     for (var p = 1; p <= totalPages; p++) {
         var marker = document.createElement('div');
@@ -19056,9 +19129,9 @@ async function exportCaseHistoryPDF(siteId) {
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>ประวัติเคส - ${site.name}</title>
 <style>
-    @page { size: A4 landscape; margin: 0; }
+    @page { size: A4 landscape; margin: 12mm 10mm 15mm 10mm; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 8mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
+    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 0; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
     .page-content { flex: 1; margin-bottom: 30px; }
     table { width: 100%; border-collapse: collapse; }
     tr { page-break-inside: avoid; break-inside: avoid; }
@@ -19073,6 +19146,9 @@ async function exportCaseHistoryPDF(siteId) {
     .device-info-item { display: flex; flex-direction: column; gap: 2px; }
     .device-info-label { font-size: 7px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; }
     .device-info-value { font-size: 9px; font-weight: 600; color: #111; }
+    @media screen {
+        body { padding: 12mm 10mm 15mm 10mm; }
+    }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
 </head><body>
@@ -19205,9 +19281,9 @@ function exportDevicesPDF() {
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>ทะเบียนเครื่องมือ</title>
 <style>
-    @page { size: A4 landscape; margin: 0; }
+    @page { size: A4 landscape; margin: 12mm 10mm 15mm 10mm; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 8mm 10mm; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
+    body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 10px; color: #333; margin: 0; padding: 0; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
     .page-content { flex: 1; margin-bottom: 30px; }
     table { width: 100%; border-collapse: collapse; }
     th { background: #f3f4f6 !important; font-size: 9px; padding: 5px 6px; border: 1px solid #e5e7eb; text-align: left; font-weight: 700; }
@@ -19217,6 +19293,9 @@ function exportDevicesPDF() {
     .footer-line { position: relative; height: 2px; background: #ddd !important; }
     .footer-line::before { content: ''; position: absolute; top: 50%; right: 0; transform: translateY(-50%); width: 25%; height: 5px; background: #8bc53f !important; border-radius: 2px; }
     .footer-text { display: flex; justify-content: space-between; font-size: 8px; color: #333; padding: 4px 0; }
+    @media screen {
+        body { padding: 12mm 10mm 15mm 10mm; }
+    }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
 </head><body>
