@@ -5310,8 +5310,158 @@ async function handleLogMaintenance(e) {
  * @returns {Promise<boolean>} true if a new case was created
  */
 async function checkAndAutoCreateMaintenanceCase(siteId) {
-    // Function disabled as per user request to remove automatic scheduled maintenance generation
-    return false;
+    try {
+        const site = state.sites.find(s => s.id === siteId);
+        if (!site) { console.log('[AutoMA] site not found:', siteId); return false; }
+        if (!site.maintenanceCycle || site.maintenanceCycle <= 0) {
+            console.log(`[AutoMA] ${site.name}: no maintenanceCycle, skipping`);
+            return false;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Must be within insurance period
+        if (site.insuranceStartDate) {
+            const insStart = new Date(site.insuranceStartDate);
+            insStart.setHours(0, 0, 0, 0);
+            if (today < insStart) {
+                console.log(`[AutoMA] ${site.name}: before insurance start (${site.insuranceStartDate}), skipping`);
+                return false;
+            }
+        }
+        if (site.insuranceEndDate) {
+            const insEnd = new Date(site.insuranceEndDate);
+            insEnd.setHours(23, 59, 59, 999);
+            if (today > insEnd) {
+                console.log(`[AutoMA] ${site.name}: insurance expired (${site.insuranceEndDate}), skipping`);
+                return false;
+            }
+        }
+
+        // ── Always fetch FRESH data from Firestore to avoid stale state.logs ──
+        const freshLogs = await FirestoreService.fetchLogsForSite(siteId);
+        console.log(`[AutoMA] ${site.name}: fetched ${freshLogs.length} fresh logs`);
+
+        // Sort: newest date first, then newest timestamp first
+        const sortDesc = (a, b) => {
+            const d = new Date(b.date) - new Date(a.date);
+            return d !== 0 ? d : new Date(b.timestamp || 0) - new Date(a.timestamp || 0);
+        };
+
+        // Gather only scheduled MA-category logs
+        const maLogs = freshLogs
+            .filter(l => l.category === 'บำรุงรักษาตามรอบ' || l.category === 'ตามสัญญาจ้าง' || l.category === 'ตามใบสั่งซื้อ')
+            .sort(sortDesc);
+
+        console.log(`[AutoMA] ${site.name}: maLogs count = ${maLogs.length}`, maLogs.map(l => ({ id: l.id, caseId: l.caseId, date: l.date, status: l.status })));
+
+        // ── KEY GUARD ──────────────────────────────────────────────────────────
+        // Check if there is ANY active MA-category case that is not closed yet.
+        // Other categories (ซ่อม, ติดตั้ง, รื้อถอน) do NOT block MA creation.
+        const hasActiveMa = maLogs.some(l =>
+            l.status !== 'Case Closed' &&
+            l.status !== 'Done' &&
+            l.status !== 'Cancel'
+        );
+        if (hasActiveMa) {
+            console.log(`[AutoMA] ${site.name}: there is an active MA case open, skipping`);
+            return false;
+        }
+        // ──────────────────────────────────────────────────────────────────────
+
+        // Find last closed MA case (for base-date calculation)
+        const lastClosedMA = maLogs.find(l =>
+            l.status === 'Case Closed' ||
+            l.status === 'Done' ||
+            l.status === 'Completed'
+        );
+
+        let baseDate;
+        let useImmediateDate = false;
+
+        if (lastClosedMA) {
+            // Count forward from the last closed MA case
+            baseDate = new Date(lastClosedMA.date);
+            console.log(`[AutoMA] ${site.name}: baseDate from lastClosedMA = ${lastClosedMA.date}`);
+        } else {
+            // No closed MA case → create immediately from anchor date (no cycle offset)
+            useImmediateDate = true;
+            // Fallback: firstMaDate → oldest MA log date → installationDate → today
+            const oldestMaDate = maLogs.length > 0
+                ? [...maLogs].sort((a, b) => new Date(a.date) - new Date(b.date))[0]?.date
+                : null;
+            const anchor = site.firstMaDate || oldestMaDate || site.installationDate;
+            baseDate = anchor ? new Date(anchor) : new Date(today);
+            console.log(`[AutoMA] ${site.name}: useImmediateDate=true, anchor = ${anchor || 'today'}`);
+        }
+
+        if (isNaN(baseDate.getTime())) {
+            console.warn(`[AutoMA] ${site.name}: invalid base date, skipping`);
+            return false;
+        }
+
+        baseDate.setHours(0, 0, 0, 0);
+
+        const nextDate = new Date(baseDate);
+        if (!useImmediateDate) {
+            nextDate.setDate(nextDate.getDate() + site.maintenanceCycle);
+        }
+
+        const nextDateStr = nextDate.toISOString().split('T')[0];
+        console.log(`[AutoMA] ${site.name}: nextDate = ${nextDateStr}, cycle = ${site.maintenanceCycle} days`);
+
+        // Guard: must not exceed insurance end
+        if (site.insuranceEndDate) {
+            const insEnd = new Date(site.insuranceEndDate);
+            insEnd.setHours(23, 59, 59, 999);
+            if (nextDate > insEnd) {
+                console.log(`[AutoMA] ${site.name}: nextDate (${nextDateStr}) exceeds insurance end (${site.insuranceEndDate}), skipping`);
+                return false;
+            }
+        }
+
+        // Guard: prevent exact-date duplicates
+        const duplicate = maLogs.some(l => l.date && l.date.startsWith(nextDateStr));
+        if (duplicate) {
+            console.log(`[AutoMA] ${site.name}: case already exists for ${nextDateStr}, skipping`);
+            return false;
+        }
+
+        const cycleNum = maLogs.length + 1;
+
+        const newLogData = {
+            siteId: site.id,
+            date: nextDateStr,
+            category: 'บำรุงรักษาตามรอบ',
+            status: 'Open',
+            lineItems: [],
+            details: '-',
+            objective: `รอบซ่อมบำรุงตามกำหนด (${site.maintenanceCycle} วัน)`,
+            cost: 0,
+            attachments: [],
+            recordedBy: 'System',
+            timestamp: new Date().toISOString(),
+            comments: [{
+                text: `ระบบสร้างเคสซ่อมบำรุงอัตโนมัติ ครั้งที่ ${cycleNum} (รอบ ${site.maintenanceCycle} วัน)\nวันที่กำหนด: ${nextDateStr}`,
+                author: 'System',
+                authorId: 'system',
+                photoURL: '',
+                timestamp: new Date().toISOString(),
+                attachments: [],
+                isSystemLog: true
+            }]
+        };
+
+        await FirestoreService.addLog(newLogData);
+        const siteName = site.siteCode ? `${site.siteCode} - ${site.name}` : site.name;
+        console.log(`[AutoMA] ✅ Created case for "${siteName}" on ${nextDateStr} (cycle #${cycleNum})`);
+        showToast(`📋 สร้างเคสซ่อมบำรุงอัตโนมัติ: ${site.name} (${nextDateStr})`, 'info', 5000);
+        return true;
+    } catch (err) {
+        console.error('[AutoMA] Error creating maintenance case:', err);
+        return false;
+    }
 }
 
 
@@ -5324,8 +5474,29 @@ let _autoMaCheckRunning = false;
  * Safe to call on every app load — internally guarded against duplicates.
  */
 async function runAutoMaintenanceCheckForAllSites() {
-    // Function disabled as per user request
-    return;
+    if (_autoMaCheckRunning) return;
+    _autoMaCheckRunning = true;
+    try {
+        const sitesWithCycle = state.sites.filter(s => s.maintenanceCycle && s.maintenanceCycle > 0);
+        if (sitesWithCycle.length === 0) return;
+
+        console.log(`[AutoMA] Batch checking ${sitesWithCycle.length} site(s)...`);
+        let created = 0;
+        for (const site of sitesWithCycle) {
+            const ok = await checkAndAutoCreateMaintenanceCase(site.id);
+            if (ok) created++;
+        }
+        if (created > 0) {
+            console.log(`[AutoMA] Batch: created ${created} new case(s). Refreshing data...`);
+            await refreshData();
+        } else {
+            console.log('[AutoMA] Batch: no new cases needed.');
+        }
+    } catch (err) {
+        console.error('[AutoMA] Batch check error:', err);
+    } finally {
+        _autoMaCheckRunning = false;
+    }
 }
 
 window.checkAndAutoCreateMaintenanceCase = checkAndAutoCreateMaintenanceCase;
@@ -7674,7 +7845,6 @@ function viewSiteHistory(siteId) {
         if (selects.filterInput) selects.filterInput.value = site ? site.name : "";
 
         renderLogs();
-        updateCaseDashboard();
         switchView("engineer-view");
         // Optional: Scroll to top of logs
         document.getElementById("logs-feed").scrollIntoView({ behavior: "smooth" });
@@ -10147,7 +10317,12 @@ function viewSiteDetails(id) {
                 month: "long",
                 day: "numeric",
             });
-            installDateEl.textContent = dateText;
+            if (installLogCaseId && installLogId) {
+                dateText += ` <a href="javascript:void(0)" onclick="viewLogDetails('${installLogId}')" style="color: var(--primary-color); text-decoration: underline; margin-left: 8px; font-size: 0.85em;"><i class="fa-solid fa-link"></i> ${installLogCaseId}</a>`;
+                installDateEl.innerHTML = dateText;
+            } else {
+                installDateEl.textContent = dateText;
+            }
         } else {
             installDateEl.textContent = "-";
         }
@@ -12508,7 +12683,6 @@ function viewSiteLogs(siteId) {
     }
 
     renderLogs();
-    updateCaseDashboard();
 
     // Scroll to top
     window.scrollTo({ top: 0, behavior: "smooth" });
