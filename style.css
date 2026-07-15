@@ -8369,39 +8369,6 @@ h4 {
     transform: translateX(3px) !important;
 }
 
-.login-container #btn-line-login {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 0.75rem !important;
-    background: #06C755 !important;
-    color: #ffffff !important;
-    border: none !important;
-    border-radius: 12px !important;
-    padding: 0.85rem 1.5rem !important;
-    font-size: 1rem !important;
-    font-weight: 700 !important;
-    height: 52px !important;
-    box-sizing: border-box !important;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    cursor: pointer !important;
-    width: 100% !important;
-    box-shadow: 0 4px 12px rgba(6, 199, 85, 0.2) !important;
-}
-
-.login-container #btn-line-login:hover {
-    background: #05b34c !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 20px rgba(6, 199, 85, 0.35) !important;
-}
-
-.login-container #btn-line-login:active {
-    transform: translateY(0) scale(0.98) !important;
-}
-
-.login-container #btn-line-login i {
-    font-size: 1.35rem !important;
-}
 
 /* Brand Logo Text Styling */
 .brand {

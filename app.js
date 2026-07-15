@@ -324,18 +324,7 @@ const storage = getStorage(app);
 const auth = getAuth(app);
 const functions = getFunctions(app, "asia-southeast1");
 
-// Initialize LIFF
-document.addEventListener("DOMContentLoaded", () => {
-    try {
-        liff.init({ liffId: "2010697063-kIdzAXLc" }).then(() => {
-            console.log("LIFF initialized successfully");
-        }).catch((err) => {
-            console.error("LIFF initialization failed", err);
-        });
-    } catch (e) {
-        console.error("LIFF SDK not found or failed to load", e);
-    }
-});
+
 
 
 // --- Auth Workflow Initialization ---
@@ -1279,18 +1268,39 @@ const FirestoreService = {
                 return true;
             });
 
+            // Deduplicate by email address
+            const uniqueUsersMap = new Map();
+            validUsers.forEach(user => {
+                const existing = uniqueUsersMap.get(user.email);
+                if (!existing) {
+                    uniqueUsersMap.set(user.email, user);
+                } else {
+                    const currentUid = auth.currentUser?.uid;
+                    // Keep the one matching current user UID, or the one with displayName, or the higher role
+                    const keepNew = 
+                        (user.uid === currentUid) ||
+                        (!existing.displayName && user.displayName) ||
+                        (existing.role === 'user' && (user.role === 'admin' || user.role === 'manager'));
+                    
+                    if (keepNew) {
+                        uniqueUsersMap.set(user.email, user);
+                    }
+                }
+            });
+            const uniqueUsers = Array.from(uniqueUsersMap.values());
+
             // Sort by displayName
-            validUsers.sort((a, b) => {
+            uniqueUsers.sort((a, b) => {
                 const nameA = (a.displayName || a.email || '').toLowerCase();
                 const nameB = (b.displayName || b.email || '').toLowerCase();
                 return nameA.localeCompare(nameB, 'th');
             });
 
-            console.log('Valid users after filtering:', validUsers.length);
-            console.log('Valid users:', validUsers.map(u => ({ email: u.email, name: u.displayName })));
+            console.log('Unique valid users:', uniqueUsers.length);
+            console.log('Unique valid users:', uniqueUsers.map(u => ({ email: u.email, name: u.displayName })));
             console.log('=== END FIRESTORE DEBUG ===');
 
-            return validUsers;
+            return uniqueUsers;
         } catch (e) {
             console.error("Error fetching all users:", e);
             return [];
@@ -6075,55 +6085,7 @@ async function loadAddressData() {
     }
 }
 
-// --- LINE Login with OIDC ---
-// --- LINE Login with OIDC (Restricted) ---
-async function handleLineLogin() {
-    console.log("Starting LINE Login via LIFF...");
-    const btn = document.getElementById("btn-line-login");
-    const originalText = btn.innerHTML;
-    try {
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังดำเนินการ...';
-        btn.disabled = true;
 
-        if (!liff.isInClient() && !liff.isLoggedIn()) {
-            liff.login({ redirectUri: window.location.href });
-            return; // Wait for redirect back
-        }
-
-        const accessToken = liff.getAccessToken();
-        if (!accessToken) {
-            throw new Error("No access token found from LIFF");
-        }
-
-        const loginWithLineLiff = httpsCallable(functions, "loginWithLineLiff");
-        const result = await loginWithLineLiff({ accessToken });
-
-        if (result.data.success && result.data.customToken) {
-            await signInWithCustomToken(auth, result.data.customToken);
-            showToast("เข้าสู่ระบบด้วย LINE สำเร็จ!", "success");
-            await FirestoreService.logAction(
-                "AUTH",
-                "LOGIN",
-                "User logged in via LINE (LIFF)",
-            );
-        } else {
-            throw new Error("Invalid response from server");
-        }
-
-    } catch (error) {
-        console.error("LINE Login Error:", error);
-        let msg = error.message;
-        if (error.code === 'functions/not-found' || error.message.includes('บัญชี LINE นี้ยังไม่ได้ผูก')) {
-            msg = "บัญชี LINE นี้ยังไม่ได้ผูกกับผู้ใช้ในระบบ กรุณาเข้าสู่ระบบด้วยอีเมลแล้วไปที่หน้าโปรไฟล์เพื่อผูกบัญชี";
-        }
-        await showDialog("การเข้าสู่ระบบผ่าน LINE ล้มเหลว: " + msg);
-        // Force liff logout so they can try again easily
-        if (liff.isLoggedIn()) liff.logout();
-    } finally {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    }
-}
 
 
 async function handleLogin(e) {
@@ -6141,12 +6103,36 @@ async function handleLogin(e) {
     try {
         let email = loginId;
 
-        // Check if loginId is numeric (Phone Number)
-        const cleanLoginId = loginId.replace(/\s/g, "");
-        if (/^\d{9,10}$/.test(cleanLoginId)) {
-            console.log("Phone login detected:", cleanLoginId);
+        // Check if loginId is a Phone Number
+        // Remove spaces, hyphens, parentheses, and other formatting characters
+        const digitsOnly = loginId.replace(/[^\d]/g, "");
+        const hasPlus = loginId.startsWith("+");
+
+        // A valid phone number usually has between 9 and 12 digits (e.g. 0812345678, +66812345678, 66812345678)
+        if ((digitsOnly.length >= 9 && digitsOnly.length <= 12) || hasPlus) {
+            let possiblePhoneFormats = [];
+
+            // Add raw digits format (e.g. 0812345678 or 66812345678)
+            possiblePhoneFormats.push(digitsOnly);
+
+            // Add formatted formats
+            if (hasPlus) {
+                possiblePhoneFormats.push("+" + digitsOnly);
+            } else if (digitsOnly.startsWith("66")) {
+                possiblePhoneFormats.push("+" + digitsOnly);
+            }
+
+            // Convert local Thai number to international (e.g., 0812345678 -> +66812345678)
+            if (digitsOnly.startsWith("0") && digitsOnly.length === 10) {
+                possiblePhoneFormats.push("+66" + digitsOnly.slice(1));
+            }
+
+            // Deduplicate format array
+            possiblePhoneFormats = Array.from(new Set(possiblePhoneFormats));
+            console.log("Phone login detected. Querying Firestore with formats:", possiblePhoneFormats);
+
             const usersRef = collection(db, "users");
-            const q = query(usersRef, where("phone", "==", cleanLoginId));
+            const q = query(usersRef, where("phone", "in", possiblePhoneFormats));
             const querySnapshot = await getDocs(q);
 
             if (!querySnapshot.empty) {
@@ -6158,9 +6144,8 @@ async function handleLogin(e) {
                     console.warn("User found for phone but has no email in Firestore");
                 }
             } else {
-                console.log("No user found with phone:", cleanLoginId);
-                // We let it fall through to Firebase Auth which will probably fail with invalid email
-                // but that's the correct behavior for unlinked phones.
+                console.log("No user found in Firestore matching phone formats:", possiblePhoneFormats);
+                // Let it fall through to Firebase Auth which will fail appropriately
             }
         }
 
@@ -11246,7 +11231,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Enforce name-only inputs (Thai/Latin letters, spaces, dots, hyphens)
     document.querySelectorAll('input.name-only').forEach(input => {
         input.addEventListener('input', function () {
-            this.value = this.value.replace(/[^\p{L}\s\.\-]/gu, '');
+            this.value = this.value.replace(/[^\p{L}\p{M}\s\.\-]/gu, '');
         });
     });
     // Apply strict phone formatter to phone inputs (format: 0xx-xxx-xxxx)
@@ -14927,12 +14912,7 @@ function isMobile() {
     return standardMobile || isIpadOS || isAndroidTablet;
 }
 
-function isLineInAppBrowser() {
-    return /Line/i.test(navigator.userAgent);
-}
 
-// Duplicate function handleLineLogin removed here to avoid "already declared" error
-// The active implementation is at the top of the file around line 1317
 async function handleLogout() {
     if (await showDialog("คุณต้องการออกจากระบบหรือไม่?", { type: "confirm" })) {
         try {
@@ -14980,8 +14960,7 @@ if (loginForm) {
     }
 }
 
-const btnLineLogin = document.getElementById("btn-line-login");
-if (btnLineLogin) btnLineLogin.addEventListener("click", handleLineLogin);
+
 
 const btnLogout = document.getElementById("btn-logout");
 // if (btnLogout) btnLogout.addEventListener('click', handleLogout); // Removed old button
@@ -15601,53 +15580,7 @@ if (forcePasswordForm) {
         }
     });
 }
-async function handleLinkLineAccount() {
-    const user = auth.currentUser;
-    if (!user) return;
 
-    try {
-        if (!liff.isInClient() && !liff.isLoggedIn()) {
-            liff.login({ redirectUri: window.location.href });
-            return;
-        }
-
-        const liffProfile = await liff.getProfile();
-        const lineUserId = liffProfile.userId;
-
-        if (!lineUserId) {
-            throw new Error("Cannot get LINE User ID from LIFF");
-        }
-
-        // Check if this LINE ID is already used by someone else
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("lineUserId", "==", lineUserId), limit(1));
-        const usersSnapshot = await getDocs(q);
-        
-        if (!usersSnapshot.empty && usersSnapshot.docs[0].id !== user.uid) {
-            await showDialog("บัญชี LINE นี้ถูกเชื่อมต่อกับผู้ใช้อื่นแล้ว");
-            return;
-        }
-
-        // Update Firestore
-        await updateDoc(doc(db, "users", user.uid), {
-            lineUserId: lineUserId
-        });
-
-        await FirestoreService.logAction(
-            "USER",
-            "CONNECT_LINE",
-            "Connected LINE account via LIFF",
-        );
-        showToast("เชื่อมต่อบัญชี LINE สำเร็จ!", "success");
-        
-        // Re-render profile
-        const userDoc = await FirestoreService.getUser(user.uid);
-        renderProfile(user); 
-    } catch (error) {
-        console.error("Link LINE Error:", error);
-        await showDialog("เชื่อมต่อบัญชีไม่สำเร็จ: " + error.message);
-    }
-}
 
 async function handleResetToDefaultPhoto() {
     console.log("handleResetToDefaultPhoto triggered");
@@ -15681,79 +15614,9 @@ async function handleResetToDefaultPhoto() {
     }
 }
 
-async function handleSyncLinePhoto() {
-    const user = auth.currentUser;
-    if (!user) return;
 
-    try {
-        if (!liff.isLoggedIn()) {
-             await showDialog("กรุณาเชื่อมต่อ LINE อีกครั้งเพื่อซิงค์รูป");
-             return;
-        }
-        
-        if (
-            !(await showDialog("คุณต้องการใช้รูปโปรไฟล์จาก LINE ใช่หรือไม่?", {
-                type: "confirm",
-            }))
-        )
-            return;
 
-        const profile = await liff.getProfile();
-        if (!profile.pictureUrl) {
-            await showDialog("ไม่พบรูปโปรไฟล์จาก LINE");
-            return;
-        }
 
-        const photoURL = profile.pictureUrl;
-        await updateProfile(user, { photoURL });
-        await updateDoc(doc(db, "users", user.uid), { photoURL });
-        await user.reload(); // Force refresh
-
-        await FirestoreService.logAction(
-            "USER",
-            "UPDATE_PHOTO",
-            "Synced profile photo from LINE",
-        );
-        showToast("ซิงค์รูปโปรไฟล์จาก LINE สำเร็จ", "success");
-        renderProfile();
-    } catch (error) {
-        console.error("Sync Photo Error:", error);
-        await showDialog("ดึงรูปภาพไม่สำเร็จ: " + error.message);
-    }
-}
-
-async function handleUnlinkLineAccount() {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    if (
-        !(await showDialog("คุณต้องการยกเลิกการเชื่อมต่อบัญชี LINE ใช่หรือไม่?", {
-            type: "confirm",
-        }))
-    )
-        return;
-
-    try {
-        // Remove lineUserId from Firestore
-        await updateDoc(doc(db, "users", user.uid), {
-            lineUserId: null
-        });
-
-        await FirestoreService.logAction(
-            "USER",
-            "DISCONNECT_LINE",
-            "Disconnected LINE account",
-        );
-        
-        if (liff.isLoggedIn()) liff.logout();
-
-        showToast("ยกเลิกการเชื่อมต่อ LINE สำเร็จ", "success");
-        renderProfile();
-    } catch (error) {
-        console.error("Unlink LINE Error:", error);
-        await showDialog("ยกเลิกการเชื่อมต่อไม่สำเร็จ: " + error.message);
-    }
-}
 
 async function renderProfile(userArg = null) {
     const user = userArg || auth.currentUser;
@@ -15877,58 +15740,7 @@ async function renderProfile(userArg = null) {
         }
     }
 
-    // Linked Accounts Rendering
-    const linkedContainer = document.getElementById("linked-accounts-container");
-    console.log("Found linked container:", linkedContainer); // Debug
-    if (linkedContainer) {
-        const isLineLinked = !!currentUserDoc?.lineUserId;
 
-        // Define UI based on status
-        const statusHtml = isLineLinked
-            ? `<div class="linked-status">
-                 <strong style="color: #06C755;">เชื่อมต่อแล้ว (Linked)</strong>
-                 <span>บัญชี LINE เชื่อมต่ออยู่</span>
-               </div>`
-            : `<div class="linked-status">
-                 <strong style="color: var(--text-muted);">ยังไม่เชื่อมต่อ</strong>
-                 <span>เชื่อมต่อ LINE เพื่อล็อกอินง่ายขึ้น</span>
-               </div>`;
-
-        const actionBtn = isLineLinked
-            ? `<div style="display: flex; gap: 0.5rem;">
-                 <button type="button" class="btn-link-action" id="btn-sync-line-photo-new" title="ใช้รูปโปรไฟล์จาก LINE">
-                    <i class="fa-solid fa-image"></i> ใช้รูปไลน์
-                 </button>
-                 <button type="button" class="btn-link-action disconnect" id="btn-unlink-line">
-                    <i class="fa-solid fa-link-slash"></i> ยกเลิก
-                 </button>
-               </div>`
-            : `<button type="button" class="btn-link-action connect" id="btn-link-line">
-                 <i class="fa-solid fa-link"></i> เชื่อมต่อ
-               </button>`;
-
-        linkedContainer.innerHTML = `
-            <div class="linked-account-item">
-                <div class="linked-account-info">
-                   <i class="fa-brands fa-line linked-icon"></i>
-                   ${statusHtml}
-                </div>
-                ${actionBtn}
-            </div>
-        `;
-
-        // Attach Listeners
-        if (isLineLinked) {
-            const btnUnlink = document.getElementById("btn-unlink-line");
-            if (btnUnlink) btnUnlink.onclick = handleUnlinkLineAccount;
-
-            const btnSync = document.getElementById("btn-sync-line-photo-new");
-            if (btnSync) btnSync.onclick = handleSyncLinePhoto;
-        } else {
-            const btn = document.getElementById("btn-link-line");
-            if (btn) btn.onclick = handleLinkLineAccount;
-        }
-    }
 
     // Render User Roles Management (only if admin)
     if (isAdmin) {

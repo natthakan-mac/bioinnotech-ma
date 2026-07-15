@@ -28,9 +28,6 @@
     <link rel="icon" type="image/svg+xml" href="app-ico.svg">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
-    <!-- LINE LIFF SDK -->
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
     <script>
         window.DEBUG_LOGS = [];
         function log(msg) {
@@ -1362,16 +1359,7 @@
                     <i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ
                 </button>
 
-                <div class="divider"
-                    style="display: flex; align-items: center; margin: 1.5rem 0; color: var(--text-muted);">
-                    <span style="flex: 1; height: 1px; background: var(--glass-border);"></span>
-                    <span style="padding: 0 0.5rem; font-size: 0.85rem;">หรือ</span>
-                    <span style="flex: 1; height: 1px; background: var(--glass-border);"></span>
-                </div>
 
-                <button type="button" id="btn-line-login" class="btn-line">
-                    <i class="fa-brands fa-line"></i> เข้าสู่ระบบด้วย LINE
-                </button>
             </form>
 
 
@@ -1667,17 +1655,6 @@
                                         </button>
                                     </form>
 
-                                    <div class="profile-section profile-subsection"
-                                        style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
-                                        <h3 class="profile-subsection-title">
-                                            <i class="fa-solid fa-link"></i>
-                                            บัญชีที่เชื่อมต่อ
-                                        </h3>
-                                        <div id="linked-accounts-container">
-                                            <!-- Content injected dynamically via JS -->
-                                            <p class="text-muted" style="font-size: 0.9rem;">กำลังโหลดข้อมูล...</p>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
 
