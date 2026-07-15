@@ -1623,6 +1623,7 @@ const views = {
     plan: document.getElementById("plan-view"),
     login: document.getElementById("login-view"),
     profile: document.getElementById("profile-view"),
+    inventory: document.getElementById("inventory-view"),
 };
 
 // Force hidden state on load just in case HTML/CSS didn't catch it
@@ -2677,6 +2678,10 @@ function switchView(viewName) {
     if (views.profile && viewName === "profile-view") {
         views.profile.classList.add("active");
         renderProfile();
+    }
+    if (views.inventory && viewName === "inventory-view") {
+        views.inventory.classList.add("active");
+        fetchInventory(); // We will define this later
     }
     if (views.plan && viewName === "plan-view") {
         views.plan.classList.add("active");
@@ -4226,6 +4231,29 @@ async function handleLogMaintenance(e) {
 
         const logId = formData.get("logId");
 
+        // Prevent creating new PM case if an active one exists
+        const formCategory = formData.get("category");
+        const formSiteId = formData.get("siteId");
+        if (!logId && formCategory === "บำรุงรักษาตามรอบ" && formSiteId) {
+            const hasActivePM = state.logs.some(l => 
+                l.siteId === formSiteId && 
+                l.category === "บำรุงรักษาตามรอบ" && 
+                l.status !== "Case Closed" && 
+                l.status !== "Cancel"
+            );
+            
+            if (hasActivePM) {
+                btn.textContent = originalText;
+                btn.disabled = false;
+                hideProgress();
+                await showDialog('ไม่สามารถเปิดเคสบำรุงรักษาตามรอบได้ เนื่องจากมีเคสที่ยังไม่ถูกปิด (ต้องมีสถานะเป็น ปิดเคส หรือ ยกเลิก เท่านั้น)', {
+                    title: 'ไม่สามารถสร้างเคสได้',
+                    icon: 'warning',
+                });
+                return;
+            }
+        }
+
         const checkStatus = formData.get("status") || (logId ? (state.logs.find(l => l.id === logId)?.status || "Open") : "Open");
         const useESignature = document.getElementById("use-esignature-toggle")?.checked || false;
 
@@ -5361,7 +5389,6 @@ async function checkAndAutoCreateMaintenanceCase(siteId) {
         // Other categories (ซ่อม, ติดตั้ง, รื้อถอน) do NOT block MA creation.
         const hasActiveMa = maLogs.some(l =>
             l.status !== 'Case Closed' &&
-            l.status !== 'Done' &&
             l.status !== 'Cancel'
         );
         if (hasActiveMa) {
@@ -7256,8 +7283,6 @@ function getCategorySpecificDoneFields(data) {
     if (category === 'บำรุงรักษาตามรอบ') {
         const requiredFields = [
             'cycleCount',
-            'voltageL1', 'voltageL2', 'voltageL3',
-            'currentL1', 'currentL2', 'currentL3',
             'avgWorkTemp', 'avgWorkTempCheck',
             'avgAreaTemp', 'avgAreaTempCheck',
             'leakPressure', 'leakCheck',
@@ -7295,6 +7320,13 @@ function getCategorySpecificDoneFields(data) {
                 missing.push(labelMap[key] || key);
             }
         });
+
+        const flash1 = isFilled(getFieldValue(data, 'voltageL1')) && isFilled(getFieldValue(data, 'currentL1'));
+        const flash2 = isFilled(getFieldValue(data, 'voltageL2')) && isFilled(getFieldValue(data, 'currentL2'));
+        const flash3 = isFilled(getFieldValue(data, 'voltageL3')) && isFilled(getFieldValue(data, 'currentL3'));
+        if (!flash1 && !flash2 && !flash3) {
+            missing.push('ข้อมูลไฟฟ้า (อย่างน้อย 1 ชุด V/A)');
+        }
     } else if (category === 'ติดตั้ง' || category === 'รื้อถอน') {
         const hospitalTechName = String(getFieldValue(data, 'hospitalTechName') || '').trim();
         const hospitalTechPhone = String(getFieldValue(data, 'hospitalTechPhone') || '').trim();
@@ -7463,8 +7495,6 @@ function getIncompleteDoneFieldKeys(data) {
     if (category === 'บำรุงรักษาตามรอบ') {
         const maRequired = [
             'cycleCount',
-            'voltageL1', 'voltageL2', 'voltageL3',
-            'currentL1', 'currentL2', 'currentL3',
             'avgWorkTemp', 'avgWorkTempCheck',
             'avgAreaTemp', 'avgAreaTempCheck',
             'leakPressure', 'leakCheck',
@@ -7483,6 +7513,13 @@ function getIncompleteDoneFieldKeys(data) {
                 missingKeys.push(key);
             }
         });
+
+        const flash1 = isFilled(getFieldValue(data, 'voltageL1')) && isFilled(getFieldValue(data, 'currentL1'));
+        const flash2 = isFilled(getFieldValue(data, 'voltageL2')) && isFilled(getFieldValue(data, 'currentL2'));
+        const flash3 = isFilled(getFieldValue(data, 'voltageL3')) && isFilled(getFieldValue(data, 'currentL3'));
+        if (!flash1 && !flash2 && !flash3) {
+            missingKeys.push('voltageL1', 'voltageL2', 'voltageL3', 'currentL1', 'currentL2', 'currentL3');
+        }
     } else if (category === 'ติดตั้ง' || category === 'รื้อถอน') {
         const hospitalTechName = String(getFieldValue(data, 'hospitalTechName') || '').trim();
         const hospitalTechPhone = String(getFieldValue(data, 'hospitalTechPhone') || '').trim();
@@ -12262,7 +12299,12 @@ function viewLogDetails(id) {
             let html = '';
 
             // Electrical section header
-            html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-bolt" style="color:#111111;"></i> ข้อมูลไฟฟ้า (Electrical)</div>`;
+            let flashCount = 0;
+            if (String(log.voltageL1 || '').trim() !== '' && String(log.currentL1 || '').trim() !== '') flashCount++;
+            if (String(log.voltageL2 || '').trim() !== '' && String(log.currentL2 || '').trim() !== '') flashCount++;
+            if (String(log.voltageL3 || '').trim() !== '' && String(log.currentL3 || '').trim() !== '') flashCount++;
+            const flashText = flashCount > 0 ? ` (${flashCount} Flash)` : '';
+            html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-bolt" style="color:#111111;"></i> ข้อมูลไฟฟ้า (Electrical)${flashText}</div>`;
             html += `<table style="width:100%; border-collapse:collapse; border:1px solid rgba(0,0,0,0.08); border-radius:6px; overflow:hidden;">`;
             html += `<tr style="border-bottom:1px solid rgba(0,0,0,0.06);"><td style="padding:0.5rem 0.75rem; font-weight:500; font-size:0.88rem;">แรงดันไฟฟ้า</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">R ${log.voltageL1 || '___'} V (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">S ${log.voltageL2 || '___'} V (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">T ${log.voltageL3 || '___'} V (Load/Unload)</td></tr>`;
             html += `<tr><td style="padding:0.5rem 0.75rem; font-weight:500; font-size:0.88rem;">กระแส</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">R ${log.currentL1 || '___'} A (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">S ${log.currentL2 || '___'} A (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">T ${log.currentL3 || '___'} A (Load/Unload)</td></tr>`;
@@ -13242,9 +13284,15 @@ async function exportCasePDF(logId) {
     if (isMaPdf) {
 
         if (hasElec) {
+            let flashCountPdf = 0;
+            if (String(log.voltageL1 || '').trim() !== '' && String(log.currentL1 || '').trim() !== '') flashCountPdf++;
+            if (String(log.voltageL2 || '').trim() !== '' && String(log.currentL2 || '').trim() !== '') flashCountPdf++;
+            if (String(log.voltageL3 || '').trim() !== '' && String(log.currentL3 || '').trim() !== '') flashCountPdf++;
+            const flashTextPdf = flashCountPdf > 0 ? ' (' + flashCountPdf + ' Flash)' : '';
+
             const vF = isBlank ? '......' : '___';
             inspHtml += '<div class="section-block"><table style="border:1px solid #ddd; border-radius:6px; font-size:10px; margin-top:10px;">'
-                + '<tr style="border-bottom:1px solid #eee;"><td colspan="4" style="padding:6px 8px; font-weight:700; font-size:11px;">ข้อมูลไฟฟ้า (Electrical)</td></tr>'
+                + '<tr style="border-bottom:1px solid #eee;"><td colspan="4" style="padding:6px 8px; font-weight:700; font-size:11px;">ข้อมูลไฟฟ้า (Electrical)' + flashTextPdf + '</td></tr>'
                 + '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 8px;"><b>แรงดันไฟฟ้า</b></td>'
                 + '<td style="text-align:center; padding:4px 8px;">R <b>' + (log.voltageL1 || vF) + '</b> V (Load/Unload)</td>'
                 + '<td style="text-align:center; padding:4px 8px;">S <b>' + (log.voltageL2 || vF) + '</b> V (Load/Unload)</td>'
@@ -19039,4 +19087,349 @@ function exportDevicesPDF() {
 
     showPdfPreview(html, 'ทะเบียนเครื่องมือ');
 }
+
+// --- Inventory Logic ---
+let inventoryItems = [];
+let unsubscribeInventory = null;
+
+function fetchInventory() {
+    if (unsubscribeInventory) {
+        unsubscribeInventory();
+    }
+    const inventoryRef = collection(db, "inventory");
+    const q = query(inventoryRef, orderBy("name"));
+
+    unsubscribeInventory = onSnapshot(q, (snapshot) => {
+        inventoryItems = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        renderInventory();
+    }, (error) => {
+        console.error("Error fetching inventory:", error);
+    });
+}
+
+function renderInventory() {
+    const container = document.getElementById("inventory-list-container");
+    const searchInput = document.getElementById("inventory-search");
+    const countSpan = document.getElementById("header-inventory-count");
+    
+    if (!container) return;
+    
+    // We don't need cards-grid anymore since it's a table
+    if (container.classList.contains("cards-grid")) {
+        container.classList.remove("cards-grid");
+    }
+
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
+    
+    const filteredItems = inventoryItems.filter(item => {
+        const nameMatch = (item.name || "").toLowerCase().includes(searchTerm);
+        const codeMatch = (item.code || "").toLowerCase().includes(searchTerm);
+        return nameMatch || codeMatch;
+    });
+
+    if (countSpan) {
+        countSpan.textContent = filteredItems.length;
+    }
+
+    if (filteredItems.length === 0) {
+        container.innerHTML = `
+            <tr>
+                <td colspan="4">
+                    <div class="empty-state">
+                        <p>ไม่พบรายการสินค้า${searchTerm ? "ที่ตรงกับคำค้นหา" : ""}</p>
+                    </div>
+                </td>
+            </tr>`;
+        return;
+    }
+
+    let html = "";
+    filteredItems.forEach((item, index) => {
+        const stock = parseInt(item.stock) || 0;
+        const imageUrl = item.imageUrl || "https://placehold.co/150x150?text=No+Image";
+        const stockColor = stock > 0 ? 'var(--primary-color)' : 'var(--danger-color)';
+        
+        html += `
+            <tr>
+                <td class="cell-index">${index + 1}</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <img src="${imageUrl}" alt="${item.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); flex-shrink: 0;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 1rem;">${item.name}</div>
+                            ${item.code ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;"><i class="fa-solid fa-barcode"></i> ${item.code}</div>` : ""}
+                        </div>
+                    </div>
+                </td>
+                <td style="text-align: center; font-weight: 700; font-size: 1.1rem; color: ${stockColor};">
+                    ${stock}
+                </td>
+                <td class="cell-actions" style="text-align: right;">
+                    <div style="display: inline-flex; gap: 0.5rem; justify-content: flex-end;">
+                        <button class="btn-icon" onclick="openStockAdjustment('${item.id}', 'add')" title="เพิ่มสต๊อก" style="background: rgba(34,197,94,0.1); color: #16a34a; border-radius: 6px; padding: 0.4rem 0.6rem; font-size: 0.85rem; cursor: pointer; border: none; display: flex; align-items: center; gap: 0.3rem;">
+                            <i class="fa-solid fa-plus"></i> เพิ่ม
+                        </button>
+                        <button class="btn-icon" onclick="openStockAdjustment('${item.id}', 'remove')" title="ลดสต๊อก" style="background: rgba(239,68,68,0.1); color: #dc2626; border-radius: 6px; padding: 0.4rem 0.6rem; font-size: 0.85rem; cursor: pointer; border: none; display: flex; align-items: center; gap: 0.3rem;">
+                            <i class="fa-solid fa-minus"></i> ลด
+                        </button>
+                        <button class="btn-icon" onclick="viewInventoryHistory('${item.id}')" title="ประวัติการทำรายการ" style="background: var(--bg-hover); color: var(--text-color); border-radius: 6px; padding: 0.4rem 0.6rem; font-size: 0.85rem; cursor: pointer; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.3rem;">
+                            <i class="fa-solid fa-clock-rotate-left"></i> ประวัติ
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+window.openStockAdjustment = function(itemId, type) {
+    const item = inventoryItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    document.getElementById("stock-adjustment-form").reset();
+    document.getElementById("stock-adj-item-id").value = itemId;
+    document.getElementById("stock-adj-type").value = type;
+    document.getElementById("stock-adj-current").value = item.stock;
+
+    const titleStr = type === 'add' ? `นำเข้าสต๊อก: ${item.name}` : `เบิกจ่ายสต๊อก: ${item.name}`;
+    document.getElementById("modal-stock-adjustment-title").textContent = titleStr;
+    document.getElementById("modal-stock-adjustment-title").style.color = type === 'add' ? '#16a34a' : '#dc2626';
+
+    const modal = document.getElementById("modal-stock-adjustment");
+    modal.classList.remove("hidden");
+    modal.style.display = "flex";
+};
+
+window.submitStockAdjustment = async function() {
+    const itemId = document.getElementById("stock-adj-item-id").value;
+    const type = document.getElementById("stock-adj-type").value;
+    const currentStock = parseInt(document.getElementById("stock-adj-current").value) || 0;
+    const quantity = parseInt(document.getElementById("stock-adj-quantity").value);
+    const notes = document.getElementById("stock-adj-notes").value.trim();
+
+    if (!quantity || quantity <= 0) {
+        alert("กรุณาระบุจำนวนให้ถูกต้อง (มากกว่า 0)");
+        return;
+    }
+    if (!notes) {
+        alert("กรุณาระบุรายละเอียดหรือหมายเหตุ");
+        return;
+    }
+
+    let newStock = currentStock;
+    if (type === 'add') {
+        newStock += quantity;
+    } else {
+        newStock -= quantity;
+        if (newStock < 0) {
+            alert("จำนวนสินค้าไม่เพียงพอสำหรับการเบิกจ่าย");
+            return;
+        }
+    }
+
+    const btnSave = document.getElementById("btn-save-stock-adj");
+    const originalText = btnSave.innerHTML;
+    
+    try {
+        btnSave.disabled = true;
+        btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...';
+
+        // 1. Update stock in inventory
+        const itemRef = doc(db, "inventory", itemId);
+        await updateDoc(itemRef, { stock: newStock });
+
+        // 2. Record in history
+        const user = auth.currentUser;
+        await addDoc(collection(db, "inventory_history"), {
+            itemId: itemId,
+            type: type,
+            quantity: quantity,
+            notes: notes,
+            timestamp: serverTimestamp(),
+            userEmail: user ? user.email : "Unknown"
+        });
+
+        document.getElementById("modal-stock-adjustment").classList.add("hidden");
+    } catch (error) {
+        console.error("Error updating stock:", error);
+        alert("เกิดข้อผิดพลาดในการปรับปรุงยอดสต๊อก");
+    } finally {
+        btnSave.disabled = false;
+        btnSave.innerHTML = originalText;
+    }
+};
+
+window.viewInventoryHistory = async function(itemId) {
+    const item = inventoryItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    document.getElementById("modal-inventory-history-subtitle").textContent = item.name;
+    const tbody = document.getElementById("inventory-history-list");
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดประวัติ...</td></tr>`;
+
+    const modal = document.getElementById("modal-inventory-history");
+    modal.classList.remove("hidden");
+    modal.style.display = "flex";
+
+    try {
+        const historyRef = collection(db, "inventory_history");
+        // Remove orderBy to avoid requiring a composite index in Firestore
+        const q = query(historyRef, where("itemId", "==", itemId));
+        const snapshot = await getDocs(q);
+        
+        if (snapshot.empty) {
+            tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><p>ยังไม่มีประวัติการทำรายการ</p></div></td></tr>`;
+            return;
+        }
+
+        let historyData = [];
+        snapshot.forEach(doc => {
+            historyData.push(doc.data());
+        });
+
+        // Sort descending by timestamp on client-side
+        historyData.sort((a, b) => {
+            const timeA = a.timestamp ? a.timestamp.toMillis() : 0;
+            const timeB = b.timestamp ? b.timestamp.toMillis() : 0;
+            return timeB - timeA;
+        });
+
+        let html = "";
+        historyData.forEach(data => {
+            const dateStr = data.timestamp ? data.timestamp.toDate().toLocaleString('th-TH') : "N/A";
+            const typeStr = data.type === 'add' ? `<span style="color: #16a34a; font-weight: 600;"><i class="fa-solid fa-plus"></i> นำเข้า</span>` : `<span style="color: #dc2626; font-weight: 600;"><i class="fa-solid fa-minus"></i> เบิกจ่าย</span>`;
+            
+            html += `
+                <tr>
+                    <td class="cell-date" style="font-size: 0.85rem; white-space: nowrap;">${dateStr}</td>
+                    <td>${typeStr}</td>
+                    <td style="text-align: center; font-weight: 700;">${data.quantity}</td>
+                    <td style="font-size: 0.9rem;">
+                        <div>${data.notes}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${data.userEmail || ""}</div>
+                    </td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+        
+    } catch (error) {
+        console.error("Error fetching history:", error);
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--danger-color);">เกิดข้อผิดพลาดในการโหลดประวัติ</td></tr>`;
+    }
+};
+
+// --- Event Listeners for Inventory ---
+window.openAddInventoryModal = function() {
+    const modal = document.getElementById("modal-inventory");
+    if (!modal) return;
+    
+    const form = document.getElementById("inventory-form");
+    if (form) form.reset();
+    
+    const preview = document.getElementById("inventory-image-preview");
+    if (preview) {
+        preview.src = "";
+        preview.style.display = "none";
+    }
+    
+    const uploadArea = document.getElementById("inventory-upload-area");
+    if (uploadArea) {
+        const i = uploadArea.querySelector("i");
+        if (i) i.style.display = "block";
+        const p = uploadArea.querySelector("p");
+        if (p) p.style.display = "block";
+    }
+    
+    modal.classList.remove("hidden");
+    modal.style.display = "flex";
+};
+
+function setupInventoryListeners() {
+    const searchInput = document.getElementById("inventory-search");
+    if (searchInput) {
+        searchInput.addEventListener("input", renderInventory);
+    }
+    
+    const inventoryImageInput = document.getElementById("inventory-image-input");
+    const inventoryUploadArea = document.getElementById("inventory-upload-area");
+    
+    if (inventoryUploadArea && inventoryImageInput) {
+        inventoryUploadArea.addEventListener("click", () => inventoryImageInput.click());
+        inventoryImageInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById("inventory-image-preview");
+                    preview.src = e.target.result;
+                    preview.style.display = "block";
+                    inventoryUploadArea.querySelector("i").style.display = "none";
+                    inventoryUploadArea.querySelector("p").style.display = "none";
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    const btnSave = document.getElementById("btn-save-inventory");
+    if (btnSave) {
+        // Prevent multiple bindings
+        const newBtnSave = btnSave.cloneNode(true);
+        btnSave.parentNode.replaceChild(newBtnSave, btnSave);
+        
+        newBtnSave.addEventListener("click", async () => {
+            const name = document.getElementById("inventory-name").value.trim();
+            const code = document.getElementById("inventory-code").value.trim();
+            const stockVal = document.getElementById("inventory-stock").value;
+            const fileInput = document.getElementById("inventory-image-input");
+            
+            if (!name || stockVal === "") {
+                alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+                return;
+            }
+            
+            const stock = parseInt(stockVal);
+            
+            try {
+                newBtnSave.disabled = true;
+                newBtnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...';
+                
+                let imageUrl = "";
+                if (fileInput.files && fileInput.files[0]) {
+                    const file = fileInput.files[0];
+                    const storageRef = ref(storage, `inventory/${Date.now()}_${file.name}`);
+                    const snapshot = await uploadBytes(storageRef, file);
+                    imageUrl = await getDownloadURL(snapshot.ref);
+                }
+                
+                await addDoc(collection(db, "inventory"), {
+                    name,
+                    code,
+                    stock,
+                    imageUrl,
+                    createdAt: serverTimestamp()
+                });
+                
+                document.getElementById("modal-inventory").classList.add("hidden");
+                
+            } catch (error) {
+                console.error("Error saving inventory:", error);
+                alert("เกิดข้อผิดพลาดในการบันทึกสินค้า");
+            } finally {
+                newBtnSave.disabled = false;
+                newBtnSave.innerHTML = "บันทึกข้อมูล";
+            }
+        });
+    }
+}
+
+// Call setupInventoryListeners
+setupInventoryListeners();
+
 window.exportDevicesPDF = exportDevicesPDF;
