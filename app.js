@@ -6129,23 +6129,19 @@ async function handleLogin(e) {
 
             // Deduplicate format array
             possiblePhoneFormats = Array.from(new Set(possiblePhoneFormats));
-            console.log("Phone login detected. Querying Firestore with formats:", possiblePhoneFormats);
+            console.log("Phone login detected. Querying email via secure Cloud Function with formats:", possiblePhoneFormats);
 
-            const usersRef = collection(db, "users");
-            const q = query(usersRef, where("phone", "in", possiblePhoneFormats));
-            const querySnapshot = await getDocs(q);
-
-            if (!querySnapshot.empty) {
-                const userDoc = querySnapshot.docs[0].data();
-                if (userDoc.email) {
-                    email = userDoc.email;
-                    console.log("Found user email for phone:", email);
+            try {
+                const lookupEmailByPhone = httpsCallable(functions, "lookupEmailByPhone");
+                const result = await lookupEmailByPhone({ phoneFormats: possiblePhoneFormats });
+                if (result.data && result.data.success && result.data.email) {
+                    email = result.data.email;
+                    console.log("Found user email for phone via Cloud Function:", email);
                 } else {
-                    console.warn("User found for phone but has no email in Firestore");
+                    console.log("No user found matching phone formats via Cloud Function:", possiblePhoneFormats);
                 }
-            } else {
-                console.log("No user found in Firestore matching phone formats:", possiblePhoneFormats);
-                // Let it fall through to Firebase Auth which will fail appropriately
+            } catch (lookupErr) {
+                console.error("Error looking up email by phone:", lookupErr);
             }
         }
 
@@ -14931,33 +14927,7 @@ const loginForm = document.getElementById("login-form");
 if (loginForm) {
     loginForm.addEventListener("submit", handleLogin);
 
-    // Auto-login when both email/phone and 6-digit PIN are filled
-    const loginEmail = document.getElementById("login-email");
-    const loginPassword = document.getElementById("login-password");
-    if (loginEmail && loginPassword) {
-        const checkAutoLogin = (e) => {
-            // ป้องกัน auto-login หากเป็น browser autofill
-            if (e && e.type === "input") {
-                if (!e.inputType || e.inputType === "insertReplacementText") {
-                    return; // Ignore autofill events
-                }
-            }
 
-            const emailVal = loginEmail.value.trim();
-            const passVal = loginPassword.value;
-            if (emailVal.length > 0 && passVal.length === 6) {
-                console.log("Auto-login triggered as fields are filled manually.");
-                if (typeof loginForm.requestSubmit === "function") {
-                    loginForm.requestSubmit();
-                } else {
-                    const mockEvent = { preventDefault: () => { } };
-                    handleLogin(mockEvent);
-                }
-            }
-        };
-        loginEmail.addEventListener("input", checkAutoLogin);
-        loginPassword.addEventListener("input", checkAutoLogin);
-    }
 }
 
 

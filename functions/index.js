@@ -464,3 +464,29 @@ exports.notifyMAStatusUpdate = onCall({ cors: true }, async (request) => {
 });
 
 
+exports.lookupEmailByPhone = onCall({ cors: true }, async (request) => {
+    const { phoneFormats } = request.data;
+    if (!phoneFormats || !Array.isArray(phoneFormats)) {
+        throw new functions.https.HttpsError('invalid-argument', 'phoneFormats array is required');
+    }
+
+    try {
+        const usersSnapshot = await db.collection('users')
+            .where('phone', 'in', phoneFormats)
+            .limit(1)
+            .get();
+
+        if (usersSnapshot.empty) {
+            return { success: true, email: null };
+        }
+
+        const userDoc = usersSnapshot.docs[0].data();
+        return { success: true, email: userDoc.email || null };
+    } catch (error) {
+        console.error('Error looking up email by phone:', error.message);
+        throw new functions.https.HttpsError('internal', error.message || 'Error looking up email by phone');
+    }
+});
+
+
+
