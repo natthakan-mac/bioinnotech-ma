@@ -4571,6 +4571,150 @@ span.flatpickr-weekday {
     margin-bottom: 1rem;
 }
 
+/* LINE Account Linking */
+.line-link-status {
+    margin-top: 0.5rem;
+}
+
+.line-linked-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(6, 199, 85, 0.08);
+    border: 1px solid rgba(6, 199, 85, 0.2);
+    border-radius: var(--radius-md);
+}
+
+.line-linked-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #06C755;
+}
+
+.line-linked-info {
+    flex: 1;
+}
+
+.line-linked-name {
+    font-weight: 600;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.line-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #06C755;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+}
+
+.line-linked-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+.line-not-linked-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+}
+
+.line-not-linked-card p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.btn-line-link,
+.btn-line-unlink {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1.5px solid;
+}
+
+.btn-line-link {
+    background: #06C755;
+    color: #fff;
+    border-color: #06C755;
+}
+
+.btn-line-link:hover {
+    background: #05B54E;
+    border-color: #05B54E;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(6, 199, 85, 0.3);
+}
+
+.btn-line-unlink {
+    background: #fff;
+    color: #ef4444;
+    border-color: #ef4444;
+}
+
+.btn-line-unlink:hover {
+    background: #fef2f2;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+.line-linked-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.btn-line-sync {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    background: #fff;
+    color: #06C755;
+    border: 1.5px solid #06C755;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-line-sync:hover {
+    background: rgba(6, 199, 85, 0.08);
+    transform: translateY(-1px);
+}
+
+.btn-line-sync.syncing {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.btn-line-sync.syncing i {
+    animation: spin 1s linear infinite;
+}
+
 /* Toggle Switch */
 .toggle-switch {
     position: relative;

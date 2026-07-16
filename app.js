@@ -19964,6 +19964,46 @@ async function handleLinkLine() {
 }
 
 /**
+ * Handle LINE Profile Photo Sync (from profile page)
+ */
+async function handleSyncLinePhoto() {
+    const btn = document.getElementById('btn-sync-line-photo');
+    if (!btn) return;
+
+    const originalHTML = btn.innerHTML;
+    btn.classList.add('syncing');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังซิงค์...';
+
+    try {
+        const accessToken = await getLiffAccessToken();
+        if (!accessToken) {
+            showToast('ไม่สามารถซิงค์ได้ กรุณาลองใหม่', 'error');
+            btn.classList.remove('syncing');
+            btn.innerHTML = originalHTML;
+            return;
+        }
+
+        // Call Cloud Function to refresh LINE profile data
+        const linkFn = httpsCallable(functions, 'linkLineAccount');
+        const result = await linkFn({ accessToken });
+
+        if (result.data.success) {
+            showToast('ซิงค์รูปโปรไฟล์สำเร็จ!', 'success');
+            // Re-render profile to show updated photo
+            renderProfile();
+        } else {
+            showToast(result.data.message || 'เกิดข้อผิดพลาดในการซิงค์', 'error');
+        }
+    } catch (error) {
+        console.error('Sync LINE photo error:', error);
+        showToast('เกิดข้อผิดพลาดในการซิงค์: ' + (error.message || 'Unknown error'), 'error');
+    } finally {
+        btn.classList.remove('syncing');
+        btn.innerHTML = originalHTML;
+    }
+}
+
+/**
  * Handle LINE Account Unlinking (from profile page)
  */
 async function handleUnlinkLine() {
@@ -20045,15 +20085,24 @@ async function renderLineStatus(userArg = null) {
                         </div>
                         ${linkedDate ? `<div class="line-linked-date">เชื่อมต่อเมื่อ ${linkedDate}</div>` : ''}
                     </div>
-                    <button class="btn-line-unlink" id="btn-unlink-line" type="button">
-                        <i class="fa-solid fa-link-slash"></i> ยกเลิกเชื่อมต่อ
-                    </button>
+                    <div class="line-linked-actions">
+                        <button class="btn-line-sync" id="btn-sync-line-photo" type="button" title="ซิงค์รูปโปรไฟล์จาก LINE">
+                            <i class="fa-solid fa-rotate"></i> ซิงค์รูป
+                        </button>
+                        <button class="btn-line-unlink" id="btn-unlink-line" type="button">
+                            <i class="fa-solid fa-link-slash"></i> ยกเลิก
+                        </button>
+                    </div>
                 </div>
             `;
 
             // Attach unlink handler
             const unlinkBtn = document.getElementById('btn-unlink-line');
             if (unlinkBtn) unlinkBtn.addEventListener('click', handleUnlinkLine);
+
+            // Attach sync handler
+            const syncBtn = document.getElementById('btn-sync-line-photo');
+            if (syncBtn) syncBtn.addEventListener('click', handleSyncLinePhoto);
 
         } else {
             // LINE is NOT linked
