@@ -7994,6 +7994,9 @@ function switchLogView(view) {
         .getElementById("logs-calendar-view")
         .classList.toggle("hidden", view !== "calendar");
 
+    const caseTypeDashboard = document.getElementById("case-type-dashboard");
+    if (caseTypeDashboard) caseTypeDashboard.classList.toggle("hidden", view === "calendar");
+
     if (view === "calendar") {
         fetchAndRenderCalendar();
     } else {
