@@ -488,5 +488,143 @@ exports.lookupEmailByPhone = onCall({ cors: true }, async (request) => {
     }
 });
 
+// --- LINE Login: Verify LINE token and return Firebase Custom Token ---
+exports.lineLogin = onCall({ cors: true }, async (request) => {
+    const { accessToken } = request.data;
+    if (!accessToken) {
+        throw new functions.https.HttpsError('invalid-argument', 'LINE accessToken is required');
+    }
+
+    try {
+        // 1. Verify LINE access token and get LINE profile
+        const lineProfileRes = await axios.get('https://api.line.me/v2/profile', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const lineUserId = lineProfileRes.data.userId;
+        const lineDisplayName = lineProfileRes.data.displayName;
+        const linePictureUrl = lineProfileRes.data.pictureUrl || '';
+
+        if (!lineUserId) {
+            throw new functions.https.HttpsError('unauthenticated', 'Invalid LINE token: no userId returned');
+        }
+
+        console.log(`LINE Login attempt: userId=${lineUserId}, name=${lineDisplayName}`);
+
+        // 2. Find user in Firestore with matching lineUserId
+        const usersSnapshot = await db.collection('users')
+            .where('lineUserId', '==', lineUserId)
+            .limit(1)
+            .get();
+
+        if (usersSnapshot.empty) {
+            // No linked account found
+            return {
+                success: false,
+                error: 'NOT_LINKED',
+                message: 'ไม่พบบัญชีที่เชื่อมต่อกับ LINE นี้ กรุณาเข้าสู่ระบบด้วยอีเมล/เบอร์โทร แล้วเชื่อมต่อ LINE ที่หน้าโปรไฟล์ก่อน',
+                lineProfile: { displayName: lineDisplayName, pictureUrl: linePictureUrl }
+            };
+        }
+
+        // 3. Found linked user - create Firebase Custom Token
+        const userDoc = usersSnapshot.docs[0];
+        const firebaseUid = userDoc.id;
+
+        const customToken = await admin.auth().createCustomToken(firebaseUid);
+
+        // 4. Update last login
+        await userDoc.ref.update({
+            lastLogin: new Date().toISOString(),
+            lineDisplayName: lineDisplayName,
+            linePictureUrl: linePictureUrl
+        });
+
+        console.log(`LINE Login success: Firebase UID=${firebaseUid}`);
+
+        return {
+            success: true,
+            customToken: customToken,
+            lineProfile: { displayName: lineDisplayName, pictureUrl: linePictureUrl }
+        };
+
+    } catch (error) {
+        if (error instanceof functions.https.HttpsError) throw error;
+        console.error('LINE Login error:', error.message);
+        throw new functions.https.HttpsError('internal', error.message || 'LINE Login failed');
+    }
+});
+
+// --- Link LINE Account to existing Firebase user ---
+exports.linkLineAccount = onCall({ cors: true }, async (request) => {
+    if (!request.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated to link LINE account');
+    }
+
+    const { accessToken } = request.data;
+    if (!accessToken) {
+        throw new functions.https.HttpsError('invalid-argument', 'LINE accessToken is required');
+    }
+
+    const firebaseUid = request.auth.uid;
+
+    try {
+        // 1. Verify LINE access token and get LINE profile
+        const lineProfileRes = await axios.get('https://api.line.me/v2/profile', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const lineUserId = lineProfileRes.data.userId;
+        const lineDisplayName = lineProfileRes.data.displayName;
+        const linePictureUrl = lineProfileRes.data.pictureUrl || '';
+
+        if (!lineUserId) {
+            throw new functions.https.HttpsError('unauthenticated', 'Invalid LINE token');
+        }
+
+        // 2. Check if this LINE account is already linked to another user
+        const existingLink = await db.collection('users')
+            .where('lineUserId', '==', lineUserId)
+            .limit(1)
+            .get();
+
+        if (!existingLink.empty) {
+            const existingUid = existingLink.docs[0].id;
+            if (existingUid !== firebaseUid) {
+                return {
+                    success: false,
+                    error: 'ALREADY_LINKED',
+                    message: 'บัญชี LINE นี้ถูกเชื่อมต่อกับผู้ใช้งานอื่นแล้ว'
+                };
+            }
+            // Already linked to this user
+            return {
+                success: true,
+                message: 'บัญชี LINE นี้เชื่อมต่ออยู่แล้ว',
+                lineProfile: { userId: lineUserId, displayName: lineDisplayName, pictureUrl: linePictureUrl }
+            };
+        }
+
+        // 3. Link LINE to this user
+        await db.collection('users').doc(firebaseUid).update({
+            lineUserId: lineUserId,
+            lineDisplayName: lineDisplayName,
+            linePictureUrl: linePictureUrl,
+            lineLinkedAt: new Date().toISOString()
+        });
+
+        console.log(`LINE linked: Firebase UID=${firebaseUid}, LINE userId=${lineUserId}`);
+
+        return {
+            success: true,
+            message: 'เชื่อมต่อบัญชี LINE สำเร็จ!',
+            lineProfile: { userId: lineUserId, displayName: lineDisplayName, pictureUrl: linePictureUrl }
+        };
+
+    } catch (error) {
+        if (error instanceof functions.https.HttpsError) throw error;
+        console.error('Link LINE error:', error.message);
+        throw new functions.https.HttpsError('internal', error.message || 'Failed to link LINE account');
+    }
+});
+
 
 

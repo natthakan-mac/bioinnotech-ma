@@ -35,7 +35,8 @@
     /* Reduced to standard size */
 }
 
-html, body {
+html,
+body {
     overflow-x: hidden;
     width: 100%;
 }
@@ -8444,21 +8445,21 @@ h4 {
         border-radius: 10px !important;
     }
 
-    .dashboard-card-content > span:nth-child(2),
-    .dashboard-card-content > span:nth-child(2) > span:first-child {
+    .dashboard-card-content>span:nth-child(2),
+    .dashboard-card-content>span:nth-child(2)>span:first-child {
         font-size: 2.75rem !important;
     }
 
-    .dashboard-card-content > span:first-child {
+    .dashboard-card-content>span:first-child {
         font-size: 0.78rem !important;
     }
 
-    .dashboard-card-content > span:nth-child(2) > span:last-child {
+    .dashboard-card-content>span:nth-child(2)>span:last-child {
         font-size: 0.82rem !important;
         margin-left: 4px !important;
     }
 
-    .dashboard-card-content > span:nth-child(3) {
+    .dashboard-card-content>span:nth-child(3) {
         font-size: 0.65rem !important;
         margin-top: 0.5rem !important;
         padding-top: 0.5rem !important;
@@ -8479,9 +8480,9 @@ h4 {
     min-height: 150px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
     transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
-                border-color 0.3s ease,
-                background-color 0.3s ease,
-                box-shadow 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        border-color 0.3s ease,
+        background-color 0.3s ease,
+        box-shadow 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     overflow: hidden;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -8522,7 +8523,7 @@ h4 {
     font-size: 1.35rem;
     flex-shrink: 0;
     transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
-                box-shadow 0.3s ease;
+        box-shadow 0.3s ease;
 }
 
 .dashboard-card:hover .dashboard-card-icon {
@@ -8536,7 +8537,7 @@ h4 {
     width: 100%;
 }
 
-.dashboard-card-content > span:first-child {
+.dashboard-card-content>span:first-child {
     font-size: 0.95rem;
     color: var(--text-muted);
     font-weight: 600;
@@ -8546,7 +8547,7 @@ h4 {
     gap: 6px;
 }
 
-.dashboard-card-content > span:first-child::before {
+.dashboard-card-content>span:first-child::before {
     content: '';
     display: inline-block;
     width: 6px;
@@ -8557,18 +8558,40 @@ h4 {
 }
 
 /* Color indicator dots for titles */
-#device-dashboard .dashboard-card:nth-child(1) .dashboard-card-content > span:first-child::before { background-color: #16a34a; }
-#device-dashboard .dashboard-card:nth-child(2) .dashboard-card-content > span:first-child::before { background-color: #f59e0b; }
-#device-dashboard .dashboard-card:nth-child(3) .dashboard-card-content > span:first-child::before { background-color: #0369a1; }
-#device-dashboard .dashboard-card:nth-child(4) .dashboard-card-content > span:first-child::before { background-color: #dc2626; }
+#device-dashboard .dashboard-card:nth-child(1) .dashboard-card-content>span:first-child::before {
+    background-color: #16a34a;
+}
 
-.interactive-card[data-category="บำรุงรักษาตามรอบ"] .dashboard-card-content > span:first-child::before { background-color: #0369a1; }
-.interactive-card[data-category="ติดตั้ง"] .dashboard-card-content > span:first-child::before { background-color: #15803d; }
-.interactive-card[data-category="ซ่อม"] .dashboard-card-content > span:first-child::before { background-color: #dc2626; }
-.interactive-card[data-category="รื้อถอน"] .dashboard-card-content > span:first-child::before { background-color: #b45309; }
+#device-dashboard .dashboard-card:nth-child(2) .dashboard-card-content>span:first-child::before {
+    background-color: #f59e0b;
+}
+
+#device-dashboard .dashboard-card:nth-child(3) .dashboard-card-content>span:first-child::before {
+    background-color: #0369a1;
+}
+
+#device-dashboard .dashboard-card:nth-child(4) .dashboard-card-content>span:first-child::before {
+    background-color: #dc2626;
+}
+
+.interactive-card[data-category="บำรุงรักษาตามรอบ"] .dashboard-card-content>span:first-child::before {
+    background-color: #0369a1;
+}
+
+.interactive-card[data-category="ติดตั้ง"] .dashboard-card-content>span:first-child::before {
+    background-color: #15803d;
+}
+
+.interactive-card[data-category="ซ่อม"] .dashboard-card-content>span:first-child::before {
+    background-color: #dc2626;
+}
+
+.interactive-card[data-category="รื้อถอน"] .dashboard-card-content>span:first-child::before {
+    background-color: #b45309;
+}
 
 /* Bold premium gradient numbers */
-.dashboard-card-content > span:nth-child(2) {
+.dashboard-card-content>span:nth-child(2) {
     font-size: 4.5rem !important;
     font-weight: 800 !important;
     line-height: 1;
@@ -8579,7 +8602,7 @@ h4 {
     color: var(--text-color);
 }
 
-.dashboard-card-content > span:nth-child(2) > span:first-child {
+.dashboard-card-content>span:nth-child(2)>span:first-child {
     font-size: 4.5rem !important;
     font-weight: 800 !important;
     line-height: 1;
@@ -8591,29 +8614,34 @@ h4 {
 }
 
 /* Color-coordinated gradients for values */
-#device-dashboard .dashboard-card:nth-child(1) .dashboard-card-content > span:nth-child(2) {
+#device-dashboard .dashboard-card:nth-child(1) .dashboard-card-content>span:nth-child(2) {
     background-image: linear-gradient(135deg, #10b981 0%, #047857 100%);
 }
-#device-dashboard .dashboard-card:nth-child(2) .dashboard-card-content > span:nth-child(2) {
+
+#device-dashboard .dashboard-card:nth-child(2) .dashboard-card-content>span:nth-child(2) {
     background-image: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
 }
-#device-dashboard .dashboard-card:nth-child(3) .dashboard-card-content > span:nth-child(2),
-.interactive-card[data-category="บำรุงรักษาตามรอบ"] .dashboard-card-content > span:nth-child(2) {
+
+#device-dashboard .dashboard-card:nth-child(3) .dashboard-card-content>span:nth-child(2),
+.interactive-card[data-category="บำรุงรักษาตามรอบ"] .dashboard-card-content>span:nth-child(2) {
     background-image: linear-gradient(135deg, #38bdf8 0%, #0369a1 100%);
 }
-#device-dashboard .dashboard-card:nth-child(4) .dashboard-card-content > span:nth-child(2),
-.interactive-card[data-category="ซ่อม"] .dashboard-card-content > span:nth-child(2) {
+
+#device-dashboard .dashboard-card:nth-child(4) .dashboard-card-content>span:nth-child(2),
+.interactive-card[data-category="ซ่อม"] .dashboard-card-content>span:nth-child(2) {
     background-image: linear-gradient(135deg, #f87171 0%, #dc2626 100%);
 }
-.interactive-card[data-category="ติดตั้ง"] .dashboard-card-content > span:nth-child(2) {
+
+.interactive-card[data-category="ติดตั้ง"] .dashboard-card-content>span:nth-child(2) {
     background-image: linear-gradient(135deg, #4ade80 0%, #15803d 100%);
 }
-.interactive-card[data-category="รื้อถอน"] .dashboard-card-content > span:nth-child(2) {
+
+.interactive-card[data-category="รื้อถอน"] .dashboard-card-content>span:nth-child(2) {
     background-image: linear-gradient(135deg, #fbbf24 0%, #b45309 100%);
 }
 
 /* Unit text styling (like 'จังหวัด', 'ราย', 'เคส') */
-.dashboard-card-content > span:nth-child(2) > span:last-child {
+.dashboard-card-content>span:nth-child(2)>span:last-child {
     font-size: 1rem !important;
     font-weight: 600 !important;
     color: var(--text-muted) !important;
@@ -8624,7 +8652,7 @@ h4 {
 }
 
 /* Dashboard card footer / subtext descriptions */
-.dashboard-card-content > span:nth-child(3) {
+.dashboard-card-content>span:nth-child(3) {
     font-size: 0.72rem;
     color: var(--text-muted);
     margin-top: 0.75rem;
@@ -8635,7 +8663,7 @@ h4 {
     display: block;
 }
 
-body.dark-mode .dashboard-card-content > span:nth-child(3) {
+body.dark-mode .dashboard-card-content>span:nth-child(3) {
     border-top-color: rgba(255, 255, 255, 0.08);
 }
 
@@ -8643,23 +8671,28 @@ body.dark-mode .dashboard-card-content > span:nth-child(3) {
 #device-dashboard .dashboard-card:nth-child(1):hover .dashboard-card-icon {
     box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
 }
+
 #device-dashboard .dashboard-card:nth-child(2):hover .dashboard-card-icon {
     box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
 }
+
 #device-dashboard .dashboard-card:nth-child(3):hover .dashboard-card-icon,
 .interactive-card[data-category="บำรุงรักษาตามรอบ"]:hover .dashboard-card-icon,
 .interactive-card.active-pm .dashboard-card-icon {
     box-shadow: 0 4px 12px rgba(3, 105, 161, 0.25);
 }
+
 #device-dashboard .dashboard-card:nth-child(4):hover .dashboard-card-icon,
 .interactive-card[data-category="ซ่อม"]:hover .dashboard-card-icon,
 .interactive-card.active-repair .dashboard-card-icon {
     box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
 }
+
 .interactive-card[data-category="ติดตั้ง"]:hover .dashboard-card-icon,
 .interactive-card.active-install .dashboard-card-icon {
     box-shadow: 0 4px 12px rgba(21, 128, 61, 0.25);
 }
+
 .interactive-card[data-category="รื้อถอน"]:hover .dashboard-card-icon,
 .interactive-card.active-deinstall .dashboard-card-icon {
     box-shadow: 0 4px 12px rgba(180, 83, 9, 0.25);
@@ -8675,6 +8708,7 @@ body.dark-mode .dashboard-card-content > span:nth-child(3) {
     background: rgba(3, 105, 161, 0.04);
     box-shadow: 0 8px 24px rgba(3, 105, 161, 0.1);
 }
+
 .interactive-card.active-pm::before {
     background-color: #0369a1;
 }
@@ -8684,6 +8718,7 @@ body.dark-mode .dashboard-card-content > span:nth-child(3) {
     background: rgba(21, 128, 61, 0.04);
     box-shadow: 0 8px 24px rgba(21, 128, 61, 0.1);
 }
+
 .interactive-card.active-install::before {
     background-color: #15803d;
 }
@@ -8693,6 +8728,7 @@ body.dark-mode .dashboard-card-content > span:nth-child(3) {
     background: rgba(220, 38, 38, 0.04);
     box-shadow: 0 8px 24px rgba(220, 38, 38, 0.1);
 }
+
 .interactive-card.active-repair::before {
     background-color: #dc2626;
 }
@@ -8702,6 +8738,7 @@ body.dark-mode .dashboard-card-content > span:nth-child(3) {
     background: rgba(180, 83, 9, 0.04);
     box-shadow: 0 8px 24px rgba(180, 83, 9, 0.1);
 }
+
 .interactive-card.active-deinstall::before {
     background-color: #b45309;
 }
@@ -8871,17 +8908,18 @@ body.dark-mode .map-province {
 
 /* --- INVENTORY TABLE MOBILE LAYOUT OVERRIDES --- */
 @media (max-width: 768px) {
+
     .data-table.inventory-table,
     .data-table.inventory-table tbody,
     .data-table.inventory-table tr,
     .data-table.inventory-table td {
         display: block !important;
     }
-    
+
     .data-table.inventory-table thead {
         display: none !important;
     }
-    
+
     .data-table.inventory-table tr {
         display: block !important;
         grid-template-areas: none !important;
@@ -8893,7 +8931,7 @@ body.dark-mode .map-province {
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
         border-left: 4px solid var(--primary-color) !important;
     }
-    
+
     .data-table.inventory-table td {
         display: grid !important;
         grid-template-columns: 140px 1fr !important;
@@ -8903,11 +8941,11 @@ body.dark-mode .map-province {
         border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
         gap: 0.5rem !important;
     }
-    
+
     .data-table.inventory-table td:last-child {
         border-bottom: none !important;
     }
-    
+
     .data-table.inventory-table td::before {
         content: attr(data-label) !important;
         font-weight: 600 !important;
