@@ -738,7 +738,7 @@ function setupAuthStateListener() {
                 // Wait for init (data loading) to complete before hiding splash
                 await init();
                 renderProfile(user);
-                setupSessionTimeout(); // Start inactivity monitor
+                await setupSessionTimeout(); // Start inactivity monitor
 
                 if (splash) {
                     // Small delay for smooth transition
@@ -774,7 +774,7 @@ initAuthWorkflow();
 
 // --- Session Timeout Logic ---
 let idleTimer;
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+let currentSessionTimeoutMs = 120 * 60 * 1000; // default 2 hours (120 minutes)
 let lastIdleStorageUpdate = 0;
 
 function resetIdleTimer() {
@@ -790,7 +790,7 @@ function resetIdleTimer() {
     }
 
     // Set Timeout
-    idleTimer = setTimeout(handleSessionTimeout, SESSION_TIMEOUT_MS);
+    idleTimer = setTimeout(handleSessionTimeout, currentSessionTimeoutMs);
 }
 
 async function handleSessionTimeout() {
@@ -805,8 +805,19 @@ async function handleSessionTimeout() {
         );
         await signOut(auth);
 
+        const minutes = Math.round(currentSessionTimeoutMs / (60 * 1000));
+        let timeStr = `${minutes} นาที`;
+        if (minutes >= 60) {
+            const hours = minutes / 60;
+            if (Number.isInteger(hours)) {
+                timeStr = `${hours} ชั่วโมง`;
+            } else {
+                timeStr = `${hours.toFixed(1)} ชั่วโมง`;
+            }
+        }
+
         await showDialog(
-            "เซสชันหมดอายุเนื่องจากไม่มีการใช้งานเกิน 5 นาที\nกรุณาเข้าสู่ระบบใหม่",
+            `เซสชันหมดอายุเนื่องจากไม่มีการใช้งานเกิน ${timeStr}\nกรุณาเข้าสู่ระบบใหม่`,
             { title: "Session Expired" },
         );
         window.location.reload();
@@ -815,7 +826,21 @@ async function handleSessionTimeout() {
     }
 }
 
-function setupSessionTimeout() {
+async function setupSessionTimeout() {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    let timeoutMs = 120 * 60 * 1000; // default 2 hours
+    try {
+        const userDoc = await FirestoreService.getUser(user.uid);
+        if (userDoc && userDoc.sessionTimeout) {
+            timeoutMs = parseInt(userDoc.sessionTimeout, 10) * 60 * 1000;
+        }
+    } catch (err) {
+        console.error("Error loading session timeout setting:", err);
+    }
+    currentSessionTimeoutMs = timeoutMs;
+
     // Check persistent timestamp
     const lastActive = parseInt(
         localStorage.getItem("sessionLastActive") || "0",
@@ -825,15 +850,11 @@ function setupSessionTimeout() {
 
     if (lastActive > 0) {
         const elapsed = now - lastActive;
-        if (elapsed > SESSION_TIMEOUT_MS) {
+        if (elapsed > currentSessionTimeoutMs) {
             console.warn("Persistent session expired.");
-            handleSessionTimeout();
+            await handleSessionTimeout();
             return;
         }
-        // If valid, we could technically start with reduced time,
-        // but standard behavior is usually 'activity resets timer'.
-        // To be strict: remaining = SESSION_TIMEOUT_MS - elapsed;
-        // But for this requirement (activity reset), we just reset to full.
     }
 
     if (lastActive === 0) {
@@ -15296,6 +15317,39 @@ if (notificationSettingsForm) {
     });
 }
 
+// --- System Settings Form Handler ---
+const systemSettingsForm = document.getElementById("system-settings-form");
+if (systemSettingsForm) {
+    systemSettingsForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const user = auth.currentUser;
+        if (!user) return;
+
+        try {
+            const newSessionTimeout = document.getElementById("profile-session-timeout")?.value || "120";
+            
+            await updateDoc(doc(db, "users", user.uid), {
+                sessionTimeout: parseInt(newSessionTimeout, 10)
+            });
+
+            currentSessionTimeoutMs = parseInt(newSessionTimeout, 10) * 60 * 1000;
+            resetIdleTimer();
+
+            await FirestoreService.logAction(
+                "SETTINGS",
+                "EDIT",
+                `Updated system settings: Session Timeout set to ${newSessionTimeout} minutes`,
+                { userId: user.uid }
+            );
+
+            showToast("บันทึกการตั้งค่าระบบเรียบร้อยแล้ว", "success");
+        } catch (err) {
+            console.error("System Settings Update Error:", err);
+            showToast("เกิดข้อผิดพลาดในการบันทึกการตั้งค่า: " + err.message, "error");
+        }
+    });
+}
+
 // Clear Notification Settings Button
 const btnClearNotificationSettings = document.getElementById("btn-clear-notification-settings");
 if (btnClearNotificationSettings) {
@@ -15711,6 +15765,12 @@ async function renderProfile(userArg = null) {
                 } else {
                     profilePhoneInput.value = phoneVal;
                 }
+            }
+            // Load session timeout
+            const sessionTimeoutSelect = document.getElementById("profile-session-timeout");
+            if (sessionTimeoutSelect) {
+                const timeoutVal = userDoc && userDoc.sessionTimeout ? String(userDoc.sessionTimeout) : "120";
+                sessionTimeoutSelect.value = timeoutVal;
             }
             // Load signature
             const sigImg = document.getElementById("profile-signature-img");

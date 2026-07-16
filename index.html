@@ -1493,6 +1493,10 @@
                         style="display:none; align-items:center; gap:0.4rem; flex-shrink:0; padding:0.5rem 1rem; border-radius:999px; border:1.5px solid rgba(0,0,0,0.12); background:transparent; color:var(--text-muted); font-size:0.85rem; font-weight:500; cursor:pointer; white-space:nowrap;">
                         <i class="fa-solid fa-building" style="font-size:0.8rem;"></i><span>ข้อมูลบริษัท</span>
                     </button>
+                    <button class="pmn-btn" data-tab="system-settings" id="pmn-system-settings"
+                        style="display:inline-flex; align-items:center; gap:0.4rem; flex-shrink:0; padding:0.5rem 1rem; border-radius:999px; border:1.5px solid rgba(0,0,0,0.12); background:transparent; color:var(--text-muted); font-size:0.85rem; font-weight:500; cursor:pointer; white-space:nowrap;">
+                        <i class="fa-solid fa-gears" style="font-size:0.8rem;"></i><span>ตั้งค่าระบบ</span>
+                    </button>
                     <button id="pmn-logout"
                         style="display:inline-flex; align-items:center; gap:0.4rem; flex-shrink:0; padding:0.5rem 1rem; border-radius:999px; border:1.5px solid rgba(239,68,68,0.25); background:transparent; color:#ef4444; font-size:0.85rem; font-weight:500; cursor:pointer; white-space:nowrap;">
                         <i class="fa-solid fa-right-from-bracket" style="font-size:0.8rem;"></i><span>ออกจากระบบ</span>
@@ -1534,6 +1538,10 @@
                                 <button class="profile-sidebar-item active profile-tab" data-tab="profile-settings">
                                     <i class="fa-solid fa-user"></i>
                                     <span>ข้อมูลส่วนตัว</span>
+                                </button>
+                                <button class="profile-sidebar-item profile-tab" data-tab="system-settings">
+                                    <i class="fa-solid fa-gears"></i>
+                                    <span>ตั้งค่าระบบ</span>
                                 </button>
                                 <button class="profile-sidebar-item profile-tab" data-tab="user-management"
                                     id="user-management-tab" style="display: none;">
@@ -1655,6 +1663,39 @@
                                         </button>
                                     </form>
 
+                                </div>
+                            </div>
+
+                            <!-- System Settings Tab -->
+                            <div class="profile-tab-content" id="system-settings">
+                                <div class="profile-form-section">
+                                    <h3 class="profile-subsection-title"
+                                        style="font-size: 1.25rem; color: #111; font-weight: 700; margin-bottom: 1.5rem;">
+                                        <i class="fa-solid fa-gears"></i>
+                                        ตั้งค่าระบบ (System Settings)
+                                    </h3>
+                                    <form id="system-settings-form" autocomplete="off">
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="profile-session-timeout">
+                                                    <i class="fa-solid fa-clock"></i> ตั้งค่าเวลาหมดอายุเซสชัน (Session Timeout Setting)
+                                                </label>
+                                                <select id="profile-session-timeout">
+                                                    <option value="15">15 นาที (15 Minutes)</option>
+                                                    <option value="30">30 นาที (30 Minutes)</option>
+                                                    <option value="60">1 ชั่วโมง (1 Hour)</option>
+                                                    <option value="120" selected>2 ชั่วโมง (2 Hours)</option>
+                                                    <option value="240">4 ชั่วโมง (4 Hours)</option>
+                                                    <option value="480">8 ชั่วโมง (8 Hours)</option>
+                                                    <option value="1440">24 ชั่วโมง (24 Hours)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn-primary"
+                                            style="width: 100%; margin-top: 1.5rem; height: 48px; font-size: 1rem;">
+                                            <i class="fa-solid fa-floppy-disk"></i> บันทึกการตั้งค่าระบบ
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
 
