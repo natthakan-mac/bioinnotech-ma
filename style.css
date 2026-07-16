@@ -8863,3 +8863,51 @@ body.dark-mode .map-province {
 .table-container table {
     width: 100% !important;
 }
+
+/* --- INVENTORY TABLE MOBILE LAYOUT OVERRIDES --- */
+@media (max-width: 768px) {
+    .data-table.inventory-table,
+    .data-table.inventory-table tbody,
+    .data-table.inventory-table tr,
+    .data-table.inventory-table td {
+        display: block !important;
+    }
+    
+    .data-table.inventory-table thead {
+        display: none !important;
+    }
+    
+    .data-table.inventory-table tr {
+        display: block !important;
+        grid-template-areas: none !important;
+        padding: 1rem !important;
+        margin-bottom: 1rem !important;
+        border: 1px solid rgba(0, 0, 0, 0.1) !important;
+        border-radius: var(--radius-md) !important;
+        background: #ffffff !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        border-left: 4px solid var(--primary-color) !important;
+    }
+    
+    .data-table.inventory-table td {
+        display: grid !important;
+        grid-template-columns: 140px 1fr !important;
+        align-items: center !important;
+        text-align: left !important;
+        padding: 0.5rem 0 !important;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
+        gap: 0.5rem !important;
+    }
+    
+    .data-table.inventory-table td:last-child {
+        border-bottom: none !important;
+    }
+    
+    .data-table.inventory-table td::before {
+        content: attr(data-label) !important;
+        font-weight: 600 !important;
+        color: var(--text-muted) !important;
+        font-size: 0.85rem !important;
+        display: block !important;
+    }
+}
