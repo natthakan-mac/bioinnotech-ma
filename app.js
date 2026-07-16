@@ -15069,6 +15069,14 @@ async function handleLogout() {
         try {
             teardownRealtimeListeners(); // Stop real-time listeners on logout
             await FirestoreService.logAction("AUTH", "LOGOUT", `User logged out`); // Log before signout
+            
+            // Logout from LINE (LIFF) if initialized and logged in
+            if (typeof liff !== 'undefined' && typeof liffInitialized !== 'undefined' && liffInitialized && liff.isLoggedIn()) {
+                liff.logout();
+            }
+
+            sessionStorage.setItem('skip_line_auto_login', 'true');
+
             await signOut(auth);
             window.location.reload();
         } catch (error) {
@@ -19835,20 +19843,33 @@ async function initLiff() {
  * Get LINE access token via LIFF login
  * Returns access token string or null
  */
-async function getLiffAccessToken() {
+async function getLiffAccessToken(actionType = 'login') {
     const ok = await initLiff();
     if (!ok) {
         showToast('ไม่สามารถเชื่อมต่อ LINE ได้ กรุณาลองใหม่', 'error');
         return null;
     }
 
+    // Force logout if it's a login or link action to always show consent screen
+    if (liff.isLoggedIn() && (actionType === 'login' || actionType === 'link')) {
+        liff.logout();
+    }
+
     // If not logged in to LINE, trigger LIFF login
     if (!liff.isLoggedIn()) {
-        // Save current state for redirect-back
-        const currentUrl = window.location.href;
-        sessionStorage.setItem('liff_return_url', currentUrl);
-
-        liff.login({ redirectUri: currentUrl });
+        // Save current state for redirect-back (use localStorage to survive mobile redirects)
+        localStorage.setItem('liff_pending_action', actionType);
+        
+        // Use clean base URL (origin + pathname) for redirectUri to avoid
+        // query string / hash fragment issues that can cause redirect URI mismatch on mobile.
+        const cleanRedirectUrl = window.location.origin + window.location.pathname;
+        
+        // Use prompt: 'consent' to force the LINE authorization screen to appear,
+        // allowing the user to verify or switch their account.
+        liff.login({ 
+            redirectUri: cleanRedirectUrl,
+            prompt: 'consent'
+        });
         return null; // Page will redirect, return null
     }
 
@@ -19873,7 +19894,7 @@ async function handleLineLogin() {
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>กำลังเชื่อมต่อ LINE...</span>';
 
     try {
-        const accessToken = await getLiffAccessToken();
+        const accessToken = await getLiffAccessToken('login');
         if (!accessToken) {
             // LIFF login triggered a redirect, or failed silently
             // Restore button if no redirect happened (error case)
@@ -19898,16 +19919,19 @@ async function handleLineLogin() {
             // Log action
             FirestoreService.logAction('AUTH', 'LOGIN', `User logged in via LINE (${result.data.lineProfile?.displayName || 'unknown'})`);
         } else if (result.data.error === 'NOT_LINKED') {
+            if (liffInitialized && liff.isLoggedIn()) liff.logout();
             // LINE not linked to any account
             await showDialog(result.data.message || 'ไม่พบบัญชีที่เชื่อมต่อกับ LINE นี้\n\nกรุณาเข้าสู่ระบบด้วยอีเมล/เบอร์โทร แล้วเชื่อมต่อ LINE ที่หน้าโปรไฟล์ก่อน');
             btn.innerHTML = originalHTML;
             btn.disabled = false;
         } else {
+            if (liffInitialized && liff.isLoggedIn()) liff.logout();
             showToast(result.data.message || 'เกิดข้อผิดพลาด', 'error');
             btn.innerHTML = originalHTML;
             btn.disabled = false;
         }
     } catch (error) {
+        if (liffInitialized && liff.isLoggedIn()) liff.logout();
         console.error('LINE Login error:', error);
         showToast('เข้าสู่ระบบด้วย LINE ไม่สำเร็จ: ' + (error.message || 'Unknown error'), 'error');
         btn.innerHTML = originalHTML;
@@ -19927,7 +19951,7 @@ async function handleLinkLine() {
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังเชื่อมต่อ...';
 
     try {
-        const accessToken = await getLiffAccessToken();
+        const accessToken = await getLiffAccessToken('link');
         if (!accessToken) {
             setTimeout(() => {
                 if (btn) {
@@ -19947,15 +19971,18 @@ async function handleLinkLine() {
             // Re-render profile to show linked status
             renderProfile();
         } else if (result.data.error === 'ALREADY_LINKED') {
+            if (liffInitialized && liff.isLoggedIn()) liff.logout();
             await showDialog(result.data.message || 'บัญชี LINE นี้ถูกเชื่อมต่อกับผู้ใช้งานอื่นแล้ว');
             btn.innerHTML = originalHTML;
             btn.disabled = false;
         } else {
+            if (liffInitialized && liff.isLoggedIn()) liff.logout();
             showToast(result.data.message || 'เกิดข้อผิดพลาด', 'error');
             btn.innerHTML = originalHTML;
             btn.disabled = false;
         }
     } catch (error) {
+        if (liffInitialized && liff.isLoggedIn()) liff.logout();
         console.error('Link LINE error:', error);
         showToast('เชื่อมต่อ LINE ไม่สำเร็จ: ' + (error.message || 'Unknown error'), 'error');
         btn.innerHTML = originalHTML;
@@ -19975,7 +20002,7 @@ async function handleSyncLinePhoto() {
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังซิงค์...';
 
     try {
-        const accessToken = await getLiffAccessToken();
+        const accessToken = await getLiffAccessToken('sync');
         if (!accessToken) {
             showToast('ไม่สามารถซิงค์ได้ กรุณาลองใหม่', 'error');
             btn.classList.remove('syncing');
@@ -20145,30 +20172,60 @@ if (btnLineLogin) {
 // When user returns from LIFF login, check if we need to complete an action
 (async function handleLiffReturn() {
     try {
-        // Check if LIFF SDK is available and we're returning from a LIFF redirect
+        // Check if LIFF SDK is available
         if (typeof liff === 'undefined') return;
 
-        // Only process if URL contains LIFF-related parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const hasLiffParams = urlParams.has('liff.state') || window.location.hash.includes('access_token');
-
-        if (!hasLiffParams) return;
-
-        console.log('LIFF redirect return detected, initializing...');
         const ok = await initLiff();
         if (!ok) return;
 
+        // Check if we are returning from a LIFF action
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasLiffParams = urlParams.has('liff.state') || window.location.hash.includes('access_token');
+        let pendingAction = localStorage.getItem('liff_pending_action');
+
         if (liff.isLoggedIn()) {
+            if (!hasLiffParams && !pendingAction) {
+                if (typeof auth.authStateReady === 'function') {
+                    await auth.authStateReady();
+                } else {
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+                if (!auth.currentUser) {
+                    if (sessionStorage.getItem('skip_line_auto_login')) {
+                        console.log('Skipping LIFF auto-login because user explicitly logged out.');
+                        return;
+                    }
+                    console.log('LIFF session is active but Firebase is not. Auto-logging in...');
+                    pendingAction = 'login';
+                } else {
+                    return;
+                }
+            }
+
+            console.log(`LIFF return detected. Pending action: ${pendingAction}`);
+            localStorage.removeItem('liff_pending_action');
             const accessToken = liff.getAccessToken();
             if (!accessToken) return;
 
-            // Check if user is already authenticated in Firebase
-            // If yes, this is a "link" action. If no, this is a "login" action.
+            // Important: Wait for Firebase Auth to initialize before proceeding!
+            // Otherwise, auth.currentUser will be null even if the user is already signed in.
+            if (typeof auth.authStateReady === 'function') {
+                await auth.authStateReady();
+            } else {
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+
             const currentUser = auth.currentUser;
 
-            if (currentUser) {
-                // User is already logged in → this is a link action
-                console.log('LIFF return: User logged in, attempting to link LINE...');
+            if (pendingAction === 'link' || (pendingAction !== 'login' && currentUser)) {
+                // Handle Link Action
+                console.log('LIFF return: Attempting to link LINE...');
+                if (!currentUser) {
+                    showToast('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่', 'error');
+                    return;
+                }
+                
+                showToast('กำลังประมวลผลการเชื่อมต่อ LINE...', 'info');
                 const linkFn = httpsCallable(functions, 'linkLineAccount');
                 const result = await linkFn({ accessToken });
 
@@ -20176,28 +20233,68 @@ if (btnLineLogin) {
                     showToast(result.data.message || 'เชื่อมต่อ LINE สำเร็จ!', 'success');
                     renderProfile();
                 } else {
+                    if (liffInitialized && liff.isLoggedIn()) {
+                        liff.logout();
+                    }
                     await showDialog(result.data.message || 'เชื่อมต่อ LINE ไม่สำเร็จ');
                 }
+            } else if (pendingAction === 'sync' && currentUser) {
+                // Handle Sync Photo Action
+                console.log('LIFF return: Attempting to sync LINE photo...');
+                showToast('กำลังประมวลผลซิงค์รูป...', 'info');
+                const linkFn = httpsCallable(functions, 'linkLineAccount');
+                const result = await linkFn({ accessToken });
+                
+                if (result.data.success) {
+                    showToast('ซิงค์รูปโปรไฟล์สำเร็จ!', 'success');
+                    renderProfile();
+                } else {
+                    showToast(result.data.message || 'เกิดข้อผิดพลาดในการซิงค์', 'error');
+                }
             } else {
-                // User is NOT logged in → this is a login action
-                console.log('LIFF return: No user, attempting LINE login...');
+                // Handle Login Action
+                console.log('LIFF return: Attempting LINE login...');
+                
+                const loginOverlayHTML = `
+                    <div id="liff-login-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem;">
+                        <i class="fa-solid fa-spinner fa-spin" style="font-size:2rem; color:#06C755;"></i>
+                        <p style="font-weight:600; color:#111;">กำลังเข้าสู่ระบบด้วย LINE...</p>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', loginOverlayHTML);
+                
                 const lineLoginFn = httpsCallable(functions, 'lineLogin');
                 const result = await lineLoginFn({ accessToken });
+
+                const overlay = document.getElementById('liff-login-overlay');
+                if (overlay) overlay.remove();
 
                 if (result.data.success) {
                     await signInWithCustomToken(auth, result.data.customToken);
                     showToast('เข้าสู่ระบบด้วย LINE สำเร็จ!', 'success');
                     FirestoreService.logAction('AUTH', 'LOGIN', `User logged in via LINE (${result.data.lineProfile?.displayName || 'unknown'})`);
                 } else if (result.data.error === 'NOT_LINKED') {
+                    // Wrong account -> logout from LIFF so they can switch
+                    if (liffInitialized && liff.isLoggedIn()) {
+                        liff.logout();
+                    }
                     await showDialog(result.data.message || 'ไม่พบบัญชีที่เชื่อมต่อกับ LINE นี้\n\nกรุณาเข้าสู่ระบบด้วยอีเมล/เบอร์โทร แล้วเชื่อมต่อ LINE ที่หน้าโปรไฟล์ก่อน');
+                } else {
+                    if (liffInitialized && liff.isLoggedIn()) {
+                        liff.logout();
+                    }
+                    await showDialog(result.data.message || 'การเข้าสู่ระบบผิดพลาด');
                 }
             }
 
-            // Clean up URL (remove LIFF params)
+            // Clean up URL (remove LIFF params without refreshing)
             const cleanUrl = window.location.origin + window.location.pathname;
             window.history.replaceState({}, document.title, cleanUrl);
         }
     } catch (err) {
         console.warn('LIFF return handling error:', err);
+        localStorage.removeItem('liff_pending_action');
+        const overlay = document.getElementById('liff-login-overlay');
+        if (overlay) overlay.remove();
     }
 })();
