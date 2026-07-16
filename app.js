@@ -15326,19 +15326,24 @@ if (systemSettingsForm) {
         if (!user) return;
 
         try {
-            const newSessionTimeout = document.getElementById("profile-session-timeout")?.value || "120";
+            const newSessionTimeoutHoursStr = document.getElementById("profile-session-timeout")?.value || "2";
+            const newSessionTimeoutHours = parseFloat(newSessionTimeoutHoursStr);
+            if (isNaN(newSessionTimeoutHours) || newSessionTimeoutHours <= 0) {
+                throw new Error("กรุณาระบุเวลาหมดอายุที่ถูกต้อง (มากกว่า 0 ชั่วโมง)");
+            }
+            const newSessionTimeoutMinutes = Math.round(newSessionTimeoutHours * 60);
             
             await updateDoc(doc(db, "users", user.uid), {
-                sessionTimeout: parseInt(newSessionTimeout, 10)
+                sessionTimeout: newSessionTimeoutMinutes
             });
 
-            currentSessionTimeoutMs = parseInt(newSessionTimeout, 10) * 60 * 1000;
+            currentSessionTimeoutMs = newSessionTimeoutMinutes * 60 * 1000;
             resetIdleTimer();
 
             await FirestoreService.logAction(
                 "SETTINGS",
                 "EDIT",
-                `Updated system settings: Session Timeout set to ${newSessionTimeout} minutes`,
+                `Updated system settings: Session Timeout set to ${newSessionTimeoutHours} hours (${newSessionTimeoutMinutes} minutes)`,
                 { userId: user.uid }
             );
 
@@ -15767,10 +15772,11 @@ async function renderProfile(userArg = null) {
                 }
             }
             // Load session timeout
-            const sessionTimeoutSelect = document.getElementById("profile-session-timeout");
-            if (sessionTimeoutSelect) {
-                const timeoutVal = userDoc && userDoc.sessionTimeout ? String(userDoc.sessionTimeout) : "120";
-                sessionTimeoutSelect.value = timeoutVal;
+            const sessionTimeoutInput = document.getElementById("profile-session-timeout");
+            if (sessionTimeoutInput) {
+                const timeoutValMinutes = userDoc && userDoc.sessionTimeout ? parseInt(userDoc.sessionTimeout, 10) : 120;
+                const timeoutValHours = timeoutValMinutes / 60;
+                sessionTimeoutInput.value = Math.round(timeoutValHours * 100) / 100;
             }
             // Load signature
             const sigImg = document.getElementById("profile-signature-img");

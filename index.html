@@ -1678,17 +1678,9 @@
                                         <div class="form-row">
                                             <div class="form-group">
                                                 <label for="profile-session-timeout">
-                                                    <i class="fa-solid fa-clock"></i> ตั้งค่าเวลาหมดอายุเซสชัน (Session Timeout Setting)
+                                                    <i class="fa-solid fa-clock"></i> ตั้งค่าเวลาหมดอายุเซสชัน (ชั่วโมง) (Session Timeout Setting (Hours))
                                                 </label>
-                                                <select id="profile-session-timeout">
-                                                    <option value="15">15 นาที (15 Minutes)</option>
-                                                    <option value="30">30 นาที (30 Minutes)</option>
-                                                    <option value="60">1 ชั่วโมง (1 Hour)</option>
-                                                    <option value="120" selected>2 ชั่วโมง (2 Hours)</option>
-                                                    <option value="240">4 ชั่วโมง (4 Hours)</option>
-                                                    <option value="480">8 ชั่วโมง (8 Hours)</option>
-                                                    <option value="1440">24 ชั่วโมง (24 Hours)</option>
-                                                </select>
+                                                <input type="number" id="profile-session-timeout" min="0.1" step="any" placeholder="ระบุจำนวนชั่วโมง (เช่น 2) / Enter hours (e.g. 2)" required>
                                             </div>
                                         </div>
                                         <button type="submit" class="btn-primary"
