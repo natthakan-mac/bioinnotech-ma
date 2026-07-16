@@ -1298,11 +1298,11 @@ const FirestoreService = {
                 } else {
                     const currentUid = auth.currentUser?.uid;
                     // Keep the one matching current user UID, or the one with displayName, or the higher role
-                    const keepNew =
+                    const keepNew = 
                         (user.uid === currentUid) ||
                         (!existing.displayName && user.displayName) ||
                         (existing.role === 'user' && (user.role === 'admin' || user.role === 'manager'));
-
+                    
                     if (keepNew) {
                         uniqueUsersMap.set(user.email, user);
                     }
@@ -4256,13 +4256,13 @@ async function handleLogMaintenance(e) {
         const formCategory = formData.get("category");
         const formSiteId = formData.get("siteId");
         if (!logId && formCategory === "บำรุงรักษาตามรอบ" && formSiteId) {
-            const hasActivePM = state.logs.some(l =>
-                l.siteId === formSiteId &&
-                l.category === "บำรุงรักษาตามรอบ" &&
-                l.status !== "Case Closed" &&
+            const hasActivePM = state.logs.some(l => 
+                l.siteId === formSiteId && 
+                l.category === "บำรุงรักษาตามรอบ" && 
+                l.status !== "Case Closed" && 
                 l.status !== "Cancel"
             );
-
+            
             if (hasActivePM) {
                 btn.textContent = originalText;
                 btn.disabled = false;
@@ -7994,12 +7994,6 @@ function switchLogView(view) {
         .getElementById("logs-calendar-view")
         .classList.toggle("hidden", view !== "calendar");
 
-    // Hide dashboard + charts in calendar view, show in list/table view
-    const caseDashboard = document.getElementById("case-type-dashboard");
-    if (caseDashboard) {
-        caseDashboard.style.display = view === "calendar" ? "none" : "";
-    }
-
     if (view === "calendar") {
         fetchAndRenderCalendar();
     } else {
@@ -9402,7 +9396,7 @@ async function renderDeviceMap(sitesToRender) {
                     const cluster = locationJitter[key];
                     // Calculate rough distance in degrees. 0.02 degrees is roughly 2.2 km.
                     const dist = Math.sqrt(Math.pow(lat - cluster.lat, 2) + Math.pow(lng - cluster.lng, 2));
-                    if (dist < 0.02) {
+                    if (dist < 0.02) { 
                         clusterFound = cluster;
                         break;
                     }
@@ -9411,13 +9405,13 @@ async function renderDeviceMap(sitesToRender) {
                 if (!clusterFound) {
                     const coordKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
                     const projected = projection([lng, lat]);
-                    clusterFound = {
-                        lat: lat,
-                        lng: lng,
-                        count: 0,
+                    clusterFound = { 
+                        lat: lat, 
+                        lng: lng, 
+                        count: 0, 
                         sites: [], // Store all sites in this cluster
-                        centerX: projected ? projected[0] : 0,
-                        centerY: projected ? projected[1] : 0
+                        centerX: projected ? projected[0] : 0, 
+                        centerY: projected ? projected[1] : 0 
                     };
                     locationJitter[coordKey] = clusterFound;
                 }
@@ -9431,7 +9425,7 @@ async function renderDeviceMap(sitesToRender) {
                 if (offsetCount > 0) {
                     const angle = (offsetCount * 0.8) * Math.PI; // Spiral angle
                     // Increased jitter spread slightly to accommodate mobile zooming
-                    const radius = 8 + (offsetCount * 2.5);
+                    const radius = 8 + (offsetCount * 2.5); 
                     offsetX = Math.cos(angle) * radius;
                     offsetY = Math.sin(angle) * radius;
                 }
@@ -9532,11 +9526,11 @@ async function renderDeviceMap(sitesToRender) {
             })
             .on("click", function (event, d) {
                 d3.select(tooltip).style("opacity", 0);
-
+                
                 // Find all visually overlapping sites based on current zoom
                 const currentK = d3.zoomTransform(svg.node()).k;
                 const threshold = getDotRadius(currentK) * 2.5;
-
+                
                 const overlappingSites = [];
                 dotsData.forEach(other => {
                     const dist = Math.sqrt(Math.pow(d.cx - other.cx, 2) + Math.pow(d.cy - other.cy, 2));
@@ -9549,7 +9543,7 @@ async function renderDeviceMap(sitesToRender) {
                     // Create overlay and popup styled to match site system
                     const overlay = document.createElement("div");
                     overlay.className = "modal-overlay modal-layer-top";
-
+                    
                     const popup = document.createElement("div");
                     popup.className = "modal glass-panel";
                     popup.style.maxWidth = "450px";
@@ -9558,7 +9552,7 @@ async function renderDeviceMap(sitesToRender) {
                     popup.style.display = "flex";
                     popup.style.flexDirection = "column";
                     popup.style.padding = "2rem";
-
+                    
                     // Helpers for badges in the popup to match site style
                     const getCategoryBadge = (cat) => {
                         let catColor = '#64748b';
@@ -9604,7 +9598,7 @@ async function renderDeviceMap(sitesToRender) {
 
                     const currentMonth = new Date().getMonth();
                     const currentYear = new Date().getFullYear();
-
+                    
                     let casesHtml = "";
                     let devicesHtml = "";
 
@@ -9621,7 +9615,7 @@ async function renderDeviceMap(sitesToRender) {
                             siteLogs.forEach(log => {
                                 const isRepair = log.category === "ซ่อม";
                                 const borderColor = isRepair ? "#dc2626" : "#0369a1";
-
+                                
                                 casesHtml += `
                                     <div class="cluster-item" data-id="${s.id}" data-log-id="${log.id}" style="display: flex; flex-direction: column; padding: 1rem; border: 1.5px solid var(--border-color); border-left: 4px solid ${borderColor} !important; border-radius: var(--radius-md); cursor: pointer; background: var(--surface-bg); transition: all 0.2s ease; position: relative; box-shadow: var(--shadow-sm); margin-bottom: 2px;">
                                         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.5rem;">
@@ -9687,19 +9681,19 @@ async function renderDeviceMap(sitesToRender) {
                     }
 
                     html += `</div>`;
-
+                    
                     popup.innerHTML = html;
                     overlay.appendChild(popup);
                     document.body.appendChild(overlay);
-
+                    
                     document.getElementById("close-cluster-popup").onclick = () => document.body.removeChild(overlay);
                     overlay.onclick = (e) => {
                         if (e.target === overlay) document.body.removeChild(overlay);
                     };
-
+                    
                     const items = popup.querySelectorAll('.cluster-item');
                     items.forEach(item => {
-                        item.onclick = function () {
+                        item.onclick = function() {
                             document.body.removeChild(overlay);
                             const logId = this.getAttribute('data-log-id');
                             if (logId && typeof viewLogDetails === "function") {
@@ -9708,13 +9702,13 @@ async function renderDeviceMap(sitesToRender) {
                                 viewSiteDetails(this.getAttribute('data-id'));
                             }
                         };
-                        item.onmouseover = function () {
-                            this.style.transform = "translateY(-2px)";
+                        item.onmouseover = function() { 
+                            this.style.transform = "translateY(-2px)"; 
                             this.style.boxShadow = "var(--shadow-md)";
                             this.style.borderColor = "var(--primary-color)";
                         };
-                        item.onmouseout = function () {
-                            this.style.transform = "none";
+                        item.onmouseout = function() { 
+                            this.style.transform = "none"; 
                             this.style.boxShadow = "var(--shadow-sm)";
                             this.style.borderColor = "var(--border-color)";
                         };
@@ -9724,7 +9718,7 @@ async function renderDeviceMap(sitesToRender) {
                     if (d.pinColor && state.logs) {
                         const currentMonth = new Date().getMonth();
                         const currentYear = new Date().getFullYear();
-
+                        
                         const targetLog = state.logs.find(log => {
                             if (log.siteId === d.site.id && log.date) {
                                 const logDate = new Date(log.date);
@@ -9735,13 +9729,13 @@ async function renderDeviceMap(sitesToRender) {
                             }
                             return false;
                         });
-
+                        
                         if (targetLog && typeof viewLogDetails === "function") {
                             viewLogDetails(targetLog.id);
                             logOpened = true;
                         }
                     }
-
+                    
                     if (!logOpened && typeof viewSiteDetails === "function") {
                         viewSiteDetails(d.site.id);
                     }
@@ -14305,10 +14299,10 @@ function updateCaseDashboard() {
     const calendarView = document.getElementById("logs-calendar-view");
     const isCalendar = calendarView && !calendarView.classList.contains("hidden");
 
-    // In calendar view, dashboard is already hidden by switchLogView — skip all processing
     if (isCalendar) {
-        dashboard.style.display = 'none';
-        return;
+        dashboard.style.display = 'flex';
+        const sourceLogs = state.calendarLogs || [];
+        processDashboardLogs(sourceLogs);
     } else {
         const currentFilters = {
             siteId: selects.filterHidden ? selects.filterHidden.value : "all",
@@ -14334,209 +14328,271 @@ function updateCaseDashboard() {
 
     function processDashboardLogs(sourceLogs) {
 
-        const siteSearchQuery = document.getElementById("site-filter-input")
-            ? document.getElementById("site-filter-input").value
-            : "";
-        const siteId = selects.filterHidden
-            ? selects.filterHidden.value
-            : "all";
-        const statusFilter = document.getElementById("filter-status")
-            ? document.getElementById("filter-status").value
-            : "all";
-        const searchQuery = document.getElementById("log-search-input")
-            ? document.getElementById("log-search-input").value
-            : "";
+    const siteSearchQuery = document.getElementById("site-filter-input")
+        ? document.getElementById("site-filter-input").value
+        : "";
+    const siteId = selects.filterHidden
+        ? selects.filterHidden.value
+        : "all";
+    const statusFilter = document.getElementById("filter-status")
+        ? document.getElementById("filter-status").value
+        : "all";
+    const searchQuery = document.getElementById("log-search-input")
+        ? document.getElementById("log-search-input").value
+        : "";
 
-        // For Calendar, the month is already implicit in state.calendarLogs, so we don't need additional date filters.
-        // For List view, we apply the selected date filter range.
-        const startDate = !isCalendar && selects.filterStart && selects.filterStart.value
-            ? new Date(selects.filterStart.value)
-            : null;
-        const endDate = !isCalendar && selects.filterEnd && selects.filterEnd.value
-            ? new Date(selects.filterEnd.value)
-            : null;
+    // For Calendar, the month is already implicit in state.calendarLogs, so we don't need additional date filters.
+    // For List view, we apply the selected date filter range.
+    const startDate = !isCalendar && selects.filterStart && selects.filterStart.value
+        ? new Date(selects.filterStart.value)
+        : null;
+    const endDate = !isCalendar && selects.filterEnd && selects.filterEnd.value
+        ? new Date(selects.filterEnd.value)
+        : null;
 
-        const logsForDashboard = filterLogsClientSide(sourceLogs, {
-            siteId,
-            siteSearchQuery,
-            startDate,
-            endDate,
-            category: "all", // IGNORE category filter
-            status: statusFilter,
-            minPrice: 0,
-            maxPrice: Infinity,
-            searchQuery,
-        });
+    const logsForDashboard = filterLogsClientSide(sourceLogs, {
+        siteId,
+        siteSearchQuery,
+        startDate,
+        endDate,
+        category: "all", // IGNORE category filter
+        status: statusFilter,
+        minPrice: 0,
+        maxPrice: Infinity,
+        searchQuery,
+    });
 
-        const categoryFilter = document.getElementById("filter-category")
-            ? document.getElementById("filter-category").value
-            : "all";
+    const categoryFilter = document.getElementById("filter-category")
+        ? document.getElementById("filter-category").value
+        : "all";
 
-        const logsForStatusDashboard = filterLogsClientSide(sourceLogs, {
-            siteId,
-            siteSearchQuery,
-            startDate,
-            endDate,
-            category: categoryFilter, // respects category filter
-            status: "all",            // ignores status filter
-            minPrice: 0,
-            maxPrice: Infinity,
-            searchQuery,
-        });
+    const logsForStatusDashboard = filterLogsClientSide(sourceLogs, {
+        siteId,
+        siteSearchQuery,
+        startDate,
+        endDate,
+        category: categoryFilter, // respects category filter
+        status: "all",            // ignores status filter
+        minPrice: 0,
+        maxPrice: Infinity,
+        searchQuery,
+    });
 
-        // Calculate count for each category
-        const counts = {
-            all: logsForDashboard.length,
-            pm: 0,
-            install: 0,
-            repair: 0,
-            deinstall: 0
-        };
+    // Calculate count for each category
+    const counts = {
+        all: logsForDashboard.length,
+        pm: 0,
+        install: 0,
+        repair: 0,
+        deinstall: 0
+    };
 
-        logsForDashboard.forEach(log => {
-            const cat = log.category;
-            if (cat === "บำรุงรักษาตามรอบ") counts.pm++;
-            else if (cat === "ติดตั้ง") counts.install++;
-            else if (cat === "ซ่อม") counts.repair++;
-            else if (cat === "รื้อถอน") counts.deinstall++;
-        });
+    logsForDashboard.forEach(log => {
+        const cat = log.category;
+        if (cat === "บำรุงรักษาตามรอบ") counts.pm++;
+        else if (cat === "ติดตั้ง") counts.install++;
+        else if (cat === "ซ่อม") counts.repair++;
+        else if (cat === "รื้อถอน") counts.deinstall++;
+    });
 
-        // Calculate count for each status
-        const statusCounts = {
-            open: 0,
-            process: 0,
-            done: 0,
-            closed: 0,
-            cancel: 0
-        };
+    // Calculate count for each status
+    const statusCounts = {
+        open: 0,
+        process: 0,
+        done: 0,
+        closed: 0,
+        cancel: 0
+    };
 
-        logsForStatusDashboard.forEach(log => {
-            const stat = log.status;
-            if (stat === "Open") statusCounts.open++;
-            else if (stat === "On Process") statusCounts.process++;
-            else if (stat === "Done") statusCounts.done++;
-            else if (stat === "Case Closed") statusCounts.closed++;
-            else if (stat === "Cancel") statusCounts.cancel++;
-        });
+    logsForStatusDashboard.forEach(log => {
+        const stat = log.status;
+        if (stat === "Open") statusCounts.open++;
+        else if (stat === "On Process") statusCounts.process++;
+        else if (stat === "Done") statusCounts.done++;
+        else if (stat === "Case Closed") statusCounts.closed++;
+        else if (stat === "Cancel") statusCounts.cancel++;
+    });
 
-        // Update UI elements
-        const dashAll = document.getElementById("dash-case-all");
-        const dashPm = document.getElementById("dash-case-pm");
-        const dashInstall = document.getElementById("dash-case-install");
-        const dashRepair = document.getElementById("dash-case-repair");
-        const dashDeinstall = document.getElementById("dash-case-deinstall");
+    // Update UI elements
+    const dashAll = document.getElementById("dash-case-all");
+    const dashPm = document.getElementById("dash-case-pm");
+    const dashInstall = document.getElementById("dash-case-install");
+    const dashRepair = document.getElementById("dash-case-repair");
+    const dashDeinstall = document.getElementById("dash-case-deinstall");
 
-        const dashStatusOpen = document.getElementById("dash-status-open");
-        const dashStatusProcess = document.getElementById("dash-status-process");
-        const dashStatusDone = document.getElementById("dash-status-done");
-        const dashStatusClosed = document.getElementById("dash-status-closed");
-        const dashStatusCancel = document.getElementById("dash-status-cancel");
+    const dashStatusOpen = document.getElementById("dash-status-open");
+    const dashStatusProcess = document.getElementById("dash-status-process");
+    const dashStatusDone = document.getElementById("dash-status-done");
+    const dashStatusClosed = document.getElementById("dash-status-closed");
+    const dashStatusCancel = document.getElementById("dash-status-cancel");
 
-        const displayVal = (val) => state.isInitialLoading ? '<i class="fa-solid fa-spinner fa-spin text-muted" style="font-size: 0.8em; opacity: 0.5;"></i>' : val;
+    const displayVal = (val) => state.isInitialLoading ? '<i class="fa-solid fa-spinner fa-spin text-muted" style="font-size: 0.8em; opacity: 0.5;"></i>' : val;
 
-        if (dashAll) dashAll.innerHTML = displayVal(counts.all);
-        if (dashPm) dashPm.innerHTML = displayVal(counts.pm);
-        if (dashInstall) dashInstall.innerHTML = displayVal(counts.install);
-        if (dashRepair) dashRepair.innerHTML = displayVal(counts.repair);
-        if (dashDeinstall) dashDeinstall.innerHTML = displayVal(counts.deinstall);
+    if (dashAll) dashAll.innerHTML = displayVal(counts.all);
+    if (dashPm) dashPm.innerHTML = displayVal(counts.pm);
+    if (dashInstall) dashInstall.innerHTML = displayVal(counts.install);
+    if (dashRepair) dashRepair.innerHTML = displayVal(counts.repair);
+    if (dashDeinstall) dashDeinstall.innerHTML = displayVal(counts.deinstall);
 
-        if (dashStatusOpen) dashStatusOpen.innerHTML = displayVal(statusCounts.open);
-        if (dashStatusProcess) dashStatusProcess.innerHTML = displayVal(statusCounts.process);
-        if (dashStatusDone) dashStatusDone.innerHTML = displayVal(statusCounts.done);
-        if (dashStatusClosed) dashStatusClosed.innerHTML = displayVal(statusCounts.closed);
-        if (dashStatusCancel) dashStatusCancel.innerHTML = displayVal(statusCounts.cancel);
+    if (dashStatusOpen) dashStatusOpen.innerHTML = displayVal(statusCounts.open);
+    if (dashStatusProcess) dashStatusProcess.innerHTML = displayVal(statusCounts.process);
+    if (dashStatusDone) dashStatusDone.innerHTML = displayVal(statusCounts.done);
+    if (dashStatusClosed) dashStatusClosed.innerHTML = displayVal(statusCounts.closed);
+    if (dashStatusCancel) dashStatusCancel.innerHTML = displayVal(statusCounts.cancel);
 
-        if (state.isInitialLoading) return; // Skip updating chart while loading
+    if (state.isInitialLoading) return; // Skip updating chart while loading
 
-        // --- Update Histograms ---
-        const ctx = document.getElementById('case-type-pie-chart');
-        if (ctx) {
-            const canvasCtx = ctx.getContext('2d');
+    // --- Update Histograms ---
+    const ctx = document.getElementById('case-type-pie-chart');
+    if (ctx) {
+        const canvasCtx = ctx.getContext('2d');
 
-            // Define canvas gradients matching the category card colors
-            const pmGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
-            pmGrad.addColorStop(0, '#38bdf8');
-            pmGrad.addColorStop(1, '#0369a1');
+        // Define canvas gradients matching the category card colors
+        const pmGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
+        pmGrad.addColorStop(0, '#38bdf8');
+        pmGrad.addColorStop(1, '#0369a1');
 
-            const installGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
-            installGrad.addColorStop(0, '#4ade80');
-            installGrad.addColorStop(1, '#15803d');
+        const installGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
+        installGrad.addColorStop(0, '#4ade80');
+        installGrad.addColorStop(1, '#15803d');
 
-            const repairGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
-            repairGrad.addColorStop(0, '#f87171');
-            repairGrad.addColorStop(1, '#dc2626');
+        const repairGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
+        repairGrad.addColorStop(0, '#f87171');
+        repairGrad.addColorStop(1, '#dc2626');
 
-            const deinstallGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
-            deinstallGrad.addColorStop(0, '#fbbf24');
-            deinstallGrad.addColorStop(1, '#b45309');
+        const deinstallGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
+        deinstallGrad.addColorStop(0, '#fbbf24');
+        deinstallGrad.addColorStop(1, '#b45309');
 
-            const bgColors = [pmGrad, installGrad, repairGrad, deinstallGrad];
+        const bgColors = [pmGrad, installGrad, repairGrad, deinstallGrad];
 
-            const isDarkMode = document.body.classList.contains("dark-mode");
-            const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)';
-            const tickColor = isDarkMode ? '#94a3b8' : '#64748b';
+        const isDarkMode = document.body.classList.contains("dark-mode");
+        const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)';
+        const tickColor = isDarkMode ? '#94a3b8' : '#64748b';
 
-            const barChartOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
+        const barChartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return ` ${context.parsed.y} งาน`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
                         display: false
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                return ` ${context.parsed.y} งาน`;
-                            }
+                    ticks: {
+                        color: tickColor,
+                        font: {
+                            family: "'Kanit', 'Prompt', sans-serif",
+                            size: 11,
+                            weight: '500'
                         }
                     }
                 },
-                scales: {
-                    x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            color: tickColor,
-                            font: {
-                                family: "'Kanit', 'Prompt', sans-serif",
-                                size: 11,
-                                weight: '500'
-                            }
-                        }
+                y: {
+                    grid: {
+                        color: gridColor
                     },
-                    y: {
-                        grid: {
-                            color: gridColor
-                        },
-                        ticks: {
-                            color: tickColor,
-                            stepSize: 1,
-                            beginAtZero: true,
-                            font: {
-                                family: "'Kanit', 'Prompt', sans-serif",
-                                size: 11
-                            }
+                    ticks: {
+                        color: tickColor,
+                        stepSize: 1,
+                        beginAtZero: true,
+                        font: {
+                            family: "'Kanit', 'Prompt', sans-serif",
+                            size: 11
                         }
                     }
                 }
-            };
+            }
+        };
 
-            if (window.caseTypePieChart instanceof Chart && window.caseTypePieChart.config.type === 'bar') {
-                window.caseTypePieChart.data.datasets[0].data = [counts.pm, counts.install, counts.repair, counts.deinstall];
-                window.caseTypePieChart.data.datasets[0].backgroundColor = bgColors;
-                window.caseTypePieChart.update();
+        if (window.caseTypePieChart instanceof Chart && window.caseTypePieChart.config.type === 'bar') {
+            window.caseTypePieChart.data.datasets[0].data = [counts.pm, counts.install, counts.repair, counts.deinstall];
+            window.caseTypePieChart.data.datasets[0].backgroundColor = bgColors;
+            window.caseTypePieChart.update();
+        } else {
+            if (window.caseTypePieChart instanceof Chart) {
+                window.caseTypePieChart.destroy();
+            }
+            window.caseTypePieChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['บำรุงรักษา', 'ติดตั้ง', 'ซ่อม', 'รื้อถอน'],
+                    datasets: [{
+                        data: [counts.pm, counts.install, counts.repair, counts.deinstall],
+                        backgroundColor: bgColors,
+                        borderRadius: 6,
+                        borderWidth: 0
+                    }]
+                },
+                options: barChartOptions
+            });
+        }
+
+        // --- Update Case Status Histogram ---
+        const ctxStatus = document.getElementById('case-status-pie-chart');
+        if (ctxStatus) {
+            const canvasCtxStatus = ctxStatus.getContext('2d');
+
+            const openGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
+            openGrad.addColorStop(0, '#7dd3fc');
+            openGrad.addColorStop(1, '#0ea5e9');
+
+            const processGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
+            processGrad.addColorStop(0, '#fde047');
+            processGrad.addColorStop(1, '#f59e0b');
+
+            const doneGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
+            doneGrad.addColorStop(0, '#99f6e4');
+            doneGrad.addColorStop(1, '#14b8a6');
+
+            const closedGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
+            closedGrad.addColorStop(0, '#cbd5e1');
+            closedGrad.addColorStop(1, '#475569');
+
+            const cancelGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
+            cancelGrad.addColorStop(0, '#fca5a5');
+            cancelGrad.addColorStop(1, '#ef4444');
+
+            const bgColorsStatus = [openGrad, processGrad, doneGrad, closedGrad, cancelGrad];
+
+            if (window.caseStatusPieChart instanceof Chart && window.caseStatusPieChart.config.type === 'bar') {
+                window.caseStatusPieChart.data.datasets[0].data = [
+                    statusCounts.open,
+                    statusCounts.process,
+                    statusCounts.done,
+                    statusCounts.closed,
+                    statusCounts.cancel
+                ];
+                window.caseStatusPieChart.data.datasets[0].backgroundColor = bgColorsStatus;
+                window.caseStatusPieChart.update();
             } else {
-                if (window.caseTypePieChart instanceof Chart) {
-                    window.caseTypePieChart.destroy();
+                if (window.caseStatusPieChart instanceof Chart) {
+                    window.caseStatusPieChart.destroy();
                 }
-                window.caseTypePieChart = new Chart(ctx, {
+                window.caseStatusPieChart = new Chart(ctxStatus, {
                     type: 'bar',
                     data: {
-                        labels: ['บำรุงรักษา', 'ติดตั้ง', 'ซ่อม', 'รื้อถอน'],
+                        labels: ['เปิดงาน', 'ดำเนินการ', 'เสร็จสิ้น', 'ปิดเคส', 'ยกเลิก'],
                         datasets: [{
-                            data: [counts.pm, counts.install, counts.repair, counts.deinstall],
-                            backgroundColor: bgColors,
+                            data: [
+                                statusCounts.open,
+                                statusCounts.process,
+                                statusCounts.done,
+                                statusCounts.closed,
+                                statusCounts.cancel
+                            ],
+                            backgroundColor: bgColorsStatus,
                             borderRadius: 6,
                             borderWidth: 0
                         }]
@@ -14544,131 +14600,69 @@ function updateCaseDashboard() {
                     options: barChartOptions
                 });
             }
+        }
+    }
 
-            // --- Update Case Status Histogram ---
-            const ctxStatus = document.getElementById('case-status-pie-chart');
-            if (ctxStatus) {
-                const canvasCtxStatus = ctxStatus.getContext('2d');
+    // Highlight active card and update dynamic descriptions
+    const activeCategory = selects.filterCategory ? selects.filterCategory.value : "all";
 
-                const openGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
-                openGrad.addColorStop(0, '#7dd3fc');
-                openGrad.addColorStop(1, '#0ea5e9');
+    // 1. Get Status Text
+    let statusText = "ทุกสถานะ";
+    if (statusFilter !== "all") {
+        const statusMap = {
+            "Open": "เปิดงาน",
+            "On Process": "กำลังดำเนินการ",
+            "Done": "เสร็จสิ้น",
+            "Case Closed": "ปิดเคส",
+            "Cancel": "ยกเลิก"
+        };
+        statusText = statusMap[statusFilter] || statusFilter;
+    }
 
-                const processGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
-                processGrad.addColorStop(0, '#fde047');
-                processGrad.addColorStop(1, '#f59e0b');
+    // 2. Get Period Text
+    let periodText = "ทุกช่วงเวลา";
+    if (isCalendar) {
+        const calHeader = document.getElementById("cal-current-month");
+        if (calHeader) {
+            periodText = `ประจำเดือน ${calHeader.textContent.trim()}`;
+        }
+    } else if (startDate || endDate) {
+        const formatThaiDate = (date) => {
+            if (!date) return "";
+            return date.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" });
+        };
+        if (startDate && endDate) {
+            periodText = `ช่วง ${formatThaiDate(startDate)} - ${formatThaiDate(endDate)}`;
+        } else if (startDate) {
+            periodText = `ตั้งแต่ ${formatThaiDate(startDate)}`;
+        } else if (endDate) {
+            periodText = `ถึง ${formatThaiDate(endDate)}`;
+        }
+    }
 
-                const doneGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
-                doneGrad.addColorStop(0, '#99f6e4');
-                doneGrad.addColorStop(1, '#14b8a6');
+    const filterDetails = `สถานะ: ${statusText} • ${periodText}`;
 
-                const closedGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
-                closedGrad.addColorStop(0, '#cbd5e1');
-                closedGrad.addColorStop(1, '#475569');
+    dashboard.querySelectorAll(".dashboard-card").forEach(card => {
+        const cardCategory = card.getAttribute("data-category");
+        if (!cardCategory) return; // Skip status card since it doesn't filter category directly
 
-                const cancelGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
-                cancelGrad.addColorStop(0, '#fca5a5');
-                cancelGrad.addColorStop(1, '#ef4444');
+        // Remove all active states
+        card.classList.remove("active-card", "active-pm", "active-install", "active-repair", "active-deinstall");
 
-                const bgColorsStatus = [openGrad, processGrad, doneGrad, closedGrad, cancelGrad];
-
-                if (window.caseStatusPieChart instanceof Chart && window.caseStatusPieChart.config.type === 'bar') {
-                    window.caseStatusPieChart.data.datasets[0].data = [
-                        statusCounts.open,
-                        statusCounts.process,
-                        statusCounts.done,
-                        statusCounts.closed,
-                        statusCounts.cancel
-                    ];
-                    window.caseStatusPieChart.data.datasets[0].backgroundColor = bgColorsStatus;
-                    window.caseStatusPieChart.update();
-                } else {
-                    if (window.caseStatusPieChart instanceof Chart) {
-                        window.caseStatusPieChart.destroy();
-                    }
-                    window.caseStatusPieChart = new Chart(ctxStatus, {
-                        type: 'bar',
-                        data: {
-                            labels: ['เปิดงาน', 'ดำเนินการ', 'เสร็จสิ้น', 'ปิดเคส', 'ยกเลิก'],
-                            datasets: [{
-                                data: [
-                                    statusCounts.open,
-                                    statusCounts.process,
-                                    statusCounts.done,
-                                    statusCounts.closed,
-                                    statusCounts.cancel
-                                ],
-                                backgroundColor: bgColorsStatus,
-                                borderRadius: 6,
-                                borderWidth: 0
-                            }]
-                        },
-                        options: barChartOptions
-                    });
-                }
-            }
+        if (cardCategory === activeCategory) {
+            card.classList.add("active-card");
+            if (cardCategory === "บำรุงรักษาตามรอบ") card.classList.add("active-pm");
+            else if (cardCategory === "ติดตั้ง") card.classList.add("active-install");
+            else if (cardCategory === "ซ่อม") card.classList.add("active-repair");
+            else if (cardCategory === "รื้อถอน") card.classList.add("active-deinstall");
         }
 
-        // Highlight active card and update dynamic descriptions
-        const activeCategory = selects.filterCategory ? selects.filterCategory.value : "all";
-
-        // 1. Get Status Text
-        let statusText = "ทุกสถานะ";
-        if (statusFilter !== "all") {
-            const statusMap = {
-                "Open": "เปิดงาน",
-                "On Process": "กำลังดำเนินการ",
-                "Done": "เสร็จสิ้น",
-                "Case Closed": "ปิดเคส",
-                "Cancel": "ยกเลิก"
-            };
-            statusText = statusMap[statusFilter] || statusFilter;
+        // Update description dynamically
+        const descEl = card.querySelector(".dashboard-card-content > span:nth-child(3)");
+        if (descEl) {
+            descEl.textContent = filterDetails;
         }
-
-        // 2. Get Period Text
-        let periodText = "ทุกช่วงเวลา";
-        if (isCalendar) {
-            const calHeader = document.getElementById("cal-current-month");
-            if (calHeader) {
-                periodText = `ประจำเดือน ${calHeader.textContent.trim()}`;
-            }
-        } else if (startDate || endDate) {
-            const formatThaiDate = (date) => {
-                if (!date) return "";
-                return date.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" });
-            };
-            if (startDate && endDate) {
-                periodText = `ช่วง ${formatThaiDate(startDate)} - ${formatThaiDate(endDate)}`;
-            } else if (startDate) {
-                periodText = `ตั้งแต่ ${formatThaiDate(startDate)}`;
-            } else if (endDate) {
-                periodText = `ถึง ${formatThaiDate(endDate)}`;
-            }
-        }
-
-        const filterDetails = `สถานะ: ${statusText} • ${periodText}`;
-
-        dashboard.querySelectorAll(".dashboard-card").forEach(card => {
-            const cardCategory = card.getAttribute("data-category");
-            if (!cardCategory) return; // Skip status card since it doesn't filter category directly
-
-            // Remove all active states
-            card.classList.remove("active-card", "active-pm", "active-install", "active-repair", "active-deinstall");
-
-            if (cardCategory === activeCategory) {
-                card.classList.add("active-card");
-                if (cardCategory === "บำรุงรักษาตามรอบ") card.classList.add("active-pm");
-                else if (cardCategory === "ติดตั้ง") card.classList.add("active-install");
-                else if (cardCategory === "ซ่อม") card.classList.add("active-repair");
-                else if (cardCategory === "รื้อถอน") card.classList.add("active-deinstall");
-            }
-
-            // Update description dynamically
-            const descEl = card.querySelector(".dashboard-card-content > span:nth-child(3)");
-            if (descEl) {
-                descEl.textContent = filterDetails;
-            }
-        });
+    });
     }
 }
 
@@ -15412,7 +15406,7 @@ if (systemSettingsForm) {
                 throw new Error("กรุณาระบุเวลาหมดอายุที่ถูกต้อง (มากกว่า 0 ชั่วโมง)");
             }
             const newSessionTimeoutMinutes = Math.round(newSessionTimeoutHours * 60);
-
+            
             await updateDoc(doc(db, "users", user.uid), {
                 sessionTimeout: newSessionTimeoutMinutes
             });
@@ -19278,16 +19272,16 @@ function renderInventory() {
     const container = document.getElementById("inventory-list-container");
     const searchInput = document.getElementById("inventory-search");
     const countSpan = document.getElementById("header-inventory-count");
-
+    
     if (!container) return;
-
+    
     // We don't need cards-grid anymore since it's a table
     if (container.classList.contains("cards-grid")) {
         container.classList.remove("cards-grid");
     }
 
     const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
-
+    
     const filteredItems = inventoryItems.filter(item => {
         const nameMatch = (item.name || "").toLowerCase().includes(searchTerm);
         const codeMatch = (item.code || "").toLowerCase().includes(searchTerm);
@@ -19315,12 +19309,12 @@ function renderInventory() {
     inventoryHistoryItems.forEach(tx => {
         const itemId = tx.itemId;
         if (!itemId) return;
-
+        
         let txDate = null;
         if (tx.timestamp) {
             txDate = typeof tx.timestamp.toDate === 'function' ? tx.timestamp.toDate() : new Date(tx.timestamp);
         }
-
+        
         if (txDate && (!lastTxMap[itemId] || txDate > lastTxMap[itemId].date)) {
             lastTxMap[itemId] = {
                 quantity: tx.quantity,
@@ -19335,15 +19329,15 @@ function renderInventory() {
         const stock = parseInt(item.stock) || 0;
         const imageUrl = item.imageUrl || "https://placehold.co/150x150?text=No+Image";
         const stockColor = stock > 0 ? 'var(--primary-color)' : 'var(--danger-color)';
-
+        
         // Find last transaction: prioritize computed history, fallback to document fields
         let lastTxDateStr = item.lastTxDateTime ? formatDateTimeDDMMYYYY(item.lastTxDateTime) : "-";
-
+        
         const computedTx = lastTxMap[item.id];
         if (computedTx) {
             lastTxDateStr = formatDateTimeDDMMYYYY(computedTx.date.toISOString());
         }
-
+        
         html += `
             <tr>
                 <td class="cell-index" data-label="ลำดับ">${index + 1}</td>
@@ -19386,15 +19380,15 @@ function renderInventory() {
     container.innerHTML = html;
 }
 
-window.deleteInventoryItem = async function (itemId, itemName) {
+window.deleteInventoryItem = async function(itemId, itemName) {
     if (!confirm(`คุณต้องการลบสินค้า "${itemName}" ใช่หรือไม่? การลบนี้จะไม่สามารถย้อนกลับได้`)) {
         return;
     }
-
+    
     try {
         const docRef = doc(db, "inventory", itemId);
         await deleteDoc(docRef);
-
+        
         const user = auth.currentUser;
         await addDoc(collection(db, "inventory_history"), {
             itemId: itemId,
@@ -19404,7 +19398,7 @@ window.deleteInventoryItem = async function (itemId, itemName) {
             timestamp: serverTimestamp(),
             userEmail: user ? user.email : "Unknown"
         });
-
+        
         alert("ลบสินค้าเรียบร้อยแล้ว");
     } catch (error) {
         console.error("Error deleting inventory item:", error);
@@ -19412,7 +19406,7 @@ window.deleteInventoryItem = async function (itemId, itemName) {
     }
 };
 
-window.openStockAdjustment = function (itemId, type) {
+window.openStockAdjustment = function(itemId, type) {
     const item = inventoryItems.find(i => i.id === itemId);
     if (!item) return;
 
@@ -19430,7 +19424,7 @@ window.openStockAdjustment = function (itemId, type) {
     modal.style.display = "flex";
 };
 
-window.submitStockAdjustment = async function () {
+window.submitStockAdjustment = async function() {
     const itemId = document.getElementById("stock-adj-item-id").value;
     const type = document.getElementById("stock-adj-type").value;
     const currentStock = parseInt(document.getElementById("stock-adj-current").value) || 0;
@@ -19459,14 +19453,14 @@ window.submitStockAdjustment = async function () {
 
     const btnSave = document.getElementById("btn-save-stock-adj");
     const originalText = btnSave.innerHTML;
-
+    
     try {
         btnSave.disabled = true;
         btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...';
 
         // 1. Update stock and last transaction info in inventory
         const itemRef = doc(db, "inventory", itemId);
-        await updateDoc(itemRef, {
+        await updateDoc(itemRef, { 
             stock: newStock,
             lastTxQty: quantity,
             lastTxType: type,
@@ -19494,7 +19488,7 @@ window.submitStockAdjustment = async function () {
     }
 };
 
-window.viewInventoryHistory = async function (itemId) {
+window.viewInventoryHistory = async function(itemId) {
     const item = inventoryItems.find(i => i.id === itemId);
     if (!item) return;
 
@@ -19518,7 +19512,7 @@ window.viewInventoryHistory = async function (itemId) {
         // Remove orderBy to avoid requiring a composite index in Firestore
         const q = query(historyRef, where("itemId", "==", itemId));
         const snapshot = await getDocs(q);
-
+        
         if (snapshot.empty) {
             tbody.innerHTML = `<tr><td colspan="${totalCols}"><div class="empty-state"><p>ยังไม่มีประวัติการทำรายการ</p></div></td></tr>`;
             return;
@@ -19543,7 +19537,7 @@ window.viewInventoryHistory = async function (itemId) {
         historyData.forEach(data => {
             const dateStr = data.timestamp ? data.timestamp.toDate().toLocaleString('th-TH') : "N/A";
             const typeStr = data.type === 'add' ? `<span style="color: #16a34a; font-weight: 600;"><i class="fa-solid fa-plus"></i> นำเข้า</span>` : `<span style="color: #dc2626; font-weight: 600;"><i class="fa-solid fa-minus"></i> เบิกจ่าย</span>`;
-
+            
             html += `
                 <tr>
                     <td class="cell-date" style="font-size: 0.85rem; white-space: nowrap;" data-label="วันที่-เวลา">${dateStr}</td>
@@ -19564,18 +19558,18 @@ window.viewInventoryHistory = async function (itemId) {
             `;
         });
         tbody.innerHTML = html;
-
+        
     } catch (error) {
         console.error("Error fetching history:", error);
         tbody.innerHTML = `<tr><td colspan="${totalCols}" style="text-align: center; color: var(--danger-color);">เกิดข้อผิดพลาดในการโหลดประวัติ</td></tr>`;
     }
 };
 
-window.deleteHistoryEntry = async function (historyId, itemId) {
+window.deleteHistoryEntry = async function(historyId, itemId) {
     if (!confirm("คุณต้องการลบประวัติการทำรายการนี้ใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้")) {
         return;
     }
-
+    
     try {
         await deleteDoc(doc(db, "inventory_history", historyId));
         alert("ลบประวัติเรียบร้อยแล้ว");
@@ -19587,26 +19581,26 @@ window.deleteHistoryEntry = async function (historyId, itemId) {
 };
 
 // --- Event Listeners for Inventory ---
-window.openAddInventoryModal = function () {
+window.openAddInventoryModal = function() {
     const modal = document.getElementById("modal-inventory");
     if (!modal) return;
-
+    
     const title = document.getElementById("modal-inventory-title");
     if (title) title.textContent = "เพิ่มสินค้ารายการใหม่";
-
+    
     const form = document.getElementById("inventory-form");
     if (form) {
         form.reset();
         delete form.dataset.mode;
         delete form.dataset.itemId;
     }
-
+    
     const preview = document.getElementById("inventory-image-preview");
     if (preview) {
         preview.src = "";
         preview.style.display = "none";
     }
-
+    
     const uploadArea = document.getElementById("inventory-upload-area");
     if (uploadArea) {
         const i = uploadArea.querySelector("i");
@@ -19614,34 +19608,34 @@ window.openAddInventoryModal = function () {
         const p = uploadArea.querySelector("p");
         if (p) p.style.display = "block";
     }
-
+    
     modal.classList.remove("hidden");
     modal.style.display = "flex";
 };
 
-window.openEditInventoryModal = function (itemId) {
+window.openEditInventoryModal = function(itemId) {
     const item = inventoryItems.find(i => i.id === itemId);
     if (!item) return;
 
     const modal = document.getElementById("modal-inventory");
     if (!modal) return;
-
+    
     const title = document.getElementById("modal-inventory-title");
     if (title) title.textContent = "แก้ไขข้อมูลสินค้า";
-
+    
     const form = document.getElementById("inventory-form");
     if (form) {
         form.dataset.mode = "edit";
         form.dataset.itemId = itemId;
     }
-
+    
     document.getElementById("inventory-name").value = item.name || "";
     document.getElementById("inventory-code").value = item.code || "";
     document.getElementById("inventory-stock").value = item.stock !== undefined ? item.stock : 0;
-
+    
     const preview = document.getElementById("inventory-image-preview");
     const uploadArea = document.getElementById("inventory-upload-area");
-
+    
     if (preview) {
         if (item.imageUrl) {
             preview.src = item.imageUrl;
@@ -19663,7 +19657,7 @@ window.openEditInventoryModal = function (itemId) {
             }
         }
     }
-
+    
     modal.classList.remove("hidden");
     modal.style.display = "flex";
 };
@@ -19673,17 +19667,17 @@ function setupInventoryListeners() {
     if (searchInput) {
         searchInput.addEventListener("input", renderInventory);
     }
-
+    
     const inventoryImageInput = document.getElementById("inventory-image-input");
     const inventoryUploadArea = document.getElementById("inventory-upload-area");
-
+    
     if (inventoryUploadArea && inventoryImageInput) {
         inventoryUploadArea.addEventListener("click", () => inventoryImageInput.click());
         inventoryImageInput.addEventListener("change", (e) => {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function (e) {
+                reader.onload = function(e) {
                     const preview = document.getElementById("inventory-image-preview");
                     preview.src = e.target.result;
                     preview.style.display = "block";
@@ -19700,7 +19694,7 @@ function setupInventoryListeners() {
         // Prevent multiple bindings
         const newBtnSave = btnSave.cloneNode(true);
         btnSave.parentNode.replaceChild(newBtnSave, btnSave);
-
+        
         newBtnSave.addEventListener("click", async () => {
             const form = document.getElementById("inventory-form");
             const mode = form ? form.dataset.mode : "add";
@@ -19710,18 +19704,18 @@ function setupInventoryListeners() {
             const code = document.getElementById("inventory-code").value.trim();
             const stockVal = document.getElementById("inventory-stock").value;
             const fileInput = document.getElementById("inventory-image-input");
-
+            
             if (!name || stockVal === "") {
                 alert("กรุณากรอกข้อมูลให้ครบถ้วน");
                 return;
             }
-
+            
             const stock = parseInt(stockVal);
-
+            
             try {
                 newBtnSave.disabled = true;
                 newBtnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...';
-
+                
                 let imageUrl = "";
                 if (fileInput.files && fileInput.files[0]) {
                     const file = fileInput.files[0];
@@ -19729,13 +19723,13 @@ function setupInventoryListeners() {
                     const snapshot = await uploadBytes(storageRef, file);
                     imageUrl = await getDownloadURL(snapshot.ref);
                 }
-
+                
                 if (mode === "edit") {
                     const updateData = { name, code, stock };
                     if (imageUrl) {
                         updateData.imageUrl = imageUrl;
                     }
-
+                    
                     const item = inventoryItems.find(i => i.id === itemId);
                     if (item && item.stock !== stock) {
                         const diff = Math.abs(stock - item.stock);
@@ -19743,7 +19737,7 @@ function setupInventoryListeners() {
                         updateData.lastTxQty = diff;
                         updateData.lastTxType = type;
                         updateData.lastTxDateTime = new Date().toISOString();
-
+                        
                         const user = auth.currentUser;
                         await addDoc(collection(db, "inventory_history"), {
                             itemId: itemId,
@@ -19754,7 +19748,7 @@ function setupInventoryListeners() {
                             userEmail: user ? user.email : "Unknown"
                         });
                     }
-
+                    
                     await updateDoc(doc(db, "inventory", itemId), updateData);
                 } else {
                     await addDoc(collection(db, "inventory"), {
@@ -19768,9 +19762,9 @@ function setupInventoryListeners() {
                         lastTxDateTime: new Date().toISOString()
                     });
                 }
-
+                
                 document.getElementById("modal-inventory").classList.add("hidden");
-
+                
             } catch (error) {
                 console.error("Error saving inventory:", error);
                 alert("เกิดข้อผิดพลาดในการบันทึกสินค้า");
