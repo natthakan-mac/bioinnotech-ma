@@ -2234,13 +2234,58 @@
                 <!-- Dashboard แยกตามประเภทเคส (Case Type Dashboard) -->
                 <div id="case-type-dashboard" class="case-dashboard-container"
                     style="margin-top: 0.5rem; margin-bottom: 1.5rem; width: 100%; display: flex; flex-direction: row; gap: 2rem; align-items: stretch; flex-wrap: wrap;">
-                     <div style="flex: 1; min-width: 320px; display: flex; align-items: center; justify-content: center; min-height: 380px; position: relative;">
-                         <div style="position: relative; width: 100%; max-width: 360px; aspect-ratio: 1/1;">
-                             <canvas id="case-type-pie-chart"></canvas>
-                         </div>
+                     <!-- Charts Row (Side-by-side Histograms) -->
+                     <div style="flex: 1.5; min-width: 320px; display: flex; flex-direction: row; gap: 1rem; flex-wrap: wrap;">
+                          <!-- Chart 1: Case Type Histogram -->
+                          <div style="flex: 1; min-width: 240px; display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.02); border-radius: var(--radius-lg); border: 1px solid var(--border-color); padding: 1.25rem;">
+                              <span style="font-weight: 700; font-size: 0.88rem; color: var(--text-color); margin-bottom: 0.75rem; text-align: center; width: 100%;">สถิติประเภทงาน (Case Types)</span>
+                              <div style="width: 100%; height: 100%; position: relative; min-height: 250px; display: flex; align-items: center;">
+                                  <canvas id="case-type-pie-chart"></canvas>
+                              </div>
+                          </div>
+                          <!-- Chart 2: Case Status Histogram -->
+                          <div style="flex: 1; min-width: 240px; display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.02); border-radius: var(--radius-lg); border: 1px solid var(--border-color); padding: 1.25rem;">
+                              <span style="font-weight: 700; font-size: 0.88rem; color: var(--text-color); margin-bottom: 0.75rem; text-align: center; width: 100%;">สถิติสถานะงาน (Case Status)</span>
+                              <div style="width: 100%; height: 100%; position: relative; min-height: 250px; display: flex; align-items: center;">
+                                  <canvas id="case-status-pie-chart"></canvas>
+                              </div>
+                          </div>
                      </div>
                     <div style="flex: 1; min-width: 320px; display: flex; flex-direction: column;">
                         <div class="dashboard-grid">
+                            <!-- Card 6: สถานะงาน (Case Status Counter Card) -->
+                            <div class="dashboard-card" id="dash-status-counter-card" style="grid-column: span 2; min-height: 150px; justify-content: flex-start; gap: 0.75rem;">
+                                <div style="display: flex; align-items: center; gap: 0.75rem; width: 100%;">
+                                    <div class="dashboard-card-icon" style="background: rgba(79, 70, 229, 0.1); color: #4f46e5; border: 1px solid rgba(79, 70, 229, 0.2); width: 38px; height: 38px; font-size: 1.05rem; border-radius: 10px; margin-bottom: 0;">
+                                        <i class="fa-solid fa-chart-simple"></i>
+                                    </div>
+                                    <span style="font-weight: 700; color: var(--text-color); font-size: 0.88rem;">สถานะงาน (Case Status)</span>
+                                </div>
+                                <div class="dashboard-card-content" style="width: 100%; flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 0.25rem; padding: 0;">
+                                    <div class="status-summary-grid" style="display: flex; gap: 0.5rem; justify-content: space-between; width: 100%; flex-wrap: wrap;">
+                                        <div class="status-summary-item" data-status="Open" style="flex: 1; min-width: 65px; background: rgba(14, 165, 233, 0.06); border: 1px solid rgba(14, 165, 233, 0.15); border-radius: 8px; padding: 0.4rem; text-align: center;">
+                                            <div style="font-size: 0.7rem; color: #0284c7; font-weight: 600;">เปิดงาน</div>
+                                            <div id="dash-status-open" style="font-size: 1.15rem; font-weight: 700; color: #0369a1; margin-top: 1px;">0</div>
+                                        </div>
+                                        <div class="status-summary-item" data-status="On Process" style="flex: 1; min-width: 65px; background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.15); border-radius: 8px; padding: 0.4rem; text-align: center;">
+                                            <div style="font-size: 0.7rem; color: #d97706; font-weight: 600;">ดำเนินการ</div>
+                                            <div id="dash-status-process" style="font-size: 1.15rem; font-weight: 700; color: #b45309; margin-top: 1px;">0</div>
+                                        </div>
+                                        <div class="status-summary-item" data-status="Done" style="flex: 1; min-width: 65px; background: rgba(20, 184, 166, 0.06); border: 1px solid rgba(20, 184, 166, 0.15); border-radius: 8px; padding: 0.4rem; text-align: center;">
+                                            <div style="font-size: 0.7rem; color: #0d9488; font-weight: 600;">เสร็จสิ้น</div>
+                                            <div id="dash-status-done" style="font-size: 1.15rem; font-weight: 700; color: #0f766e; margin-top: 1px;">0</div>
+                                        </div>
+                                        <div class="status-summary-item" data-status="Case Closed" style="flex: 1; min-width: 65px; background: rgba(71, 85, 105, 0.06); border: 1px solid rgba(71, 85, 105, 0.15); border-radius: 8px; padding: 0.4rem; text-align: center;">
+                                            <div style="font-size: 0.7rem; color: #475569; font-weight: 600;">ปิดเคส</div>
+                                            <div id="dash-status-closed" style="font-size: 1.15rem; font-weight: 700; color: #334155; margin-top: 1px;">0</div>
+                                        </div>
+                                        <div class="status-summary-item" data-status="Cancel" style="flex: 1; min-width: 65px; background: rgba(239, 68, 68, 0.06); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 8px; padding: 0.4rem; text-align: center;">
+                                            <div style="font-size: 0.7rem; color: #dc2626; font-weight: 600;">ยกเลิก</div>
+                                            <div id="dash-status-cancel" style="font-size: 1.15rem; font-weight: 700; color: #b91c1c; margin-top: 1px;">0</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             <!-- Card 2: บำรุงรักษาตามรอบ -->
                             <div class="dashboard-card interactive-card" data-category="บำรุงรักษาตามรอบ">
                                 <div class="dashboard-card-icon" style="background: rgba(3, 105, 161, 0.1); color: #0369a1; border: 1px solid rgba(3, 105, 161, 0.2);">

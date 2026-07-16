@@ -8706,6 +8706,11 @@ body.dark-mode .dashboard-card-content > span:nth-child(3) {
     background-color: #b45309;
 }
 
+/* Status summary card styles (full width) */
+#dash-status-counter-card {
+    width: 100% !important;
+}
+
 /* Dark mode compatibility rules */
 body.dark-mode .dashboard-card {
     background: rgba(30, 41, 59, 0.7);

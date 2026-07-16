@@ -14362,6 +14362,22 @@ function updateCaseDashboard() {
         searchQuery,
     });
 
+    const categoryFilter = document.getElementById("filter-category")
+        ? document.getElementById("filter-category").value
+        : "all";
+
+    const logsForStatusDashboard = filterLogsClientSide(sourceLogs, {
+        siteId,
+        siteSearchQuery,
+        startDate,
+        endDate,
+        category: categoryFilter, // respects category filter
+        status: "all",            // ignores status filter
+        minPrice: 0,
+        maxPrice: Infinity,
+        searchQuery,
+    });
+
     // Calculate count for each category
     const counts = {
         all: logsForDashboard.length,
@@ -14379,12 +14395,37 @@ function updateCaseDashboard() {
         else if (cat === "รื้อถอน") counts.deinstall++;
     });
 
+    // Calculate count for each status
+    const statusCounts = {
+        open: 0,
+        process: 0,
+        done: 0,
+        closed: 0,
+        cancel: 0
+    };
+
+    logsForStatusDashboard.forEach(log => {
+        const stat = log.status;
+        if (stat === "Open") statusCounts.open++;
+        else if (stat === "On Process") statusCounts.process++;
+        else if (stat === "Done") statusCounts.done++;
+        else if (stat === "Case Closed") statusCounts.closed++;
+        else if (stat === "Cancel") statusCounts.cancel++;
+    });
+
     // Update UI elements
     const dashAll = document.getElementById("dash-case-all");
     const dashPm = document.getElementById("dash-case-pm");
     const dashInstall = document.getElementById("dash-case-install");
     const dashRepair = document.getElementById("dash-case-repair");
     const dashDeinstall = document.getElementById("dash-case-deinstall");
+
+    const dashStatusOpen = document.getElementById("dash-status-open");
+    const dashStatusProcess = document.getElementById("dash-status-process");
+    const dashStatusDone = document.getElementById("dash-status-done");
+    const dashStatusClosed = document.getElementById("dash-status-closed");
+    const dashStatusCancel = document.getElementById("dash-status-cancel");
+
     const displayVal = (val) => state.isInitialLoading ? '<i class="fa-solid fa-spinner fa-spin text-muted" style="font-size: 0.8em; opacity: 0.5;"></i>' : val;
 
     if (dashAll) dashAll.innerHTML = displayVal(counts.all);
@@ -14393,9 +14434,15 @@ function updateCaseDashboard() {
     if (dashRepair) dashRepair.innerHTML = displayVal(counts.repair);
     if (dashDeinstall) dashDeinstall.innerHTML = displayVal(counts.deinstall);
 
+    if (dashStatusOpen) dashStatusOpen.innerHTML = displayVal(statusCounts.open);
+    if (dashStatusProcess) dashStatusProcess.innerHTML = displayVal(statusCounts.process);
+    if (dashStatusDone) dashStatusDone.innerHTML = displayVal(statusCounts.done);
+    if (dashStatusClosed) dashStatusClosed.innerHTML = displayVal(statusCounts.closed);
+    if (dashStatusCancel) dashStatusCancel.innerHTML = displayVal(statusCounts.cancel);
+
     if (state.isInitialLoading) return; // Skip updating chart while loading
 
-    // --- Update Gradient Doughnut Chart ---
+    // --- Update Histograms ---
     const ctx = document.getElementById('case-type-pie-chart');
     if (ctx) {
         const canvasCtx = ctx.getContext('2d');
@@ -14419,114 +14466,140 @@ function updateCaseDashboard() {
 
         const bgColors = [pmGrad, installGrad, repairGrad, deinstallGrad];
 
-        // Define custom doughnut labels plugin
-        const doughnutLabelsPlugin = {
-            id: 'doughnutLabels',
-            afterDraw(chart) {
-                const { ctx } = chart;
-                const isDarkMode = document.body.classList.contains("dark-mode");
+        const isDarkMode = document.body.classList.contains("dark-mode");
+        const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)';
+        const tickColor = isDarkMode ? '#94a3b8' : '#64748b';
 
-                chart.data.datasets.forEach((dataset, i) => {
-                    const meta = chart.getDatasetMeta(i);
-                    meta.data.forEach((element, index) => {
-                        const value = dataset.data[index];
-                        if (value === 0) return; // Don't draw if count is zero
-
-                        const { x, y, outerRadius, startAngle, endAngle } = element;
-                        const midAngle = startAngle + (endAngle - startAngle) / 2;
-
-                        // 1. Line start point (at boundary of doughnut slice)
-                        const startX = Math.cos(midAngle) * outerRadius + x;
-                        const startY = Math.sin(midAngle) * outerRadius + y;
-
-                        // 2. Line inflection point (extend outward)
-                        const extendLength = 14;
-                        const infX = Math.cos(midAngle) * (outerRadius + extendLength) + x;
-                        const infY = Math.sin(midAngle) * (outerRadius + extendLength) + y;
-
-                        // 3. Line end point (horizontal tail)
-                        const isRight = infX > x;
-                        const tailLength = 8;
-                        const endX = infX + (isRight ? tailLength : -tailLength);
-                        const endY = infY;
-
-                        // 4. Draw polyline callout
-                        ctx.save();
-                        ctx.beginPath();
-                        ctx.moveTo(startX, startY);
-                        ctx.lineTo(infX, infY);
-                        ctx.lineTo(endX, endY);
-
-                        ctx.strokeStyle = isDarkMode ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.15)';
-                        ctx.lineWidth = 1.2;
-                        ctx.stroke();
-
-                        // 5. Draw text label
-                        const label = chart.data.labels[index];
-                        const text = `${label} (${value})`;
-                        ctx.font = "bold 11px 'Kanit', 'Prompt', sans-serif";
-                        ctx.fillStyle = isDarkMode ? '#cbd5e1' : '#475569';
-                        ctx.textAlign = isRight ? 'left' : 'right';
-                        ctx.textBaseline = 'middle';
-
-                        const textX = endX + (isRight ? 6 : -6);
-                        const textY = endY;
-                        ctx.fillText(text, textX, textY);
-                        ctx.restore();
-                    });
-                });
+        const barChartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return ` ${context.parsed.y} งาน`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: tickColor,
+                        font: {
+                            family: "'Kanit', 'Prompt', sans-serif",
+                            size: 11,
+                            weight: '500'
+                        }
+                    }
+                },
+                y: {
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: tickColor,
+                        stepSize: 1,
+                        beginAtZero: true,
+                        font: {
+                            family: "'Kanit', 'Prompt', sans-serif",
+                            size: 11
+                        }
+                    }
+                }
             }
         };
 
-        if (window.caseTypePieChart instanceof Chart && window.caseTypePieChart.config.type === 'pie') {
+        if (window.caseTypePieChart instanceof Chart && window.caseTypePieChart.config.type === 'bar') {
             window.caseTypePieChart.data.datasets[0].data = [counts.pm, counts.install, counts.repair, counts.deinstall];
             window.caseTypePieChart.data.datasets[0].backgroundColor = bgColors;
-            window.caseTypePieChart.data.datasets[0].hoverOffset = 12;
             window.caseTypePieChart.update();
         } else {
             if (window.caseTypePieChart instanceof Chart) {
                 window.caseTypePieChart.destroy();
             }
             window.caseTypePieChart = new Chart(ctx, {
-                type: 'pie',
-                plugins: [doughnutLabelsPlugin],
+                type: 'bar',
                 data: {
                     labels: ['บำรุงรักษา', 'ติดตั้ง', 'ซ่อม', 'รื้อถอน'],
                     datasets: [{
                         data: [counts.pm, counts.install, counts.repair, counts.deinstall],
                         backgroundColor: bgColors,
-                        borderWidth: 0,
-                        hoverOffset: 12
+                        borderRadius: 6,
+                        borderWidth: 0
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    layout: {
-                        padding: {
-                            top: 10,
-                            bottom: 10,
-                            left: 45,
-                            right: 45
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false // DISABLE default legend
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function (context) {
-                                    let label = context.label || '';
-                                    if (label) label += ': ';
-                                    if (context.parsed !== null) label += context.parsed + ' งาน';
-                                    return label;
-                                }
-                            }
-                        }
-                    }
-                }
+                options: barChartOptions
             });
+        }
+
+        // --- Update Case Status Histogram ---
+        const ctxStatus = document.getElementById('case-status-pie-chart');
+        if (ctxStatus) {
+            const canvasCtxStatus = ctxStatus.getContext('2d');
+
+            const openGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
+            openGrad.addColorStop(0, '#7dd3fc');
+            openGrad.addColorStop(1, '#0ea5e9');
+
+            const processGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
+            processGrad.addColorStop(0, '#fde047');
+            processGrad.addColorStop(1, '#f59e0b');
+
+            const doneGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
+            doneGrad.addColorStop(0, '#99f6e4');
+            doneGrad.addColorStop(1, '#14b8a6');
+
+            const closedGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
+            closedGrad.addColorStop(0, '#cbd5e1');
+            closedGrad.addColorStop(1, '#475569');
+
+            const cancelGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
+            cancelGrad.addColorStop(0, '#fca5a5');
+            cancelGrad.addColorStop(1, '#ef4444');
+
+            const bgColorsStatus = [openGrad, processGrad, doneGrad, closedGrad, cancelGrad];
+
+            if (window.caseStatusPieChart instanceof Chart && window.caseStatusPieChart.config.type === 'bar') {
+                window.caseStatusPieChart.data.datasets[0].data = [
+                    statusCounts.open,
+                    statusCounts.process,
+                    statusCounts.done,
+                    statusCounts.closed,
+                    statusCounts.cancel
+                ];
+                window.caseStatusPieChart.data.datasets[0].backgroundColor = bgColorsStatus;
+                window.caseStatusPieChart.update();
+            } else {
+                if (window.caseStatusPieChart instanceof Chart) {
+                    window.caseStatusPieChart.destroy();
+                }
+                window.caseStatusPieChart = new Chart(ctxStatus, {
+                    type: 'bar',
+                    data: {
+                        labels: ['เปิดงาน', 'ดำเนินการ', 'เสร็จสิ้น', 'ปิดเคส', 'ยกเลิก'],
+                        datasets: [{
+                            data: [
+                                statusCounts.open,
+                                statusCounts.process,
+                                statusCounts.done,
+                                statusCounts.closed,
+                                statusCounts.cancel
+                            ],
+                            backgroundColor: bgColorsStatus,
+                            borderRadius: 6,
+                            borderWidth: 0
+                        }]
+                    },
+                    options: barChartOptions
+                });
+            }
         }
     }
 
@@ -14571,6 +14644,7 @@ function updateCaseDashboard() {
 
     dashboard.querySelectorAll(".dashboard-card").forEach(card => {
         const cardCategory = card.getAttribute("data-category");
+        if (!cardCategory) return; // Skip status card since it doesn't filter category directly
 
         // Remove all active states
         card.classList.remove("active-card", "active-pm", "active-install", "active-repair", "active-deinstall");
