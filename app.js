@@ -6411,7 +6411,9 @@ function setupEventListeners() {
     const caseDashboard = document.getElementById("case-type-dashboard");
     if (caseDashboard) {
         caseDashboard.querySelectorAll(".interactive-card, .custom-chart-legend .legend-item").forEach(card => {
-            card.addEventListener("click", () => {
+            card.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 const cat = card.getAttribute("data-category");
                 if (selects.filterCategory) {
                     selects.filterCategory.value = cat;
@@ -14294,8 +14296,11 @@ function updateCaseDashboard() {
     const dashboard = document.getElementById("case-type-dashboard");
     if (!dashboard) return;
 
+    const scrollY = window.scrollY;
+
     if (state.isInitialLoading) {
         dashboard.style.display = 'none';
+        window.scrollTo({ top: scrollY, behavior: 'instant' });
         return;
     }
 
@@ -14666,7 +14671,11 @@ function updateCaseDashboard() {
             descEl.textContent = filterDetails;
         }
     });
-    }
+
+    requestAnimationFrame(() => {
+        window.scrollTo({ top: scrollY, behavior: 'instant' });
+    });
+}
 }
 
 function renderLogs() {
