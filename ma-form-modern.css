@@ -483,6 +483,44 @@
     }
 }
 
+/* Physical Inspection Rows */
+.phys-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-height: 36px;
+}
+
+.phys-row-label {
+    margin: 0;
+    font-size: 0.85rem;
+    flex: 1;
+    min-width: 0;
+    line-height: 1.4;
+}
+
+.phys-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+    .phys-row {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 0.4rem 0;
+        gap: 0.4rem;
+        height: auto;
+    }
+    .phys-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
 /* Inspection checklist — clean row layout */
 .insp-col {
     display: flex;
@@ -528,6 +566,23 @@
 
 .insp-pills .check-pill + .check-pill {
     border-left: 1px solid rgba(0,0,0,0.08) !important;
+}
+
+@media (max-width: 480px) {
+    .insp-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.75rem 0;
+    }
+    .insp-pills {
+        width: 100%;
+        display: flex;
+    }
+    .insp-pills .check-pill {
+        flex: 1;
+        min-width: 0;
+    }
 }
 
 /* Case Detail Info Grid */

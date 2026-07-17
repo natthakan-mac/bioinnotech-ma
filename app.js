@@ -92,36 +92,36 @@ function createDeviceBannerHTML(site, caseId = '', actionsHTML = '') {
     if (!site) return '';
     if (actionsHTML) {
         return `
-            <div class="report-device-loaded" style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 1.5rem; flex-wrap: nowrap; border-radius: 0 !important; margin-bottom: 0 !important; border: none !important; background: #ffffff !important; border-bottom: 1.5px solid #e5e5e5 !important; padding: 1rem 1.5rem !important;">
-                <div style="display: flex; align-items: center; gap: 1rem; min-width: 0; flex: 1; cursor: pointer;" onclick="event.stopPropagation(); viewSiteDetails('${site.id}')" title="ดูรายละเอียดสถานที่">
-                    <div class="report-device-icon" style="width: 52px; height: 52px; border-radius: 14px; background: #111111 !important; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 1.45rem; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;"><i class="fa-solid fa-microchip"></i></div>
+            <div class="report-device-loaded" style="display: flex; align-items: flex-start; justify-content: space-between; width: 100%; gap: 1.5rem; flex-wrap: wrap; border-radius: 0 !important; margin-bottom: 0 !important; border: none !important; background: #ffffff !important; border-bottom: 1.5px solid #e5e5e5 !important; padding: 1rem 1.5rem !important;">
+                <div style="display: flex; align-items: flex-start; gap: 1rem; min-width: 240px; flex: 1 1 auto; cursor: pointer;" onclick="event.stopPropagation(); viewSiteDetails('${site.id}')" title="ดูรายละเอียดสถานที่">
+                    <div class="report-device-icon" style="width: 52px; height: 52px; border-radius: 14px; background: #111111 !important; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 1.45rem; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important; margin-top: 2px;"><i class="fa-solid fa-microchip"></i></div>
                     <div class="report-device-details" style="min-width: 0; flex: 1;">
                         <div class="report-device-name" style="font-size: 1.35rem; font-weight: 800; color: #111111 !important; letter-spacing: -0.025em !important; line-height: 1.25 !important; margin-bottom: 0.15rem;">${site.name || 'เครื่อง'}</div>
                         <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.35rem;">
                             ${caseId ? `
-                                <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04) !important; color: #111111 !important; border: 1.2px solid rgba(0, 0, 0, 0.08) !important; font-size: 0.75rem !important; font-weight: 700 !important; padding: 3px 10px !important; border-radius: 10px !important; text-transform: uppercase; letter-spacing: 0.03em;">
+                                <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04) !important; color: #111111 !important; border: 1.2px solid rgba(0, 0, 0, 0.08) !important; font-size: 0.75rem !important; font-weight: 700 !important; padding: 3px 10px !important; border-radius: 10px !important; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; flex-shrink: 0;">
                                     <i class="fa-solid fa-folder-open" style="font-size: 0.7rem; color: #555555;"></i> Case: ${caseId.replace(/^CASE-/, '')}
                                 </span>
                             ` : ''}
                             ${site.siteCode ? `
-                                <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04) !important; color: #111111 !important; border: 1.2px solid rgba(0, 0, 0, 0.08) !important; font-size: 0.75rem !important; font-weight: 700 !important; padding: 3px 10px !important; border-radius: 10px !important; text-transform: uppercase; letter-spacing: 0.03em;">
+                                <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04) !important; color: #111111 !important; border: 1.2px solid rgba(0, 0, 0, 0.08) !important; font-size: 0.75rem !important; font-weight: 700 !important; padding: 3px 10px !important; border-radius: 10px !important; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; flex-shrink: 0;">
                                     <i class="fa-solid fa-location-dot" style="font-size: 0.7rem; color: #555555;"></i> Site: ${site.siteCode}
                                 </span>
                             ` : ''}
                             ${site.serialNumber ? `
-                                <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04) !important; color: #111111 !important; border: 1.2px solid rgba(0, 0, 0, 0.08) !important; font-size: 0.75rem !important; font-weight: 700 !important; padding: 3px 10px !important; border-radius: 10px !important; text-transform: uppercase; letter-spacing: 0.03em;">
+                                <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04) !important; color: #111111 !important; border: 1.2px solid rgba(0, 0, 0, 0.08) !important; font-size: 0.75rem !important; font-weight: 700 !important; padding: 3px 10px !important; border-radius: 10px !important; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; flex-shrink: 0;">
                                     <i class="fa-solid fa-barcode" style="font-size: 0.7rem; color: #555555;"></i> S/N: ${site.serialNumber}
                                 </span>
                             ` : ''}
                             ${(site.brand || site.model) ? `
-                                <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04) !important; color: #111111 !important; border: 1.2px solid rgba(0, 0, 0, 0.08) !important; font-size: 0.75rem !important; font-weight: 700 !important; padding: 3px 10px !important; border-radius: 10px !important; text-transform: uppercase; letter-spacing: 0.03em;">
+                                <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04) !important; color: #111111 !important; border: 1.2px solid rgba(0, 0, 0, 0.08) !important; font-size: 0.75rem !important; font-weight: 700 !important; padding: 3px 10px !important; border-radius: 10px !important; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; flex-shrink: 0;">
                                     <i class="fa-solid fa-cube" style="font-size: 0.7rem; color: #555555;"></i> Model: ${[site.brand, site.model].filter(Boolean).join(' / ')}
                                 </span>
                             ` : ''}
                         </div>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0;" onclick="event.stopPropagation();">
+                <div style="display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; margin-left: auto; margin-top: 0.5rem;" onclick="event.stopPropagation();">
                     ${actionsHTML}
                     <button class="close-modal" onclick="const m=document.getElementById('modal-log-details'); m.classList.add('hidden'); m.style.display='none';"
                         style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; background:#ffffff; color:#111111; border:1.5px solid #e5e5e5; border-radius:10px; font-size:1.1rem; cursor:pointer; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink:0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
@@ -1298,11 +1298,11 @@ const FirestoreService = {
                 } else {
                     const currentUid = auth.currentUser?.uid;
                     // Keep the one matching current user UID, or the one with displayName, or the higher role
-                    const keepNew = 
+                    const keepNew =
                         (user.uid === currentUid) ||
                         (!existing.displayName && user.displayName) ||
                         (existing.role === 'user' && (user.role === 'admin' || user.role === 'manager'));
-                    
+
                     if (keepNew) {
                         uniqueUsersMap.set(user.email, user);
                     }
@@ -4256,13 +4256,13 @@ async function handleLogMaintenance(e) {
         const formCategory = formData.get("category");
         const formSiteId = formData.get("siteId");
         if (!logId && formCategory === "บำรุงรักษาตามรอบ" && formSiteId) {
-            const hasActivePM = state.logs.some(l => 
-                l.siteId === formSiteId && 
-                l.category === "บำรุงรักษาตามรอบ" && 
-                l.status !== "Case Closed" && 
+            const hasActivePM = state.logs.some(l =>
+                l.siteId === formSiteId &&
+                l.category === "บำรุงรักษาตามรอบ" &&
+                l.status !== "Case Closed" &&
                 l.status !== "Cancel"
             );
-            
+
             if (hasActivePM) {
                 btn.textContent = originalText;
                 btn.disabled = false;
@@ -8482,9 +8482,6 @@ function showDayDetails(dateStr, logs) {
                 <div class="mc-footer">
                     <span style="display:flex; gap:6px; align-items:center;"><span class="mc-status-big">${mobileStatusBadge}</span><span class="mc-catbadge" style="color:${catColor}; background:${catBg};">${log.category || '-'}</span></span>
                     <span class="mc-footer-actions">
-                        <button class="mc-btn" onclick="event.stopPropagation(); viewLogDetails('${log.id}')" title="ดู">
-                            <i class="fa-solid fa-eye"></i>
-                        </button>
                         <button class="mc-btn" onclick="event.stopPropagation(); checkEditPermission('${log.id}', '${log.status}')" title="แก้ไข">
                             <i class="fa-solid fa-pen"></i>
                         </button>
@@ -9401,7 +9398,7 @@ async function renderDeviceMap(sitesToRender) {
                     const cluster = locationJitter[key];
                     // Calculate rough distance in degrees. 0.02 degrees is roughly 2.2 km.
                     const dist = Math.sqrt(Math.pow(lat - cluster.lat, 2) + Math.pow(lng - cluster.lng, 2));
-                    if (dist < 0.02) { 
+                    if (dist < 0.02) {
                         clusterFound = cluster;
                         break;
                     }
@@ -9410,13 +9407,13 @@ async function renderDeviceMap(sitesToRender) {
                 if (!clusterFound) {
                     const coordKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
                     const projected = projection([lng, lat]);
-                    clusterFound = { 
-                        lat: lat, 
-                        lng: lng, 
-                        count: 0, 
+                    clusterFound = {
+                        lat: lat,
+                        lng: lng,
+                        count: 0,
                         sites: [], // Store all sites in this cluster
-                        centerX: projected ? projected[0] : 0, 
-                        centerY: projected ? projected[1] : 0 
+                        centerX: projected ? projected[0] : 0,
+                        centerY: projected ? projected[1] : 0
                     };
                     locationJitter[coordKey] = clusterFound;
                 }
@@ -9430,7 +9427,7 @@ async function renderDeviceMap(sitesToRender) {
                 if (offsetCount > 0) {
                     const angle = (offsetCount * 0.8) * Math.PI; // Spiral angle
                     // Increased jitter spread slightly to accommodate mobile zooming
-                    const radius = 8 + (offsetCount * 2.5); 
+                    const radius = 8 + (offsetCount * 2.5);
                     offsetX = Math.cos(angle) * radius;
                     offsetY = Math.sin(angle) * radius;
                 }
@@ -9531,11 +9528,11 @@ async function renderDeviceMap(sitesToRender) {
             })
             .on("click", function (event, d) {
                 d3.select(tooltip).style("opacity", 0);
-                
+
                 // Find all visually overlapping sites based on current zoom
                 const currentK = d3.zoomTransform(svg.node()).k;
                 const threshold = getDotRadius(currentK) * 2.5;
-                
+
                 const overlappingSites = [];
                 dotsData.forEach(other => {
                     const dist = Math.sqrt(Math.pow(d.cx - other.cx, 2) + Math.pow(d.cy - other.cy, 2));
@@ -9548,7 +9545,7 @@ async function renderDeviceMap(sitesToRender) {
                     // Create overlay and popup styled to match site system
                     const overlay = document.createElement("div");
                     overlay.className = "modal-overlay modal-layer-top";
-                    
+
                     const popup = document.createElement("div");
                     popup.className = "modal glass-panel";
                     popup.style.maxWidth = "450px";
@@ -9557,7 +9554,7 @@ async function renderDeviceMap(sitesToRender) {
                     popup.style.display = "flex";
                     popup.style.flexDirection = "column";
                     popup.style.padding = "2rem";
-                    
+
                     // Helpers for badges in the popup to match site style
                     const getCategoryBadge = (cat) => {
                         let catColor = '#64748b';
@@ -9603,7 +9600,7 @@ async function renderDeviceMap(sitesToRender) {
 
                     const currentMonth = new Date().getMonth();
                     const currentYear = new Date().getFullYear();
-                    
+
                     let casesHtml = "";
                     let devicesHtml = "";
 
@@ -9620,7 +9617,7 @@ async function renderDeviceMap(sitesToRender) {
                             siteLogs.forEach(log => {
                                 const isRepair = log.category === "ซ่อม";
                                 const borderColor = isRepair ? "#dc2626" : "#0369a1";
-                                
+
                                 casesHtml += `
                                     <div class="cluster-item" data-id="${s.id}" data-log-id="${log.id}" style="display: flex; flex-direction: column; padding: 1rem; border: 1.5px solid var(--border-color); border-left: 4px solid ${borderColor} !important; border-radius: var(--radius-md); cursor: pointer; background: var(--surface-bg); transition: all 0.2s ease; position: relative; box-shadow: var(--shadow-sm); margin-bottom: 2px;">
                                         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.5rem;">
@@ -9686,19 +9683,19 @@ async function renderDeviceMap(sitesToRender) {
                     }
 
                     html += `</div>`;
-                    
+
                     popup.innerHTML = html;
                     overlay.appendChild(popup);
                     document.body.appendChild(overlay);
-                    
+
                     document.getElementById("close-cluster-popup").onclick = () => document.body.removeChild(overlay);
                     overlay.onclick = (e) => {
                         if (e.target === overlay) document.body.removeChild(overlay);
                     };
-                    
+
                     const items = popup.querySelectorAll('.cluster-item');
                     items.forEach(item => {
-                        item.onclick = function() {
+                        item.onclick = function () {
                             document.body.removeChild(overlay);
                             const logId = this.getAttribute('data-log-id');
                             if (logId && typeof viewLogDetails === "function") {
@@ -9707,13 +9704,13 @@ async function renderDeviceMap(sitesToRender) {
                                 viewSiteDetails(this.getAttribute('data-id'));
                             }
                         };
-                        item.onmouseover = function() { 
-                            this.style.transform = "translateY(-2px)"; 
+                        item.onmouseover = function () {
+                            this.style.transform = "translateY(-2px)";
                             this.style.boxShadow = "var(--shadow-md)";
                             this.style.borderColor = "var(--primary-color)";
                         };
-                        item.onmouseout = function() { 
-                            this.style.transform = "none"; 
+                        item.onmouseout = function () {
+                            this.style.transform = "none";
                             this.style.boxShadow = "var(--shadow-sm)";
                             this.style.borderColor = "var(--border-color)";
                         };
@@ -9723,7 +9720,7 @@ async function renderDeviceMap(sitesToRender) {
                     if (d.pinColor && state.logs) {
                         const currentMonth = new Date().getMonth();
                         const currentYear = new Date().getFullYear();
-                        
+
                         const targetLog = state.logs.find(log => {
                             if (log.siteId === d.site.id && log.date) {
                                 const logDate = new Date(log.date);
@@ -9734,13 +9731,13 @@ async function renderDeviceMap(sitesToRender) {
                             }
                             return false;
                         });
-                        
+
                         if (targetLog && typeof viewLogDetails === "function") {
                             viewLogDetails(targetLog.id);
                             logOpened = true;
                         }
                     }
-                    
+
                     if (!logOpened && typeof viewSiteDetails === "function") {
                         viewSiteDetails(d.site.id);
                     }
@@ -12331,10 +12328,22 @@ function viewLogDetails(id) {
             if (String(log.voltageL3 || '').trim() !== '' && String(log.currentL3 || '').trim() !== '') flashCount++;
             const flashText = flashCount > 0 ? ` (${flashCount} Flash)` : '';
             html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-bolt" style="color:#111111;"></i> ข้อมูลไฟฟ้า (Electrical)${flashText}</div>`;
-            html += `<table style="width:100%; border-collapse:collapse; border:1px solid rgba(0,0,0,0.08); border-radius:6px; overflow:hidden;">`;
-            html += `<tr style="border-bottom:1px solid rgba(0,0,0,0.06);"><td style="padding:0.5rem 0.75rem; font-weight:500; font-size:0.88rem;">แรงดันไฟฟ้า</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">R ${log.voltageL1 || '___'} V (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">S ${log.voltageL2 || '___'} V (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">T ${log.voltageL3 || '___'} V (Load/Unload)</td></tr>`;
-            html += `<tr><td style="padding:0.5rem 0.75rem; font-weight:500; font-size:0.88rem;">กระแส</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">R ${log.currentL1 || '___'} A (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">S ${log.currentL2 || '___'} A (Load/Unload)</td><td style="text-align:center; padding:0.5rem; font-size:0.88rem;">T ${log.currentL3 || '___'} A (Load/Unload)</td></tr>`;
-            html += `</table>`;
+            html += `<div style="border:1px solid rgba(0,0,0,0.08); border-radius:6px; overflow:hidden;">`;
+            html += `<div style="padding:0.5rem 0.75rem; border-bottom:1px solid rgba(0,0,0,0.06);">`;
+            html += `<div style="font-weight:500; font-size:0.88rem; margin-bottom:0.5rem;">แรงดันไฟฟ้า</div>`;
+            html += `<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.5rem;">`;
+            html += `<div style="background:#f8f9fa; padding:0.5rem; border-radius:6px; text-align:center;"><div style="font-size:0.75rem; color:#666; font-weight:600; margin-bottom:0.25rem;">R</div><div style="font-size:0.85rem; font-weight:500;">${log.voltageL1 || '___'} V</div><div style="font-size:0.65rem; color:#888; margin-top:0.25rem;">(Load/Unload)</div></div>`;
+            html += `<div style="background:#f8f9fa; padding:0.5rem; border-radius:6px; text-align:center;"><div style="font-size:0.75rem; color:#666; font-weight:600; margin-bottom:0.25rem;">S</div><div style="font-size:0.85rem; font-weight:500;">${log.voltageL2 || '___'} V</div><div style="font-size:0.65rem; color:#888; margin-top:0.25rem;">(Load/Unload)</div></div>`;
+            html += `<div style="background:#f8f9fa; padding:0.5rem; border-radius:6px; text-align:center;"><div style="font-size:0.75rem; color:#666; font-weight:600; margin-bottom:0.25rem;">T</div><div style="font-size:0.85rem; font-weight:500;">${log.voltageL3 || '___'} V</div><div style="font-size:0.65rem; color:#888; margin-top:0.25rem;">(Load/Unload)</div></div>`;
+            html += `</div></div>`;
+            html += `<div style="padding:0.5rem 0.75rem;">`;
+            html += `<div style="font-weight:500; font-size:0.88rem; margin-bottom:0.5rem;">กระแส</div>`;
+            html += `<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.5rem;">`;
+            html += `<div style="background:#f8f9fa; padding:0.5rem; border-radius:6px; text-align:center;"><div style="font-size:0.75rem; color:#666; font-weight:600; margin-bottom:0.25rem;">R</div><div style="font-size:0.85rem; font-weight:500;">${log.currentL1 || '___'} A</div><div style="font-size:0.65rem; color:#888; margin-top:0.25rem;">(Load/Unload)</div></div>`;
+            html += `<div style="background:#f8f9fa; padding:0.5rem; border-radius:6px; text-align:center;"><div style="font-size:0.75rem; color:#666; font-weight:600; margin-bottom:0.25rem;">S</div><div style="font-size:0.85rem; font-weight:500;">${log.currentL2 || '___'} A</div><div style="font-size:0.65rem; color:#888; margin-top:0.25rem;">(Load/Unload)</div></div>`;
+            html += `<div style="background:#f8f9fa; padding:0.5rem; border-radius:6px; text-align:center;"><div style="font-size:0.75rem; color:#666; font-weight:600; margin-bottom:0.25rem;">T</div><div style="font-size:0.85rem; font-weight:500;">${log.currentL3 || '___'} A</div><div style="font-size:0.65rem; color:#888; margin-top:0.25rem;">(Load/Unload)</div></div>`;
+            html += `</div></div>`;
+            html += `</div>`;
 
             // Physical Inspection
             html += `<div style="margin:0.75rem 0 0.25rem; font-weight:600; font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-clipboard-check"></i> ตรวจสอบทางกายภาพ (Physical Inspection)</div>`;
@@ -14336,271 +14345,209 @@ function updateCaseDashboard() {
 
     function processDashboardLogs(sourceLogs) {
 
-    const siteSearchQuery = document.getElementById("site-filter-input")
-        ? document.getElementById("site-filter-input").value
-        : "";
-    const siteId = selects.filterHidden
-        ? selects.filterHidden.value
-        : "all";
-    const statusFilter = document.getElementById("filter-status")
-        ? document.getElementById("filter-status").value
-        : "all";
-    const searchQuery = document.getElementById("log-search-input")
-        ? document.getElementById("log-search-input").value
-        : "";
+        const siteSearchQuery = document.getElementById("site-filter-input")
+            ? document.getElementById("site-filter-input").value
+            : "";
+        const siteId = selects.filterHidden
+            ? selects.filterHidden.value
+            : "all";
+        const statusFilter = document.getElementById("filter-status")
+            ? document.getElementById("filter-status").value
+            : "all";
+        const searchQuery = document.getElementById("log-search-input")
+            ? document.getElementById("log-search-input").value
+            : "";
 
-    // For Calendar, the month is already implicit in state.calendarLogs, so we don't need additional date filters.
-    // For List view, we apply the selected date filter range.
-    const startDate = !isCalendar && selects.filterStart && selects.filterStart.value
-        ? new Date(selects.filterStart.value)
-        : null;
-    const endDate = !isCalendar && selects.filterEnd && selects.filterEnd.value
-        ? new Date(selects.filterEnd.value)
-        : null;
+        // For Calendar, the month is already implicit in state.calendarLogs, so we don't need additional date filters.
+        // For List view, we apply the selected date filter range.
+        const startDate = !isCalendar && selects.filterStart && selects.filterStart.value
+            ? new Date(selects.filterStart.value)
+            : null;
+        const endDate = !isCalendar && selects.filterEnd && selects.filterEnd.value
+            ? new Date(selects.filterEnd.value)
+            : null;
 
-    const logsForDashboard = filterLogsClientSide(sourceLogs, {
-        siteId,
-        siteSearchQuery,
-        startDate,
-        endDate,
-        category: "all", // IGNORE category filter
-        status: statusFilter,
-        minPrice: 0,
-        maxPrice: Infinity,
-        searchQuery,
-    });
+        const logsForDashboard = filterLogsClientSide(sourceLogs, {
+            siteId,
+            siteSearchQuery,
+            startDate,
+            endDate,
+            category: "all", // IGNORE category filter
+            status: statusFilter,
+            minPrice: 0,
+            maxPrice: Infinity,
+            searchQuery,
+        });
 
-    const categoryFilter = document.getElementById("filter-category")
-        ? document.getElementById("filter-category").value
-        : "all";
+        const categoryFilter = document.getElementById("filter-category")
+            ? document.getElementById("filter-category").value
+            : "all";
 
-    const logsForStatusDashboard = filterLogsClientSide(sourceLogs, {
-        siteId,
-        siteSearchQuery,
-        startDate,
-        endDate,
-        category: categoryFilter, // respects category filter
-        status: "all",            // ignores status filter
-        minPrice: 0,
-        maxPrice: Infinity,
-        searchQuery,
-    });
+        const logsForStatusDashboard = filterLogsClientSide(sourceLogs, {
+            siteId,
+            siteSearchQuery,
+            startDate,
+            endDate,
+            category: categoryFilter, // respects category filter
+            status: "all",            // ignores status filter
+            minPrice: 0,
+            maxPrice: Infinity,
+            searchQuery,
+        });
 
-    // Calculate count for each category
-    const counts = {
-        all: logsForDashboard.length,
-        pm: 0,
-        install: 0,
-        repair: 0,
-        deinstall: 0
-    };
-
-    logsForDashboard.forEach(log => {
-        const cat = log.category;
-        if (cat === "บำรุงรักษาตามรอบ") counts.pm++;
-        else if (cat === "ติดตั้ง") counts.install++;
-        else if (cat === "ซ่อม") counts.repair++;
-        else if (cat === "รื้อถอน") counts.deinstall++;
-    });
-
-    // Calculate count for each status
-    const statusCounts = {
-        open: 0,
-        process: 0,
-        done: 0,
-        closed: 0,
-        cancel: 0
-    };
-
-    logsForStatusDashboard.forEach(log => {
-        const stat = log.status;
-        if (stat === "Open") statusCounts.open++;
-        else if (stat === "On Process") statusCounts.process++;
-        else if (stat === "Done") statusCounts.done++;
-        else if (stat === "Case Closed") statusCounts.closed++;
-        else if (stat === "Cancel") statusCounts.cancel++;
-    });
-
-    // Update UI elements
-    const dashAll = document.getElementById("dash-case-all");
-    const dashPm = document.getElementById("dash-case-pm");
-    const dashInstall = document.getElementById("dash-case-install");
-    const dashRepair = document.getElementById("dash-case-repair");
-    const dashDeinstall = document.getElementById("dash-case-deinstall");
-
-    const dashStatusOpen = document.getElementById("dash-status-open");
-    const dashStatusProcess = document.getElementById("dash-status-process");
-    const dashStatusDone = document.getElementById("dash-status-done");
-    const dashStatusClosed = document.getElementById("dash-status-closed");
-    const dashStatusCancel = document.getElementById("dash-status-cancel");
-
-    const displayVal = (val) => state.isInitialLoading ? '<i class="fa-solid fa-spinner fa-spin text-muted" style="font-size: 0.8em; opacity: 0.5;"></i>' : val;
-
-    if (dashAll) dashAll.innerHTML = displayVal(counts.all);
-    if (dashPm) dashPm.innerHTML = displayVal(counts.pm);
-    if (dashInstall) dashInstall.innerHTML = displayVal(counts.install);
-    if (dashRepair) dashRepair.innerHTML = displayVal(counts.repair);
-    if (dashDeinstall) dashDeinstall.innerHTML = displayVal(counts.deinstall);
-
-    if (dashStatusOpen) dashStatusOpen.innerHTML = displayVal(statusCounts.open);
-    if (dashStatusProcess) dashStatusProcess.innerHTML = displayVal(statusCounts.process);
-    if (dashStatusDone) dashStatusDone.innerHTML = displayVal(statusCounts.done);
-    if (dashStatusClosed) dashStatusClosed.innerHTML = displayVal(statusCounts.closed);
-    if (dashStatusCancel) dashStatusCancel.innerHTML = displayVal(statusCounts.cancel);
-
-    if (state.isInitialLoading) return; // Skip updating chart while loading
-
-    // --- Update Histograms ---
-    const ctx = document.getElementById('case-type-pie-chart');
-    if (ctx) {
-        const canvasCtx = ctx.getContext('2d');
-
-        // Define canvas gradients matching the category card colors
-        const pmGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
-        pmGrad.addColorStop(0, '#38bdf8');
-        pmGrad.addColorStop(1, '#0369a1');
-
-        const installGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
-        installGrad.addColorStop(0, '#4ade80');
-        installGrad.addColorStop(1, '#15803d');
-
-        const repairGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
-        repairGrad.addColorStop(0, '#f87171');
-        repairGrad.addColorStop(1, '#dc2626');
-
-        const deinstallGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
-        deinstallGrad.addColorStop(0, '#fbbf24');
-        deinstallGrad.addColorStop(1, '#b45309');
-
-        const bgColors = [pmGrad, installGrad, repairGrad, deinstallGrad];
-
-        const isDarkMode = document.body.classList.contains("dark-mode");
-        const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)';
-        const tickColor = isDarkMode ? '#94a3b8' : '#64748b';
-
-        const barChartOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function (context) {
-                            return ` ${context.parsed.y} งาน`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        color: tickColor,
-                        font: {
-                            family: "'Kanit', 'Prompt', sans-serif",
-                            size: 11,
-                            weight: '500'
-                        }
-                    }
-                },
-                y: {
-                    grid: {
-                        color: gridColor
-                    },
-                    ticks: {
-                        color: tickColor,
-                        stepSize: 1,
-                        beginAtZero: true,
-                        font: {
-                            family: "'Kanit', 'Prompt', sans-serif",
-                            size: 11
-                        }
-                    }
-                }
-            }
+        // Calculate count for each category
+        const counts = {
+            all: logsForDashboard.length,
+            pm: 0,
+            install: 0,
+            repair: 0,
+            deinstall: 0
         };
 
-        if (window.caseTypePieChart instanceof Chart && window.caseTypePieChart.config.type === 'bar') {
-            window.caseTypePieChart.data.datasets[0].data = [counts.pm, counts.install, counts.repair, counts.deinstall];
-            window.caseTypePieChart.data.datasets[0].backgroundColor = bgColors;
-            window.caseTypePieChart.update();
-        } else {
-            if (window.caseTypePieChart instanceof Chart) {
-                window.caseTypePieChart.destroy();
-            }
-            window.caseTypePieChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['บำรุงรักษา', 'ติดตั้ง', 'ซ่อม', 'รื้อถอน'],
-                    datasets: [{
-                        data: [counts.pm, counts.install, counts.repair, counts.deinstall],
-                        backgroundColor: bgColors,
-                        borderRadius: 6,
-                        borderWidth: 0
-                    }]
+        logsForDashboard.forEach(log => {
+            const cat = log.category;
+            if (cat === "บำรุงรักษาตามรอบ") counts.pm++;
+            else if (cat === "ติดตั้ง") counts.install++;
+            else if (cat === "ซ่อม") counts.repair++;
+            else if (cat === "รื้อถอน") counts.deinstall++;
+        });
+
+        // Calculate count for each status
+        const statusCounts = {
+            open: 0,
+            process: 0,
+            done: 0,
+            closed: 0,
+            cancel: 0
+        };
+
+        logsForStatusDashboard.forEach(log => {
+            const stat = log.status;
+            if (stat === "Open") statusCounts.open++;
+            else if (stat === "On Process") statusCounts.process++;
+            else if (stat === "Done") statusCounts.done++;
+            else if (stat === "Case Closed") statusCounts.closed++;
+            else if (stat === "Cancel") statusCounts.cancel++;
+        });
+
+        // Update UI elements
+        const dashAll = document.getElementById("dash-case-all");
+        const dashPm = document.getElementById("dash-case-pm");
+        const dashInstall = document.getElementById("dash-case-install");
+        const dashRepair = document.getElementById("dash-case-repair");
+        const dashDeinstall = document.getElementById("dash-case-deinstall");
+
+        const dashStatusOpen = document.getElementById("dash-status-open");
+        const dashStatusProcess = document.getElementById("dash-status-process");
+        const dashStatusDone = document.getElementById("dash-status-done");
+        const dashStatusClosed = document.getElementById("dash-status-closed");
+        const dashStatusCancel = document.getElementById("dash-status-cancel");
+
+        const displayVal = (val) => state.isInitialLoading ? '<i class="fa-solid fa-spinner fa-spin text-muted" style="font-size: 0.8em; opacity: 0.5;"></i>' : val;
+
+        if (dashAll) dashAll.innerHTML = displayVal(counts.all);
+        if (dashPm) dashPm.innerHTML = displayVal(counts.pm);
+        if (dashInstall) dashInstall.innerHTML = displayVal(counts.install);
+        if (dashRepair) dashRepair.innerHTML = displayVal(counts.repair);
+        if (dashDeinstall) dashDeinstall.innerHTML = displayVal(counts.deinstall);
+
+        if (dashStatusOpen) dashStatusOpen.innerHTML = displayVal(statusCounts.open);
+        if (dashStatusProcess) dashStatusProcess.innerHTML = displayVal(statusCounts.process);
+        if (dashStatusDone) dashStatusDone.innerHTML = displayVal(statusCounts.done);
+        if (dashStatusClosed) dashStatusClosed.innerHTML = displayVal(statusCounts.closed);
+        if (dashStatusCancel) dashStatusCancel.innerHTML = displayVal(statusCounts.cancel);
+
+        if (state.isInitialLoading) return; // Skip updating chart while loading
+
+        // --- Update Histograms ---
+        const ctx = document.getElementById('case-type-pie-chart');
+        if (ctx) {
+            const canvasCtx = ctx.getContext('2d');
+
+            // Define canvas gradients matching the category card colors
+            const pmGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
+            pmGrad.addColorStop(0, '#38bdf8');
+            pmGrad.addColorStop(1, '#0369a1');
+
+            const installGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
+            installGrad.addColorStop(0, '#4ade80');
+            installGrad.addColorStop(1, '#15803d');
+
+            const repairGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
+            repairGrad.addColorStop(0, '#f87171');
+            repairGrad.addColorStop(1, '#dc2626');
+
+            const deinstallGrad = canvasCtx.createLinearGradient(0, 0, 0, 200);
+            deinstallGrad.addColorStop(0, '#fbbf24');
+            deinstallGrad.addColorStop(1, '#b45309');
+
+            const bgColors = [pmGrad, installGrad, repairGrad, deinstallGrad];
+
+            const isDarkMode = document.body.classList.contains("dark-mode");
+            const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)';
+            const tickColor = isDarkMode ? '#94a3b8' : '#64748b';
+
+            const barChartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return ` ${context.parsed.y} งาน`;
+                            }
+                        }
+                    }
                 },
-                options: barChartOptions
-            });
-        }
-
-        // --- Update Case Status Histogram ---
-        const ctxStatus = document.getElementById('case-status-pie-chart');
-        if (ctxStatus) {
-            const canvasCtxStatus = ctxStatus.getContext('2d');
-
-            const openGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
-            openGrad.addColorStop(0, '#7dd3fc');
-            openGrad.addColorStop(1, '#0ea5e9');
-
-            const processGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
-            processGrad.addColorStop(0, '#fde047');
-            processGrad.addColorStop(1, '#f59e0b');
-
-            const doneGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
-            doneGrad.addColorStop(0, '#99f6e4');
-            doneGrad.addColorStop(1, '#14b8a6');
-
-            const closedGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
-            closedGrad.addColorStop(0, '#cbd5e1');
-            closedGrad.addColorStop(1, '#475569');
-
-            const cancelGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
-            cancelGrad.addColorStop(0, '#fca5a5');
-            cancelGrad.addColorStop(1, '#ef4444');
-
-            const bgColorsStatus = [openGrad, processGrad, doneGrad, closedGrad, cancelGrad];
-
-            if (window.caseStatusPieChart instanceof Chart && window.caseStatusPieChart.config.type === 'bar') {
-                window.caseStatusPieChart.data.datasets[0].data = [
-                    statusCounts.open,
-                    statusCounts.process,
-                    statusCounts.done,
-                    statusCounts.closed,
-                    statusCounts.cancel
-                ];
-                window.caseStatusPieChart.data.datasets[0].backgroundColor = bgColorsStatus;
-                window.caseStatusPieChart.update();
-            } else {
-                if (window.caseStatusPieChart instanceof Chart) {
-                    window.caseStatusPieChart.destroy();
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: tickColor,
+                            font: {
+                                family: "'Kanit', 'Prompt', sans-serif",
+                                size: 11,
+                                weight: '500'
+                            }
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: gridColor
+                        },
+                        ticks: {
+                            color: tickColor,
+                            stepSize: 1,
+                            beginAtZero: true,
+                            font: {
+                                family: "'Kanit', 'Prompt', sans-serif",
+                                size: 11
+                            }
+                        }
+                    }
                 }
-                window.caseStatusPieChart = new Chart(ctxStatus, {
+            };
+
+            if (window.caseTypePieChart instanceof Chart && window.caseTypePieChart.config.type === 'bar') {
+                window.caseTypePieChart.data.datasets[0].data = [counts.pm, counts.install, counts.repair, counts.deinstall];
+                window.caseTypePieChart.data.datasets[0].backgroundColor = bgColors;
+                window.caseTypePieChart.update();
+            } else {
+                if (window.caseTypePieChart instanceof Chart) {
+                    window.caseTypePieChart.destroy();
+                }
+                window.caseTypePieChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: ['เปิดงาน', 'ดำเนินการ', 'เสร็จสิ้น', 'ปิดเคส', 'ยกเลิก'],
+                        labels: ['บำรุงรักษา', 'ติดตั้ง', 'ซ่อม', 'รื้อถอน'],
                         datasets: [{
-                            data: [
-                                statusCounts.open,
-                                statusCounts.process,
-                                statusCounts.done,
-                                statusCounts.closed,
-                                statusCounts.cancel
-                            ],
-                            backgroundColor: bgColorsStatus,
+                            data: [counts.pm, counts.install, counts.repair, counts.deinstall],
+                            backgroundColor: bgColors,
                             borderRadius: 6,
                             borderWidth: 0
                         }]
@@ -14608,74 +14555,136 @@ function updateCaseDashboard() {
                     options: barChartOptions
                 });
             }
+
+            // --- Update Case Status Histogram ---
+            const ctxStatus = document.getElementById('case-status-pie-chart');
+            if (ctxStatus) {
+                const canvasCtxStatus = ctxStatus.getContext('2d');
+
+                const openGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
+                openGrad.addColorStop(0, '#7dd3fc');
+                openGrad.addColorStop(1, '#0ea5e9');
+
+                const processGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
+                processGrad.addColorStop(0, '#fde047');
+                processGrad.addColorStop(1, '#f59e0b');
+
+                const doneGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
+                doneGrad.addColorStop(0, '#99f6e4');
+                doneGrad.addColorStop(1, '#14b8a6');
+
+                const closedGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
+                closedGrad.addColorStop(0, '#cbd5e1');
+                closedGrad.addColorStop(1, '#475569');
+
+                const cancelGrad = canvasCtxStatus.createLinearGradient(0, 0, 0, 200);
+                cancelGrad.addColorStop(0, '#fca5a5');
+                cancelGrad.addColorStop(1, '#ef4444');
+
+                const bgColorsStatus = [openGrad, processGrad, doneGrad, closedGrad, cancelGrad];
+
+                if (window.caseStatusPieChart instanceof Chart && window.caseStatusPieChart.config.type === 'bar') {
+                    window.caseStatusPieChart.data.datasets[0].data = [
+                        statusCounts.open,
+                        statusCounts.process,
+                        statusCounts.done,
+                        statusCounts.closed,
+                        statusCounts.cancel
+                    ];
+                    window.caseStatusPieChart.data.datasets[0].backgroundColor = bgColorsStatus;
+                    window.caseStatusPieChart.update();
+                } else {
+                    if (window.caseStatusPieChart instanceof Chart) {
+                        window.caseStatusPieChart.destroy();
+                    }
+                    window.caseStatusPieChart = new Chart(ctxStatus, {
+                        type: 'bar',
+                        data: {
+                            labels: ['เปิดงาน', 'ดำเนินการ', 'เสร็จสิ้น', 'ปิดเคส', 'ยกเลิก'],
+                            datasets: [{
+                                data: [
+                                    statusCounts.open,
+                                    statusCounts.process,
+                                    statusCounts.done,
+                                    statusCounts.closed,
+                                    statusCounts.cancel
+                                ],
+                                backgroundColor: bgColorsStatus,
+                                borderRadius: 6,
+                                borderWidth: 0
+                            }]
+                        },
+                        options: barChartOptions
+                    });
+                }
+            }
         }
+
+        // Highlight active card and update dynamic descriptions
+        const activeCategory = selects.filterCategory ? selects.filterCategory.value : "all";
+
+        // 1. Get Status Text
+        let statusText = "ทุกสถานะ";
+        if (statusFilter !== "all") {
+            const statusMap = {
+                "Open": "เปิดงาน",
+                "On Process": "กำลังดำเนินการ",
+                "Done": "เสร็จสิ้น",
+                "Case Closed": "ปิดเคส",
+                "Cancel": "ยกเลิก"
+            };
+            statusText = statusMap[statusFilter] || statusFilter;
+        }
+
+        // 2. Get Period Text
+        let periodText = "ทุกช่วงเวลา";
+        if (isCalendar) {
+            const calHeader = document.getElementById("cal-current-month");
+            if (calHeader) {
+                periodText = `ประจำเดือน ${calHeader.textContent.trim()}`;
+            }
+        } else if (startDate || endDate) {
+            const formatThaiDate = (date) => {
+                if (!date) return "";
+                return date.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" });
+            };
+            if (startDate && endDate) {
+                periodText = `ช่วง ${formatThaiDate(startDate)} - ${formatThaiDate(endDate)}`;
+            } else if (startDate) {
+                periodText = `ตั้งแต่ ${formatThaiDate(startDate)}`;
+            } else if (endDate) {
+                periodText = `ถึง ${formatThaiDate(endDate)}`;
+            }
+        }
+
+        const filterDetails = `สถานะ: ${statusText} • ${periodText}`;
+
+        dashboard.querySelectorAll(".dashboard-card").forEach(card => {
+            const cardCategory = card.getAttribute("data-category");
+            if (!cardCategory) return; // Skip status card since it doesn't filter category directly
+
+            // Remove all active states
+            card.classList.remove("active-card", "active-pm", "active-install", "active-repair", "active-deinstall");
+
+            if (cardCategory === activeCategory) {
+                card.classList.add("active-card");
+                if (cardCategory === "บำรุงรักษาตามรอบ") card.classList.add("active-pm");
+                else if (cardCategory === "ติดตั้ง") card.classList.add("active-install");
+                else if (cardCategory === "ซ่อม") card.classList.add("active-repair");
+                else if (cardCategory === "รื้อถอน") card.classList.add("active-deinstall");
+            }
+
+            // Update description dynamically
+            const descEl = card.querySelector(".dashboard-card-content > span:nth-child(3)");
+            if (descEl) {
+                descEl.textContent = filterDetails;
+            }
+        });
+
+        requestAnimationFrame(() => {
+            window.scrollTo({ top: scrollY, behavior: 'instant' });
+        });
     }
-
-    // Highlight active card and update dynamic descriptions
-    const activeCategory = selects.filterCategory ? selects.filterCategory.value : "all";
-
-    // 1. Get Status Text
-    let statusText = "ทุกสถานะ";
-    if (statusFilter !== "all") {
-        const statusMap = {
-            "Open": "เปิดงาน",
-            "On Process": "กำลังดำเนินการ",
-            "Done": "เสร็จสิ้น",
-            "Case Closed": "ปิดเคส",
-            "Cancel": "ยกเลิก"
-        };
-        statusText = statusMap[statusFilter] || statusFilter;
-    }
-
-    // 2. Get Period Text
-    let periodText = "ทุกช่วงเวลา";
-    if (isCalendar) {
-        const calHeader = document.getElementById("cal-current-month");
-        if (calHeader) {
-            periodText = `ประจำเดือน ${calHeader.textContent.trim()}`;
-        }
-    } else if (startDate || endDate) {
-        const formatThaiDate = (date) => {
-            if (!date) return "";
-            return date.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" });
-        };
-        if (startDate && endDate) {
-            periodText = `ช่วง ${formatThaiDate(startDate)} - ${formatThaiDate(endDate)}`;
-        } else if (startDate) {
-            periodText = `ตั้งแต่ ${formatThaiDate(startDate)}`;
-        } else if (endDate) {
-            periodText = `ถึง ${formatThaiDate(endDate)}`;
-        }
-    }
-
-    const filterDetails = `สถานะ: ${statusText} • ${periodText}`;
-
-    dashboard.querySelectorAll(".dashboard-card").forEach(card => {
-        const cardCategory = card.getAttribute("data-category");
-        if (!cardCategory) return; // Skip status card since it doesn't filter category directly
-
-        // Remove all active states
-        card.classList.remove("active-card", "active-pm", "active-install", "active-repair", "active-deinstall");
-
-        if (cardCategory === activeCategory) {
-            card.classList.add("active-card");
-            if (cardCategory === "บำรุงรักษาตามรอบ") card.classList.add("active-pm");
-            else if (cardCategory === "ติดตั้ง") card.classList.add("active-install");
-            else if (cardCategory === "ซ่อม") card.classList.add("active-repair");
-            else if (cardCategory === "รื้อถอน") card.classList.add("active-deinstall");
-        }
-
-        // Update description dynamically
-        const descEl = card.querySelector(".dashboard-card-content > span:nth-child(3)");
-        if (descEl) {
-            descEl.textContent = filterDetails;
-        }
-    });
-
-    requestAnimationFrame(() => {
-        window.scrollTo({ top: scrollY, behavior: 'instant' });
-    });
-}
 }
 
 function renderLogs() {
@@ -15004,9 +15013,6 @@ function appendLogRows(newLogs, targetTbody = null) {
                 <div class="mc-footer">
                     <span style="display:flex; gap:6px; align-items:center;"><span class="mc-status-big">${mobileStatusBadge}</span><span class="mc-catbadge" style="color:${catColor}; background:${catBg};">${log.category || '-'}</span></span>
                     <span class="mc-footer-actions">
-                        <button class="mc-btn" onclick="event.stopPropagation(); viewLogDetails('${log.id}')" title="ดู">
-                            <i class="fa-solid fa-eye"></i>
-                        </button>
                         <button class="mc-btn" onclick="event.stopPropagation(); checkEditPermission('${log.id}', '${log.status}')" title="แก้ไข">
                             <i class="fa-solid fa-pen"></i>
                         </button>
@@ -15069,7 +15075,7 @@ async function handleLogout() {
         try {
             teardownRealtimeListeners(); // Stop real-time listeners on logout
             await FirestoreService.logAction("AUTH", "LOGOUT", `User logged out`); // Log before signout
-            
+
             // Logout from LINE (LIFF) if initialized and logged in
             if (typeof liff !== 'undefined' && typeof liffInitialized !== 'undefined' && liffInitialized && liff.isLoggedIn()) {
                 liff.logout();
@@ -15426,7 +15432,7 @@ if (systemSettingsForm) {
                 throw new Error("กรุณาระบุเวลาหมดอายุที่ถูกต้อง (มากกว่า 0 ชั่วโมง)");
             }
             const newSessionTimeoutMinutes = Math.round(newSessionTimeoutHours * 60);
-            
+
             await updateDoc(doc(db, "users", user.uid), {
                 sessionTimeout: newSessionTimeoutMinutes
             });
@@ -19295,16 +19301,16 @@ function renderInventory() {
     const container = document.getElementById("inventory-list-container");
     const searchInput = document.getElementById("inventory-search");
     const countSpan = document.getElementById("header-inventory-count");
-    
+
     if (!container) return;
-    
+
     // We don't need cards-grid anymore since it's a table
     if (container.classList.contains("cards-grid")) {
         container.classList.remove("cards-grid");
     }
 
     const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
-    
+
     const filteredItems = inventoryItems.filter(item => {
         const nameMatch = (item.name || "").toLowerCase().includes(searchTerm);
         const codeMatch = (item.code || "").toLowerCase().includes(searchTerm);
@@ -19317,7 +19323,7 @@ function renderInventory() {
 
     if (filteredItems.length === 0) {
         container.innerHTML = `
-            <tr>
+            <tr class="empty-row">
                 <td colspan="7">
                     <div class="empty-state">
                         <p>ไม่พบรายการสินค้า${searchTerm ? "ที่ตรงกับคำค้นหา" : ""}</p>
@@ -19332,12 +19338,12 @@ function renderInventory() {
     inventoryHistoryItems.forEach(tx => {
         const itemId = tx.itemId;
         if (!itemId) return;
-        
+
         let txDate = null;
         if (tx.timestamp) {
             txDate = typeof tx.timestamp.toDate === 'function' ? tx.timestamp.toDate() : new Date(tx.timestamp);
         }
-        
+
         if (txDate && (!lastTxMap[itemId] || txDate > lastTxMap[itemId].date)) {
             lastTxMap[itemId] = {
                 quantity: tx.quantity,
@@ -19352,29 +19358,29 @@ function renderInventory() {
         const stock = parseInt(item.stock) || 0;
         const imageUrl = item.imageUrl || "https://placehold.co/150x150?text=No+Image";
         const stockColor = stock > 0 ? 'var(--primary-color)' : 'var(--danger-color)';
-        
+
         // Find last transaction: prioritize computed history, fallback to document fields
         let lastTxDateStr = item.lastTxDateTime ? formatDateTimeDDMMYYYY(item.lastTxDateTime) : "-";
-        
+
         const computedTx = lastTxMap[item.id];
         if (computedTx) {
             lastTxDateStr = formatDateTimeDDMMYYYY(computedTx.date.toISOString());
         }
-        
+
         html += `
             <tr>
                 <td class="cell-index" data-label="ลำดับ">${index + 1}</td>
-                <td data-label="รหัสสินค้า" style="font-weight: 600;">${item.code || "-"}</td>
-                <td data-label="รูปภาพ" style="text-align: center; vertical-align: middle;">
+                <td class="cell-code" data-label="รหัสสินค้า" style="font-weight: 600;">${item.code || "-"}</td>
+                <td class="cell-image" data-label="รูปภาพ" style="text-align: center; vertical-align: middle;">
                     <img src="${imageUrl}" alt="${item.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); display: block; margin: 0 auto;">
                 </td>
-                <td data-label="ชื่อสินค้า">
+                <td class="cell-name" data-label="ชื่อสินค้า">
                     <div style="font-weight: 600; font-size: 1rem;">${item.name}</div>
                 </td>
-                <td data-label="จำนวนคงเหลือ" style="text-align: center; font-weight: 700; font-size: 1.1rem; color: ${stockColor};">
+                <td class="cell-stock" data-label="จำนวนคงเหลือ" style="text-align: center; font-weight: 700; font-size: 1.1rem; color: ${stockColor};">
                     ${stock}
                 </td>
-                <td data-label="วันเวลาทำรายการล่าสุด" style="text-align: center; font-size: 0.9rem; color: var(--text-muted);">${lastTxDateStr}</td>
+                <td class="cell-date" data-label="วันเวลาทำรายการล่าสุด" style="text-align: center; font-size: 0.9rem; color: var(--text-muted);">${lastTxDateStr}</td>
                 <td class="cell-actions" data-label="เมนูจัดการ" style="text-align: right;">
                     <div class="actions-wrapper">
                         <button class="btn-icon" onclick="openStockAdjustment('${item.id}', 'add')" title="เพิ่มสต๊อก">
@@ -19403,15 +19409,15 @@ function renderInventory() {
     container.innerHTML = html;
 }
 
-window.deleteInventoryItem = async function(itemId, itemName) {
+window.deleteInventoryItem = async function (itemId, itemName) {
     if (!confirm(`คุณต้องการลบสินค้า "${itemName}" ใช่หรือไม่? การลบนี้จะไม่สามารถย้อนกลับได้`)) {
         return;
     }
-    
+
     try {
         const docRef = doc(db, "inventory", itemId);
         await deleteDoc(docRef);
-        
+
         const user = auth.currentUser;
         await addDoc(collection(db, "inventory_history"), {
             itemId: itemId,
@@ -19421,7 +19427,7 @@ window.deleteInventoryItem = async function(itemId, itemName) {
             timestamp: serverTimestamp(),
             userEmail: user ? user.email : "Unknown"
         });
-        
+
         alert("ลบสินค้าเรียบร้อยแล้ว");
     } catch (error) {
         console.error("Error deleting inventory item:", error);
@@ -19429,7 +19435,7 @@ window.deleteInventoryItem = async function(itemId, itemName) {
     }
 };
 
-window.openStockAdjustment = function(itemId, type) {
+window.openStockAdjustment = function (itemId, type) {
     const item = inventoryItems.find(i => i.id === itemId);
     if (!item) return;
 
@@ -19447,7 +19453,7 @@ window.openStockAdjustment = function(itemId, type) {
     modal.style.display = "flex";
 };
 
-window.submitStockAdjustment = async function() {
+window.submitStockAdjustment = async function () {
     const itemId = document.getElementById("stock-adj-item-id").value;
     const type = document.getElementById("stock-adj-type").value;
     const currentStock = parseInt(document.getElementById("stock-adj-current").value) || 0;
@@ -19476,14 +19482,14 @@ window.submitStockAdjustment = async function() {
 
     const btnSave = document.getElementById("btn-save-stock-adj");
     const originalText = btnSave.innerHTML;
-    
+
     try {
         btnSave.disabled = true;
         btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...';
 
         // 1. Update stock and last transaction info in inventory
         const itemRef = doc(db, "inventory", itemId);
-        await updateDoc(itemRef, { 
+        await updateDoc(itemRef, {
             stock: newStock,
             lastTxQty: quantity,
             lastTxType: type,
@@ -19511,7 +19517,7 @@ window.submitStockAdjustment = async function() {
     }
 };
 
-window.viewInventoryHistory = async function(itemId) {
+window.viewInventoryHistory = async function (itemId) {
     const item = inventoryItems.find(i => i.id === itemId);
     if (!item) return;
 
@@ -19535,7 +19541,7 @@ window.viewInventoryHistory = async function(itemId) {
         // Remove orderBy to avoid requiring a composite index in Firestore
         const q = query(historyRef, where("itemId", "==", itemId));
         const snapshot = await getDocs(q);
-        
+
         if (snapshot.empty) {
             tbody.innerHTML = `<tr><td colspan="${totalCols}"><div class="empty-state"><p>ยังไม่มีประวัติการทำรายการ</p></div></td></tr>`;
             return;
@@ -19560,7 +19566,7 @@ window.viewInventoryHistory = async function(itemId) {
         historyData.forEach(data => {
             const dateStr = data.timestamp ? data.timestamp.toDate().toLocaleString('th-TH') : "N/A";
             const typeStr = data.type === 'add' ? `<span style="color: #16a34a; font-weight: 600;"><i class="fa-solid fa-plus"></i> นำเข้า</span>` : `<span style="color: #dc2626; font-weight: 600;"><i class="fa-solid fa-minus"></i> เบิกจ่าย</span>`;
-            
+
             html += `
                 <tr>
                     <td class="cell-date" style="font-size: 0.85rem; white-space: nowrap;" data-label="วันที่-เวลา">${dateStr}</td>
@@ -19581,18 +19587,18 @@ window.viewInventoryHistory = async function(itemId) {
             `;
         });
         tbody.innerHTML = html;
-        
+
     } catch (error) {
         console.error("Error fetching history:", error);
         tbody.innerHTML = `<tr><td colspan="${totalCols}" style="text-align: center; color: var(--danger-color);">เกิดข้อผิดพลาดในการโหลดประวัติ</td></tr>`;
     }
 };
 
-window.deleteHistoryEntry = async function(historyId, itemId) {
+window.deleteHistoryEntry = async function (historyId, itemId) {
     if (!confirm("คุณต้องการลบประวัติการทำรายการนี้ใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้")) {
         return;
     }
-    
+
     try {
         await deleteDoc(doc(db, "inventory_history", historyId));
         alert("ลบประวัติเรียบร้อยแล้ว");
@@ -19604,26 +19610,26 @@ window.deleteHistoryEntry = async function(historyId, itemId) {
 };
 
 // --- Event Listeners for Inventory ---
-window.openAddInventoryModal = function() {
+window.openAddInventoryModal = function () {
     const modal = document.getElementById("modal-inventory");
     if (!modal) return;
-    
+
     const title = document.getElementById("modal-inventory-title");
     if (title) title.textContent = "เพิ่มสินค้ารายการใหม่";
-    
+
     const form = document.getElementById("inventory-form");
     if (form) {
         form.reset();
         delete form.dataset.mode;
         delete form.dataset.itemId;
     }
-    
+
     const preview = document.getElementById("inventory-image-preview");
     if (preview) {
         preview.src = "";
         preview.style.display = "none";
     }
-    
+
     const uploadArea = document.getElementById("inventory-upload-area");
     if (uploadArea) {
         const i = uploadArea.querySelector("i");
@@ -19631,34 +19637,34 @@ window.openAddInventoryModal = function() {
         const p = uploadArea.querySelector("p");
         if (p) p.style.display = "block";
     }
-    
+
     modal.classList.remove("hidden");
     modal.style.display = "flex";
 };
 
-window.openEditInventoryModal = function(itemId) {
+window.openEditInventoryModal = function (itemId) {
     const item = inventoryItems.find(i => i.id === itemId);
     if (!item) return;
 
     const modal = document.getElementById("modal-inventory");
     if (!modal) return;
-    
+
     const title = document.getElementById("modal-inventory-title");
     if (title) title.textContent = "แก้ไขข้อมูลสินค้า";
-    
+
     const form = document.getElementById("inventory-form");
     if (form) {
         form.dataset.mode = "edit";
         form.dataset.itemId = itemId;
     }
-    
+
     document.getElementById("inventory-name").value = item.name || "";
     document.getElementById("inventory-code").value = item.code || "";
     document.getElementById("inventory-stock").value = item.stock !== undefined ? item.stock : 0;
-    
+
     const preview = document.getElementById("inventory-image-preview");
     const uploadArea = document.getElementById("inventory-upload-area");
-    
+
     if (preview) {
         if (item.imageUrl) {
             preview.src = item.imageUrl;
@@ -19680,7 +19686,7 @@ window.openEditInventoryModal = function(itemId) {
             }
         }
     }
-    
+
     modal.classList.remove("hidden");
     modal.style.display = "flex";
 };
@@ -19690,17 +19696,17 @@ function setupInventoryListeners() {
     if (searchInput) {
         searchInput.addEventListener("input", renderInventory);
     }
-    
+
     const inventoryImageInput = document.getElementById("inventory-image-input");
     const inventoryUploadArea = document.getElementById("inventory-upload-area");
-    
+
     if (inventoryUploadArea && inventoryImageInput) {
         inventoryUploadArea.addEventListener("click", () => inventoryImageInput.click());
         inventoryImageInput.addEventListener("change", (e) => {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = function (e) {
                     const preview = document.getElementById("inventory-image-preview");
                     preview.src = e.target.result;
                     preview.style.display = "block";
@@ -19717,7 +19723,7 @@ function setupInventoryListeners() {
         // Prevent multiple bindings
         const newBtnSave = btnSave.cloneNode(true);
         btnSave.parentNode.replaceChild(newBtnSave, btnSave);
-        
+
         newBtnSave.addEventListener("click", async () => {
             const form = document.getElementById("inventory-form");
             const mode = form ? form.dataset.mode : "add";
@@ -19727,18 +19733,18 @@ function setupInventoryListeners() {
             const code = document.getElementById("inventory-code").value.trim();
             const stockVal = document.getElementById("inventory-stock").value;
             const fileInput = document.getElementById("inventory-image-input");
-            
+
             if (!name || stockVal === "") {
                 alert("กรุณากรอกข้อมูลให้ครบถ้วน");
                 return;
             }
-            
+
             const stock = parseInt(stockVal);
-            
+
             try {
                 newBtnSave.disabled = true;
                 newBtnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...';
-                
+
                 let imageUrl = "";
                 if (fileInput.files && fileInput.files[0]) {
                     const file = fileInput.files[0];
@@ -19746,13 +19752,13 @@ function setupInventoryListeners() {
                     const snapshot = await uploadBytes(storageRef, file);
                     imageUrl = await getDownloadURL(snapshot.ref);
                 }
-                
+
                 if (mode === "edit") {
                     const updateData = { name, code, stock };
                     if (imageUrl) {
                         updateData.imageUrl = imageUrl;
                     }
-                    
+
                     const item = inventoryItems.find(i => i.id === itemId);
                     if (item && item.stock !== stock) {
                         const diff = Math.abs(stock - item.stock);
@@ -19760,7 +19766,7 @@ function setupInventoryListeners() {
                         updateData.lastTxQty = diff;
                         updateData.lastTxType = type;
                         updateData.lastTxDateTime = new Date().toISOString();
-                        
+
                         const user = auth.currentUser;
                         await addDoc(collection(db, "inventory_history"), {
                             itemId: itemId,
@@ -19771,7 +19777,7 @@ function setupInventoryListeners() {
                             userEmail: user ? user.email : "Unknown"
                         });
                     }
-                    
+
                     await updateDoc(doc(db, "inventory", itemId), updateData);
                 } else {
                     await addDoc(collection(db, "inventory"), {
@@ -19785,9 +19791,9 @@ function setupInventoryListeners() {
                         lastTxDateTime: new Date().toISOString()
                     });
                 }
-                
+
                 document.getElementById("modal-inventory").classList.add("hidden");
-                
+
             } catch (error) {
                 console.error("Error saving inventory:", error);
                 alert("เกิดข้อผิดพลาดในการบันทึกสินค้า");
@@ -19859,14 +19865,14 @@ async function getLiffAccessToken(actionType = 'login') {
     if (!liff.isLoggedIn()) {
         // Save current state for redirect-back (use localStorage to survive mobile redirects)
         localStorage.setItem('liff_pending_action', actionType);
-        
+
         // Use clean base URL (origin + pathname) for redirectUri to avoid
         // query string / hash fragment issues that can cause redirect URI mismatch on mobile.
         const cleanRedirectUrl = window.location.origin + window.location.pathname;
-        
+
         // Use prompt: 'consent' to force the LINE authorization screen to appear,
         // allowing the user to verify or switch their account.
-        liff.login({ 
+        liff.login({
             redirectUri: cleanRedirectUrl,
             prompt: 'consent'
         });
@@ -20224,7 +20230,7 @@ if (btnLineLogin) {
                     showToast('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่', 'error');
                     return;
                 }
-                
+
                 showToast('กำลังประมวลผลการเชื่อมต่อ LINE...', 'info');
                 const linkFn = httpsCallable(functions, 'linkLineAccount');
                 const result = await linkFn({ accessToken });
@@ -20244,7 +20250,7 @@ if (btnLineLogin) {
                 showToast('กำลังประมวลผลซิงค์รูป...', 'info');
                 const linkFn = httpsCallable(functions, 'linkLineAccount');
                 const result = await linkFn({ accessToken });
-                
+
                 if (result.data.success) {
                     showToast('ซิงค์รูปโปรไฟล์สำเร็จ!', 'success');
                     renderProfile();
@@ -20254,7 +20260,7 @@ if (btnLineLogin) {
             } else {
                 // Handle Login Action
                 console.log('LIFF return: Attempting LINE login...');
-                
+
                 const loginOverlayHTML = `
                     <div id="liff-login-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem;">
                         <i class="fa-solid fa-spinner fa-spin" style="font-size:2rem; color:#06C755;"></i>
@@ -20262,7 +20268,7 @@ if (btnLineLogin) {
                     </div>
                 `;
                 document.body.insertAdjacentHTML('beforeend', loginOverlayHTML);
-                
+
                 const lineLoginFn = httpsCallable(functions, 'lineLogin');
                 const result = await lineLoginFn({ accessToken });
 

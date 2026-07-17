@@ -2789,47 +2789,51 @@
                             <div class="ma-section"
                                 style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.06); border-radius: 8px; padding: 1rem;">
                                 <h4
-                                    style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; height: 24px;">
+                                    style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; min-height: 24px;">
                                     <i class="fa-solid fa-clipboard-check" style="color: #111111;"></i> ตรวจสอบทางกายภาพ
                                     (Physical Inspection)
                                 </h4>
                                 <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-                                    <div style="display: flex; align-items: center; gap: 0.5rem; height: 36px;">
-                                        <label
-                                            style="margin: 0; font-size: 0.85rem; flex: 1;">อุณหภูมิเฉลี่ยในการทำงาน</label>
-                                        <input type="number" name="avgWorkTemp" placeholder="°C" step="any"
-                                            autocomplete="off"
-                                            style="margin: 0; width: 80px; flex: none; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.8rem; border-radius: 6px;">
-                                        <div class="check-pill-group">
-                                            <label class="check-pill pass"><input type="radio" name="avgWorkTempCheck"
-                                                    value="pass"><span>ผ่าน</span></label>
-                                            <label class="check-pill fail"><input type="radio" name="avgWorkTempCheck"
-                                                    value="fail"><span>ไม่ผ่าน</span></label>
+                                    <div class="phys-row">
+                                        <label class="phys-row-label">อุณหภูมิเฉลี่ยในการทำงาน</label>
+                                        <div class="phys-controls">
+                                            <input type="number" name="avgWorkTemp" placeholder="°C" step="any"
+                                                autocomplete="off"
+                                                style="margin: 0; width: 80px; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid rgba(0,0,0,0.12);">
+                                            <div class="check-pill-group">
+                                                <label class="check-pill pass"><input type="radio" name="avgWorkTempCheck"
+                                                        value="pass"><span>ผ่าน</span></label>
+                                                <label class="check-pill fail"><input type="radio" name="avgWorkTempCheck"
+                                                        value="fail"><span>ไม่ผ่าน</span></label>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div style="display: flex; align-items: center; gap: 0.5rem; height: 36px;">
-                                        <label
-                                            style="margin: 0; font-size: 0.85rem; flex: 1;">อุณหภูมิเฉลี่ยพื้นที่</label>
-                                        <input type="number" name="avgAreaTemp" placeholder="°C" step="any"
-                                            autocomplete="off"
-                                            style="margin: 0; width: 80px; flex: none; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.8rem; border-radius: 6px;">
-                                        <div class="check-pill-group">
-                                            <label class="check-pill pass"><input type="radio" name="avgAreaTempCheck"
-                                                    value="pass"><span>ผ่าน</span></label>
-                                            <label class="check-pill fail"><input type="radio" name="avgAreaTempCheck"
-                                                    value="fail"><span>ไม่ผ่าน</span></label>
+                                    <div class="phys-row">
+                                        <label class="phys-row-label">อุณหภูมิเฉลี่ยพื้นที่</label>
+                                        <div class="phys-controls">
+                                            <input type="number" name="avgAreaTemp" placeholder="°C" step="any"
+                                                autocomplete="off"
+                                                style="margin: 0; width: 80px; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid rgba(0,0,0,0.12);">
+                                            <div class="check-pill-group">
+                                                <label class="check-pill pass"><input type="radio" name="avgAreaTempCheck"
+                                                        value="pass"><span>ผ่าน</span></label>
+                                                <label class="check-pill fail"><input type="radio" name="avgAreaTempCheck"
+                                                        value="fail"><span>ไม่ผ่าน</span></label>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div style="display: flex; align-items: center; gap: 0.5rem; height: 36px;">
-                                        <label style="margin: 0; font-size: 0.85rem; flex: 1;">ตรวจสอบการรั่วไหล</label>
-                                        <input type="number" name="leakPressure" placeholder="PSI" step="any"
-                                            inputmode="decimal" autocomplete="off"
-                                            style="margin: 0; width: 80px; flex: none; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.8rem; border-radius: 6px;">
-                                        <div class="check-pill-group">
-                                            <label class="check-pill pass"><input type="radio" name="leakCheck"
-                                                    value="pass"><span>ผ่าน</span></label>
-                                            <label class="check-pill fail"><input type="radio" name="leakCheck"
-                                                    value="fail"><span>ไม่ผ่าน</span></label>
+                                    <div class="phys-row">
+                                        <label class="phys-row-label">ตรวจสอบการรั่วไหล</label>
+                                        <div class="phys-controls">
+                                            <input type="number" name="leakPressure" placeholder="PSI" step="any"
+                                                inputmode="decimal" autocomplete="off"
+                                                style="margin: 0; width: 80px; height: 30px; padding: 0.25rem 0.4rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid rgba(0,0,0,0.12);">
+                                            <div class="check-pill-group">
+                                                <label class="check-pill pass"><input type="radio" name="leakCheck"
+                                                        value="pass"><span>ผ่าน</span></label>
+                                                <label class="check-pill fail"><input type="radio" name="leakCheck"
+                                                        value="fail"><span>ไม่ผ่าน</span></label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -2839,31 +2843,35 @@
                             <div class="ma-section"
                                 style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.06); border-radius: 8px; padding: 1rem;">
                                 <h4
-                                    style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; height: 24px;">
+                                    style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; min-height: 24px;">
                                     <i class="fa-solid fa-gauge-high" style="color: #111111;"></i> ประสิทธิภาพการทำงาน
                                     (Performance)
                                 </h4>
                                 <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-                                    <div style="display: flex; align-items: center; gap: 0.5rem; height: 36px;">
-                                        <label style="margin: 0; font-size: 0.85rem; flex: 1;">ตรวจสอบด้วย Comply Type
+                                    <div class="phys-row">
+                                        <label class="phys-row-label">ตรวจสอบด้วย Comply Type
                                             5</label>
-                                        <div style="width: 80px; height: 30px; flex: none;"></div>
-                                        <div class="check-pill-group">
-                                            <label class="check-pill pass"><input type="radio" name="complyType5"
-                                                    value="pass"><span>ผ่าน</span></label>
-                                            <label class="check-pill fail"><input type="radio" name="complyType5"
-                                                    value="fail"><span>ไม่ผ่าน</span></label>
+                                        <div class="phys-controls">
+                                            <div style="width: 80px; height: 30px;"></div>
+                                            <div class="check-pill-group">
+                                                <label class="check-pill pass"><input type="radio" name="complyType5"
+                                                        value="pass"><span>ผ่าน</span></label>
+                                                <label class="check-pill fail"><input type="radio" name="complyType5"
+                                                        value="fail"><span>ไม่ผ่าน</span></label>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div style="display: flex; align-items: center; gap: 0.5rem; height: 36px;">
-                                        <label style="margin: 0; font-size: 0.85rem; flex: 1;">ตรวจสอบด้วย CI PCD Type
+                                    <div class="phys-row">
+                                        <label class="phys-row-label">ตรวจสอบด้วย CI PCD Type
                                             5</label>
-                                        <div style="width: 80px; height: 30px; flex: none;"></div>
-                                        <div class="check-pill-group">
-                                            <label class="check-pill pass"><input type="radio" name="ciPcdType5"
-                                                    value="pass"><span>ผ่าน</span></label>
-                                            <label class="check-pill fail"><input type="radio" name="ciPcdType5"
-                                                    value="fail"><span>ไม่ผ่าน</span></label>
+                                        <div class="phys-controls">
+                                            <div style="width: 80px; height: 30px;"></div>
+                                            <div class="check-pill-group">
+                                                <label class="check-pill pass"><input type="radio" name="ciPcdType5"
+                                                        value="pass"><span>ผ่าน</span></label>
+                                                <label class="check-pill fail"><input type="radio" name="ciPcdType5"
+                                                        value="fail"><span>ไม่ผ่าน</span></label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
