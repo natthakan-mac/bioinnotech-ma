@@ -9621,12 +9621,13 @@ async function renderDeviceMap(sitesToRender) {
                                 casesHtml += `
                                     <div class="cluster-item" data-id="${s.id}" data-log-id="${log.id}" style="display: flex; flex-direction: column; padding: 1rem; border: 1.5px solid var(--border-color); border-left: 4px solid ${borderColor} !important; border-radius: var(--radius-md); cursor: pointer; background: var(--surface-bg); transition: all 0.2s ease; position: relative; box-shadow: var(--shadow-sm); margin-bottom: 2px;">
                                         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                            <div style="font-weight: 600; color: var(--text-color); font-size: 0.92rem; line-height: 1.3; padding-right: 4px;">${s.name}</div>
+                                            <div style="font-weight: 700; color: var(--text-color); font-size: 1.2rem; line-height: 1.3; padding-right: 4px;">${s.name}</div>
                                             <div style="flex-shrink: 0;">${getCategoryBadge(log.category)}</div>
                                         </div>
-                                        <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem;">
+                                        <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem;">
                                             <div><i class="fa-solid fa-hashtag" style="width: 14px; text-align: center;"></i> รหัสเคส: ${log.caseId ? log.caseId.replace('CASE-', '') : '-'}</div>
-                                            <div><i class="fa-solid fa-microchip" style="width: 14px; text-align: center;"></i> ชนิด: ${s.deviceType || '-'}</div>
+                                            <div><i class="fa-solid fa-tag" style="width: 14px; text-align: center;"></i> ยี่ห้อ/รุ่น: ${[s.brand, s.model].filter(Boolean).join(' ') || '-'}</div>
+                                            <div><i class="fa-solid fa-barcode" style="width: 14px; text-align: center;"></i> Serial No: ${s.serialNumber || '-'}</div>
                                             <div style="margin-top: 0.4rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background: var(--bg-color); padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid var(--border-color);">
                                                 <span style="font-weight: 500; font-size: 0.75rem; color: var(--text-color);"><i class="fa-regular fa-calendar" style="color: var(--text-muted); margin-right: 4px;"></i>วันที่: ${new Date(log.date).toLocaleDateString('th-TH')}</span>
                                                 ${log.status ? getStatusBadge(log.status) : ''}
@@ -9638,10 +9639,11 @@ async function renderDeviceMap(sitesToRender) {
                         } else {
                             devicesHtml += `
                                 <div class="cluster-item" data-id="${s.id}" style="display: flex; flex-direction: column; padding: 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); cursor: pointer; background: var(--surface-bg); transition: all 0.2s ease; box-shadow: var(--shadow-sm); margin-bottom: 2px;">
-                                    <div style="font-weight: 600; color: var(--text-color); font-size: 0.92rem; line-height: 1.3; margin-bottom: 0.5rem;">${s.name}</div>
-                                    <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem;">
+                                    <div style="font-weight: 700; color: var(--text-color); font-size: 1.2rem; line-height: 1.3; margin-bottom: 0.5rem;">${s.name}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem;">
                                         <div><i class="fa-solid fa-hashtag" style="width: 14px; text-align: center;"></i> รหัสเครื่อง: ${s.siteCode || '-'}</div>
-                                        <div><i class="fa-solid fa-microchip" style="width: 14px; text-align: center;"></i> ชนิด: ${s.deviceType || '-'}</div>
+                                        <div><i class="fa-solid fa-tag" style="width: 14px; text-align: center;"></i> ยี่ห้อ/รุ่น: ${[s.brand, s.model].filter(Boolean).join(' ') || '-'}</div>
+                                        <div><i class="fa-solid fa-barcode" style="width: 14px; text-align: center;"></i> Serial No: ${s.serialNumber || '-'}</div>
                                     </div>
                                 </div>
                             `;
