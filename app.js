@@ -1898,7 +1898,7 @@ async function init() {
             : "admin-view";
         switchView(initialView);
 
-        await loadAddressData();
+        loadAddressData(); // Non-blocking async load (loads from localStorage or fetches in background)
         setupEventListeners();
 
         setupCustomNameLogic(); // Initialize custom name logic
@@ -6077,6 +6077,22 @@ async function generateMockLogs() {
 }
 
 async function loadAddressData() {
+    // 1. Try reading from localStorage first (synchronous & instant)
+    try {
+        const cachedData = localStorage.getItem("cached_thai_address_data");
+        const cachedProvinces = localStorage.getItem("cached_thai_provinces");
+        if (cachedData && cachedProvinces) {
+            state.addressData = JSON.parse(cachedData);
+            state.uniqueProvinces = JSON.parse(cachedProvinces);
+            initAddressAutocompletes();
+            console.log("Loaded Thai address data from localStorage cache");
+            return;
+        }
+    } catch (e) {
+        console.warn("Failed to read address data cache from localStorage:", e);
+    }
+
+    // 2. Fetch asynchronously in the background if not cached
     try {
         const response = await fetch(
             "https://cdn.jsdelivr.net/gh/kongvut/thai-province-data@master/api/latest/province_with_district_and_sub_district.json",
@@ -6110,6 +6126,15 @@ async function loadAddressData() {
             ...new Set(state.addressData.map((item) => item.province)),
         ].sort();
         initAddressAutocompletes(); // Init new logic
+
+        // Save to cache for next load
+        try {
+            localStorage.setItem("cached_thai_address_data", JSON.stringify(flatData));
+            localStorage.setItem("cached_thai_provinces", JSON.stringify(state.uniqueProvinces));
+            console.log("Cached Thai address data to localStorage");
+        } catch (cacheErr) {
+            console.warn("Failed to cache address data to localStorage:", cacheErr);
+        }
     } catch (error) {
         console.error("Failed to load address data from API:", error);
 
@@ -8248,7 +8273,7 @@ function renderCalendar() {
 
                 badge.innerHTML = `
                     <div style="display:flex; align-items:center; justify-content:space-between; width:100%; margin-bottom:3px;">
-                        <span style="font-size:0.7rem; font-weight:600; color:var(--text-color);">${site.siteCode || "-"}</span>
+                        <span style="font-size:0.7rem; font-weight:600; color:var(--text-color);">${site ? site.siteCode || "-" : "-"}</span>
                         <span style="font-size:0.65rem; font-weight:600; color:${statusStyle.color}; background:${statusStyle.color}20; padding:1px 5px; border-radius:4px;">${statusLabel}</span>
                     </div>
                     <span style="white-space:normal; word-break:break-word; line-height:1.3; font-size:0.8rem; color:var(--text-color); margin-bottom:4px;">${siteName}</span>
