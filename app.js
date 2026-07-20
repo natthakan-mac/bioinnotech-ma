@@ -14826,9 +14826,11 @@ function renderLogs() {
 
 const logsObserver = new IntersectionObserver(
     (entries) => {
-        if (entries[0].isIntersecting && !state.isLoadingLogs) {
-            handleLoadMoreLogs();
-        }
+        entries.forEach((entry) => {
+            if (entry.isIntersecting && !state.isLoadingLogs) {
+                handleLoadMoreLogs();
+            }
+        });
     },
     { root: null, threshold: 0.1 },
 );
@@ -14881,16 +14883,19 @@ async function handleLoadMoreLogs() {
             updateLogStats(allFilteredLogs, state.globalLogSummary);
 
             if (state.hasMoreLogs) {
-                const tableContainer = document.querySelector(".table-container");
-                const sentinel = document.createElement("div");
-                sentinel.id = "logs-sentinel";
-                sentinel.style.height = "20px";
-                sentinel.innerHTML =
-                    '<div style="text-align: center; color: var(--text-muted); padding: 10px;"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading...</div>';
-                tableContainer.appendChild(sentinel);
+                const targetTbody = document.getElementById("logs-table-body");
+                const tableContainer = targetTbody ? targetTbody.closest(".table-container") : document.querySelector(".table-container");
+                if (tableContainer) {
+                    const sentinel = document.createElement("div");
+                    sentinel.id = "logs-sentinel";
+                    sentinel.style.height = "20px";
+                    sentinel.innerHTML =
+                        '<div style="text-align: center; color: var(--text-muted); padding: 10px;"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading...</div>';
+                    tableContainer.appendChild(sentinel);
 
-                // Re-observe
-                logsObserver.observe(sentinel);
+                    // Re-observe
+                    logsObserver.observe(sentinel);
+                }
             }
         }
     } catch (err) {
