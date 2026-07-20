@@ -1922,14 +1922,6 @@ async function init() {
         setupRealtimeListeners();
         console.log("init() complete");
 
-        // Startup check: create MA cases for any site that qualifies but has none yet.
-        // Safe now because checkAndAutoCreateMaintenanceCase uses fresh Firestore data.
-        // _autoMaStartupDone prevents duplicate runs within the same page session.
-        if (!window._autoMaStartupDone) {
-            window._autoMaStartupDone = true;
-            setTimeout(() => runAutoMaintenanceCheckForAllSites(), 2000);
-        }
-
         // Check for URL parameters to open specific views
         handleUrlParameters();
     } catch (err) {
@@ -3790,6 +3782,7 @@ async function handleSiteSubmit(e) {
             }
 
             showToast("อัปเดตข้อมูลเครื่องสำเร็จ", "success");
+            await refreshData();
         } else {
             // --- Auto-generate Site Code ---
             const regionPrefix = await getRdpbRegionCode(siteData.province || "");
@@ -3810,38 +3803,18 @@ async function handleSiteSubmit(e) {
             const newSiteId = await FirestoreService.addSite(siteData);
             showToast("เพิ่มเครื่องใหม่สำเร็จ", "success");
 
-            // Auto-create initial MA log if applicable
-            if (siteData.maintenanceCycle && siteData.firstMaDate) {
-                const initialLogData = {
-                    siteId: newSiteId,
-                    date: siteData.firstMaDate,
-                    category: "บำรุงรักษาตามรอบ",
-                    status: "Open",
-                    lineItems: [],
-                    details: "-",
-                    objective: `รอบซ่อมบำรุงครั้งแรก (${siteData.maintenanceCycle} วัน)`,
-                    cost: 0,
-                    attachments: [],
-                    recordedBy: "System",
-                    timestamp: new Date().toISOString(),
-                    comments: [{
-                        text: `ซ่อมบำรุงตามรอบ (ครั้งที่ 1)`,
-                        author: "System",
-                        authorId: "system",
-                        photoURL: "",
-                        timestamp: new Date().toISOString(),
-                        attachments: []
-                    }]
-                };
+            await refreshData();
+
+            // Auto MA: trigger ทันทีหลัง addSite + refreshData()
+            // ใช้ newSiteId ที่ได้มาโดยตรงจาก Firestore ไม่ต้องค้นหาใน state
+            if (siteData.maintenanceCycle && siteData.maintenanceCycle > 0) {
                 try {
-                    await FirestoreService.addLog(initialLogData);
-                } catch (addErr) {
-                    console.error("Failed to add initial MA log:", addErr);
+                    await checkAndAutoCreateMaintenanceCase(newSiteId);
+                } catch (autoMaErr) {
+                    console.warn('[AutoMA] Check after addSite failed:', autoMaErr);
                 }
             }
         }
-
-        await refreshData();
 
         toggleModal("addSite", false);
         resetSiteForm();
@@ -5418,20 +5391,22 @@ async function checkAndAutoCreateMaintenanceCase(siteId) {
         }
         // ──────────────────────────────────────────────────────────────────────
 
-        // Find last closed MA case (for base-date calculation)
+        // Find last closed OR cancelled MA case (for base-date calculation)
+        // การรวม Cancel เข้าไปด้วย ทำให้พอยกเลิกรอบนี้ ระบบจะก้าวไปสร้างรอบถัดไปให้เลย
         const lastClosedMA = maLogs.find(l =>
             l.status === 'Case Closed' ||
             l.status === 'Done' ||
-            l.status === 'Completed'
+            l.status === 'Completed' ||
+            l.status === 'Cancel'
         );
 
         let baseDate;
         let useImmediateDate = false;
 
         if (lastClosedMA) {
-            // Count forward from the last closed MA case
+            // Count forward from the last closed/cancelled MA case
             baseDate = new Date(lastClosedMA.date);
-            console.log(`[AutoMA] ${site.name}: baseDate from lastClosedMA = ${lastClosedMA.date}`);
+            console.log(`[AutoMA] ${site.name}: baseDate from lastClosedMA/Cancel = ${lastClosedMA.date}`);
         } else {
             // No closed MA case → create immediately from anchor date (no cycle offset)
             useImmediateDate = true;
@@ -5456,8 +5431,12 @@ async function checkAndAutoCreateMaintenanceCase(siteId) {
             nextDate.setDate(nextDate.getDate() + site.maintenanceCycle);
         }
 
-        const nextDateStr = nextDate.toISOString().split('T')[0];
-        console.log(`[AutoMA] ${site.name}: nextDate = ${nextDateStr}, cycle = ${site.maintenanceCycle} days`);
+        const year = nextDate.getFullYear();
+        const month = String(nextDate.getMonth() + 1).padStart(2, '0');
+        const day = String(nextDate.getDate()).padStart(2, '0');
+        const nextDateStr = `${year}-${month}-${day}`;
+
+        console.log(`[AutoMA] ${site.name}: nextDate = ${nextDateStr} (Local), cycle = ${site.maintenanceCycle} days`);
 
         // Guard: must not exceed insurance end
         if (site.insuranceEndDate) {
@@ -12038,7 +12017,8 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
             isMaCategory(log.category) &&
             log.siteId
         ) {
-            // Small delay so Firestore has settled before we query state
+            // Delay 2500ms: ให้ Firestore propagate status ใหม่ก่อนที่จะ fetch
+            // (800ms เดิมเกิด race condition ทำให้ fetchLogsForSite ยังเห็น status เก่า)
             setTimeout(async () => {
                 try {
                     await refreshData(); // Sync state first
@@ -12047,7 +12027,7 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
                 } catch (autoMaErr) {
                     console.warn('[AutoMA] Check after status update failed:', autoMaErr);
                 }
-            }, 800);
+            }, 2500);
         }
 
     } catch (error) {
