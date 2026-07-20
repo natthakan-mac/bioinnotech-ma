@@ -4978,6 +4978,49 @@ async function handleLogMaintenance(e) {
 
             console.log('[Change Detection] Changes detected:', changes.length, changes);
 
+            // Add change log comment if there are changes
+            if (changes.length > 0 && existingLog) {
+                console.log('[Change Log] Adding system comment with changes');
+                const changeLogComment = {
+                    text: changes.map(c => `• ${c}`).join('\n'),
+                    author: paramUser,
+                    authorId: user.uid,
+                    photoURL: user.photoURL || '',
+                    timestamp: new Date().toISOString(),
+                    attachments: [],
+                    isSystemLog: true
+                };
+
+                console.log('[Change Log] Change log comment:', changeLogComment);
+
+                const existingComments = existingLog.comments || [];
+                const updatedCommentsWithLog = [...existingComments, changeLogComment];
+                console.log('[Change Log] Updating comments array, old length:', existingComments.length, 'new length:', updatedCommentsWithLog.length);
+
+                try {
+                    await FirestoreService.updateLog(logId, { comments: updatedCommentsWithLog });
+                    console.log('[Change Log] Successfully updated comments in Firestore');
+                    console.log('[Change Log] Comment text:', changeLogComment.text);
+
+                    // Update existingLog.comments so the next section uses the updated array
+                    existingLog.comments = updatedCommentsWithLog;
+
+                    // Also update state.logs to reflect the change immediately
+                    const logInState = state.logs.find(l => l.id === logId);
+                    if (logInState) {
+                        logInState.comments = updatedCommentsWithLog;
+                        console.log('[Change Log] Updated state.logs with new comments');
+                    }
+
+                    // Show a toast to confirm the change log was added
+                    showToast(`บันทึกการเปลี่ยนแปลง ${changes.length} รายการ`, "info");
+                } catch (error) {
+                    console.error('[Change Log] Error updating comments:', error);
+                }
+            } else {
+                console.log('[Change Log] No changes detected or no existing log, skipping change log comment. Changes:', changes.length, 'existingLog:', !!existingLog);
+            }
+
             // Update first comment (description) if editing
             const descriptionText = document.getElementById('log-description')?.value.trim();
 
@@ -5121,8 +5164,16 @@ async function handleLogMaintenance(e) {
                                 cost: 0,
                                 attachments: [],
                                 recordedBy: "System",
-                                timestamp: new Date().toISOString()
-        };
+                                timestamp: new Date().toISOString(),
+                                comments: [{
+                                    text: `ซ่อมบำรุงตามรอบ (ครั้งที่ ${nextCycleNum})`,
+                                    author: "System",
+                                    authorId: "system",
+                                    photoURL: "",
+                                    timestamp: new Date().toISOString(),
+                                    attachments: []
+                                }]
+                            };
 
                             try {
                                 await FirestoreService.addLog(nextLogData);
@@ -5184,7 +5235,9 @@ async function handleLogMaintenance(e) {
 
                     const comments = [commentData];
                     const inspSummary = buildInspectionSummary(logData);
-                    /* System log removed */
+                    if (inspSummary) {
+                        comments.push({ text: inspSummary, author: "System", authorId: "system", photoURL: "", timestamp: new Date().toISOString(), attachments: [], isSystemLog: true });
+                    }
                     await FirestoreService.updateLog(newLogId, { comments });
                     descriptionAttachments = [];
                     updateDescriptionAttachmentPreview();
@@ -5193,7 +5246,9 @@ async function handleLogMaintenance(e) {
                 }
             } else {
                 const inspSummary = buildInspectionSummary(logData);
-                /* System log removed */
+                if (inspSummary) {
+                    try { await FirestoreService.updateLog(newLogId, { comments: [{ text: inspSummary, author: "System", authorId: "system", photoURL: "", timestamp: new Date().toISOString(), attachments: [], isSystemLog: true }] }); } catch (e) { }
+                }
             }
 
             showToast("บันทึกการบำรุงรักษาสำเร็จ", "success");
@@ -5413,8 +5468,17 @@ async function checkAndAutoCreateMaintenanceCase(siteId) {
             cost: 0,
             attachments: [],
             recordedBy: 'System',
-            timestamp: new Date().toISOString()
-                            };
+            timestamp: new Date().toISOString(),
+            comments: [{
+                text: `ระบบสร้างเคสซ่อมบำรุงอัตโนมัติ ครั้งที่ ${cycleNum} (รอบ ${site.maintenanceCycle} วัน)\nวันที่กำหนด: ${nextDateStr}`,
+                author: 'System',
+                authorId: 'system',
+                photoURL: '',
+                timestamp: new Date().toISOString(),
+                attachments: [],
+                isSystemLog: true
+            }]
+        };
 
         await FirestoreService.addLog(newLogData);
         const siteName = site.siteCode ? `${site.siteCode} - ${site.name}` : site.name;
@@ -10665,7 +10729,6 @@ function viewSiteDetails(id) {
 let commentAttachments = [];
 
 function renderLogComments(logId, comments) {
-    if (Array.isArray(comments)) { comments = comments.filter(c => !c.isSystemLog && c.authorId !== 'system'); }
     const list = document.getElementById("log-comments-list");
     const gotoInitialBtn = document.getElementById("btn-goto-initial-comment");
     const gotoLatestBtn = document.getElementById("btn-goto-latest-comment");
@@ -11908,7 +11971,23 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
                 changeText += `\n• เหตุผลที่ยกเลิก: ${cancelReason}`;
             }
 
-            /* Status update log removed */
+            const changeLogComment = {
+                text: changeText,
+                author: user.displayName || user.email || 'ผู้ใช้',
+                authorId: user.uid,
+                photoURL: user.photoURL || '',
+                timestamp: new Date().toISOString(),
+                attachments: signatureData ? [{ url: signatureData, name: 'ลายเซ็น.jpg', type: 'image/jpeg' }] : [],
+                isSystemLog: true
+            };
+
+            const existingComments = log.comments || [];
+            const updatedComments = [...existingComments, changeLogComment];
+
+            try {
+                await FirestoreService.updateLog(logId, { comments: updatedComments });
+                log.comments = updatedComments;
+                console.log('[Timeline Status Change] Added change log comment');
             } catch (error) {
                 console.error('[Timeline Status Change] Error adding change log:', error);
             }
@@ -15755,7 +15834,7 @@ async function handleResetToDefaultPhoto() {
 
 async function renderProfile(userArg = null) {
     const user = userArg || auth.currentUser;
-     // Debug
+    // console.log("Rendering profile for:", user?.uid, user?.email); // Debug
     if (!user) return;
 
     // Check if user is admin to show admin-only tabs (user management and notification settings)
