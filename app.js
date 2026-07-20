@@ -4756,7 +4756,11 @@ async function handleLogMaintenance(e) {
                         const d = new Date(dateStr);
                         return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
                     };
-                    changes.push(`${fieldLabels.date}: ${formatDate(existingLog.date)} → ${formatDate(logData.date)}`);
+                    const oldDateFormatted = formatDate(existingLog.date);
+                    const newDateFormatted = formatDate(logData.date);
+                    if (oldDateFormatted !== newDateFormatted) {
+                        changes.push(`${fieldLabels.date}: ${oldDateFormatted} → ${newDateFormatted}`);
+                    }
                 }
 
                 // Check category change
@@ -4891,11 +4895,15 @@ async function handleLogMaintenance(e) {
                     'precheck_interior': 'การตรวจความเรียบร้อยภายในเครื่อง', 'precheck_exterior': 'การตรวจความเรียบร้อยภายนอกเครื่อง'
                 };
                 precheckFields.forEach(f => {
-                    if ((existingLog[f] || '') !== (logData[f] || '')) {
-                        changes.push(`ตรวจสอบ ${precheckLabels[f]}: ${existingLog[f] || '-'} → ${logData[f] || '-'}`);
+                    const oldV = existingLog[f] || '';
+                    const newV = logData[f] || '';
+                    if (oldV !== newV && !(oldV === '' && newV === 'pending')) {
+                        changes.push(`ตรวจสอบ ${precheckLabels[f]}: ${oldV || '-'} → ${newV || '-'}`);
                     }
-                    if ((existingLog[f + '_note'] || '') !== (logData[f + '_note'] || '')) {
-                        changes.push(`หมายเหตุ ${precheckLabels[f]}: ${existingLog[f + '_note'] || '-'} → ${logData[f + '_note'] || '-'}`);
+                    const oldNote = existingLog[f + '_note'] || '';
+                    const newNote = logData[f + '_note'] || '';
+                    if (oldNote !== newNote) {
+                        changes.push(`หมายเหตุ ${precheckLabels[f]}: ${oldNote || '-'} → ${newNote || '-'}`);
                     }
                 });
 
@@ -4978,49 +4986,6 @@ async function handleLogMaintenance(e) {
 
             console.log('[Change Detection] Changes detected:', changes.length, changes);
 
-            // Add change log comment if there are changes
-            if (changes.length > 0 && existingLog) {
-                console.log('[Change Log] Adding system comment with changes');
-                const changeLogComment = {
-                    text: changes.map(c => `• ${c}`).join('\n'),
-                    author: paramUser,
-                    authorId: user.uid,
-                    photoURL: user.photoURL || '',
-                    timestamp: new Date().toISOString(),
-                    attachments: [],
-                    isSystemLog: true
-                };
-
-                console.log('[Change Log] Change log comment:', changeLogComment);
-
-                const existingComments = existingLog.comments || [];
-                const updatedCommentsWithLog = [...existingComments, changeLogComment];
-                console.log('[Change Log] Updating comments array, old length:', existingComments.length, 'new length:', updatedCommentsWithLog.length);
-
-                try {
-                    await FirestoreService.updateLog(logId, { comments: updatedCommentsWithLog });
-                    console.log('[Change Log] Successfully updated comments in Firestore');
-                    console.log('[Change Log] Comment text:', changeLogComment.text);
-
-                    // Update existingLog.comments so the next section uses the updated array
-                    existingLog.comments = updatedCommentsWithLog;
-
-                    // Also update state.logs to reflect the change immediately
-                    const logInState = state.logs.find(l => l.id === logId);
-                    if (logInState) {
-                        logInState.comments = updatedCommentsWithLog;
-                        console.log('[Change Log] Updated state.logs with new comments');
-                    }
-
-                    // Show a toast to confirm the change log was added
-                    showToast(`บันทึกการเปลี่ยนแปลง ${changes.length} รายการ`, "info");
-                } catch (error) {
-                    console.error('[Change Log] Error updating comments:', error);
-                }
-            } else {
-                console.log('[Change Log] No changes detected or no existing log, skipping change log comment. Changes:', changes.length, 'existingLog:', !!existingLog);
-            }
-
             // Update first comment (description) if editing
             const descriptionText = document.getElementById('log-description')?.value.trim();
 
@@ -5068,6 +5033,18 @@ async function handleLogMaintenance(e) {
                         updatedComments = [commentData];
                     }
 
+                    if (changes.length > 0) {
+                        updatedComments.push({
+                            text: `แก้ไขข้อมูล:\n- ` + changes.join('\n- '),
+                            author: paramUser,
+                            authorId: user.uid,
+                            photoURL: user.photoURL || "",
+                            timestamp: new Date().toISOString(),
+                            attachments: [],
+                            isSystemLog: true
+                        });
+                    }
+
                     await FirestoreService.updateLog(logId, { comments: updatedComments });
 
                     // Clear description attachments
@@ -5076,6 +5053,29 @@ async function handleLogMaintenance(e) {
                 } else if (updatedComments.length > 0 && updatedComments[0]) {
                     // If description is empty, remove first comment
                     updatedComments.shift();
+                    
+                    if (changes.length > 0) {
+                        updatedComments.push({
+                            text: `แก้ไขข้อมูล:\n- ` + changes.join('\n- '),
+                            author: paramUser,
+                            authorId: user.uid,
+                            photoURL: user.photoURL || "",
+                            timestamp: new Date().toISOString(),
+                            attachments: [],
+                            isSystemLog: true
+                        });
+                    }
+                    await FirestoreService.updateLog(logId, { comments: updatedComments });
+                } else if (changes.length > 0) {
+                    updatedComments.push({
+                        text: `แก้ไขข้อมูล:\n- ` + changes.join('\n- '),
+                        author: paramUser,
+                        authorId: user.uid,
+                        photoURL: user.photoURL || "",
+                        timestamp: new Date().toISOString(),
+                        attachments: [],
+                        isSystemLog: true
+                    });
                     await FirestoreService.updateLog(logId, { comments: updatedComments });
                 }
             }
@@ -5234,10 +5234,6 @@ async function handleLogMaintenance(e) {
                     }
 
                     const comments = [commentData];
-                    const inspSummary = buildInspectionSummary(logData);
-                    if (inspSummary) {
-                        comments.push({ text: inspSummary, author: "System", authorId: "system", photoURL: "", timestamp: new Date().toISOString(), attachments: [], isSystemLog: true });
-                    }
                     await FirestoreService.updateLog(newLogId, { comments });
                     descriptionAttachments = [];
                     updateDescriptionAttachmentPreview();
@@ -5245,10 +5241,7 @@ async function handleLogMaintenance(e) {
                     console.error("Failed to add initial comment:", commentErr);
                 }
             } else {
-                const inspSummary = buildInspectionSummary(logData);
-                if (inspSummary) {
-                    try { await FirestoreService.updateLog(newLogId, { comments: [{ text: inspSummary, author: "System", authorId: "system", photoURL: "", timestamp: new Date().toISOString(), attachments: [], isSystemLog: true }] }); } catch (e) { }
-                }
+                // Not adding inspection summary to comments anymore
             }
 
             showToast("บันทึกการบำรุงรักษาสำเร็จ", "success");
@@ -5470,10 +5463,10 @@ async function checkAndAutoCreateMaintenanceCase(siteId) {
             recordedBy: 'System',
             timestamp: new Date().toISOString(),
             comments: [{
-                text: `ระบบสร้างเคสซ่อมบำรุงอัตโนมัติ ครั้งที่ ${cycleNum} (รอบ ${site.maintenanceCycle} วัน)\nวันที่กำหนด: ${nextDateStr}`,
-                author: 'System',
-                authorId: 'system',
-                photoURL: '',
+                text: `[ระบบ] เคสซ่อมบำรุงอัตโนมัติถูกสร้างขึ้นสำหรับรอบ ${site.maintenanceCycle} วัน`,
+                author: "System",
+                authorId: "system",
+                photoURL: "",
                 timestamp: new Date().toISOString(),
                 attachments: [],
                 isSystemLog: true
@@ -11932,6 +11925,34 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
             status: newStatus,
             statusHistory: log.statusHistory
         };
+        
+        const currentUser = auth.currentUser ? (auth.currentUser.displayName || auth.currentUser.email || "Unknown") : "System";
+        const currentUid = auth.currentUser ? auth.currentUser.uid : "system";
+        const currentPhoto = auth.currentUser ? (auth.currentUser.photoURL || "") : "";
+        
+        const statusLabels = {
+            'Open': 'เปิดงาน',
+            'On Process': 'กำลังดำเนินการ',
+            'Done': 'เสร็จสิ้น',
+            'Case Closed': 'ปิดเคส',
+            'Cancel': 'ยกเลิก'
+        };
+        const oldStatusTH = statusLabels[oldStatus] || oldStatus;
+        const newStatusTH = statusLabels[newStatus] || newStatus;
+
+        const statusComment = {
+            text: `เปลี่ยนสถานะจาก ${oldStatusTH} เป็น ${newStatusTH}`,
+            author: currentUser,
+            authorId: currentUid,
+            photoURL: currentPhoto,
+            timestamp: new Date().toISOString(),
+            attachments: [],
+            isSystemLog: true
+        };
+        const updatedComments = [...(log.comments || []), statusComment];
+        updateData.comments = updatedComments;
+        log.comments = updatedComments; // Update local state
+        
         if (signatureData) {
             updateData.statusSignatures = log.statusSignatures;
             // Sync customer fields when Done signature is provided
@@ -11952,45 +11973,10 @@ async function executeStatusUpdate(logId, newStatus, signatureData, signerName =
         log.status = newStatus;
         renderStatusTimeline(newStatus, logId, log.statusHistory);
 
-        // Add change log comment for status change
-        const statusLabels = {
-            'Open': 'เปิดงาน',
-            'On Process': 'กำลังดำเนินการ',
-            'Done': 'เสร็จสิ้น',
-            'Case Closed': 'ปิดเคส',
-            'Cancel': 'ยกเลิก'
-        };
-
-        const user = auth.currentUser;
-        if (user && oldStatus !== newStatus) {
-            const oldStatusLabel = statusLabels[oldStatus] || oldStatus;
-            const newStatusLabel = statusLabels[newStatus] || newStatus;
-
-            let changeText = `• สถานะ: ${oldStatusLabel} → ${newStatusLabel}`;
-            if (newStatus === 'Cancel' && cancelReason) {
-                changeText += `\n• เหตุผลที่ยกเลิก: ${cancelReason}`;
-            }
-
-            const changeLogComment = {
-                text: changeText,
-                author: user.displayName || user.email || 'ผู้ใช้',
-                authorId: user.uid,
-                photoURL: user.photoURL || '',
-                timestamp: new Date().toISOString(),
-                attachments: signatureData ? [{ url: signatureData, name: 'ลายเซ็น.jpg', type: 'image/jpeg' }] : [],
-                isSystemLog: true
-            };
-
-            const existingComments = log.comments || [];
-            const updatedComments = [...existingComments, changeLogComment];
-
-            try {
-                await FirestoreService.updateLog(logId, { comments: updatedComments });
-                log.comments = updatedComments;
-                console.log('[Timeline Status Change] Added change log comment');
-            } catch (error) {
-                console.error('[Timeline Status Change] Error adding change log:', error);
-            }
+        // Auto render comments if detail modal is open
+        const detailsModal = document.getElementById('modal-log-details');
+        if (detailsModal && !detailsModal.classList.contains('hidden')) {
+            renderLogComments(logId, log.comments);
         }
 
         // Refresh calendar if in calendar view
