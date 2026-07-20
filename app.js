@@ -7593,7 +7593,7 @@ function getIncompleteDoneFieldKeys(data) {
                 'precheck_exterior'
             ];
             precheckFields.forEach((key) => {
-                if (!isFilled(getFieldValue(data, key))) {
+                if (getFieldValue(data, key) !== 'pass') {
                     missingKeys.push(key);
                 }
             });
@@ -7676,7 +7676,7 @@ function highlightIncompleteFields(form, missingKeys) {
     if (!form) return;
 
     // Clear previous highlights
-    const elements = form.querySelectorAll('input, select, textarea, .autocomplete-wrapper, .check-pill-group, #pre-install-photo-preview, #install-photo-preview, #repair-photo-preview, #signed-doc-preview, #btn-pre-install-photo, #btn-install-photo, #btn-repair-photo, #btn-attach-signed-doc');
+    const elements = form.querySelectorAll('input, select, textarea, .autocomplete-wrapper, .check-pill-group, #pre-install-photo-preview, #install-photo-preview, #repair-photo-preview, #signed-doc-preview, #btn-pre-install-photo, #btn-install-photo, #btn-repair-photo, #btn-attach-signed-doc, #precheck-section, #repair-checklist-rows');
     elements.forEach(el => {
         el.classList.remove('is-invalid');
     });
@@ -7791,6 +7791,36 @@ function highlightIncompleteFields(form, missingKeys) {
             };
             if (btn) btn.addEventListener('click', removeHighlight);
             return;
+        }
+
+        // Custom Highlight: Precheck Section
+        const precheckKeys = [
+            'precheckDate', 'precheck_electrical', 'precheck_wiring', 'precheck_grounding', 'precheck_doorMotor',
+            'precheck_connectors', 'precheck_vacuumPump', 'precheck_leakTest', 'precheck_chemical',
+            'precheck_sensors', 'precheck_sterilize', 'precheck_gasResidual', 'precheck_interior',
+            'precheck_exterior'
+        ];
+        if (precheckKeys.includes(key)) {
+            const precheckSection = document.getElementById('precheck-section');
+            if (precheckSection) {
+                precheckSection.classList.add('is-invalid');
+                
+                const removeHighlight = () => {
+                    precheckSection.classList.remove('is-invalid');
+                    // Remove listeners once cleared
+                    const elements = precheckSection.querySelectorAll('input');
+                    elements.forEach(el => {
+                        el.removeEventListener('change', removeHighlight);
+                        el.removeEventListener('input', removeHighlight);
+                    });
+                };
+                
+                const elements = precheckSection.querySelectorAll('input');
+                elements.forEach(el => {
+                    el.addEventListener('change', removeHighlight);
+                    el.addEventListener('input', removeHighlight);
+                });
+            }
         }
 
         // Default Highlights (inputs, check-pill-groups, etc.)
@@ -19841,7 +19871,7 @@ window.exportDevicesPDF = exportDevicesPDF;
 // === LINE Login System (LIFF SDK) ===
 // ============================================================
 
-const LIFF_ID = '2010697063-kIdzAXLc';
+const LIFF_ID = '2008894954-o8Us8rV9';
 let liffInitialized = false;
 let liffInitPromise = null;
 

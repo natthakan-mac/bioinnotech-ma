@@ -688,6 +688,13 @@
     color: #991b1b !important; /* text-red-800 */
 }
 
+#form-log-maintenance #precheck-section.is-invalid {
+    border: 1px solid #f87171 !important; /* border-red-400 */
+    background-color: #fef2f2 !important; /* bg-red-50 */
+    border-radius: 8px !important;
+    padding: 0.75rem !important;
+}
+
 #form-log-maintenance .check-pill-group.is-invalid .check-pill {
     background-color: #fef2f2 !important;
     color: #991b1b !important;

@@ -43,11 +43,20 @@
             if (splash && !splash.classList.contains('hidden')) {
                 const p = splash.querySelector('p');
                 if (p) {
+                    p.style.display = 'block';
                     p.innerHTML = `<span style="color: #ef4444;">เกิดข้อผิดพลาด: ${msg}</span><br><small style="font-size: 0.8em; opacity: 0.8;">กรุณารีเฟรชหน้าจอ</small>`;
                     // Make sure spinner stops or indicates error
                     const spinner = splash.querySelector('.spinner');
-                    if (spinner) spinner.style.borderTopColor = '#ef4444';
-                    spinner.style.animation = 'none';
+                    if (spinner) {
+                        spinner.style.borderTopColor = '#ef4444';
+                        spinner.style.animation = 'none';
+                    } else {
+                        // Stop shimmer on skeleton
+                        splash.querySelectorAll('.skel-anim').forEach(el => {
+                            el.style.animation = 'none';
+                            el.style.background = '#ffe5e5';
+                        });
+                    }
                 }
             }
         };
@@ -1076,8 +1085,75 @@
 
     <!-- Splash Screen -->
     <div id="loading-splash">
-        <div class="spinner"></div>
-        <p>กำลังโหลด...</p>
+        <!-- Status Bar & App Bar Skeletons -->
+        <div class="skel-status-bar">
+            <div class="skel-status-icon" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"></div>
+            <div class="skel-status-icon" style="border-radius: 50%;"></div>
+            <div class="skel-status-time"></div>
+        </div>
+        <div class="skel-app-bar">
+            <div class="skel-circle skel-anim"></div>
+            <div class="skel-pill skel-anim"></div>
+            <div class="skel-circle skel-anim" style="margin-left: auto;"></div>
+        </div>
+        <!-- Content Area -->
+        <div class="skel-main">
+            <!-- Section 1 -->
+            <div class="skel-section">
+                <div class="skel-section-title skel-anim"></div>
+                <div class="skel-grid">
+                    <div class="skel-card">
+                        <div class="skel-card-img skel-anim"></div>
+                        <div class="skel-card-line skel-anim"></div>
+                        <div class="skel-card-line skel-anim"></div>
+                        <div class="skel-card-line short skel-anim"></div>
+                    </div>
+                    <div class="skel-card">
+                        <div class="skel-card-img skel-anim"></div>
+                        <div class="skel-card-line skel-anim"></div>
+                        <div class="skel-card-line skel-anim"></div>
+                        <div class="skel-card-line short skel-anim"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- Section 2 -->
+            <div class="skel-section">
+                <div class="skel-section-title skel-anim"></div>
+                <div class="skel-grid">
+                    <div class="skel-card">
+                        <div class="skel-card-img skel-anim"></div>
+                        <div class="skel-card-line skel-anim"></div>
+                        <div class="skel-card-line skel-anim"></div>
+                        <div class="skel-card-line short skel-anim"></div>
+                    </div>
+                    <div class="skel-card">
+                        <div class="skel-card-img skel-anim"></div>
+                        <div class="skel-card-line skel-anim"></div>
+                        <div class="skel-card-line skel-anim"></div>
+                        <div class="skel-card-line short skel-anim"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- Section 3 -->
+            <div class="skel-section">
+                <div class="skel-section-title skel-anim"></div>
+                <div class="skel-grid">
+                    <div class="skel-card">
+                        <div class="skel-card-img skel-anim"></div>
+                        <div class="skel-card-line skel-anim"></div>
+                        <div class="skel-card-line skel-anim"></div>
+                        <div class="skel-card-line short skel-anim"></div>
+                    </div>
+                    <div class="skel-card">
+                        <div class="skel-card-img skel-anim"></div>
+                        <div class="skel-card-line skel-anim"></div>
+                        <div class="skel-card-line skel-anim"></div>
+                        <div class="skel-card-line short skel-anim"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p class="skel-hidden-p" style="display:none; position: absolute; top: 50%; left: 0; width: 100%; text-align: center; background: rgba(255,255,255,0.9); padding: 1rem; z-index: 10;">กำลังโหลด...</p>
     </div>
 
     <div class="bg-bubbles">
