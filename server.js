@@ -48,7 +48,12 @@ http.createServer(function (request, response) {
             }
         }
         else {
-            response.writeHead(200, { 'Content-Type': contentType });
+            response.writeHead(200, {
+                'Content-Type': contentType,
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            });
             response.end(content, 'utf-8');
         }
     });
