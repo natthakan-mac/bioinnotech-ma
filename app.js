@@ -51,6 +51,7 @@ import {
     getAuth,
     onAuthStateChanged,
     signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
     signInWithCustomToken,
     updateProfile,
     unlink,
@@ -16317,8 +16318,88 @@ async function handleRoleChange(userId, newRole) {
     }
 }
 
-// --- User Management Logic Removed ---
+// --- User Management Add User Logic ---
+document.addEventListener('DOMContentLoaded', () => {
+    const btnAddUser = document.getElementById('btn-add-user');
+    const modalAddUser = document.getElementById('add-user-modal');
+    const btnCloseModal = document.getElementById('btn-close-add-user-modal');
+    const btnCancelModal = document.getElementById('btn-cancel-add-user');
+    const formAddUser = document.getElementById('add-user-form');
 
+    if (btnAddUser && modalAddUser) {
+        btnAddUser.addEventListener('click', () => {
+            modalAddUser.classList.remove('hidden');
+            modalAddUser.style.display = 'flex';
+        });
+
+        const closeModal = () => {
+            modalAddUser.classList.add('hidden');
+            modalAddUser.style.display = 'none';
+            formAddUser.reset();
+        };
+
+        if (btnCloseModal) btnCloseModal.addEventListener('click', closeModal);
+        if (btnCancelModal) btnCancelModal.addEventListener('click', closeModal);
+
+        formAddUser.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('add-user-email').value;
+            const password = document.getElementById('add-user-password').value;
+            const name = document.getElementById('add-user-name').value;
+            const role = document.getElementById('add-user-role').value;
+
+            try {
+                // Show loading toast
+                showToast('กำลังสร้างผู้ใช้งาน...', 'info');
+                
+                // Create a secondary app to avoid logging out the current admin
+                const secondaryApp = initializeApp(firebaseConfig, "Secondary");
+                const secondaryAuth = getAuth(secondaryApp);
+                
+                const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+                const newUser = userCredential.user;
+                
+                // Update profile name
+                await updateProfile(newUser, { displayName: name });
+                
+                // Save user info to Firestore using primary db
+                const userData = {
+                    email: email,
+                    displayName: name,
+                    role: role,
+                    uid: newUser.uid,
+                    createdAt: serverTimestamp(),
+                    lastLogin: null
+                };
+                
+                await setDoc(doc(db, "users", newUser.uid), userData);
+                
+                // Sign out secondary auth
+                await signOut(secondaryAuth);
+                
+                showToast('สร้างบัญชีผู้ใช้ใหม่เรียบร้อยแล้ว', 'success');
+                closeModal();
+                
+                // Refresh users list
+                if (typeof renderUserRoles === 'function') {
+                    await renderUserRoles();
+                }
+            } catch (error) {
+                console.error('Error creating user:', error);
+                let errorMsg = 'เกิดข้อผิดพลาดในการสร้างผู้ใช้งาน';
+                if (error.code === 'auth/email-already-in-use') {
+                    errorMsg = 'อีเมลนี้มีอยู่ในระบบแล้ว';
+                } else if (error.code === 'auth/weak-password') {
+                    errorMsg = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMsg = 'รูปแบบอีเมลไม่ถูกต้อง';
+                }
+                showToast(errorMsg, 'error');
+            }
+        });
+    }
+});
 let currentUserRole = "user"; // Default
 
 // --- Mock Data Generation ---

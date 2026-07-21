@@ -1244,24 +1244,22 @@
             <!-- Unified Header & Device Info Banner -->
             <div class="public-report-header-unified">
                 <div class="header-brand-row">
-                    <input type="tel" id="report-tel" class="public-report-input phone-ten" placeholder="08-XXX-XXXX"
-                        pattern="^[0-9\-]+$" inputmode="numeric" required>
+                    <div class="brand-logo-container">
+                        <img src="app-ico.svg" alt="CASP Logo">
+                    </div>
+                    <div class="brand-text-container">
+                        <h1 class="public-report-title">CASP Service</h1>
+                        <p class="public-report-subtitle">ระบบบริการอุปกรณ์</p>
+                    </div>
                 </div>
-                <div class="brand-text-container">
-                    <h1 class="public-report-title">CASP Service</h1>
-                    <p class="public-report-subtitle">ระบบบริการอุปกรณ์</p>
+                <!-- Device Info container -->
+                <div class="header-device-info-container" id="report-device-info">
+                    <div class="report-device-spinner-unified">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                        <span>กำลังโหลดข้อมูลเครื่อง...</span>
+                    </div>
                 </div>
             </div>
-            <input type="tel" id="cycle-reporter-tel" class="public-report-input phone-ten" placeholder="08-XXX-XXXX"
-                pattern="^[0-9\-]+$" inputmode="numeric" required>
-            <div class="report-device-spinner-unified">
-                <i class="fa-solid fa-circle-notch fa-spin"></i>
-                <span>กำลังโหลดข้อมูลเครื่อง...</span>
-            </div>
-        </div>
-        </div>
-        <input type="tel" id="report-tel" class="public-report-input phone-ten" placeholder="08-XXX-XXXX"
-            pattern="^[0-9\-]+$" inputmode="numeric" required>
         <div id="portal-mode-selector" class="portal-mode-selector">
             <p class="portal-mode-prompt">เลือกรายการที่ต้องการ</p>
             <div class="portal-mode-cards">
@@ -1864,12 +1862,18 @@
                                                 จัดการสิทธิ์ผู้ใช้งาน
                                             </h2>
                                             <p class="text-muted">จัดการบทบาทและสิทธิ์การเข้าถึงของผู้ใช้งานในระบบ</p>
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            <button id="btn-add-user" class="btn-primary"
+                                                style="display: flex; align-items: center; gap: 0.5rem;">
+                                                <i class="fa-solid fa-user-plus"></i>
+                                                <span>เพิ่มผู้ใช้ใหม่</span>
+                                            </button>
+                                            <button id="btn-cleanup-users" class="btn-secondary"
+                                                style="display: flex; align-items: center; gap: 0.5rem;">
+                                                <i class="fa-solid fa-broom"></i>
+                                                <span>ล้างข้อมูล</span>
+                                            </button>
                                         </div>
-                                        <button id="btn-cleanup-users" class="btn-secondary"
-                                            style="display: flex; align-items: center; gap: 0.5rem;">
-                                            <i class="fa-solid fa-broom"></i>
-                                            <span>ล้างข้อมูล</span>
-                                        </button>
                                     </div>
                                 </div>
 
@@ -5010,6 +5014,55 @@
         </div>
     </div>
 
+    <!-- Add User Modal -->
+    <div id="add-user-modal" class="modal-overlay hidden" style="display: none; align-items: center; justify-content: center;">
+        <div class="modal-content" style="background: #ffffff; max-width: 500px; width: 100%; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
+            <div class="modal-header" style="background: #ffffff; border-bottom: 1px solid var(--border-color); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text-color); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-user-plus" style="color: var(--primary-color);"></i>
+                    เพิ่มบัญชีผู้ใช้ใหม่
+                </h3>
+                <button type="button" class="close-modal" id="btn-close-add-user-modal" style="background: none; border: none; font-size: 1.25rem; color: #64748b; cursor: pointer; padding: 0.25rem; border-radius: 6px; transition: all 0.2s ease;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <form id="add-user-form" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; max-height: calc(100vh - 150px);">
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-color);">อีเมล <span style="color: red;">*</span></label>
+                    <input type="email" id="add-user-email" required placeholder="example@email.com" class="form-control" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px;">
+                </div>
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-color);">รหัสผ่าน <span style="color: red;">*</span></label>
+                    <input type="password" id="add-user-password" required placeholder="อย่างน้อย 6 ตัวอักษร" class="form-control" minlength="6" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px;">
+                </div>
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-color);">ชื่อ-นามสกุล <span style="color: red;">*</span></label>
+                    <input type="text" id="add-user-name" required placeholder="ชื่อผู้ใช้งาน" class="form-control" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px;">
+                </div>
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-color);">สิทธิ์การใช้งาน</label>
+                    <select id="add-user-role" class="form-control" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background-color: #ffffff;">
+                        <option value="user">ผู้ใช้งานทั่วไป</option>
+                        <option value="manager">ผู้จัดการ</option>
+                        <option value="admin">ผู้ดูแลระบบ</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions" style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+                    <button type="button" id="btn-cancel-add-user" class="btn-secondary" style="padding: 0.75rem 1.5rem;">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" id="btn-submit-add-user" class="btn-primary" style="padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa-solid fa-save"></i>
+                        <span>บันทึก</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
 </body>
 
 </html>
