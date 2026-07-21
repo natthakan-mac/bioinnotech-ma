@@ -682,6 +682,17 @@ function setupAuthStateListener() {
                 }
 
                 let userDoc = await FirestoreService.getUser(user.uid);
+
+                if (userDoc && userDoc.role === 'deleted') {
+                    console.log("Deleted user tried to log in.");
+                    await signOut(auth);
+                    showToast('บัญชีนี้ถูกระงับหรือลบออกจากระบบแล้ว', 'error');
+                    
+                    const splash = document.getElementById("loading-splash");
+                    if (splash) splash.classList.add("hidden");
+                    return;
+                }
+
                 currentUserRole = userDoc?.role || 'user';
 
                 // Auto-Register New Users (Except LINE)
@@ -1243,7 +1254,10 @@ const FirestoreService = {
             const querySnapshot = await getDocs(q);
             const map = {};
             querySnapshot.forEach((doc) => {
-                map[doc.id] = doc.data();
+                const data = doc.data();
+                if (data.role !== 'deleted') {
+                    map[doc.id] = data;
+                }
             });
             return map;
         } catch (e) {
@@ -1257,10 +1271,9 @@ const FirestoreService = {
             // First, get all users without ordering to see what we have
             const q = query(collection(db, "users"));
             const querySnapshot = await getDocs(q);
-            const allUsers = querySnapshot.docs.map(doc => ({
-                uid: doc.id,
-                ...doc.data()
-            }));
+            const allUsers = querySnapshot.docs
+                .map(doc => ({ uid: doc.id, ...doc.data() }))
+                .filter(user => user.role !== 'deleted');
 
             console.log('=== FIRESTORE USERS DEBUG ===');
             console.log('Total documents in users collection:', allUsers.length);
@@ -1369,6 +1382,35 @@ const FirestoreService = {
         }
     },
 
+    async updateUserDetails(userId, data) {
+        try {
+            const userRef = doc(db, "users", userId);
+            await updateDoc(userRef, {
+                ...data,
+                updatedAt: serverTimestamp()
+            });
+            return true;
+        } catch (e) {
+            console.error("Error updating user details:", e);
+            throw e;
+        }
+    },
+
+    async deleteUser(userId) {
+        try {
+            const deleteFn = httpsCallable(functions, 'deleteAuthUser');
+            const result = await deleteFn({ targetUid: userId });
+            
+            if (result.data.success) {
+                return true;
+            } else {
+                throw new Error(result.data.message || 'Unknown error');
+            }
+        } catch (e) {
+            console.error("Error deleting user:", e);
+            throw e;
+        }
+    },
     async updateUserRole(userId, role) {
         try {
             const userRef = doc(db, "users", userId);
@@ -16272,6 +16314,24 @@ function renderUsersList(users) {
             await handleRoleChange(userId, newRole);
         });
     });
+
+    // Add event listeners to user items for details modal
+    usersList.querySelectorAll('.user-role-item').forEach(item => {
+        item.style.cursor = 'pointer';
+        item.addEventListener('click', (e) => {
+            // Ignore if clicked on select dropdown
+            if (e.target.tagName.toLowerCase() === 'select' || e.target.closest('select')) {
+                return;
+            }
+            const email = item.getAttribute('data-user-email');
+            const user = users.find(u => u.email === email);
+            if (user) {
+                if (typeof openUserDetailsModal === 'function') {
+                    openUserDetailsModal(user);
+                }
+            }
+        });
+    });
 }
 
 function setupUserSearch(users) {
@@ -16387,10 +16447,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (error) {
                 console.error('Error creating user:', error);
-                let errorMsg = 'เกิดข้อผิดพลาดในการสร้างผู้ใช้งาน';
+                
                 if (error.code === 'auth/email-already-in-use') {
-                    errorMsg = 'อีเมลนี้มีอยู่ในระบบแล้ว';
-                } else if (error.code === 'auth/weak-password') {
+                    // Offer to delete the orphaned account
+                    const confirmed = await showDialog(
+                        `อีเมล ${email} มีอยู่ในระบบแล้ว (อาจเป็นบัญชีที่เคยลบไปก่อนหน้า)\n\nคุณต้องการเคลียร์บัญชีนี้ทิ้งเพื่อสร้างใหม่หรือไม่?`,
+                        { type: 'confirm' }
+                    );
+
+                    if (confirmed) {
+                        try {
+                            showToast('กำลังเคลียร์บัญชีเก่า...', 'info');
+                            const deleteByEmailFn = httpsCallable(functions, 'deleteUserByEmail');
+                            const res = await deleteByEmailFn({ email: email });
+                            if (res.data.success) {
+                                showToast('เคลียร์บัญชีเก่าสำเร็จ กรุณากด "บันทึก" อีกครั้งเพื่อสร้างใหม่', 'success');
+                            } else {
+                                showToast(res.data.message || 'ไม่สามารถเคลียร์บัญชีได้', 'error');
+                            }
+                        } catch (delErr) {
+                            console.error('Error deleting orphaned user:', delErr);
+                            showToast('เกิดข้อผิดพลาดในการเคลียร์บัญชีเก่า', 'error');
+                        }
+                    }
+                    return;
+                }
+
+                let errorMsg = 'เกิดข้อผิดพลาดในการสร้างผู้ใช้งาน';
+                if (error.code === 'auth/weak-password') {
                     errorMsg = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
                 } else if (error.code === 'auth/invalid-email') {
                     errorMsg = 'รูปแบบอีเมลไม่ถูกต้อง';
@@ -16398,6 +16482,94 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(errorMsg, 'error');
             }
         });
+    }
+
+    // --- User Details Modal Logic ---
+    const modalUserDetails = document.getElementById('user-details-modal');
+    const btnCloseUserDetails = document.getElementById('btn-close-user-details-modal');
+    const btnCancelUserDetails = document.getElementById('btn-cancel-user-details');
+    const formUserDetails = document.getElementById('user-details-form');
+    const btnDeleteUser = document.getElementById('btn-delete-user');
+
+    if (modalUserDetails) {
+        window.openUserDetailsModal = (user) => {
+            document.getElementById('edit-user-id').value = user.uid;
+            document.getElementById('edit-user-email').value = user.email || '';
+            document.getElementById('edit-user-name').value = user.displayName || '';
+            document.getElementById('edit-user-phone').value = user.phone || '';
+            document.getElementById('edit-user-role').value = user.role || 'user';
+
+            // Disable delete if it's the current user
+            if (auth.currentUser && auth.currentUser.uid === user.uid) {
+                btnDeleteUser.style.display = 'none';
+            } else {
+                btnDeleteUser.style.display = 'flex';
+            }
+
+            modalUserDetails.classList.remove('hidden');
+            modalUserDetails.style.display = 'flex';
+        };
+
+        const closeUserDetailsModal = () => {
+            modalUserDetails.classList.add('hidden');
+            modalUserDetails.style.display = 'none';
+            formUserDetails.reset();
+        };
+
+        if (btnCloseUserDetails) btnCloseUserDetails.addEventListener('click', closeUserDetailsModal);
+        if (btnCancelUserDetails) btnCancelUserDetails.addEventListener('click', closeUserDetailsModal);
+
+        formUserDetails.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userId = document.getElementById('edit-user-id').value;
+            const name = document.getElementById('edit-user-name').value;
+            const phone = document.getElementById('edit-user-phone').value;
+            const role = document.getElementById('edit-user-role').value;
+
+            try {
+                showToast('กำลังอัปเดตข้อมูล...', 'info');
+                await FirestoreService.updateUserDetails(userId, {
+                    displayName: name,
+                    phone: phone,
+                    role: role
+                });
+                showToast('อัปเดตข้อมูลเรียบร้อยแล้ว', 'success');
+                closeUserDetailsModal();
+                if (typeof renderUserRoles === 'function') {
+                    await renderUserRoles();
+                }
+            } catch (error) {
+                console.error('Error updating user details:', error);
+                showToast('เกิดข้อผิดพลาดในการอัปเดตข้อมูล', 'error');
+            }
+        });
+
+        if (btnDeleteUser) {
+            btnDeleteUser.addEventListener('click', async () => {
+                const userId = document.getElementById('edit-user-id').value;
+                const name = document.getElementById('edit-user-name').value;
+                
+                const confirmed = await showDialog(
+                    `คุณแน่ใจหรือไม่ว่าต้องการลบบัญชีผู้ใช้ "${name}"?\nการดำเนินการนี้ไม่สามารถเรียกคืนได้`,
+                    { type: 'confirm' }
+                );
+
+                if (!confirmed) return;
+
+                try {
+                    showToast('กำลังลบข้อมูลผู้ใช้งาน...', 'info');
+                    await FirestoreService.deleteUser(userId);
+                    showToast('ลบข้อมูลผู้ใช้เรียบร้อยแล้ว', 'success');
+                    closeUserDetailsModal();
+                    if (typeof renderUserRoles === 'function') {
+                        await renderUserRoles();
+                    }
+                } catch (error) {
+                    console.error('Error deleting user:', error);
+                    showToast('เกิดข้อผิดพลาดในการลบผู้ใช้งาน', 'error');
+                }
+            });
+        }
     }
 });
 let currentUserRole = "user"; // Default

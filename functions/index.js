@@ -626,5 +626,86 @@ exports.linkLineAccount = onCall({ cors: true }, async (request) => {
     }
 });
 
+// --- Delete User Completely (Auth + Firestore) ---
+exports.deleteAuthUser = onCall({ cors: true }, async (request) => {
+    if (!request.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
+    }
+
+    const callerUid = request.auth.uid;
+    const { targetUid } = request.data;
+
+    if (!targetUid) {
+        throw new functions.https.HttpsError('invalid-argument', 'targetUid is required');
+    }
+
+    try {
+        const callerDoc = await db.collection('users').doc(callerUid).get();
+        if (!callerDoc.exists || callerDoc.data().role !== 'admin') {
+            throw new functions.https.HttpsError('permission-denied', 'Only admins can delete users');
+        }
+
+        try {
+            await admin.auth().deleteUser(targetUid);
+            console.log(`Successfully deleted user from Auth: ${targetUid}`);
+        } catch (authError) {
+            console.warn(`Auth delete failed (maybe already deleted): ${authError.message}`);
+        }
+
+        try {
+            await db.collection('users').doc(targetUid).delete();
+            console.log(`Successfully deleted user from Firestore: ${targetUid}`);
+        } catch (dbError) {
+            console.warn(`Firestore delete failed: ${dbError.message}`);
+        }
+
+        return { success: true, message: 'User completely deleted' };
+
+    } catch (error) {
+        if (error instanceof functions.https.HttpsError) throw error;
+        console.error('Delete User error:', error.message);
+        throw new functions.https.HttpsError('internal', error.message || 'Failed to delete user');
+    }
+});
+
+// --- Clear Orphaned Account by Email ---
+exports.deleteUserByEmail = onCall({ cors: true }, async (request) => {
+    if (!request.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
+    }
+
+    const callerUid = request.auth.uid;
+    const { email } = request.data;
+
+    if (!email) {
+        throw new functions.https.HttpsError('invalid-argument', 'email is required');
+    }
+
+    try {
+        const callerDoc = await db.collection('users').doc(callerUid).get();
+        if (!callerDoc.exists || callerDoc.data().role !== 'admin') {
+            throw new functions.https.HttpsError('permission-denied', 'Only admins can delete users');
+        }
+
+        const userRecord = await admin.auth().getUserByEmail(email);
+        await admin.auth().deleteUser(userRecord.uid);
+        
+        try {
+            await db.collection('users').doc(userRecord.uid).delete();
+        } catch (dbError) {
+            console.warn(`Firestore delete failed: ${dbError.message}`);
+        }
+
+        return { success: true, message: 'User deleted by email' };
+
+    } catch (error) {
+        if (error.code === 'auth/user-not-found') {
+             return { success: false, message: 'User not found in Auth' };
+        }
+        console.error('Delete User by Email error:', error.message);
+        throw new functions.https.HttpsError('internal', error.message || 'Failed to delete user');
+    }
+});
+
 
 
