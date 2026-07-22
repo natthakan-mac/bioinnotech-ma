@@ -1,7 +1,7 @@
 import { auth, db, functions } from '../config/firebase.js';
 import { state } from '../store/state.js';
 import { FirestoreService } from '../services/firestore.js';
-import { signInWithCustomToken, updateProfile, linkWithPopup, unlink, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { signInWithCustomToken, updateProfile, linkWithPopup, unlink, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { doc, updateDoc, serverTimestamp, deleteField } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
 import { showDialog, showToast } from '../utils/ui.js';
@@ -44,10 +44,6 @@ async function getLiffAccessToken(actionType = 'login') {
         showToast('ไม่สามารถเชื่อมต่อ LINE ได้ กรุณาลองใหม่', 'error');
         return null;
     }
-    // Force logout if it's a login or link action to always show consent screen
-    if (liff.isLoggedIn() && (actionType === 'login' || actionType === 'link')) {
-        liff.logout();
-    }
 
     // If not logged in to LINE, trigger LIFF login
     if (!liff.isLoggedIn()) {
@@ -58,18 +54,22 @@ async function getLiffAccessToken(actionType = 'login') {
         // query string / hash fragment issues that can cause redirect URI mismatch on mobile.
         const cleanRedirectUrl = window.location.origin + window.location.pathname;
 
-        // Use prompt: 'consent' to force the LINE authorization screen to appear,
-        // allowing the user to verify or switch their account.
         liff.login({
-            redirectUri: cleanRedirectUrl,
-            prompt: 'consent'
+            redirectUri: cleanRedirectUrl
         });
         return null; // Page will redirect, return null
     }
 
     const accessToken = liff.getAccessToken();
     if (!accessToken) {
-        showToast('ไม่สามารถรับ Token จาก LINE ได้', 'error');
+        if (liffInitialized && liff.isLoggedIn()) {
+            try { liff.logout(); } catch (e) { console.warn('LIFF logout warn:', e); }
+        }
+        localStorage.setItem('liff_pending_action', actionType);
+        const cleanRedirectUrl = window.location.origin + window.location.pathname;
+        liff.login({
+            redirectUri: cleanRedirectUrl
+        });
         return null;
     }
 
@@ -77,33 +77,36 @@ async function getLiffAccessToken(actionType = 'login') {
 }
 
 /**
- * Handle LINE Login (from login page button)
+ * Handle LINE Login (from login page button or redirect callback)
  */
 async function handleLineLogin() {
     const btn = document.getElementById('btn-line-login');
-    if (!btn) return;
-
-    const originalHTML = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>กำลังเชื่อมต่อ LINE...</span>';
+    const originalHTML = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>กำลังเชื่อมต่อ LINE...</span>';
+    }
 
     try {
         const accessToken = await getLiffAccessToken('login');
         if (!accessToken) {
             // LIFF login triggered a redirect, or failed silently
-            // Restore button if no redirect happened (error case)
-            setTimeout(() => {
-                if (btn) {
-                    btn.innerHTML = originalHTML;
-                    btn.disabled = false;
-                }
-            }, 2000);
+            if (btn) {
+                setTimeout(() => {
+                    if (btn) {
+                        btn.innerHTML = originalHTML;
+                        btn.disabled = false;
+                    }
+                }, 2000);
+            }
             return;
         }
 
         // Call Cloud Function to verify token and get Firebase custom token
         const lineLoginFn = httpsCallable(functions, 'lineLogin');
         const result = await lineLoginFn({ accessToken });
+
+        localStorage.removeItem('liff_pending_action');
 
         if (result.data.success) {
             // Sign in with Firebase custom token
@@ -113,23 +116,36 @@ async function handleLineLogin() {
             // Log action
             FirestoreService.logAction('AUTH', 'LOGIN', `User logged in via LINE (${result.data.lineProfile?.displayName || 'unknown'})`);
         } else if (result.data.error === 'NOT_LINKED') {
-            if (liffInitialized && liff.isLoggedIn()) liff.logout();
+            if (liffInitialized && liff.isLoggedIn()) {
+                try { liff.logout(); } catch (e) { console.warn(e); }
+            }
             // LINE not linked to any account
             await showDialog(result.data.message || 'ไม่พบบัญชีที่เชื่อมต่อกับ LINE นี้\n\nกรุณาเข้าสู่ระบบด้วยอีเมล/เบอร์โทร แล้วเชื่อมต่อ LINE ที่หน้าโปรไฟล์ก่อน');
-            btn.innerHTML = originalHTML;
-            btn.disabled = false;
+            if (btn) {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
         } else {
-            if (liffInitialized && liff.isLoggedIn()) liff.logout();
+            if (liffInitialized && liff.isLoggedIn()) {
+                try { liff.logout(); } catch (e) { console.warn(e); }
+            }
             showToast(result.data.message || 'เกิดข้อผิดพลาด', 'error');
+            if (btn) {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        }
+    } catch (error) {
+        localStorage.removeItem('liff_pending_action');
+        if (liffInitialized && liff.isLoggedIn()) {
+            try { liff.logout(); } catch (e) { console.warn(e); }
+        }
+        console.error('LINE Login error:', error);
+        showToast('เข้าสู่ระบบด้วย LINE ไม่สำเร็จ: ' + (error.message || 'Unknown error'), 'error');
+        if (btn) {
             btn.innerHTML = originalHTML;
             btn.disabled = false;
         }
-    } catch (error) {
-        if (liffInitialized && liff.isLoggedIn()) liff.logout();
-        console.error('LINE Login error:', error);
-        showToast('เข้าสู่ระบบด้วย LINE ไม่สำเร็จ: ' + (error.message || 'Unknown error'), 'error');
-        btn.innerHTML = originalHTML;
-        btn.disabled = false;
     }
 }
 
@@ -138,21 +154,23 @@ async function handleLineLogin() {
  */
 async function handleLinkLine() {
     const btn = document.getElementById('btn-link-line');
-    if (!btn) return;
-
-    const originalHTML = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังเชื่อมต่อ...';
+    const originalHTML = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังเชื่อมต่อ...';
+    }
 
     try {
         const accessToken = await getLiffAccessToken('link');
         if (!accessToken) {
-            setTimeout(() => {
-                if (btn) {
-                    btn.innerHTML = originalHTML;
-                    btn.disabled = false;
-                }
-            }, 2000);
+            if (btn) {
+                setTimeout(() => {
+                    if (btn) {
+                        btn.innerHTML = originalHTML;
+                        btn.disabled = false;
+                    }
+                }, 2000);
+            }
             return;
         }
 
@@ -160,27 +178,42 @@ async function handleLinkLine() {
         const linkFn = httpsCallable(functions, 'linkLineAccount');
         const result = await linkFn({ accessToken });
 
+        localStorage.removeItem('liff_pending_action');
+
         if (result.data.success) {
             showToast(result.data.message || 'เชื่อมต่อ LINE สำเร็จ!', 'success');
             // Re-render profile to show linked status
-            renderProfile();
+            safeRenderProfile();
         } else if (result.data.error === 'ALREADY_LINKED') {
-            if (liffInitialized && liff.isLoggedIn()) liff.logout();
+            if (liffInitialized && liff.isLoggedIn()) {
+                try { liff.logout(); } catch (e) { console.warn(e); }
+            }
             await showDialog(result.data.message || 'บัญชี LINE นี้ถูกเชื่อมต่อกับผู้ใช้งานอื่นแล้ว');
-            btn.innerHTML = originalHTML;
-            btn.disabled = false;
+            if (btn) {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
         } else {
-            if (liffInitialized && liff.isLoggedIn()) liff.logout();
+            if (liffInitialized && liff.isLoggedIn()) {
+                try { liff.logout(); } catch (e) { console.warn(e); }
+            }
             showToast(result.data.message || 'เกิดข้อผิดพลาด', 'error');
+            if (btn) {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        }
+    } catch (error) {
+        localStorage.removeItem('liff_pending_action');
+        if (liffInitialized && liff.isLoggedIn()) {
+            try { liff.logout(); } catch (e) { console.warn(e); }
+        }
+        console.error('Link LINE error:', error);
+        showToast('เชื่อมต่อ LINE ไม่สำเร็จ: ' + (error.message || 'Unknown error'), 'error');
+        if (btn) {
             btn.innerHTML = originalHTML;
             btn.disabled = false;
         }
-    } catch (error) {
-        if (liffInitialized && liff.isLoggedIn()) liff.logout();
-        console.error('Link LINE error:', error);
-        showToast('เชื่อมต่อ LINE ไม่สำเร็จ: ' + (error.message || 'Unknown error'), 'error');
-        btn.innerHTML = originalHTML;
-        btn.disabled = false;
     }
 }
 
@@ -189,18 +222,20 @@ async function handleLinkLine() {
  */
 async function handleSyncLinePhoto() {
     const btn = document.getElementById('btn-sync-line-photo');
-    if (!btn) return;
-
-    const originalHTML = btn.innerHTML;
-    btn.classList.add('syncing');
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังซิงค์...';
+    const originalHTML = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.classList.add('syncing');
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังซิงค์...';
+    }
 
     try {
         const accessToken = await getLiffAccessToken('sync');
         if (!accessToken) {
             showToast('ไม่สามารถซิงค์ได้ กรุณาลองใหม่', 'error');
-            btn.classList.remove('syncing');
-            btn.innerHTML = originalHTML;
+            if (btn) {
+                btn.classList.remove('syncing');
+                btn.innerHTML = originalHTML;
+            }
             return;
         }
 
@@ -208,19 +243,24 @@ async function handleSyncLinePhoto() {
         const linkFn = httpsCallable(functions, 'linkLineAccount');
         const result = await linkFn({ accessToken });
 
+        localStorage.removeItem('liff_pending_action');
+
         if (result.data.success) {
             showToast('ซิงค์รูปโปรไฟล์สำเร็จ!', 'success');
             // Re-render profile to show updated photo
-            renderProfile();
+            safeRenderProfile();
         } else {
             showToast(result.data.message || 'เกิดข้อผิดพลาดในการซิงค์', 'error');
         }
     } catch (error) {
+        localStorage.removeItem('liff_pending_action');
         console.error('Sync LINE photo error:', error);
         showToast('เกิดข้อผิดพลาดในการซิงค์: ' + (error.message || 'Unknown error'), 'error');
     } finally {
-        btn.classList.remove('syncing');
-        btn.innerHTML = originalHTML;
+        if (btn) {
+            btn.classList.remove('syncing');
+            btn.innerHTML = originalHTML;
+        }
     }
 }
 
@@ -258,11 +298,24 @@ async function handleUnlinkLine() {
         }
 
         showToast('ยกเลิกการเชื่อมต่อ LINE เรียบร้อย', 'success');
-        renderProfile();
+        safeRenderProfile();
     } catch (error) {
         console.error('Unlink LINE error:', error);
         showToast('เกิดข้อผิดพลาดในการยกเลิกเชื่อมต่อ', 'error');
     }
+}
+
+function safeRenderProfile() {
+    try {
+        if (typeof renderProfile === 'function') {
+            renderProfile();
+        } else if (typeof window.renderProfile === 'function') {
+            window.renderProfile();
+        }
+    } catch (e) {
+        console.warn('safeRenderProfile error:', e);
+    }
+    renderLineStatus();
 }
 
 /**
@@ -353,5 +406,94 @@ async function renderLineStatus(userArg = null) {
     }
 }
 
+/**
+ * Helper to wait until Firebase Auth finishes initializing / restoring currentUser
+ */
+function waitForAuthReady() {
+    if (auth.currentUser) return Promise.resolve(auth.currentUser);
+    return new Promise((resolve) => {
+        let resolved = false;
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (!resolved) {
+                resolved = true;
+                unsubscribe();
+                resolve(user);
+            }
+        });
+        setTimeout(() => {
+            if (!resolved) {
+                resolved = true;
+                unsubscribe();
+                resolve(auth.currentUser);
+            }
+        }, 3000);
+    });
+}
 
-export { initLiff, getLiffAccessToken, handleLineLogin, handleLinkLine, handleSyncLinePhoto, handleUnlinkLine, renderLineStatus };
+/**
+ * Check and process LIFF redirect callback on page load
+ */
+async function checkLiffRedirectCallback() {
+    // ถ้าผู้ใช้เพิ่ง logout มา ให้ข้ามการ auto-login ด้วย LINE
+    const skipAutoLogin = sessionStorage.getItem('skip_line_auto_login');
+    if (skipAutoLogin) {
+        console.log('[LIFF] Skipping auto-login (user just logged out).');
+        sessionStorage.removeItem('skip_line_auto_login');
+        localStorage.removeItem('liff_pending_action');
+        // logout LIFF session ด้วยเพื่อไม่ให้ค้างอยู่
+        try {
+            const ok = await initLiff();
+            if (ok && liff.isLoggedIn()) {
+                liff.logout();
+            }
+        } catch (e) {
+            console.warn('[LIFF] Could not logout LIFF on skip:', e);
+        }
+        return;
+    }
+
+    const pendingAction = localStorage.getItem('liff_pending_action');
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasLiffParams = urlParams.has('code') || urlParams.has('liff.state');
+
+    if (!pendingAction && !hasLiffParams) return;
+
+    console.log('[LIFF] Checking redirect callback...', { pendingAction, hasLiffParams });
+
+    const ok = await initLiff();
+    if (!ok) {
+        localStorage.removeItem('liff_pending_action');
+        return;
+    }
+
+    if (liff.isLoggedIn()) {
+        const action = pendingAction || 'login';
+        console.log(`[LIFF] Logged in via LIFF. Executing pending action: ${action}`);
+
+        if (action === 'login') {
+            await handleLineLogin();
+        } else if (action === 'link') {
+            const user = await waitForAuthReady();
+            if (!user) {
+                console.warn('[LIFF] Cannot link LINE: User not authenticated in Firebase');
+                showToast('กรุณาเข้าสู่ระบบก่อนเชื่อมต่อบัญชี LINE', 'error');
+                localStorage.removeItem('liff_pending_action');
+                return;
+            }
+            await handleLinkLine();
+        } else if (action === 'sync') {
+            const user = await waitForAuthReady();
+            if (!user) {
+                console.warn('[LIFF] Cannot sync LINE: User not authenticated in Firebase');
+                showToast('กรุณาเข้าสู่ระบบก่อนซิงค์รูปโปรไฟล์ LINE', 'error');
+                localStorage.removeItem('liff_pending_action');
+                return;
+            }
+            await handleSyncLinePhoto();
+        }
+    } else if (!hasLiffParams) {
+        localStorage.removeItem('liff_pending_action');
+    }
+}
+
+export { initLiff, getLiffAccessToken, handleLineLogin, handleLinkLine, handleSyncLinePhoto, handleUnlinkLine, renderLineStatus, checkLiffRedirectCallback };

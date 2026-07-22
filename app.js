@@ -15,7 +15,7 @@ console.log("--- App.js Module Evaluating ---");
 import { app, db, storage, auth, functions } from './src/config/firebase.js';
 import { state, calendarState } from './src/store/state.js';
 import { FirestoreService } from './src/services/firestore.js';
-import { initLiff, getLiffAccessToken, handleLineLogin, handleLinkLine, handleSyncLinePhoto, handleUnlinkLine, renderLineStatus } from './src/services/line.js';
+import { initLiff, getLiffAccessToken, handleLineLogin, handleLinkLine, handleSyncLinePhoto, handleUnlinkLine, renderLineStatus, checkLiffRedirectCallback } from './src/services/line.js?v=1.1.9';
 
 import { isMaCategory, createDeviceBannerHTML, imageViewer, createLoaderImage, showDialog, showCancelReasonDialog, showToast, removeToast } from './src/utils/ui.js';
 import { sanitizeDate, formatThaiDate, formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from './src/utils/date.js';
@@ -354,6 +354,8 @@ const initAuthWorkflow = async () => {
             console.log("Mobile detected: Delaying redirect processing...");
             await new Promise((r) => setTimeout(r, 800));
         }
+
+        await checkLiffRedirectCallback();
 
         setupAuthStateListener();
     } catch (err) {

@@ -1,6 +1,6 @@
 import { state } from '../store/state.js';
 import { handleLogin, isMobile } from '../ui/profile.js';
-import { handleLineLogin } from '../services/line.js';
+import { handleLineLogin } from '../services/line.js?v=1.1.8';
 import { views, modals, grids, selects, addressInputs } from './selectors.js';
 import { switchView, toggleModal, resetSiteForm, renderSites, renderCurrentView, viewSiteDetails, viewSiteLogs, viewLogDetails, generateMockLogs } from './views.js';
 import { initCycleCountModal, initPlanDateModal, switchLogView, changeCalendarMonth, resetFilters } from './calendar.js';

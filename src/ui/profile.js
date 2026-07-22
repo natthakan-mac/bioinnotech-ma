@@ -6,6 +6,7 @@ import { updateProfile, updatePassword, updateEmail, reauthenticateWithCredentia
 import { doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { showDialog, showToast } from '../utils/ui.js';
 import { validateEmail } from '../utils/validation.js';
+import { renderLineStatus } from '../services/line.js?v=1.1.9';
 
 function isMobile() {
     const ua = navigator.userAgent;
@@ -806,7 +807,11 @@ async function renderProfile(userArg = null) {
     }
 
     // Render LINE link status
-    renderLineStatus(user);
+    if (typeof renderLineStatus === 'function') {
+        renderLineStatus(user);
+    } else if (typeof window.renderLineStatus === 'function') {
+        window.renderLineStatus(user);
+    }
 }
 
 function setupProfileTabs() {

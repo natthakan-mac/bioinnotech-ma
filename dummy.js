@@ -1,0 +1,1 @@
+export function signInWithCustomToken(){} export function updateProfile(){} export function linkWithPopup(){} export function unlink(){} export function signOut(){} export function onAuthStateChanged(){} export function doc(){} export function updateDoc(){} export function serverTimestamp(){} export function deleteField(){} export function httpsCallable(){}
