@@ -1,6 +1,6 @@
 import { auth, db } from '../config/firebase.js';
 import { state } from '../store/state.js';
-import { getCategorySpecificDoneFields } from '../ui/forms.js'; // to be created
+import { addressInputs } from '../ui/selectors.js';
 
 function calculateDuration(startDateStr, endDateStr) {
     if (!endDateStr) return null;
@@ -276,7 +276,15 @@ function initSiteAutocompletes() {
     setupAutocomplete(
         "log-site-input",
         "dropdown-log-site",
-        () => state.sites.map((s) => (s.siteCode ? `${s.siteCode} - ${s.name}` : s.name)).sort(),
+        () => {
+            // Filter sites by selected province (if set in engineer view)
+            const provinceFilter = document.getElementById("filter-log-province");
+            const selectedProvince = provinceFilter ? provinceFilter.value : "all";
+            const filteredSites = selectedProvince !== "all"
+                ? state.sites.filter(s => s.province === selectedProvince)
+                : state.sites;
+            return filteredSites.map((s) => (s.siteCode ? `${s.siteCode} - ${s.name}` : s.name)).sort();
+        },
         (displayName) => {
             const site = state.sites.find((s) => {
                 const display = s.siteCode ? `${s.siteCode} - ${s.name}` : s.name;
@@ -290,6 +298,7 @@ function initSiteAutocompletes() {
         true,
         0,
     );
+
 
     // 3. Log Maintenance Details Autocomplete (New)
     setupAutocomplete(
@@ -666,7 +675,7 @@ function updateLogDetailsDatalist() {
     state.logs.forEach(log => {
         if (log.lineItems && log.lineItems.length > 0) {
             log.lineItems.forEach(li => {
-                if (li.item && li.item.trim() !== "" && !li.item.includes("α╕ïα╣êα╕¡α╕íα╕Üα╕│α╕úα╕╕α╕çα╕òα╕▓α╕íα╕úα╕¡α╕Ü") && !li.item.includes("Maintenance Cycle")) {
+                if (li.item && li.item.trim() !== "" && !li.item.includes("ซ่อมบำรุงตามรอบ") && !li.item.includes("Maintenance Cycle")) {
                     items.add(li.item.trim());
                 }
             });
@@ -685,7 +694,7 @@ function updateLogDetailsDatalist() {
 
 // --- Site Name Auto-Generation ---
 function updateSiteName() {
-    // Device name is entered manually ΓÇö no auto-generation needed
+    // Device name is entered manually
 }
 
 function setupSiteNameAutoGeneration() {
@@ -701,14 +710,14 @@ function updateSiteFieldDataLists() {
             () => {
                 let options = [...new Set(state.sites.map(s => s[field]).filter(Boolean))];
                 if (field === 'deviceType') {
-                    if (!options.includes('α╣Çα╕äα╕úα╕╖α╣êα╕¡α╕çα╣Çα╕èα╣êα╕▓')) {
-                        options.push('α╣Çα╕äα╕úα╕╖α╣êα╕¡α╕çα╣Çα╕èα╣êα╕▓');
+                    if (!options.includes('เครื่องเช่า')) {
+                        options.push('เครื่องเช่า');
                     }
                 }
                 return options.sort((a, b) => a.localeCompare(b, 'th'));
             },
             () => { },
-            "α╕äα╣ëα╕Öα╕½α╕▓...",
+            "ค้นหา...",
             false,
             0
         );

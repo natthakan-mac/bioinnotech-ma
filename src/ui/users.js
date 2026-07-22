@@ -1,4 +1,7 @@
-import { auth, db, functions } from '../config/firebase.js';
+import { auth, db, functions, firebaseConfig } from '../config/firebase.js';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { setDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { state } from '../store/state.js';
 import { FirestoreService } from '../services/firestore.js';
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";

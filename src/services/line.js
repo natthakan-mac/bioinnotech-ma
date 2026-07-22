@@ -1,9 +1,14 @@
-import { auth, db } from '../config/firebase.js';
+import { auth, db, functions } from '../config/firebase.js';
 import { state } from '../store/state.js';
 import { FirestoreService } from '../services/firestore.js';
 import { signInWithCustomToken, updateProfile, linkWithPopup, unlink, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { doc, updateDoc, serverTimestamp, deleteField } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
 import { showDialog, showToast } from '../utils/ui.js';
+
+const LIFF_ID = "2008894954-o8Us8rV9";
+let liffInitialized = false;
+let liffInitPromise = null;
 
 async function initLiff() {
     if (liffInitialized) return true;
@@ -39,7 +44,6 @@ async function getLiffAccessToken(actionType = 'login') {
         showToast('ไม่สามารถเชื่อมต่อ LINE ได้ กรุณาลองใหม่', 'error');
         return null;
     }
-
     // Force logout if it's a login or link action to always show consent screen
     if (liff.isLoggedIn() && (actionType === 'login' || actionType === 'link')) {
         liff.logout();

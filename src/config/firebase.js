@@ -76,4 +76,4 @@ const auth = getAuth(app);
 const functions = getFunctions(app, "asia-southeast1");
 
 
-export { app, db, storage, auth, functions };
+export { app, db, storage, auth, functions, firebaseConfig };

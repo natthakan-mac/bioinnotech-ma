@@ -1,11 +1,13 @@
-import { auth, db } from '../config/firebase.js';
+import { auth, db, storage } from '../config/firebase.js';
 import { state } from '../store/state.js';
 import { FirestoreService } from '../services/firestore.js';
 import { showDialog, showCancelReasonDialog, showToast } from '../utils/ui.js';
 import { validateThaiPhone } from '../utils/validation.js';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/date.js';
 import { getProvinces, getAmphoes, getTambons, setupAutocomplete } from '../utils/autocomplete.js';
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { doc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 // --- MA Round Sections Toggle ---
 function toggleMaRoundSections(category) {
@@ -1162,7 +1164,7 @@ async function handleLogMaintenance(e) {
             wireThroughCeiling: formData.get("wireThroughCeiling") || "",
             hospitalTechName: formData.get("hospitalTechName") || "",
             hospitalTechPhone: formData.get("hospitalTechPhone") || "",
-            installType: formData.get("installType") || "",
+            installType: formData.get("installType") || formData.get("category") || "",
             // Repair checklist
             repairChecklist: (() => { try { return JSON.parse(formData.get("repairChecklistJSON") || "[]"); } catch (e) { return []; } })(),
             machineStatusAfter: formData.get("machineStatusAfter") || "",
@@ -2783,8 +2785,31 @@ function editLog(logId) {
 
 function getFieldValue(data, key) {
     if (!data) return null;
-    if (data instanceof FormData) return data.get(key);
-    return data[key];
+    let val;
+    if (data instanceof FormData) {
+        val = data.get(key);
+        if (!isFilled(val) && key === 'installType') {
+            val = data.get('category');
+        }
+    } else {
+        val = data[key];
+        if (!isFilled(val) && key === 'installType') {
+            val = data.category;
+        }
+        if (!isFilled(val) && typeof key === 'string' && key.startsWith('doorWidth_')) {
+            const idx = parseInt(key.replace('doorWidth_', '')) - 1;
+            if (Array.isArray(data.doorSizes) && data.doorSizes[idx]) {
+                val = data.doorSizes[idx].width;
+            }
+        }
+        if (!isFilled(val) && typeof key === 'string' && key.startsWith('doorHeight_')) {
+            const idx = parseInt(key.replace('doorHeight_', '')) - 1;
+            if (Array.isArray(data.doorSizes) && data.doorSizes[idx]) {
+                val = data.doorSizes[idx].height;
+            }
+        }
+    }
+    return val;
 }
 
 function isFilled(value) {
@@ -2945,11 +2970,18 @@ function getCategorySpecificDoneFields(data) {
             let preInstallPhotos = [];
 
             if (data instanceof FormData) {
-                if (typeof installPhotoPending !== 'undefined' && Array.isArray(installPhotoPending)) {
-                    installPhotos = installPhotoPending;
+                const pendInst = (typeof installPhotoPending !== 'undefined' ? installPhotoPending : window.installPhotoPending) || [];
+                const pendPre = (typeof preInstallPhotoPending !== 'undefined' ? preInstallPhotoPending : window.preInstallPhotoPending) || [];
+                installPhotos = Array.isArray(pendInst) ? pendInst.slice() : [];
+                preInstallPhotos = Array.isArray(pendPre) ? pendPre.slice() : [];
+
+                const existingPreJSON = data.get("existingPreInstallPhotosJSON");
+                if (existingPreJSON) {
+                    try { preInstallPhotos = preInstallPhotos.concat(JSON.parse(existingPreJSON)); } catch (e) { }
                 }
-                if (typeof preInstallPhotoPending !== 'undefined' && Array.isArray(preInstallPhotoPending)) {
-                    preInstallPhotos = preInstallPhotoPending;
+                const existingInstJSON = data.get("existingInstallPhotosJSON");
+                if (existingInstJSON) {
+                    try { installPhotos = installPhotos.concat(JSON.parse(existingInstJSON)); } catch (e) { }
                 }
             } else {
                 installPhotos = Array.isArray(data.installPhotos) ? data.installPhotos : [];
@@ -2977,8 +3009,11 @@ function getCategorySpecificDoneFields(data) {
 
         let repairPhotos = [];
         if (data instanceof FormData) {
-            if (typeof repairPhotoPending !== 'undefined' && Array.isArray(repairPhotoPending)) {
-                repairPhotos = repairPhotoPending;
+            const pendRep = (typeof repairPhotoPending !== 'undefined' ? repairPhotoPending : window.repairPhotoPending) || [];
+            repairPhotos = Array.isArray(pendRep) ? pendRep.slice() : [];
+            const existingRepJSON = data.get("existingRepairPhotosJSON");
+            if (existingRepJSON) {
+                try { repairPhotos = repairPhotos.concat(JSON.parse(existingRepJSON)); } catch (e) { }
             }
         } else {
             repairPhotos = Array.isArray(data.repairPhotos) ? data.repairPhotos : [];
@@ -3007,11 +3042,36 @@ function getIncompleteDoneFields(log) {
         .filter(({ key }) => !isFilled(getFieldValue(log, key)))
         .map(({ label }) => label);
 
-    if (!isFilled(getFieldValue(log, 'customerName'))) {
-        missing.push('ชื่อลูกค้าผู้จบงาน');
-    }
-    if (!isFilled(getFieldValue(log, 'customerPhone'))) {
-        missing.push('เบอร์โทรลูกค้าผู้จบงาน');
+    const useESignature = log instanceof FormData
+        ? (log.get('useESignature') === 'on' || log.get('useESignature') === 'true' || document.getElementById("use-esignature-toggle")?.checked || false)
+        : (log.useESignature ?? false);
+
+    if (!useESignature) {
+        let signedDocs = [];
+        if (log instanceof FormData) {
+            const existingJSON = log.get("existingSignedDocsJSON");
+            if (existingJSON) {
+                try { signedDocs = JSON.parse(existingJSON); } catch (e) { }
+            }
+            const pendDocs = (typeof pendingSignedDocs !== 'undefined' ? pendingSignedDocs : window.pendingSignedDocs) || [];
+            if (Array.isArray(pendDocs)) {
+                signedDocs = signedDocs.concat(pendDocs);
+            }
+        } else {
+            signedDocs = log.signedDocAttachments || [];
+        }
+        if (signedDocs.length === 0) {
+            missing.push('สำเนาเอกสารที่เซ็นแล้ว (Signed Document Copy)');
+        }
+    } else {
+        if (log.customerSignature || !(log instanceof FormData)) {
+            if (log.customerSignature && !isFilled(getFieldValue(log, 'customerName'))) {
+                missing.push('ชื่อลูกค้าผู้จบงาน');
+            }
+            if (log.customerSignature && !isFilled(getFieldValue(log, 'customerPhone'))) {
+                missing.push('เบอร์โทรลูกค้าผู้จบงาน');
+            }
+        }
     }
 
     missing.push(...getCategorySpecificDoneFields(log));
@@ -3036,11 +3096,36 @@ function getIncompleteDoneFieldKeys(data) {
         }
     });
 
-    if (!isFilled(getFieldValue(data, 'customerName'))) {
-        missingKeys.push('customerName');
-    }
-    if (!isFilled(getFieldValue(data, 'customerPhone'))) {
-        missingKeys.push('customerPhone');
+    const useESignature = data instanceof FormData
+        ? (data.get('useESignature') === 'on' || data.get('useESignature') === 'true' || document.getElementById("use-esignature-toggle")?.checked || false)
+        : (data.useESignature ?? false);
+
+    if (!useESignature) {
+        let signedDocs = [];
+        if (data instanceof FormData) {
+            const existingJSON = data.get("existingSignedDocsJSON");
+            if (existingJSON) {
+                try { signedDocs = JSON.parse(existingJSON); } catch (e) { }
+            }
+            const pendDocs = (typeof pendingSignedDocs !== 'undefined' ? pendingSignedDocs : window.pendingSignedDocs) || [];
+            if (Array.isArray(pendDocs)) {
+                signedDocs = signedDocs.concat(pendDocs);
+            }
+        } else {
+            signedDocs = data.signedDocAttachments || [];
+        }
+        if (signedDocs.length === 0) {
+            missingKeys.push('signed-doc-upload-section');
+        }
+    } else {
+        if (data.customerSignature || !(data instanceof FormData)) {
+            if (data.customerSignature && !isFilled(getFieldValue(data, 'customerName'))) {
+                missingKeys.push('customerName');
+            }
+            if (data.customerSignature && !isFilled(getFieldValue(data, 'customerPhone'))) {
+                missingKeys.push('customerPhone');
+            }
+        }
     }
 
     const category = String(getFieldValue(data, 'category') || '').trim();
@@ -3106,11 +3191,18 @@ function getIncompleteDoneFieldKeys(data) {
         let installPhotos = [];
         let preInstallPhotos = [];
         if (data instanceof FormData) {
-            if (typeof installPhotoPending !== 'undefined' && Array.isArray(installPhotoPending)) {
-                installPhotos = installPhotoPending;
+            const pendInst = (typeof installPhotoPending !== 'undefined' ? installPhotoPending : window.installPhotoPending) || [];
+            const pendPre = (typeof preInstallPhotoPending !== 'undefined' ? preInstallPhotoPending : window.preInstallPhotoPending) || [];
+            installPhotos = Array.isArray(pendInst) ? pendInst.slice() : [];
+            preInstallPhotos = Array.isArray(pendPre) ? pendPre.slice() : [];
+
+            const existingPreJSON = data.get("existingPreInstallPhotosJSON");
+            if (existingPreJSON) {
+                try { preInstallPhotos = preInstallPhotos.concat(JSON.parse(existingPreJSON)); } catch (e) { }
             }
-            if (typeof preInstallPhotoPending !== 'undefined' && Array.isArray(preInstallPhotoPending)) {
-                preInstallPhotos = preInstallPhotoPending;
+            const existingInstJSON = data.get("existingInstallPhotosJSON");
+            if (existingInstJSON) {
+                try { installPhotos = installPhotos.concat(JSON.parse(existingInstJSON)); } catch (e) { }
             }
         } else {
             installPhotos = Array.isArray(data.installPhotos) ? data.installPhotos : [];
@@ -3138,38 +3230,17 @@ function getIncompleteDoneFieldKeys(data) {
 
         let repairPhotos = [];
         if (data instanceof FormData) {
-            if (typeof repairPhotoPending !== 'undefined' && Array.isArray(repairPhotoPending)) {
-                repairPhotos = repairPhotoPending;
+            const pendRep = (typeof repairPhotoPending !== 'undefined' ? repairPhotoPending : window.repairPhotoPending) || [];
+            repairPhotos = Array.isArray(pendRep) ? pendRep.slice() : [];
+            const existingRepJSON = data.get("existingRepairPhotosJSON");
+            if (existingRepJSON) {
+                try { repairPhotos = repairPhotos.concat(JSON.parse(existingRepJSON)); } catch (e) { }
             }
         } else {
             repairPhotos = Array.isArray(data.repairPhotos) ? data.repairPhotos : [];
         }
         if (repairPhotos.length === 0) {
             missingKeys.push('repairPhotos');
-        }
-    }
-
-    const useESignature = data instanceof FormData
-        ? (data.get('useESignature') === 'on' || data.get('useESignature') === 'true' || document.getElementById("use-esignature-toggle")?.checked || false)
-        : (data.useESignature || false);
-
-    if (!useESignature) {
-        let signedDocs = [];
-        if (data instanceof FormData) {
-            const existingJSON = data.get("existingSignedDocsJSON");
-            if (existingJSON) {
-                try {
-                    signedDocs = JSON.parse(existingJSON);
-                } catch (e) { }
-            }
-            if (typeof pendingSignedDocs !== 'undefined' && Array.isArray(pendingSignedDocs)) {
-                signedDocs = signedDocs.concat(pendingSignedDocs);
-            }
-        } else {
-            signedDocs = data.signedDocAttachments || [];
-        }
-        if (signedDocs.length === 0) {
-            missingKeys.push('signed-doc-upload-section');
         }
     }
 
@@ -3664,6 +3735,8 @@ function getLineItems() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+let publicReportMedia = [];
+let publicCycleMedia = [];
 
 function updatePublicReportMediaPreview() {
     const preview = document.getElementById('report-media-preview');

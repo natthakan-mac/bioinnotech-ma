@@ -1,5 +1,6 @@
 import { state } from '../store/state.js';
-import { handleLogin, isMobile } from '../ui/profile.js'; // adjust profile mapping if needed
+import { handleLogin, isMobile } from '../ui/profile.js';
+import { handleLineLogin } from '../services/line.js';
 import { views, modals, grids, selects, addressInputs } from './selectors.js';
 import { switchView, toggleModal, resetSiteForm, renderSites, renderCurrentView, viewSiteDetails, viewSiteLogs, viewLogDetails, generateMockLogs } from './views.js';
 import { initCycleCountModal, initPlanDateModal, switchLogView, changeCalendarMonth, resetFilters } from './calendar.js';
@@ -12,6 +13,20 @@ import { initMaFormCommentAttachments } from './attachments.js';
 import { exportLogsToExcel, exportSitesToExcel, exportDevicesPDF, exportAnnualPlanPDF, exportCasePDF } from './export.js';
 
 function setupEventListeners() {
+    // Auth & Login Form Event Listeners
+    const loginForm = document.getElementById("login-form");
+    if (loginForm) {
+        loginForm.addEventListener("submit", handleLogin);
+    }
+
+    const btnLineLogin = document.getElementById("btn-line-login");
+    if (btnLineLogin) {
+        btnLineLogin.addEventListener("click", (e) => {
+            e.preventDefault();
+            handleLineLogin();
+        });
+    }
+
     // Initialize Cycle Count Modal for Annual Plan
     initCycleCountModal();
     initPlanDateModal();
@@ -34,7 +49,9 @@ function setupEventListeners() {
         btn.addEventListener("click", () => switchView(btn.dataset.view));
     });
 
-    document.getElementById("btn-add-site").addEventListener("click", () => {
+    const btnAddSite = document.getElementById("btn-add-site");
+    if (btnAddSite) {
+        btnAddSite.addEventListener("click", () => {
         console.log("Add Site Button Clicked");
         resetSiteForm();
 
@@ -48,7 +65,8 @@ function setupEventListeners() {
         }
 
         toggleModal("addSite", true);
-    });
+        });
+    }
 
     const btnAddSiteFab = document.getElementById("btn-add-site-fab");
     if (btnAddSiteFab) {
@@ -193,6 +211,11 @@ function setupEventListeners() {
 
     if (selects.filterCategory)
         selects.filterCategory.addEventListener("change", renderCurrentView);
+
+    // Province Filter (engineer view)
+    const logProvinceFilter = document.getElementById("filter-log-province");
+    if (logProvinceFilter)
+        logProvinceFilter.addEventListener("change", renderCurrentView);
 
     // Case Dashboard Card Click Listeners
     const caseDashboard = document.getElementById("case-type-dashboard");

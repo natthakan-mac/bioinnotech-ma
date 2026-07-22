@@ -1,201 +1,25 @@
+
+if (typeof window.pendingSiteUploads === 'undefined') window.pendingSiteUploads = [];
+if (typeof window.pendingSiteDeletions === 'undefined') window.pendingSiteDeletions = [];
+if (typeof window.pendingSignedDocs === 'undefined') window.pendingSignedDocs = [];
+if (typeof window.pendingUploadsBefore === 'undefined') window.pendingUploadsBefore = [];
+if (typeof window.pendingDeletions === 'undefined') window.pendingDeletions = [];
+if (typeof window.pendingUploadsAfter === 'undefined') window.pendingUploadsAfter = [];
+if (typeof window.commentAttachments === 'undefined') window.commentAttachments = [];
+if (typeof window.descriptionAttachments === 'undefined') window.descriptionAttachments = [];
+if (typeof window.maFormCommentAttachments === 'undefined') window.maFormCommentAttachments = [];
+if (typeof window.installPhotoPending === 'undefined') window.installPhotoPending = [];
+if (typeof window.preInstallPhotoPending === 'undefined') window.preInstallPhotoPending = [];
+if (typeof window.repairPhotoPending === 'undefined') window.repairPhotoPending = [];
+import { auth, storage } from '../config/firebase.js';
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 import { state } from '../store/state.js';
 import { FirestoreService } from '../services/firestore.js';
 import { showToast, showDialog } from '../utils/ui.js';
 import { initCustomerSignaturePad } from './signature.js';
 
-function renderPendingSitePreviews() {
-    refreshSiteAttachmentPreviews();
-}
-
-
-// --- Install Photo Upload Logic ---
-let installPhotoPending = [];
-let preInstallPhotoPending = [];
-
-// Pre-install photos
-const btnPreInstallPhoto = document.getElementById('btn-pre-install-photo');
-const preInstallPhotoInput = document.getElementById('pre-install-photo-input');
-if (btnPreInstallPhoto && preInstallPhotoInput) {
-    btnPreInstallPhoto.addEventListener('click', function () { preInstallPhotoInput.click(); });
-    preInstallPhotoInput.addEventListener('change', function (e) {
-        const files = Array.from(e.target.files);
-        preInstallPhotoPending.push(...files);
-        renderPreInstallPhotoPreview();
-        e.target.value = '';
-    });
-}
-
-function renderPreInstallPhotoPreview() {
-    const container = document.getElementById('pre-install-photo-preview');
-    const countEl = document.getElementById('pre-install-photo-count');
-    if (!container) return;
-    container.innerHTML = '';
-    if (countEl) countEl.textContent = preInstallPhotoPending.length > 0 ? preInstallPhotoPending.length + ' ไฟล์' : 'ไม่ได้เลือกไฟล์';
-    preInstallPhotoPending.forEach(function (file, idx) {
-        const wrapper = document.createElement('div');
-        wrapper.style.cssText = 'position:relative; width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1);';
-        const img = document.createElement('img');
-        img.style.cssText = 'width:100%; height:100%; object-fit:cover;';
-        if (file instanceof File) { img.src = URL.createObjectURL(file); } else if (file.url) { img.src = file.url; }
-        wrapper.appendChild(img);
-        const removeBtn = document.createElement('div');
-        removeBtn.innerHTML = '&times;';
-        removeBtn.style.cssText = 'position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;';
-        // Use reference-based removal to avoid stale index issues
-        var fileRef = file;
-        removeBtn.onclick = function (e) {
-            e.stopPropagation();
-            if (removeBtn._deleted) return; // Guard against double-click
-            removeBtn._deleted = true;
-            var currentIdx = preInstallPhotoPending.indexOf(fileRef);
-            if (currentIdx !== -1) {
-                preInstallPhotoPending.splice(currentIdx, 1);
-            }
-            renderPreInstallPhotoPreview();
-        };
-        wrapper.appendChild(removeBtn);
-        container.appendChild(wrapper);
-    });
-}
-
-window.preInstallPhotoPending = preInstallPhotoPending;
-window.renderPreInstallPhotoPreview = renderPreInstallPhotoPreview;
-
-// Helper to upload photo arrays
-async function uploadPhotoArray(photos, logId, prefix) {
-    var urls = [];
-    for (var i = 0; i < photos.length; i++) {
-        var pFile = photos[i];
-        if (pFile instanceof File) {
-            var pRef = ref(storage, 'logs/' + prefix + '_' + logId + '_' + Date.now() + '_' + pFile.name);
-            var pSnap = await uploadBytes(pRef, pFile);
-            var pUrl = await getDownloadURL(pSnap.ref);
-            urls.push({ url: pUrl, name: pFile.name, type: pFile.type });
-        } else if (pFile.url) {
-            urls.push(pFile);
-        }
-    }
-    return urls;
-}
-
-// Post-install photos
-
-const btnInstallPhoto = document.getElementById('btn-install-photo');
-const installPhotoInput = document.getElementById('install-photo-input');
-if (btnInstallPhoto && installPhotoInput) {
-    btnInstallPhoto.addEventListener('click', function () { installPhotoInput.click(); });
-    installPhotoInput.addEventListener('change', function (e) {
-        const files = Array.from(e.target.files);
-        installPhotoPending.push(...files);
-        renderInstallPhotoPreview();
-        e.target.value = '';
-    });
-}
-
-function renderInstallPhotoPreview() {
-    const container = document.getElementById('install-photo-preview');
-    const countEl = document.getElementById('install-photo-count');
-    if (!container) return;
-    container.innerHTML = '';
-    if (countEl) countEl.textContent = installPhotoPending.length > 0 ? installPhotoPending.length + ' ไฟล์' : 'ไม่ได้เลือกไฟล์';
-    installPhotoPending.forEach(function (file, idx) {
-        const wrapper = document.createElement('div');
-        wrapper.style.cssText = 'position:relative; width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1);';
-        const img = document.createElement('img');
-        img.style.cssText = 'width:100%; height:100%; object-fit:cover;';
-        if (file instanceof File) {
-            img.src = URL.createObjectURL(file);
-        } else if (file.url) {
-            img.src = file.url;
-        }
-        wrapper.appendChild(img);
-        const removeBtn = document.createElement('div');
-        removeBtn.innerHTML = '&times;';
-        removeBtn.style.cssText = 'position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;';
-        // Use reference-based removal to avoid stale index issues
-        var fileRef = file;
-        removeBtn.onclick = function (e) {
-            e.stopPropagation();
-            if (removeBtn._deleted) return; // Guard against double-click
-            removeBtn._deleted = true;
-            var currentIdx = installPhotoPending.indexOf(fileRef);
-            if (currentIdx !== -1) {
-                installPhotoPending.splice(currentIdx, 1);
-            }
-            renderInstallPhotoPreview();
-        };
-        wrapper.appendChild(removeBtn);
-        container.appendChild(wrapper);
-    });
-}
-
-// Repair photos
-let repairPhotoPending = [];
-const btnRepairPhoto = document.getElementById('btn-repair-photo');
-const repairPhotoInput = document.getElementById('repair-photo-input');
-if (btnRepairPhoto && repairPhotoInput) {
-    btnRepairPhoto.addEventListener('click', function () { repairPhotoInput.click(); });
-    repairPhotoInput.addEventListener('change', function (e) {
-        const files = Array.from(e.target.files);
-        repairPhotoPending.push(...files);
-        renderRepairPhotoPreview();
-        e.target.value = '';
-    });
-}
-
-function renderRepairPhotoPreview() {
-    const container = document.getElementById('repair-photo-preview');
-    const countEl = document.getElementById('repair-photo-count');
-    if (!container) return;
-    container.innerHTML = '';
-    if (countEl) countEl.textContent = repairPhotoPending.length > 0 ? repairPhotoPending.length + ' ไฟล์' : 'ไม่ได้เลือกไฟล์';
-    repairPhotoPending.forEach(function (file, idx) {
-        const wrapper = document.createElement('div');
-        wrapper.style.cssText = 'position:relative; width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); background:#000;';
-
-        const isVideo = (file.type && file.type.startsWith('video/')) || (file.name && file.name.endsWith('.mp4'));
-
-        if (isVideo) {
-            const video = document.createElement('video');
-            video.style.cssText = 'width:100%; height:100%; object-fit:cover;';
-            if (file instanceof File) { video.src = URL.createObjectURL(file); } else if (file.url) { video.src = file.url; }
-            wrapper.appendChild(video);
-            const playIcon = document.createElement('div');
-            playIcon.innerHTML = '<i class="fa-solid fa-play"></i>';
-            playIcon.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:#fff; font-size:1.2rem; pointer-events:none;';
-            wrapper.appendChild(playIcon);
-        } else {
-            const img = document.createElement('img');
-            img.style.cssText = 'width:100%; height:100%; object-fit:cover;';
-            if (file instanceof File) { img.src = URL.createObjectURL(file); } else if (file.url) { img.src = file.url; }
-            wrapper.appendChild(img);
-        }
-
-        const removeBtn = document.createElement('div');
-        removeBtn.innerHTML = '&times;';
-        removeBtn.style.cssText = 'position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; z-index:2;';
-        var fileRef = file;
-        removeBtn.onclick = function (e) {
-            e.stopPropagation();
-            var currentIdx = repairPhotoPending.indexOf(fileRef);
-            if (currentIdx !== -1) {
-                repairPhotoPending.splice(currentIdx, 1);
-            }
-            renderRepairPhotoPreview();
-        };
-        wrapper.appendChild(removeBtn);
-        container.appendChild(wrapper);
-    });
-}
-window.repairPhotoPending = repairPhotoPending;
-window.renderRepairPhotoPreview = renderRepairPhotoPreview;
-
-window.installPhotoPending = installPhotoPending;
-window.renderInstallPhotoPreview = renderInstallPhotoPreview;
-
-// Site Attachment Input Listener
-const siteAttachmentInput = document.getElementById("site-attachment-input");
 const btnSiteAttachment = document.getElementById("btn-site-attachment");
+const siteAttachmentInput = document.getElementById("site-attachment-input");
 
 if (btnSiteAttachment && siteAttachmentInput) {
     btnSiteAttachment.addEventListener("click", () =>
@@ -211,16 +35,13 @@ if (btnSiteAttachment && siteAttachmentInput) {
                     });
                     return;
                 }
-                pendingSiteUploads.push(file);
+                window.pendingSiteUploads.push(file);
             });
             refreshSiteAttachmentPreviews();
             e.target.value = ""; // Reset
         }
     });
 }
-
-let rdpbRegionMapping = {};
-
 
 function renderSignedDocPreview() {
     const preview = document.getElementById("signed-doc-preview");
@@ -231,7 +52,7 @@ function renderSignedDocPreview() {
     const existing = (() => {
         try { return JSON.parse(existingInput?.value || "[]"); } catch { return []; }
     })();
-    const total = existing.length + pendingSignedDocs.length;
+    const total = existing.length + window.pendingSignedDocs.length;
 
     if (countEl) countEl.textContent = total > 0 ? `${total} ไฟล์` : "ไม่ได้เลือกไฟล์";
     if (!preview) return;
@@ -277,7 +98,7 @@ function renderSignedDocPreview() {
         removeBtn.innerHTML = "×";
         removeBtn.onclick = () => {
             if (isPending) {
-                pendingSignedDocs.splice(index, 1);
+                window.pendingSignedDocs.splice(index, 1);
             } else {
                 const updated = existing.filter((_, i) => i !== index);
                 if (existingInput) existingInput.value = JSON.stringify(updated);
@@ -289,7 +110,7 @@ function renderSignedDocPreview() {
     };
 
     existing.forEach((f, i) => makeItem(f.name, f.url, false, i));
-    pendingSignedDocs.forEach((f, i) => {
+    window.pendingSignedDocs.forEach((f, i) => {
         const url = f.type.startsWith("image/") ? URL.createObjectURL(f) : null;
         makeItem(f.name, url, true, i);
     });
@@ -488,7 +309,7 @@ function refreshAttachmentBeforePreviews() {
 
     const allAttachments = [
         ...existing.map((i) => ({ ...i, _source: "existing" })),
-        ...pendingUploadsBefore.map((file, idx) => ({
+        ...window.pendingUploadsBefore.map((file, idx) => ({
             originalFile: file, // Keep reference for createObjectURL
             name: file.name,
             type: file.type,
@@ -507,8 +328,8 @@ function refreshAttachmentBeforePreviews() {
                 );
                 if (existingIdx !== -1) {
                     const att = existing[existingIdx];
-                    if (typeof pendingDeletions !== "undefined" && att.path) {
-                        pendingDeletions.push(att.path);
+                    if (typeof window.pendingDeletions !== "undefined" && att.path) {
+                        window.pendingDeletions.push(att.path);
                     }
                     existing.splice(existingIdx, 1);
                     form.querySelector(
@@ -517,9 +338,9 @@ function refreshAttachmentBeforePreviews() {
                 }
             } else {
                 if (typeof item.pendingIndex !== "undefined") {
-                    const pIndex = pendingUploadsBefore.indexOf(item.originalFile);
+                    const pIndex = window.pendingUploadsBefore.indexOf(item.originalFile);
                     if (pIndex !== -1) {
-                        pendingUploadsBefore.splice(pIndex, 1);
+                        window.pendingUploadsBefore.splice(pIndex, 1);
                     }
                 }
             }
@@ -529,7 +350,7 @@ function refreshAttachmentBeforePreviews() {
         "upload-before-progress-",
     );
 
-    const total = existing.length + pendingUploadsBefore.length;
+    const total = existing.length + window.pendingUploadsBefore.length;
     if (countSpan)
         countSpan.textContent =
             total > 0 ? `เลือก ${total} ไฟล์` : "ไม่ได้เลือกไฟล์";
@@ -556,7 +377,7 @@ function refreshAttachmentAfterPreviews() {
 
     const allAttachments = [
         ...existing.map((i) => ({ ...i, _source: "existing" })),
-        ...pendingUploadsAfter.map((file, idx) => ({
+        ...window.pendingUploadsAfter.map((file, idx) => ({
             originalFile: file,
             name: file.name,
             type: file.type,
@@ -575,8 +396,8 @@ function refreshAttachmentAfterPreviews() {
                 );
                 if (existingIdx !== -1) {
                     const att = existing[existingIdx];
-                    if (typeof pendingDeletions !== "undefined" && att.path) {
-                        pendingDeletions.push(att.path);
+                    if (typeof window.pendingDeletions !== "undefined" && att.path) {
+                        window.pendingDeletions.push(att.path);
                     }
                     existing.splice(existingIdx, 1);
                     form.querySelector(
@@ -585,9 +406,9 @@ function refreshAttachmentAfterPreviews() {
                 }
             } else {
                 if (typeof item.pendingIndex !== "undefined") {
-                    const pIndex = pendingUploadsAfter.indexOf(item.originalFile);
+                    const pIndex = window.pendingUploadsAfter.indexOf(item.originalFile);
                     if (pIndex !== -1) {
-                        pendingUploadsAfter.splice(pIndex, 1);
+                        window.pendingUploadsAfter.splice(pIndex, 1);
                     }
                 }
             }
@@ -597,7 +418,7 @@ function refreshAttachmentAfterPreviews() {
         "upload-after-progress-",
     );
 
-    const total = existing.length + pendingUploadsAfter.length;
+    const total = existing.length + window.pendingUploadsAfter.length;
     if (countSpan)
         countSpan.textContent =
             total > 0 ? `เลือก ${total} ไฟล์` : "ไม่ได้เลือกไฟล์";
@@ -623,7 +444,7 @@ function refreshSiteAttachmentPreviews() {
 
     const allAttachments = [
         ...existing.map((i) => ({ ...i, _source: "existing" })),
-        ...pendingSiteUploads.map((file, idx) => ({
+        ...window.pendingSiteUploads.map((file, idx) => ({
             originalFile: file,
             name: file.name,
             type: file.type,
@@ -642,8 +463,8 @@ function refreshSiteAttachmentPreviews() {
                 );
                 if (existingIdx !== -1) {
                     const att = existing[existingIdx];
-                    if (typeof pendingSiteDeletions !== "undefined" && att.path) {
-                        pendingSiteDeletions.push(att.path);
+                    if (typeof window.pendingSiteDeletions !== "undefined" && att.path) {
+                        window.pendingSiteDeletions.push(att.path);
                     }
                     existing.splice(existingIdx, 1);
                     form.querySelector('input[name="existingAttachmentsJSON"]').value =
@@ -651,9 +472,9 @@ function refreshSiteAttachmentPreviews() {
                 }
             } else {
                 if (typeof item.pendingIndex !== "undefined") {
-                    const pIndex = pendingSiteUploads.indexOf(item.originalFile);
+                    const pIndex = window.pendingSiteUploads.indexOf(item.originalFile);
                     if (pIndex !== -1) {
-                        pendingSiteUploads.splice(pIndex, 1);
+                        window.pendingSiteUploads.splice(pIndex, 1);
                     }
                 }
             }
@@ -663,7 +484,7 @@ function refreshSiteAttachmentPreviews() {
         "site-upload-progress-",
     ); // Use SITE prefix
 
-    const total = existing.length + pendingSiteUploads.length;
+    const total = existing.length + window.pendingSiteUploads.length;
     if (countSpan)
         countSpan.textContent =
             total > 0 ? `เลือก ${total} ไฟล์` : "ไม่ได้เลือกไฟล์";
@@ -689,7 +510,7 @@ if (logAttachmentBeforeInput) {
                     });
                     return;
                 }
-                pendingUploadsBefore.push(file);
+                window.pendingUploadsBefore.push(file);
             });
             refreshAttachmentBeforePreviews();
             this.value = "";
@@ -711,7 +532,7 @@ if (logAttachmentAfterInput) {
                     });
                     return;
                 }
-                pendingUploadsAfter.push(file);
+                window.pendingUploadsAfter.push(file);
             });
             refreshAttachmentAfterPreviews();
             this.value = "";
@@ -1033,14 +854,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ─── Description Attachment Helpers ──────────────────────────────────────────
 
-let descriptionAttachments = [];
-
 function updateDescriptionAttachmentPreview() {
+    if (!Array.isArray(window.descriptionAttachments)) window.descriptionAttachments = [];
+    const list = window.descriptionAttachments;
     const preview = document.getElementById('description-attachments-preview');
     const countSpan = document.getElementById('description-attachment-count');
     if (!preview) return;
 
-    if (descriptionAttachments.length === 0) {
+    if (list.length === 0) {
         preview.style.display = 'none';
         preview.innerHTML = '';
         if (countSpan) {
@@ -1051,14 +872,14 @@ function updateDescriptionAttachmentPreview() {
 
     // Update count display
     if (countSpan) {
-        countSpan.textContent = `เลือกแล้ว ${descriptionAttachments.length} ไฟล์`;
+        countSpan.textContent = `เลือกแล้ว ${list.length} ไฟล์`;
     }
 
-    preview.setAttribute('data-count', descriptionAttachments.length);
+    preview.setAttribute('data-count', list.length);
     preview.style.display = 'flex';
     preview.innerHTML = '';
 
-    descriptionAttachments.forEach((file, index) => {
+    list.forEach((file, index) => {
         const isImage = (file.type && file.type.startsWith('image/')) || (file.name && /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name));
         const isExisting = file.isExisting || file.url;
 
@@ -1094,7 +915,7 @@ function updateDescriptionAttachmentPreview() {
         } else {
             // Show file icon
             const icon = document.createElement('i');
-            const fileExt = file.name.split('.').pop().toLowerCase();
+            const fileExt = file.name ? file.name.split('.').pop().toLowerCase() : '';
 
             if (file.type === 'application/pdf' || fileExt === 'pdf') {
                 icon.className = 'fa-solid fa-file-pdf';
@@ -1132,8 +953,8 @@ function updateDescriptionAttachmentPreview() {
         infoContainer.style.cssText = 'padding: 4px 6px; display: flex; flex-direction: column; gap: 2px; background: rgba(255,255,255,0.03); flex: 1; overflow: hidden;';
 
         const nameSpan = document.createElement('div');
-        nameSpan.textContent = file.name;
-        nameSpan.title = file.name;
+        nameSpan.textContent = file.name || '';
+        nameSpan.title = file.name || '';
         nameSpan.style.cssText = 'font-size: 0.65rem; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;';
 
         const sizeSpan = document.createElement('div');
@@ -1160,7 +981,8 @@ function updateDescriptionAttachmentPreview() {
 }
 
 function removeDescriptionAttachment(index) {
-    descriptionAttachments.splice(index, 1);
+    if (!Array.isArray(window.descriptionAttachments)) window.descriptionAttachments = [];
+    window.descriptionAttachments.splice(index, 1);
     updateDescriptionAttachmentPreview();
 }
 
@@ -1278,5 +1100,189 @@ async function checkAdminAndUpdateStatus(logId, newStatus) {
     }
 }
 
+
+function renderPendingSitePreviews() {
+    refreshSiteAttachmentPreviews();
+}
+window.renderPendingSitePreviews = renderPendingSitePreviews;
+
+async function uploadPhotoArray(photos, logId, prefix) {
+    var urls = [];
+    if (!Array.isArray(photos)) return urls;
+    for (var i = 0; i < photos.length; i++) {
+        var pFile = photos[i];
+        if (pFile instanceof File) {
+            var pRef = ref(storage, 'logs/' + prefix + '_' + logId + '_' + Date.now() + '_' + pFile.name);
+            var pSnap = await uploadBytes(pRef, pFile);
+            var pUrl = await getDownloadURL(pSnap.ref);
+            urls.push({ url: pUrl, name: pFile.name, type: pFile.type });
+        } else if (pFile && pFile.url) {
+            urls.push(pFile);
+        }
+    }
+    return urls;
+}
+window.uploadPhotoArray = uploadPhotoArray;
+
+// Pre-install photo preview logic
+const btnPreInstallPhoto = document.getElementById('btn-pre-install-photo');
+const preInstallPhotoInput = document.getElementById('pre-install-photo-input');
+if (btnPreInstallPhoto && preInstallPhotoInput) {
+    btnPreInstallPhoto.addEventListener('click', function () { preInstallPhotoInput.click(); });
+    preInstallPhotoInput.addEventListener('change', function (e) {
+        const files = Array.from(e.target.files);
+        if (!window.preInstallPhotoPending) window.preInstallPhotoPending = [];
+        window.preInstallPhotoPending.push(...files);
+        renderPreInstallPhotoPreview();
+        e.target.value = '';
+    });
+}
+
+function renderPreInstallPhotoPreview() {
+    const container = document.getElementById('pre-install-photo-preview');
+    const countEl = document.getElementById('pre-install-photo-count');
+    if (!container) return;
+    container.innerHTML = '';
+    const pending = window.preInstallPhotoPending || [];
+    if (countEl) countEl.textContent = pending.length > 0 ? pending.length + ' ไฟล์' : 'ไม่ได้เลือกไฟล์';
+    pending.forEach(function (file) {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:relative; width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1);';
+        const img = document.createElement('img');
+        img.style.cssText = 'width:100%; height:100%; object-fit:cover;';
+        if (file instanceof File) { img.src = URL.createObjectURL(file); } else if (file.url) { img.src = file.url; }
+        wrapper.appendChild(img);
+        const removeBtn = document.createElement('div');
+        removeBtn.innerHTML = '&times;';
+        removeBtn.style.cssText = 'position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;';
+        var fileRef = file;
+        removeBtn.onclick = function (e) {
+            e.stopPropagation();
+            if (removeBtn._deleted) return;
+            removeBtn._deleted = true;
+            var currentIdx = (window.preInstallPhotoPending || []).indexOf(fileRef);
+            if (currentIdx !== -1) {
+                window.preInstallPhotoPending.splice(currentIdx, 1);
+            }
+            renderPreInstallPhotoPreview();
+        };
+        wrapper.appendChild(removeBtn);
+        container.appendChild(wrapper);
+    });
+}
+window.renderPreInstallPhotoPreview = renderPreInstallPhotoPreview;
+
+// Install photo preview logic
+const btnInstallPhoto = document.getElementById('btn-install-photo');
+const installPhotoInput = document.getElementById('install-photo-input');
+if (btnInstallPhoto && installPhotoInput) {
+    btnInstallPhoto.addEventListener('click', function () { installPhotoInput.click(); });
+    installPhotoInput.addEventListener('change', function (e) {
+        const files = Array.from(e.target.files);
+        if (!window.installPhotoPending) window.installPhotoPending = [];
+        window.installPhotoPending.push(...files);
+        renderInstallPhotoPreview();
+        e.target.value = '';
+    });
+}
+
+function renderInstallPhotoPreview() {
+    const container = document.getElementById('install-photo-preview');
+    const countEl = document.getElementById('install-photo-count');
+    if (!container) return;
+    container.innerHTML = '';
+    const pending = window.installPhotoPending || [];
+    if (countEl) countEl.textContent = pending.length > 0 ? pending.length + ' ไฟล์' : 'ไม่ได้เลือกไฟล์';
+    pending.forEach(function (file) {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:relative; width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1);';
+        const img = document.createElement('img');
+        img.style.cssText = 'width:100%; height:100%; object-fit:cover;';
+        if (file instanceof File) {
+            img.src = URL.createObjectURL(file);
+        } else if (file.url) {
+            img.src = file.url;
+        }
+        wrapper.appendChild(img);
+        const removeBtn = document.createElement('div');
+        removeBtn.innerHTML = '&times;';
+        removeBtn.style.cssText = 'position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;';
+        var fileRef = file;
+        removeBtn.onclick = function (e) {
+            e.stopPropagation();
+            if (removeBtn._deleted) return;
+            removeBtn._deleted = true;
+            var currentIdx = (window.installPhotoPending || []).indexOf(fileRef);
+            if (currentIdx !== -1) {
+                window.installPhotoPending.splice(currentIdx, 1);
+            }
+            renderInstallPhotoPreview();
+        };
+        wrapper.appendChild(removeBtn);
+        container.appendChild(wrapper);
+    });
+}
+window.renderInstallPhotoPreview = renderInstallPhotoPreview;
+
+// Repair photo preview logic
+const btnRepairPhoto = document.getElementById('btn-repair-photo');
+const repairPhotoInput = document.getElementById('repair-photo-input');
+if (btnRepairPhoto && repairPhotoInput) {
+    btnRepairPhoto.addEventListener('click', function () { repairPhotoInput.click(); });
+    repairPhotoInput.addEventListener('change', function (e) {
+        const files = Array.from(e.target.files);
+        if (!window.repairPhotoPending) window.repairPhotoPending = [];
+        window.repairPhotoPending.push(...files);
+        renderRepairPhotoPreview();
+        e.target.value = '';
+    });
+}
+
+function renderRepairPhotoPreview() {
+    const container = document.getElementById('repair-photo-preview');
+    const countEl = document.getElementById('repair-photo-count');
+    if (!container) return;
+    container.innerHTML = '';
+    const pending = window.repairPhotoPending || [];
+    if (countEl) countEl.textContent = pending.length > 0 ? pending.length + ' ไฟล์' : 'ไม่ได้เลือกไฟล์';
+    pending.forEach(function (file) {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:relative; width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,0.1); background:#000;';
+
+        const isVideo = (file.type && file.type.startsWith('video/')) || (file.name && file.name.endsWith('.mp4'));
+
+        if (isVideo) {
+            const video = document.createElement('video');
+            video.style.cssText = 'width:100%; height:100%; object-fit:cover;';
+            if (file instanceof File) { video.src = URL.createObjectURL(file); } else if (file.url) { video.src = file.url; }
+            wrapper.appendChild(video);
+            const playIcon = document.createElement('div');
+            playIcon.innerHTML = '<i class="fa-solid fa-play"></i>';
+            playIcon.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:#fff; font-size:1.2rem; pointer-events:none;';
+            wrapper.appendChild(playIcon);
+        } else {
+            const img = document.createElement('img');
+            img.style.cssText = 'width:100%; height:100%; object-fit:cover;';
+            if (file instanceof File) { img.src = URL.createObjectURL(file); } else if (file.url) { img.src = file.url; }
+            wrapper.appendChild(img);
+        }
+
+        const removeBtn = document.createElement('div');
+        removeBtn.innerHTML = '&times;';
+        removeBtn.style.cssText = 'position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; z-index:2;';
+        var fileRef = file;
+        removeBtn.onclick = function (e) {
+            e.stopPropagation();
+            var currentIdx = (window.repairPhotoPending || []).indexOf(fileRef);
+            if (currentIdx !== -1) {
+                window.repairPhotoPending.splice(currentIdx, 1);
+            }
+            renderRepairPhotoPreview();
+        };
+        wrapper.appendChild(removeBtn);
+        container.appendChild(wrapper);
+    });
+}
+window.renderRepairPhotoPreview = renderRepairPhotoPreview;
 
 export { renderPendingSitePreviews, renderPreInstallPhotoPreview, uploadPhotoArray, renderInstallPhotoPreview, renderRepairPhotoPreview, renderSignedDocPreview, renderAttachments, refreshAttachmentBeforePreviews, refreshAttachmentAfterPreviews, refreshSiteAttachmentPreviews, renderPendingPreviews, showUploadingState, updateUploadProgress, updateAttachmentPreview, removeAttachment, updateMaFormAttachmentPreview, removeMaFormAttachment, initMaFormCommentAttachments, updateDescriptionAttachmentPreview, removeDescriptionAttachment, initDescriptionAttachments, renderStatusTimeline, checkAdminAndUpdateStatus };

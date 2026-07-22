@@ -1856,10 +1856,6 @@ ${hotline ? `<div class="hotline">สายด่วน: ${hotline}</div>` : ''}
 // PUBLIC INCIDENT REPORT PAGE (?report=DEVICE_ID)
 // ============================================================
 
-let publicReportMedia = [];
-let publicCycleMedia = [];
-
-
 // --- Shared PDF Preview ---
 function showPdfPreview(html, title) {
     let pdfModal = document.getElementById('pdf-preview-modal');

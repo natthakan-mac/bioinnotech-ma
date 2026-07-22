@@ -3,9 +3,11 @@ import { state } from '../store/state.js';
 import { FirestoreService } from '../services/firestore.js';
 import { showDialog, showToast } from '../utils/ui.js';
 import { checkAdminAndUpdateStatus } from './attachments.js';
+const refreshData = async (...args) => window.refreshData && await window.refreshData(...args);
 
 let customerSignaturePad = null;
 let signaturePad = null;
+let pendingStatusChange = null;
 
 function initCustomerSignaturePad() {
     const canvas = document.getElementById("customer-signature-canvas");
@@ -66,8 +68,9 @@ function initCustomerSignaturePad() {
         signedDocInput.addEventListener("change", () => {
             const newFiles = Array.from(signedDocInput.files);
             newFiles.forEach(f => {
-                if (!pendingSignedDocs.find(p => p.name === f.name && p.size === f.size)) {
-                    pendingSignedDocs.push(f);
+                if (!window.pendingSignedDocs) window.pendingSignedDocs = [];
+                if (!window.pendingSignedDocs.find(p => p.name === f.name && p.size === f.size)) {
+                    window.pendingSignedDocs.push(f);
                 }
             });
             signedDocInput.value = "";

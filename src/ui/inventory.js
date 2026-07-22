@@ -1,5 +1,6 @@
-import { db } from '../config/firebase.js';
+import { db, auth, storage } from '../config/firebase.js';
 import { collection, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, setDoc, addDoc, query, orderBy, where, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 import { state } from '../store/state.js';
 import { FirestoreService } from '../services/firestore.js';
 import { formatThaiDate } from '../utils/date.js';

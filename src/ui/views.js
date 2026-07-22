@@ -1,3 +1,4 @@
+import { auth, functions } from '../config/firebase.js';
 import { state } from '../store/state.js';
 import { FirestoreService } from '../services/firestore.js';
 import { showDialog, showToast } from '../utils/ui.js';
@@ -381,6 +382,19 @@ function populateSiteFilters() {
     if (provinces.includes(currentProvince)) {
         provinceSelect.value = currentProvince;
         if (provinceSelectMobile) provinceSelectMobile.value = currentProvince;
+    }
+
+    // Populate log-view province filter (engineer view)
+    const logProvinceSelect = document.getElementById("filter-log-province");
+    if (logProvinceSelect) {
+        const currentLogProvince = logProvinceSelect.value;
+        logProvinceSelect.innerHTML = '<option value="all">ทั้งหมด</option>';
+        provinces.forEach((p) => {
+            logProvinceSelect.appendChild(Object.assign(document.createElement("option"), { value: p, textContent: p }));
+        });
+        if (provinces.includes(currentLogProvince)) {
+            logProvinceSelect.value = currentLogProvince;
+        }
     }
 
     // Contract type filter
@@ -2301,6 +2315,7 @@ function viewSiteLogs(siteId) {
     }
 
     renderLogs();
+    updateCaseDashboard();
 
     // Scroll to top
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -2313,6 +2328,14 @@ function viewSiteLogs(siteId) {
 // Helper: Pure Client-Side Filtering
 function filterLogsClientSide(logsToFilter, filters) {
     let result = logsToFilter;
+
+    // 0. Province Filter (filter by site's province before anything else)
+    if (filters.province && filters.province !== "all") {
+        result = result.filter((l) => {
+            const site = state.sites.find((s) => s.id === l.siteId);
+            return site && site.province === filters.province;
+        });
+    }
 
     // 1. Site Filter (Exact ID match if selected, otherwise fallback to search string)
     if (filters.siteId && filters.siteId !== "all") {
@@ -2430,6 +2453,9 @@ function getFilteredLogs() {
     const statusFilter = document.getElementById("filter-status")
         ? document.getElementById("filter-status").value
         : "all";
+    const provinceFilter = document.getElementById("filter-log-province")
+        ? document.getElementById("filter-log-province").value
+        : "all";
 
     // Search
     const searchQuery = document.getElementById("log-search-input")
@@ -2443,6 +2469,7 @@ function getFilteredLogs() {
         endDate,
         category: categoryFilter,
         status: statusFilter,
+        province: provinceFilter,
         minPrice: 0,
         maxPrice: Infinity,
         searchQuery,
@@ -2507,7 +2534,9 @@ function updateCaseDashboard() {
             endDate: selects.filterEnd && selects.filterEnd.value ? new Date(selects.filterEnd.value) : null,
         };
 
-        dashboard.style.display = 'none';
+        // Show immediately with cached logs (fast feedback), then update with full Firestore data
+        dashboard.style.display = 'flex';
+        processDashboardLogs(state.logs || []);
 
         const fetchPromise = FirestoreService.fetchFilteredLogs(currentFilters);
         currentDashboardFetchPromise = fetchPromise;
@@ -2537,6 +2566,9 @@ function updateCaseDashboard() {
         const searchQuery = document.getElementById("log-search-input")
             ? document.getElementById("log-search-input").value
             : "";
+        const provinceFilter = document.getElementById("filter-log-province")
+            ? document.getElementById("filter-log-province").value
+            : "all";
 
         // For Calendar, the month is already implicit in state.calendarLogs, so we don't need additional date filters.
         // For List view, we apply the selected date filter range.
@@ -2554,6 +2586,7 @@ function updateCaseDashboard() {
             endDate,
             category: "all", // IGNORE category filter
             status: statusFilter,
+            province: provinceFilter,
             minPrice: 0,
             maxPrice: Infinity,
             searchQuery,
@@ -2570,6 +2603,7 @@ function updateCaseDashboard() {
             endDate,
             category: categoryFilter, // respects category filter
             status: "all",            // ignores status filter
+            province: provinceFilter,
             minPrice: 0,
             maxPrice: Infinity,
             searchQuery,

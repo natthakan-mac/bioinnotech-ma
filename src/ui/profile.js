@@ -1,45 +1,36 @@
-import { auth, db, functions } from '../config/firebase.js';
+import { auth, db, functions, storage } from '../config/firebase.js';
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
 import { state } from '../store/state.js';
 import { FirestoreService } from '../services/firestore.js';
-import { updateProfile, updatePassword, updateEmail, reauthenticateWithCredential, EmailAuthProvider, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { updateProfile, updatePassword, updateEmail, reauthenticateWithCredential, EmailAuthProvider, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { showDialog, showToast } from '../utils/ui.js';
 import { validateEmail } from '../utils/validation.js';
 
 function isMobile() {
     const ua = navigator.userAgent;
-
-    // Standard mobile/tablet detection
-    const standardMobile =
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-
-    // Modern iPad detection (iPadOS 13+ reports as Macintosh)
-    const isIpadOS =
-        /Macintosh/i.test(ua) &&
-        navigator.maxTouchPoints &&
-        navigator.maxTouchPoints > 1;
-
-    // Android tablets
+    const standardMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    const isIpadOS = /Macintosh/i.test(ua) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1;
     const isAndroidTablet = /Android/i.test(ua) && !/Mobile/i.test(ua);
-
     return standardMobile || isIpadOS || isAndroidTablet;
 }
-
 
 async function handleLogout() {
     if (await showDialog("คุณต้องการออกจากระบบหรือไม่?", { type: "confirm" })) {
         try {
-            teardownRealtimeListeners(); // Stop real-time listeners on logout
-            await FirestoreService.logAction("AUTH", "LOGOUT", `User logged out`); // Log before signout
+            if (typeof teardownRealtimeListeners === 'function') {
+                teardownRealtimeListeners();
+            } else if (typeof window.teardownRealtimeListeners === 'function') {
+                window.teardownRealtimeListeners();
+            }
 
-            // Logout from LINE (LIFF) if initialized and logged in
+            await FirestoreService.logAction("AUTH", "LOGOUT", `User logged out`);
+
             if (typeof liff !== 'undefined' && typeof liffInitialized !== 'undefined' && liffInitialized && liff.isLoggedIn()) {
                 liff.logout();
             }
 
             sessionStorage.setItem('skip_line_auto_login', 'true');
-
             await signOut(auth);
             window.location.reload();
         } catch (error) {
@@ -48,7 +39,6 @@ async function handleLogout() {
     }
 }
 
-
 async function saveProfileSignature(dataUrl) {
     const user = auth.currentUser;
     if (!user) return;
@@ -56,7 +46,6 @@ async function saveProfileSignature(dataUrl) {
     renderProfile();
     showToast("บันทึกลายเซ็นเรียบร้อย", "success");
 }
-
 window.saveProfileSignature = saveProfileSignature;
 
 const btnHeaderLogout = document.getElementById("btn-header-logout");
@@ -1106,7 +1095,7 @@ async function handleLogin(e) {
     if (!loginId || !password) return;
 
     const originalText = btn.textContent;
-    btn.textContent = "α╕üα╕│α╕Ñα╕▒α╕çα╣Çα╕éα╣ëα╕▓α╕¬α╕╣α╣êα╕úα╕░α╕Üα╕Ü...";
+    btn.textContent = "กำลังเข้าสู่ระบบ...";
     btn.disabled = true;
 
     try {
@@ -1160,22 +1149,22 @@ async function handleLogin(e) {
             "LOGIN",
             `User logged in via ${email === loginId ? "email" : "phone"}`,
         );
-        showToast("α╕óα╕┤α╕Öα╕öα╕╡α╕òα╣ëα╕¡α╕Öα╕úα╕▒α╕Ü! α╣Çα╕éα╣ëα╕▓α╕¬α╕╣α╣êα╕úα╕░α╕Üα╕Üα╣Çα╕úα╕╡α╕óα╕Üα╕úα╣ëα╕¡α╕óα╣üα╕Ñα╣ëα╕º", "success");
+        showToast("ยินดีต้อนรับ! เข้าสู่ระบบเรียบร้อยแล้ว", "success");
     } catch (error) {
         console.error("Login failed:", error);
-        let msg = "α╕¡α╕╡α╣Çα╕íα╕Ñα╕½α╕úα╕╖α╕¡α╕úα╕½α╕▒α╕¬α╕£α╣êα╕▓α╕Öα╣äα╕íα╣êα╕ûα╕╣α╕üα╕òα╣ëα╕¡α╕ç";
+        let msg = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
         if (
             error.code === "auth/user-not-found" ||
             error.code === "auth/invalid-email"
         )
-            msg = "α╣äα╕íα╣êα╕₧α╕Üα╕£α╕╣α╣ëα╣âα╕èα╣ëα╕çα╕▓α╕Öα╕Öα╕╡α╣ë";
+            msg = "ไม่พบผู้ใช้งานนี้";
         if (
             error.code === "auth/wrong-password" ||
             error.code === "auth/invalid-credential"
         )
-            msg = "α╕úα╕½α╕▒α╕¬α╕£α╣êα╕▓α╕Ö/α╕éα╣ëα╕¡α╕íα╕╣α╕Ñα╣äα╕íα╣êα╕ûα╕╣α╕üα╕òα╣ëα╕¡α╕ç";
+            msg = "รหัสผ่าน/ข้อมูลไม่ถูกต้อง";
         if (error.code === "auth/too-many-requests")
-            msg = "α╣Çα╕éα╣ëα╕▓α╕¬α╕╣α╣êα╕úα╕░α╕Üα╕Üα╕ûα╕╡α╣êα╣Çα╕üα╕┤α╕Öα╣äα╕¢ (α╣éα╕¢α╕úα╕öα╕úα╕¡α╕¬α╕▒α╕üα╕äα╕úα╕╣α╣ê)";
+            msg = "เข้าสู่ระบบถี่เกินไป (โปรดรอสักครู่)";
 
         showToast(msg, "error");
         btn.textContent = originalText;

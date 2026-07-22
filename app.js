@@ -309,9 +309,10 @@ const globalBindings = {
     setupCustomNameLogic, viewSiteDetails, renderLogComments, expandCommentsIfCollapsed,
     scrollToInitialComment, scrollToLatestComment, toggleCommentSection, toggleCostSection, toggleFormCostSection,
     postLogComment, viewLogDetails, viewSiteLogs, filterLogsClientSide, getFilteredLogs, updateLogStats,
-    updateCaseDashboard, renderLogs, handleLoadMoreLogs, appendLogRows, generateMockLogs,
+    updateCaseDashboard, renderLogs, handleLoadMoreLogs, appendLogRows, generateMockLogs, refreshData,
     setupEventListeners, initLiff, getLiffAccessToken, handleLineLogin, handleLinkLine, handleSyncLinePhoto,
-    handleUnlinkLine, renderLineStatus, FirestoreService, updateSiteFieldDataLists, updateLogDetailsDatalist
+    handleUnlinkLine, renderLineStatus, FirestoreService, updateSiteFieldDataLists, updateLogDetailsDatalist,
+    setupRealtimeListeners, teardownRealtimeListeners
 };
 
 Object.entries(globalBindings).forEach(([key, fn]) => {
@@ -337,6 +338,11 @@ window.handleClearAllData = async function () {
 // --- Auth Workflow Initialization ---
 const initAuthWorkflow = async () => {
     try {
+        setupPhoneInputs();
+        setupPasswordToggles();
+        setupPinValidation();
+        setupEventListeners();
+
         try {
             await setPersistence(auth, browserLocalPersistence);
             console.log("Persistence Established: LocalStorage");
@@ -636,6 +642,7 @@ async function refreshData() {
         await showDialog("เกิดข้อผิดพลาดในการโหลดข้อมูล: " + error.message);
     }
 }
+window.refreshData = refreshData;
 
 // --- Console Debug Helpers ---
 window.wipeAllDataExceptSites = async function () {

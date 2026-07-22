@@ -23,6 +23,10 @@ function resetFilters() {
     const statusSelect = document.getElementById("filter-status");
     if (statusSelect) statusSelect.value = "all";
 
+    // Reset Province Filter (engineer view)
+    const logProvinceSelect = document.getElementById("filter-log-province");
+    if (logProvinceSelect) logProvinceSelect.value = "all";
+
     // 2. Reset Date Filter
     const startInput = document.getElementById("filter-start-date");
     const endInput = document.getElementById("filter-end-date");
