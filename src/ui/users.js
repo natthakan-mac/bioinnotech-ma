@@ -6,57 +6,9 @@ import { state } from '../store/state.js';
 import { FirestoreService } from '../services/firestore.js';
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
 import { showDialog, showToast } from '../utils/ui.js';
+import { loadNotificationSettings } from './profile.js';
 
 let openUserDetailsModal;
-
-async function loadNotificationSettings() {
-    try {
-        const settings = await FirestoreService.getNotificationSettings();
-
-        if (settings) {
-            // Load SMTP settings
-            if (settings.smtp) {
-                document.getElementById("email-enabled").checked = settings.smtp.enabled || false;
-                document.getElementById("smtp-host").value = settings.smtp.host || "";
-                document.getElementById("smtp-port").value = settings.smtp.port || 587;
-                document.getElementById("smtp-user").value = settings.smtp.user || "";
-                document.getElementById("smtp-password").value = settings.smtp.password || "";
-                document.getElementById("smtp-from").value = settings.smtp.from || "";
-                document.getElementById("smtp-secure").checked = settings.smtp.secure || false;
-
-                // Load recipients
-                if (settings.smtp.recipients && settings.smtp.recipients.length > 0) {
-                    loadEmailRecipients(settings.smtp.recipients);
-                } else {
-                    loadEmailRecipients([]);
-                }
-            } else {
-                // Default to OFF if no settings
-                document.getElementById("email-enabled").checked = false;
-                loadEmailRecipients([]);
-            }
-
-            // Load Telegram settings
-            if (settings.telegram) {
-                document.getElementById("telegram-enabled").checked = settings.telegram.enabled || false;
-                document.getElementById("telegram-bot-token").value = settings.telegram.botToken || "";
-                document.getElementById("telegram-chat-id").value = settings.telegram.chatId || "";
-            } else {
-                // Default to OFF if no settings
-                document.getElementById("telegram-enabled").checked = false;
-            }
-        } else {
-            // No settings found - default all toggles to OFF
-            document.getElementById("email-enabled").checked = false;
-
-            document.getElementById("telegram-enabled").checked = false;
-            loadEmailRecipients([]);
-        }
-    } catch (error) {
-        console.error("Error loading notification settings:", error);
-        showToast("เกิดข้อผิดพลาดในการโหลดการตั้งค่า", "error");
-    }
-}
 
 async function renderUserRoles() {
     const usersList = document.getElementById('users-list');

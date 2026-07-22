@@ -4929,7 +4929,7 @@ span.flatpickr-weekday {
 }
 
 .profile-tab-content.active {
-    display: block;
+    display: block !important;
 }
 
 @keyframes fadeIn {
@@ -5346,6 +5346,31 @@ span.flatpickr-weekday {
     font-size: 1.1rem;
     color: var(--text-muted);
     font-weight: 500;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #111111 !important;
+}
+
+.form-input {
+    width: 100%;
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    color: #111111 !important;
+    font-size: 15px;
+    box-sizing: border-box;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #0284c7 !important;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
 }
 
 .password-section {

@@ -1233,7 +1233,7 @@
 
     <!-- App Scripts (Type Module for Firebase 9+) -->
     <script src="hospital-data.js"></script>
-    <script type="module" src="app.js?v=1.1.9"></script>
+    <script type="module" src="app.js?v=1.2.1"></script>
 
 
 
@@ -1862,6 +1862,7 @@
                                                 จัดการสิทธิ์ผู้ใช้งาน
                                             </h2>
                                             <p class="text-muted">จัดการบทบาทและสิทธิ์การเข้าถึงของผู้ใช้งานในระบบ</p>
+                                        </div>
                                         <div style="display: flex; gap: 0.5rem;">
                                             <button id="btn-add-user" class="btn-primary"
                                                 style="display: flex; align-items: center; gap: 0.5rem;">
@@ -1892,13 +1893,13 @@
 
                             <!-- Notification Settings Tab -->
                             <div class="profile-tab-content" id="notification-settings">
-                                <div style="margin-bottom: 2rem;">
-                                    <h2>
+                                <div class="profile-form-section">
+                                    <h3 class="profile-subsection-title"
+                                        style="font-size: 1.25rem; color: #111; font-weight: 700; margin-bottom: 0.5rem;">
                                         <i class="fa-solid fa-bell"></i>
                                         ตั้งค่าการแจ้งเตือน
-                                    </h2>
-                                    <p class="text-muted">กำหนดค่าการแจ้งเตือนผ่าน Email และ Telegram</p>
-                                </div>
+                                    </h3>
+                                    <p class="text-muted" style="margin-bottom: 1.5rem;">กำหนดค่าการแจ้งเตือนผ่าน Email และ Telegram</p>
 
                                 <form id="notification-settings-form" autocomplete="off">
                                     <!-- Email SMTP Settings -->
@@ -2023,43 +2024,47 @@
                                     </button>
                                 </form>
                             </div>
+                        </div>
 
                             <!-- Company Settings Tab -->
                             <div class="profile-tab-content" id="company-settings">
-                                <div style="margin-bottom: 2rem;">
-                                    <h2><i class="fa-solid fa-building"></i> ข้อมูลบริษัท</h2>
-                                    <p style="color: var(--text-muted); font-size: 0.9rem;">ข้อมูลที่แสดงบน QR Code
-                                        และเอกสาร</p>
+                                <div class="profile-form-section">
+                                    <h3 class="profile-subsection-title"
+                                        style="font-size: 1.25rem; color: #111; font-weight: 700; margin-bottom: 0.5rem;">
+                                        <i class="fa-solid fa-building"></i>
+                                        ข้อมูลบริษัท
+                                    </h3>
+                                    <p class="text-muted" style="margin-bottom: 1.5rem;">ข้อมูลที่แสดงบน QR Code และเอกสาร</p>
+                                    <form id="company-settings-form" autocomplete="off">
+                                        <div class="notification-section">
+                                            <div class="form-group">
+                                                <label class="form-label">ชื่อบริษัท</label>
+                                                <input type="text" id="company-name-input" class="form-input"
+                                                    placeholder="เช่น บริษัท ไบโอ อินโน เทค จำกัด"
+                                                    value="บริษัท ไบโอ อินโน เทค จำกัด">
+                                            </div>
+                                            <div class="form-group" style="margin-top: 1rem;">
+                                                <label class="form-label">เบอร์โทร Hotline</label>
+                                                <input type="tel" id="company-hotline-input" class="form-input phone-ten"
+                                                    placeholder="08-XXX-XXXX" pattern="^[0-9\-]+$" inputmode="numeric"
+                                                    autocomplete="off">
+                                                <p
+                                                    style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
+                                                    แสดงบนหน้า QR Code เพื่อให้ลูกค้าติดต่อได้
+                                                </p>
+                                            </div>
+                                            <div class="form-group" style="margin-top: 1rem;">
+                                                <label class="form-label">ที่อยู่บริษัท</label>
+                                                <textarea id="company-address-input" class="form-input" rows="2"
+                                                    placeholder="เช่น 36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150"></textarea>
+                                            </div>
+                                        </div>
+                                        <button type="button" id="btn-save-company-settings" class="btn-primary"
+                                            style="width: 100%; margin-top: 1rem;">
+                                            <i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูลบริษัท
+                                        </button>
+                                    </form>
                                 </div>
-                                <form id="company-settings-form" autocomplete="off">
-                                    <div class="notification-section">
-                                        <div class="form-group">
-                                            <label class="form-label">ชื่อบริษัท</label>
-                                            <input type="text" id="company-name-input" class="form-input"
-                                                placeholder="เช่น บริษัท ไบโอ อินโน เทค จำกัด"
-                                                value="บริษัท ไบโอ อินโน เทค จำกัด">
-                                        </div>
-                                        <div class="form-group" style="margin-top: 1rem;">
-                                            <label class="form-label">เบอร์โทร Hotline</label>
-                                            <input type="tel" id="company-hotline-input" class="form-input phone-ten"
-                                                placeholder="08-XXX-XXXX" pattern="^[0-9\-]+$" inputmode="numeric"
-                                                autocomplete="off">
-                                            <p
-                                                style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
-                                                แสดงบนหน้า QR Code เพื่อให้ลูกค้าติดต่อได้
-                                            </p>
-                                        </div>
-                                        <div class="form-group" style="margin-top: 1rem;">
-                                            <label class="form-label">ที่อยู่บริษัท</label>
-                                            <textarea id="company-address-input" class="form-input" rows="2"
-                                                placeholder="เช่น 36/41 หมู่ 13 ต.บึงคำพร้อย อ.ลำลูกกา จ.ปทุมธานี 12150"></textarea>
-                                        </div>
-                                    </div>
-                                    <button type="button" id="btn-save-company-settings" class="btn-primary"
-                                        style="width: 100%; margin-top: 1rem;">
-                                        <i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูลบริษัท
-                                    </button>
-                                </form>
                             </div>
                         </div>
                     </div>

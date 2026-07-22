@@ -7,6 +7,8 @@ import { doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebas
 import { showDialog, showToast } from '../utils/ui.js';
 import { validateEmail } from '../utils/validation.js';
 import { renderLineStatus } from '../services/line.js?v=1.1.9';
+import { setupCompanySettingsForm } from './export.js';
+import { renderUserRoles } from './users.js';
 
 function isMobile() {
     const ua = navigator.userAgent;
@@ -374,6 +376,63 @@ if (btnClearNotificationSettings) {
             showToast("เกิดข้อผิดพลาดในการล้างการตั้งค่า: " + err.message, "error");
         }
     });
+}
+
+async function loadNotificationSettings() {
+    try {
+        const settings = await FirestoreService.getNotificationSettings();
+
+        const emailEnabled = document.getElementById("email-enabled");
+        const smtpHost = document.getElementById("smtp-host");
+        const smtpPort = document.getElementById("smtp-port");
+        const smtpUser = document.getElementById("smtp-user");
+        const smtpPassword = document.getElementById("smtp-password");
+        const smtpFrom = document.getElementById("smtp-from");
+        const smtpSecure = document.getElementById("smtp-secure");
+        const telegramEnabled = document.getElementById("telegram-enabled");
+        const telegramBotToken = document.getElementById("telegram-bot-token");
+        const telegramChatId = document.getElementById("telegram-chat-id");
+
+        if (settings) {
+            // Load SMTP settings
+            if (settings.smtp) {
+                if (emailEnabled) emailEnabled.checked = settings.smtp.enabled || false;
+                if (smtpHost) smtpHost.value = settings.smtp.host || "";
+                if (smtpPort) smtpPort.value = settings.smtp.port || 587;
+                if (smtpUser) smtpUser.value = settings.smtp.user || "";
+                if (smtpPassword) smtpPassword.value = settings.smtp.password || "";
+                if (smtpFrom) smtpFrom.value = settings.smtp.from || "";
+                if (smtpSecure) smtpSecure.checked = settings.smtp.secure || false;
+
+                // Load recipients
+                if (settings.smtp.recipients && settings.smtp.recipients.length > 0) {
+                    loadEmailRecipients(settings.smtp.recipients);
+                } else {
+                    loadEmailRecipients([]);
+                }
+            } else {
+                if (emailEnabled) emailEnabled.checked = false;
+                loadEmailRecipients([]);
+            }
+
+            // Load Telegram settings
+            if (settings.telegram) {
+                if (telegramEnabled) telegramEnabled.checked = settings.telegram.enabled || false;
+                if (telegramBotToken) telegramBotToken.value = settings.telegram.botToken || "";
+                if (telegramChatId) telegramChatId.value = settings.telegram.chatId || "";
+            } else {
+                if (telegramEnabled) telegramEnabled.checked = false;
+            }
+        } else {
+            // No settings found - default all toggles to OFF
+            if (emailEnabled) emailEnabled.checked = false;
+            if (telegramEnabled) telegramEnabled.checked = false;
+            loadEmailRecipients([]);
+        }
+    } catch (error) {
+        console.error("Error loading notification settings:", error);
+        showToast("เกิดข้อผิดพลาดในการโหลดการตั้งค่า", "error");
+    }
 }
 
 // Email Recipients Management
@@ -815,78 +874,59 @@ async function renderProfile(userArg = null) {
 }
 
 function setupProfileTabs() {
-    const tabs = document.querySelectorAll('.profile-tab');
-    const tabContents = document.querySelectorAll('.profile-tab-content');
-
     function switchTab(targetTab) {
-        tabs.forEach(t => t.classList.remove('active'));
-        tabContents.forEach(c => c.classList.remove('active'));
-        document.querySelectorAll('.pmn-btn').forEach(b => b.classList.remove('active'));
+        if (!targetTab) return;
 
-        const matchingTab = document.querySelector(`.profile-tab[data-tab="${targetTab}"]`);
-        if (matchingTab) matchingTab.classList.add('active');
+        // Update active class on desktop and mobile tab buttons
+        const allTabs = document.querySelectorAll('.profile-tab, .pmn-btn');
+        allTabs.forEach(tab => {
+            if (tab.getAttribute('data-tab') === targetTab) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
 
-        const matchingMobileBtn = document.querySelector(`.pmn-btn[data-tab="${targetTab}"]`);
-        if (matchingMobileBtn) matchingMobileBtn.classList.add('active');
+        // Update display & visibility on tab content containers
+        const allContents = document.querySelectorAll('.profile-tab-content');
+        allContents.forEach(content => {
+            if (content.id === targetTab) {
+                content.classList.add('active');
+                content.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important;';
+            } else {
+                content.classList.remove('active');
+                content.style.cssText = 'display: none !important;';
+            }
+        });
 
-        const targetContent = document.getElementById(targetTab);
-        if (targetContent) targetContent.classList.add('active');
+        // Trigger data load for dynamic tabs
+        if (targetTab === 'notification-settings') loadNotificationSettings();
+        if (targetTab === 'company-settings') setupCompanySettingsForm();
+        if (targetTab === 'user-management') renderUserRoles();
     }
 
-    tabs.forEach(tab => {
-        tab.addEventListener('click', async () => {
-            const targetTab = tab.getAttribute('data-tab');
-            switchTab(targetTab);
-            if (targetTab === 'notification-settings') await loadNotificationSettings();
-        });
-    });
-
-    // Mobile nav buttons
-    document.querySelectorAll('.pmn-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
+    // Direct click listener registration for all profile tabs
+    document.querySelectorAll('.profile-tab, .pmn-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            e.preventDefault();
             const targetTab = btn.getAttribute('data-tab');
-            if (!targetTab) return;
-            switchTab(targetTab);
-            if (targetTab === 'notification-settings') await loadNotificationSettings();
-        });
+            if (targetTab) switchTab(targetTab);
+        };
     });
 
-    // Mobile logout button
-    const pmnLogout = document.getElementById('pmn-logout');
-    if (pmnLogout) {
-        pmnLogout.addEventListener('click', () => {
-            const desktopLogout = document.getElementById('btn-logout-profile');
-            if (desktopLogout) desktopLogout.click();
-        });
-    }
-
-    // Sync mobile nav visibility with desktop tab visibility
-    function syncMobileNavVisibility() {
-        const userMgmtTab = document.getElementById('user-management-tab');
-        const notifTab = document.getElementById('notification-settings-tab');
-        const companyTab = document.getElementById('company-settings-tab');
-        const pmnUserMgmt = document.getElementById('pmn-user-management');
-        const pmnNotif = document.getElementById('pmn-notification-settings');
-        const pmnCompany = document.getElementById('pmn-company-settings');
-        if (pmnUserMgmt && userMgmtTab) {
-            pmnUserMgmt.style.display = userMgmtTab.style.display === 'none' ? 'none' : 'inline-flex';
+    // Global document fallback listener
+    document.addEventListener('click', (e) => {
+        const tabBtn = e.target.closest('.profile-tab, .pmn-btn');
+        if (tabBtn) {
+            const targetTab = tabBtn.getAttribute('data-tab');
+            if (targetTab) switchTab(targetTab);
         }
-        if (pmnNotif && notifTab) {
-            pmnNotif.style.display = notifTab.style.display === 'none' ? 'none' : 'inline-flex';
-        }
-        if (pmnCompany && companyTab) {
-            pmnCompany.style.display = companyTab.style.display === 'none' ? 'none' : 'inline-flex';
-        }
-    }
-
-    // Observe desktop tab visibility changes
-    const observer = new MutationObserver(syncMobileNavVisibility);
-    ['user-management-tab', 'notification-settings-tab', 'company-settings-tab'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) observer.observe(el, { attributes: true, attributeFilter: ['style'] });
     });
 
-    syncMobileNavVisibility();
+    // Sync initial tab state
+    const activeTabEl = document.querySelector('.profile-tab.active') || document.querySelector('.pmn-btn.active');
+    const initialTab = activeTabEl ? activeTabEl.getAttribute('data-tab') : 'profile-settings';
+    switchTab(initialTab);
 }
 
 
@@ -1180,4 +1220,4 @@ async function handleLogin(e) {
 
 
 
-export { isMobile, handleLogout, saveProfileSignature, renderProfile, setupProfileTabs, setupPasswordToggles, setupPinValidation, handleLogin };
+export { isMobile, handleLogout, saveProfileSignature, renderProfile, setupProfileTabs, setupPasswordToggles, setupPinValidation, handleLogin, loadNotificationSettings, loadEmailRecipients };
