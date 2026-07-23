@@ -8686,8 +8686,8 @@ h4 {
     font-weight: 600 !important;
     padding: 1px 5px !important;
     border-radius: 4px !important;
-    background: rgba(14, 165, 233, 0.1) !important;
-    color: #0284c7 !important;
+    background: rgba(0, 0, 0, 0.08) !important;
+    color: #000000 !important;
     margin: 3px 0 0 0 !important;
     letter-spacing: 0.02em !important;
     text-transform: none !important;

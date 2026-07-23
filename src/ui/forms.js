@@ -3868,6 +3868,33 @@ async function uploadMediaFiles(files, folder) {
 }
 window.uploadMediaFiles = uploadMediaFiles;
 
+const monthNamesThai = [
+    'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตลาคม', 'พฤศจิกายน', 'ธันวาคม'
+];
+
+function getRecordedCycleCountForCurrentMonth(site) {
+    if (!site || !site.maintenancePlans) return null;
+    const now = new Date();
+    const yearBE = String(now.getFullYear() + 543);
+    const monthKey = String(now.getMonth() + 1);
+
+    const yearPlans = site.maintenancePlans[yearBE];
+    if (!yearPlans) return null;
+
+    const monthData = yearPlans[monthKey];
+    if (!monthData) return null;
+
+    if (monthData.cycleCount != null && monthData.cycleCount !== '') {
+        return monthData.cycleCount;
+    }
+    if (Array.isArray(monthData.history)) {
+        const item = monthData.history.find(h => h.cycleCount != null && h.cycleCount !== '');
+        if (item) return item.cycleCount;
+    }
+    return null;
+}
+
 let isPublicReportPageInitialized = false;
 
 function initPublicReportPage() {
@@ -3898,11 +3925,26 @@ function initPublicReportPage() {
     // Show mode selector by default
     showPortalMode('selector');
 
+    let loadedSite = null;
+
     // Mode selector buttons
     const btnReport = document.getElementById('btn-mode-report');
     const btnCycle = document.getElementById('btn-mode-cycle');
     if (btnReport) btnReport.onclick = () => showPortalMode('report');
-    if (btnCycle) btnCycle.onclick = () => showPortalMode('cycle');
+    if (btnCycle) {
+        btnCycle.onclick = () => {
+            if (loadedSite) {
+                const existingCurrentCycle = getRecordedCycleCountForCurrentMonth(loadedSite);
+                if (existingCurrentCycle !== null) {
+                    const now = new Date();
+                    const currentYearBE = String(now.getFullYear() + 543);
+                    const currentMonthName = monthNamesThai[now.getMonth()];
+                    alert(`ในเดือน${currentMonthName} ${currentYearBE} ได้มีการบันทึก Cycle Count ไปแล้ว (${Number(existingCurrentCycle).toLocaleString()} รอบ)\nไม่สามารถบันทึก Cycle Count ซ้ำในเดือนเดียวกันได้`);
+                }
+            }
+            showPortalMode('cycle');
+        };
+    }
 
     // Back buttons
     const btnBackReport = document.getElementById('btn-back-from-report');
@@ -3927,6 +3969,63 @@ function initPublicReportPage() {
                 const docSnap = await getDoc(doc(db, 'sites', reportSiteId));
                 if (docSnap.exists()) {
                     const site = { id: docSnap.id, ...docSnap.data() };
+                    loadedSite = site;
+
+                    // Check if Cycle Count has already been recorded for the current month
+                    const existingCurrentCycle = getRecordedCycleCountForCurrentMonth(site);
+                    const now = new Date();
+                    const currentYearBE = String(now.getFullYear() + 543);
+                    const currentMonthName = monthNamesThai[now.getMonth()];
+
+                    const portalBadgeEl = document.getElementById('portal-cycle-status-badge');
+                    const alertBox = document.getElementById('cycle-already-recorded-alert');
+                    const alertText = document.getElementById('cycle-already-recorded-text');
+                    const cycleSubmitBtn = document.getElementById('btn-public-cycle-submit');
+
+                    if (existingCurrentCycle !== null) {
+                        if (portalBadgeEl) {
+                            portalBadgeEl.textContent = `(บันทึกแล้วเดือน${currentMonthName}: ${Number(existingCurrentCycle).toLocaleString()} รอบ)`;
+                            portalBadgeEl.style.display = 'block';
+                        }
+                        if (alertText) {
+                            alertText.innerHTML = `ในเดือน<strong>${currentMonthName} ${currentYearBE}</strong> ได้มีการบันทึก Cycle Count ไปแล้ว (<strong>${Number(existingCurrentCycle).toLocaleString()}</strong> รอบ) ไม่สามารถบันทึกซ้ำในเดือนเดียวกันได้`;
+                        }
+                        if (alertBox) {
+                            alertBox.style.display = 'block';
+                        }
+                        const nameInput = document.getElementById('cycle-reporter-name');
+                        const telInput = document.getElementById('cycle-reporter-tel');
+                        const valInput = document.getElementById('cycle-count-value');
+                        const addMediaBtn = document.getElementById('btn-add-cycle-media');
+
+                        if (nameInput) nameInput.disabled = true;
+                        if (telInput) telInput.disabled = true;
+                        if (valInput) valInput.disabled = true;
+                        if (addMediaBtn) addMediaBtn.disabled = true;
+                        if (cycleSubmitBtn) {
+                            cycleSubmitBtn.disabled = true;
+                            const btnText = cycleSubmitBtn.querySelector('span');
+                            if (btnText) btnText.textContent = 'บันทึกไปแล้วในเดือนนี้';
+                        }
+                    } else {
+                        if (portalBadgeEl) portalBadgeEl.style.display = 'none';
+                        if (alertBox) alertBox.style.display = 'none';
+                        const nameInput = document.getElementById('cycle-reporter-name');
+                        const telInput = document.getElementById('cycle-reporter-tel');
+                        const valInput = document.getElementById('cycle-count-value');
+                        const addMediaBtn = document.getElementById('btn-add-cycle-media');
+
+                        if (nameInput) nameInput.disabled = false;
+                        if (telInput) telInput.disabled = false;
+                        if (valInput) valInput.disabled = false;
+                        if (addMediaBtn) addMediaBtn.disabled = false;
+                        if (cycleSubmitBtn) {
+                            cycleSubmitBtn.disabled = false;
+                            const btnText = cycleSubmitBtn.querySelector('span');
+                            if (btnText) btnText.textContent = 'บันทึก Cycle Count';
+                        }
+                    }
+
                     if (deviceInfoEl) {
                         deviceInfoEl.innerHTML = `
                             <div class="report-device-loaded-unified">
@@ -4244,6 +4343,19 @@ function initPublicReportPage() {
                             return;
                         }
                         const site = { id: siteSnap.id, ...siteSnap.data() };
+
+                        const existingCurrentCycle = getRecordedCycleCountForCurrentMonth(site);
+                        if (existingCurrentCycle !== null) {
+                            const now = new Date();
+                            const currentYearBE = String(now.getFullYear() + 543);
+                            const currentMonthName = monthNamesThai[now.getMonth()];
+                            alert(`ในเดือน${currentMonthName} ${currentYearBE} ได้มีการบันทึก Cycle Count ไปแล้ว (${Number(existingCurrentCycle).toLocaleString()} รอบ)\nไม่สามารถบันทึก Cycle Count ซ้ำในเดือนเดียวกันได้`);
+                            cycleForm.dataset.submitting = 'false';
+                            cycleSubmitBtn.disabled = true;
+                            if (btnIcon) btnIcon.className = 'fa-solid fa-ban';
+                            if (btnText) btnText.textContent = 'บันทึกไปแล้วในเดือนนี้';
+                            return;
+                        }
 
                         const now = new Date();
                         const currentYear = now.getFullYear();

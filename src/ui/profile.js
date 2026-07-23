@@ -54,6 +54,12 @@ window.saveProfileSignature = saveProfileSignature;
 const btnHeaderLogout = document.getElementById("btn-header-logout");
 if (btnHeaderLogout) btnHeaderLogout.addEventListener("click", handleLogout);
 
+const btnLogoutProfile = document.getElementById("btn-logout-profile");
+if (btnLogoutProfile) btnLogoutProfile.addEventListener("click", handleLogout);
+
+const pmnLogout = document.getElementById("pmn-logout");
+if (pmnLogout) pmnLogout.addEventListener("click", handleLogout);
+
 const headerAvatar = document.getElementById("header-avatar");
 if (headerAvatar)
     headerAvatar.addEventListener("click", () => {
@@ -743,17 +749,29 @@ async function renderProfile(userArg = null) {
     if (userManagementTab) {
         userManagementTab.style.display = isAdmin ? 'flex' : 'none';
     }
+    const pmnUserManagement = document.getElementById('pmn-user-management');
+    if (pmnUserManagement) {
+        pmnUserManagement.style.display = isAdmin ? 'inline-flex' : 'none';
+    }
 
     // Notification Settings tab - admin only
     const notificationSettingsTab = document.getElementById('notification-settings-tab');
     if (notificationSettingsTab) {
         notificationSettingsTab.style.display = isAdmin ? 'flex' : 'none';
     }
+    const pmnNotificationSettings = document.getElementById('pmn-notification-settings');
+    if (pmnNotificationSettings) {
+        pmnNotificationSettings.style.display = isAdmin ? 'inline-flex' : 'none';
+    }
 
     // Company Settings tab - admin only
     const companySettingsTab = document.getElementById('company-settings-tab');
     if (companySettingsTab) {
         companySettingsTab.style.display = isAdmin ? 'flex' : 'none';
+    }
+    const pmnCompanySettings = document.getElementById('pmn-company-settings');
+    if (pmnCompanySettings) {
+        pmnCompanySettings.style.display = isAdmin ? 'inline-flex' : 'none';
     }
 
     // Setup company settings form

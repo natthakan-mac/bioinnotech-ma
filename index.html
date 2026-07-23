@@ -1280,6 +1280,7 @@
                     <div class="portal-mode-text">
                         <span class="portal-mode-card-title">บันทึก Cycle Count</span>
                         <span class="portal-mode-card-desc">บันทึกรอบเครื่องพร้อมรูปถ่าย</span>
+                        <span id="portal-cycle-status-badge" style="display:none; font-size:0.78rem; color:#e11d48; font-weight:600; margin-top:3px;"></span>
                     </div>
                     <i class="fa-solid fa-chevron-right portal-mode-arrow"></i>
                 </button>
@@ -1385,6 +1386,11 @@
             <div class="portal-form-heading">
                 <i class="fa-solid fa-gauge-high"></i>
                 <span>บันทึก Cycle Count</span>
+            </div>
+
+            <div id="cycle-already-recorded-alert" style="display:none; background:#fff1f2; border:1px solid #fecdd3; color:#9f1239; border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:0.88rem; line-height:1.4;">
+                <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px; color:#e11d48;"></i>
+                <span id="cycle-already-recorded-text">เดือนนี้มีการบันทึก Cycle Count ไปแล้ว ไม่สามารถบันทึกซ้ำในเดือนเดียวกันได้</span>
             </div>
 
             <div class="public-report-field">
@@ -1622,6 +1628,10 @@
                         style="display:inline-flex; align-items:center; gap:0.4rem; flex-shrink:0; padding:0.5rem 1rem; border-radius:999px; border:1.5px solid rgba(0,0,0,0.12); background:transparent; color:var(--text-muted); font-size:0.85rem; font-weight:500; cursor:pointer; white-space:nowrap;">
                         <i class="fa-solid fa-user" style="font-size:0.8rem;"></i><span>ข้อมูลส่วนตัว</span>
                     </button>
+                    <button class="pmn-btn" data-tab="system-settings" id="pmn-system-settings"
+                        style="display:inline-flex; align-items:center; gap:0.4rem; flex-shrink:0; padding:0.5rem 1rem; border-radius:999px; border:1.5px solid rgba(0,0,0,0.12); background:transparent; color:var(--text-muted); font-size:0.85rem; font-weight:500; cursor:pointer; white-space:nowrap;">
+                        <i class="fa-solid fa-gears" style="font-size:0.8rem;"></i><span>ตั้งค่าระบบ</span>
+                    </button>
                     <button class="pmn-btn" data-tab="user-management" id="pmn-user-management"
                         style="display:none; align-items:center; gap:0.4rem; flex-shrink:0; padding:0.5rem 1rem; border-radius:999px; border:1.5px solid rgba(0,0,0,0.12); background:transparent; color:var(--text-muted); font-size:0.85rem; font-weight:500; cursor:pointer; white-space:nowrap;">
                         <i class="fa-solid fa-users-gear" style="font-size:0.8rem;"></i><span>จัดการผู้ใช้งาน</span>
@@ -1633,10 +1643,6 @@
                     <button class="pmn-btn" data-tab="company-settings" id="pmn-company-settings"
                         style="display:none; align-items:center; gap:0.4rem; flex-shrink:0; padding:0.5rem 1rem; border-radius:999px; border:1.5px solid rgba(0,0,0,0.12); background:transparent; color:var(--text-muted); font-size:0.85rem; font-weight:500; cursor:pointer; white-space:nowrap;">
                         <i class="fa-solid fa-building" style="font-size:0.8rem;"></i><span>ข้อมูลบริษัท</span>
-                    </button>
-                    <button class="pmn-btn" data-tab="system-settings" id="pmn-system-settings"
-                        style="display:inline-flex; align-items:center; gap:0.4rem; flex-shrink:0; padding:0.5rem 1rem; border-radius:999px; border:1.5px solid rgba(0,0,0,0.12); background:transparent; color:var(--text-muted); font-size:0.85rem; font-weight:500; cursor:pointer; white-space:nowrap;">
-                        <i class="fa-solid fa-gears" style="font-size:0.8rem;"></i><span>ตั้งค่าระบบ</span>
                     </button>
                     <button id="pmn-logout"
                         style="display:inline-flex; align-items:center; gap:0.4rem; flex-shrink:0; padding:0.5rem 1rem; border-radius:999px; border:1.5px solid rgba(239,68,68,0.25); background:transparent; color:#ef4444; font-size:0.85rem; font-weight:500; cursor:pointer; white-space:nowrap;">
