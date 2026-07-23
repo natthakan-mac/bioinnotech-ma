@@ -89,6 +89,10 @@ async function fetchAndRenderCalendar() {
     //     return;
     // }
 
+    // Reset details panel when changing month/view
+    const detailsPanel = document.getElementById("calendar-details-panel");
+    if (detailsPanel) detailsPanel.classList.add("hidden");
+
     // Show Loading in Grid
     const grid = document.getElementById("calendar-grid");
     if (grid) {
@@ -101,6 +105,16 @@ async function fetchAndRenderCalendar() {
         const logs = await FirestoreService.fetchLogsByMonth(year, month);
         state.calendarLogs = logs;
         state.currentCalendarMonth = monthKey;
+        if (Array.isArray(logs) && logs.length > 0) {
+            logs.forEach((cl) => {
+                const idx = state.logs.findIndex((l) => l.id === cl.id);
+                if (idx >= 0) {
+                    state.logs[idx] = cl;
+                } else {
+                    state.logs.push(cl);
+                }
+            });
+        }
         renderCalendar();
     } catch (err) {
         console.error("Error fetching calendar logs:", err);

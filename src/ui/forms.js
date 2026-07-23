@@ -834,7 +834,7 @@ async function handleLogMaintenance(e) {
             }
         }
 
-        const checkStatus = formData.get("status") || (logId ? (state.logs.find(l => l.id === logId)?.status || "Open") : "Open");
+        const checkStatus = formData.get("status") || (logId ? ((state.logs.find(l => l.id === logId) || state.calendarLogs?.find(l => l.id === logId))?.status || "Open") : "Open");
         const useESignature = document.getElementById("use-esignature-toggle")?.checked || false;
 
         if (useESignature) {
@@ -851,7 +851,7 @@ async function handleLogMaintenance(e) {
         }
 
         if (checkStatus === 'Case Closed') {
-            const existingLog = logId ? state.logs.find(l => l.id === logId) : null;
+            const existingLog = logId ? (state.logs.find(l => l.id === logId) || state.calendarLogs?.find(l => l.id === logId)) : null;
             const hasPassedDone = existingLog && (
                 existingLog.status === 'Done' ||
                 existingLog.status === 'Completed' ||
@@ -871,7 +871,7 @@ async function handleLogMaintenance(e) {
         }
 
         if (checkStatus === 'Cancel') {
-            const existingLog = logId ? state.logs.find(l => l.id === logId) : null;
+            const existingLog = logId ? (state.logs.find(l => l.id === logId) || state.calendarLogs?.find(l => l.id === logId)) : null;
             if (!existingLog || existingLog.status !== 'Cancel') {
                 const reason = await showCancelReasonDialog();
                 if (reason === null) {
@@ -1090,7 +1090,7 @@ async function handleLogMaintenance(e) {
             timeStart: formData.get("timeStart") || "",
             timeEnd: formData.get("timeEnd") || "",
             category: formData.get("category") || "อื่นๆ",
-            status: formData.get("status") || (logId ? (state.logs.find(l => l.id === logId)?.status || "Open") : "Open"),
+            status: formData.get("status") || (logId ? ((state.logs.find(l => l.id === logId) || state.calendarLogs?.find(l => l.id === logId))?.status || "Open") : "Open"),
             responderId: formData.get("responderId") || "",
             lineItems: [],
             details: formData.get("objective") || "",
@@ -1251,7 +1251,7 @@ async function handleLogMaintenance(e) {
 
         if (logId) {
             // Check if status newly transitioned to Case Closed
-            existingLog = state.logs.find((l) => l.id === logId);
+            existingLog = state.logs.find((l) => l.id === logId) || state.calendarLogs?.find((l) => l.id === logId);
             console.log('[handleLogMaintenance] Found existing log:', existingLog ? 'YES' : 'NO', existingLog?.id);
 
             if (
@@ -2338,7 +2338,7 @@ function populateResponderDropdown(selectedId = "") {
 
 // Check if user has permission to edit/delete a case
 async function checkEditPermission(logId, status, isDelete = false) {
-    const log = state.logs.find((l) => l.id === logId);
+    const log = state.logs.find((l) => l.id === logId) || (state.calendarLogs && state.calendarLogs.find((l) => l.id === logId));
     if (!log) return;
 
     // Check delete permission (only admin and manager are allowed to delete cases)
@@ -2400,7 +2400,7 @@ async function checkEditPermission(logId, status, isDelete = false) {
 window.checkEditPermission = checkEditPermission;
 
 function editLog(logId) {
-    const log = state.logs.find((l) => l.id === logId);
+    const log = state.logs.find((l) => l.id === logId) || (state.calendarLogs && state.calendarLogs.find((l) => l.id === logId));
     if (!log) return;
 
     // updateSiteSelects(); // Removed
@@ -3472,7 +3472,7 @@ function canMarkDone(log) {
 async function quickUpdateStatus(logId, newStatus) {
     if (!newStatus) return;
     if (newStatus === 'Done') {
-        var log = state.logs.find(function (l) { return l.id === logId; });
+        var log = state.logs.find(function (l) { return l.id === logId; }) || (state.calendarLogs && state.calendarLogs.find(function (l) { return l.id === logId; }));
         const missing = getIncompleteDoneFields(log);
         if (missing.length > 0) {
             await showDialog(

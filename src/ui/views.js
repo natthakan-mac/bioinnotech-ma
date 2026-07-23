@@ -1538,7 +1538,7 @@ async function postLogComment(logId, inputEl) {
     }
 
     // Find log in state and update
-    const log = state.logs.find((l) => l.id === logId);
+    const log = state.logs.find((l) => l.id === logId) || (state.calendarLogs && state.calendarLogs.find((l) => l.id === logId));
     const comments = [...(log?.comments || []), comment];
 
     try {
@@ -1558,10 +1558,9 @@ async function postLogComment(logId, inputEl) {
     }
 }
 
-
 function viewLogDetails(id) {
     try {
-        const log = state.logs.find((l) => l.id === id);
+        const log = state.logs.find((l) => l.id === id) || (state.calendarLogs && state.calendarLogs.find((l) => l.id === id));
         if (!log) return;
 
         // Reset Cost section to collapsed by default

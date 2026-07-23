@@ -204,7 +204,7 @@ async function exportSitesToExcel() {
 }
 
 async function exportCasePDF(logId) {
-    const log = state.logs.find(l => l.id === logId);
+    const log = state.logs.find(l => l.id === logId) || (state.calendarLogs && state.calendarLogs.find(l => l.id === logId));
     if (!log) return;
 
     const appBaseUrl = getAppBaseUrl();

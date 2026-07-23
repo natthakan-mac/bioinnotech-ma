@@ -175,7 +175,7 @@ function openSignatureModal(logId, newStatus) {
     const formCustomerName = document.querySelector('input[name="customerName"]')?.value.trim();
     const formCustomerPhone = document.querySelector('input[name="customerPhone"]')?.value.trim();
     const formCustomerPosition = document.querySelector('input[name="customerPosition"]')?.value.trim();
-    const log = state.logs.find((l) => l.id === logId);
+    const log = state.logs.find((l) => l.id === logId) || (state.calendarLogs && state.calendarLogs.find((l) => l.id === logId));
     const existingName = formCustomerName || log?.customerName || '';
     const existingPhone = formCustomerPhone || log?.customerPhone || '';
     const existingPosition = formCustomerPosition || log?.customerPosition || '';
@@ -289,7 +289,7 @@ window.confirmSignature = confirmSignature;
 
 async function updateLogStatus(logId, newStatus) {
     if (newStatus === 'Case Closed') {
-        const log = state.logs.find(l => l.id === logId);
+        const log = state.logs.find(l => l.id === logId) || (state.calendarLogs && state.calendarLogs.find(l => l.id === logId));
         if (log) {
             const hasPassedDone = log.status === 'Done' ||
                 log.status === 'Completed' ||
@@ -312,7 +312,7 @@ async function updateLogStatus(logId, newStatus) {
     }
 
     if (newStatus === 'Done') {
-        var log = state.logs.find(function (l) { return l.id === logId; });
+        var log = state.logs.find(function (l) { return l.id === logId; }) || (state.calendarLogs && state.calendarLogs.find(function (l) { return l.id === logId; }));
         const missing = getIncompleteDoneFields(log);
         if (missing.length > 0) {
             // Close details modal first so dialog appears cleanly on top
@@ -388,7 +388,7 @@ async function updateLogStatus(logId, newStatus) {
 
 async function executeStatusUpdate(logId, newStatus, signatureData, signerName = '', signerTel = '', signerPosition = '', cancelReason = null) {
     try {
-        const log = state.logs.find(l => l.id === logId);
+        const log = state.logs.find(l => l.id === logId) || (state.calendarLogs && state.calendarLogs.find(l => l.id === logId));
         if (!log) return;
 
         const oldStatus = log.status;
