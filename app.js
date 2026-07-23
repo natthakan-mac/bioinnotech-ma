@@ -546,8 +546,9 @@ function handleUrlParameters() {
     const siteId = urlParams.get('siteId');
     if (siteId) {
         console.log('Opening site detail from URL parameter:', siteId);
-        const checkAndOpen = () => {
-            if (state.sites && state.sites.length > 0) {
+        let siteRetries = 0;
+        const checkAndOpenSite = () => {
+            if (Array.isArray(state.sites) && (state.sites.length > 0 || siteRetries >= 20)) {
                 const site = state.sites.find(s => s.id === siteId);
                 if (site) {
                     viewSiteDetails(siteId);
@@ -558,17 +559,19 @@ function handleUrlParameters() {
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }
             } else {
-                setTimeout(checkAndOpen, 200);
+                siteRetries++;
+                setTimeout(checkAndOpenSite, 200);
             }
         };
-        checkAndOpen();
+        checkAndOpenSite();
     }
 
     const logId = urlParams.get('logId');
     if (logId) {
         console.log('Opening MA case detail from URL parameter:', logId);
-        const checkAndOpen = () => {
-            if (state.logs && state.logs.length > 0) {
+        let logRetries = 0;
+        const checkAndOpenLog = () => {
+            if (Array.isArray(state.logs) && (state.logs.length > 0 || logRetries >= 20)) {
                 const log = state.logs.find(l => l.id === logId);
                 if (log) {
                     viewLogDetails(logId);
@@ -579,10 +582,11 @@ function handleUrlParameters() {
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }
             } else {
-                setTimeout(checkAndOpen, 200);
+                logRetries++;
+                setTimeout(checkAndOpenLog, 200);
             }
         };
-        checkAndOpen();
+        checkAndOpenLog();
     }
 }
 

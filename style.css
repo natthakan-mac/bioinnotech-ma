@@ -8652,38 +8652,61 @@ h4 {
 .brand-text {
     display: flex !important;
     flex-direction: column !important;
-    justify-content: center !important;
-    line-height: 1.1 !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    line-height: 1.15 !important;
     text-align: left !important;
 }
 
 .brand-text h1.brand-title {
-    font-size: 1.35rem !important;
+    font-size: 1.15rem !important;
     font-weight: 800 !important;
     color: #111111 !important;
     margin: 0 !important;
     padding: 0 !important;
     letter-spacing: -0.025em !important;
+    line-height: 1 !important;
 }
 
 .brand-text .brand-sub {
-    font-size: 0.72rem !important;
+    font-size: 0.65rem !important;
     font-weight: 600 !important;
     color: var(--text-muted) !important;
-    margin: 1px 0 0 0 !important;
+    margin: 2px 0 0 0 !important;
     padding: 0 !important;
     letter-spacing: 0.05em !important;
     text-transform: uppercase !important;
     opacity: 0.85 !important;
+    line-height: 1 !important;
+}
+
+.brand-text .app-version {
+    display: inline-block !important;
+    font-size: 0.55rem !important;
+    font-weight: 600 !important;
+    padding: 1px 5px !important;
+    border-radius: 4px !important;
+    background: rgba(14, 165, 233, 0.1) !important;
+    color: #0284c7 !important;
+    margin: 3px 0 0 0 !important;
+    letter-spacing: 0.02em !important;
+    text-transform: none !important;
+    line-height: 1.2 !important;
+    width: fit-content !important;
 }
 
 @media (max-width: 768px) {
     .brand-text h1.brand-title {
-        font-size: 1.15rem !important;
+        font-size: 1.00rem !important;
     }
 
     .brand-text .brand-sub {
-        font-size: 0.65rem !important;
+        font-size: 0.58rem !important;
+    }
+
+    .brand-text .app-version {
+        font-size: 0.50rem !important;
+        padding: 0px 4px !important;
     }
 }
 

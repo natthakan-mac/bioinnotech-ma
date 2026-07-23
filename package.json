@@ -1,6 +1,8 @@
 {
   "scripts": {
     "start": "node server.js",
+    "version:update": "node scripts/update-version.js",
+    "predeploy": "node scripts/update-version.js",
     "deploy": "firebase deploy"
   },
   "dependencies": {

@@ -327,8 +327,8 @@ window.viewInventoryHistory = async function (itemId) {
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${data.userEmail || ""}</div>
                     </td>
                     ${isManageable ? `
-                    <td style="text-align: right;" data-label="การจัดการ">
-                        <button class="btn-icon action-delete" onclick="deleteHistoryEntry('${data.id}', '${itemId}')" title="ลบรายการ">
+                    <td style="text-align: center; white-space: nowrap;" data-label="การจัดการ">
+                        <button class="btn-icon action-delete" style="display: inline-flex; margin: 0 auto;" onclick="deleteHistoryEntry('${data.id}', '${itemId}')" title="ลบรายการ">
                             <i class="fa-solid fa-trash" style="font-size: 0.85rem; color: #dc2626;"></i>
                         </button>
                     </td>

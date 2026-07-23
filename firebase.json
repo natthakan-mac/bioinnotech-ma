@@ -11,6 +11,9 @@
   },
   "hosting": {
     "public": ".",
+    "predeploy": [
+      "node scripts/update-version.js"
+    ],
     "ignore": [
       "firebase.json",
       "**/.*",

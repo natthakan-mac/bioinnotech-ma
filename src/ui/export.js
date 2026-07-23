@@ -207,6 +207,12 @@ async function exportCasePDF(logId) {
     const log = state.logs.find(l => l.id === logId);
     if (!log) return;
 
+    const appBaseUrl = getAppBaseUrl();
+    const caseOrigin = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file:') && !window.location.origin.startsWith('about:'))
+        ? appBaseUrl
+        : 'https://casp-ma.web.app/';
+    const caseQrUrl = `${caseOrigin}${caseOrigin.endsWith('/') ? '' : '/'}?logId=${encodeURIComponent(log.id)}`;
+
     const site = log._mockSite || state.sites.find(s => s.id === log.siteId) || { name: '-' };
     const isBlank = !!log._isBlank;
     const fallback = isBlank ? '....................' : 'ไม่ระบุข้อมูล';
@@ -828,7 +834,7 @@ ${signatureHtml}
 <div class="fixed-footer">
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
         <div style="display:flex; align-items:center; gap:8px; visibility: ${isBlank ? 'hidden' : 'visible'};">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`https://water-plant-maintenance.web.app?logId=${log.id}`)}" alt="QR" style="width:45px; height:45px;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(caseQrUrl)}" alt="QR" style="width:45px; height:45px;">
             <div>
                 <div style="font-size:8px; font-weight:700; color:#333;">สแกนเพื่อดูรายละเอียดเคสฉบับเต็ม</div>
                 <div style="font-size:7px; color:#888;">Scan to view full case detail</div>
@@ -1894,6 +1900,10 @@ window.showPdfPreview = showPdfPreview;
 
 // --- Annual Plan PDF Export ---
 function exportAnnualPlanPDF() {
+    const appBaseUrl = getAppBaseUrl();
+    const caseOrigin = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file:') && !window.location.origin.startsWith('about:'))
+        ? appBaseUrl
+        : 'https://casp-ma.web.app/';
     const yearSelect = document.getElementById('plan-year-select');
     const selectedBE = yearSelect ? yearSelect.value : String(new Date().getFullYear() + 543);
     const userLocale = navigator.language || 'th-TH';
@@ -2006,7 +2016,7 @@ function exportAnnualPlanPDF() {
 <div class="fixed-footer">
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
         <div style="display:flex; align-items:center; gap:8px;">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent('https://water-plant-maintenance.web.app')}" alt="QR" style="width:45px; height:45px;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(caseOrigin)}" alt="QR" style="width:45px; height:45px;">
             <div>
                 <div style="font-size:8px; font-weight:700; color:#333;">สแกนเพื่อเข้าสู่ระบบบำรุงรักษา</div>
                 <div style="font-size:7px; color:#888;">Scan to access maintenance system</div>
