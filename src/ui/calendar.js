@@ -1,3 +1,4 @@
+import { auth } from '../config/firebase.js';
 import { state } from '../store/state.js';
 import { FirestoreService } from '../services/firestore.js';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/date.js';

@@ -370,18 +370,30 @@ const initAuthWorkflow = async () => {
 };
 
 function setupAuthStateListener() {
+    const initialUrlParams = new URLSearchParams(window.location.search);
+    if (initialUrlParams.get('report')) {
+        initPublicReportPage();
+    }
+
     onAuthStateChanged(auth, async (user) => {
         try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const reportSiteId = urlParams.get('report');
+
+            if (reportSiteId) {
+                initPublicReportPage();
+            }
+
             if (user) {
                 console.log("Auth State Changed: User Logged In", user.uid);
 
                 if (user.isAnonymous) {
                     console.log("Anonymous user detected.");
-                    const urlParams = new URLSearchParams(window.location.search);
-                    if (!urlParams.get('report')) {
+                    if (!reportSiteId) {
                         console.log("No report parameter, signing out anonymous user...");
                         await signOut(auth);
                     } else {
+                        initPublicReportPage();
                         const splash = document.getElementById("loading-splash");
                         if (splash) splash.classList.add("hidden");
                     }
@@ -457,9 +469,13 @@ function setupAuthStateListener() {
                 console.log("Auth State Changed: No User");
                 currentUserRole = "user";
                 window.currentUserRole = currentUserRole;
-                if (views.login) views.login.classList.remove("hidden");
-                const appContainer = document.querySelector(".app-container");
-                if (appContainer) appContainer.classList.add("hidden");
+                if (reportSiteId) {
+                    initPublicReportPage();
+                } else {
+                    if (views.login) views.login.classList.remove("hidden");
+                    const appContainer = document.querySelector(".app-container");
+                    if (appContainer) appContainer.classList.add("hidden");
+                }
                 clearSessionTimeout();
                 const splash = document.getElementById("loading-splash");
                 if (splash) splash.classList.add("hidden");

@@ -3868,6 +3868,8 @@ async function uploadMediaFiles(files, folder) {
 }
 window.uploadMediaFiles = uploadMediaFiles;
 
+let isPublicReportPageInitialized = false;
+
 function initPublicReportPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const reportSiteId = urlParams.get('report');
@@ -3884,6 +3886,14 @@ function initPublicReportPage() {
         reportView.style.display = 'flex';
         reportView.classList.remove('hidden');
     }
+
+    if (isPublicReportPageInitialized) {
+        if (!auth.currentUser) {
+            signInAnonymously(auth).catch(e => console.warn('Anonymous auth failed:', e));
+        }
+        return;
+    }
+    isPublicReportPageInitialized = true;
 
     // Show mode selector by default
     showPortalMode('selector');
@@ -4080,6 +4090,11 @@ function initPublicReportPage() {
             if (form && submitBtn) {
                 form.addEventListener('submit', async function (e) {
                     e.preventDefault();
+                    if (form.dataset.submitting === 'true') {
+                        console.warn('Report submission already in progress');
+                        return;
+                    }
+                    form.dataset.submitting = 'true';
 
                     const name = document.getElementById('report-name')?.value.trim();
                     const tel = document.getElementById('report-tel')?.value.trim();
@@ -4089,6 +4104,7 @@ function initPublicReportPage() {
 
                     if (!name || !tel || !description) {
                         alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+                        form.dataset.submitting = 'false';
                         return;
                     }
 
@@ -4124,6 +4140,7 @@ function initPublicReportPage() {
                                         warningEl.style.display = 'inline-block';
                                     }
                                     alert(`จำนวนรอบเครื่องต้องไม่น้อยกว่าค่าก่อนหน้า (${maxVal.toLocaleString()} รอบ)`);
+                                    form.dataset.submitting = 'false';
                                     submitBtn.disabled = false;
                                     if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
                                     if (btnText) btnText.textContent = 'ส่งคำร้อง';
@@ -4164,7 +4181,7 @@ function initPublicReportPage() {
                             statusHistory: { 'Open': now.toISOString() }
                         };
 
-                        await addDoc(collection(db, 'logs'), logData);
+                        await FirestoreService.addLog(logData);
                         showSuccessMessage(
                             'ส่งคำร้องสำเร็จ!',
                             'ทีมงานได้รับคำร้องของคุณแล้ว<br>และจะติดต่อกลับโดยเร็วที่สุด',
@@ -4172,6 +4189,7 @@ function initPublicReportPage() {
                         );
                     } catch (err) {
                         console.error('Public report submission failed:', err);
+                        form.dataset.submitting = 'false';
                         alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง\n' + err.message);
                         submitBtn.disabled = false;
                         if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
@@ -4186,6 +4204,11 @@ function initPublicReportPage() {
             if (cycleForm && cycleSubmitBtn) {
                 cycleForm.addEventListener('submit', async function (e) {
                     e.preventDefault();
+                    if (cycleForm.dataset.submitting === 'true') {
+                        console.warn('Cycle submission already in progress');
+                        return;
+                    }
+                    cycleForm.dataset.submitting = 'true';
 
                     const name = document.getElementById('cycle-reporter-name')?.value.trim();
                     const tel = document.getElementById('cycle-reporter-tel')?.value.trim();
@@ -4194,6 +4217,7 @@ function initPublicReportPage() {
 
                     if (!name || !tel || !cycleVal) {
                         alert('กรุณากรอกชื่อ เบอร์โทร และจำนวนรอบเครื่องให้ครบถ้วน');
+                        cycleForm.dataset.submitting = 'false';
                         return;
                     }
 
@@ -4305,6 +4329,7 @@ function initPublicReportPage() {
                         );
                     } catch (err) {
                         console.error('Public cycle count submission failed:', err);
+                        cycleForm.dataset.submitting = 'false';
                         alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง\n' + err.message);
                         cycleSubmitBtn.disabled = false;
                         if (btnIcon) btnIcon.className = 'fa-solid fa-paper-plane';
