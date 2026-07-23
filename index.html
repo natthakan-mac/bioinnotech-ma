@@ -1525,7 +1525,7 @@
                 <div class="brand-text">
                     <h1 class="brand-title">CASP</h1>
                     <span class="brand-sub">Maintenance System</span>
-                    <span id="app-version" class="app-version">v23.7.2026-10.53</span>
+                    <span id="app-version" class="app-version">v23.7.2026-13.33</span>
                 </div>
             </div>
 
@@ -1765,19 +1765,19 @@
                                                 </p>
                                             </div>
                                             <div
-                                                style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center;">
-                                                <button type="button" class="btn-secondary" id="btn-draw-signature">
-                                                    <i class="fa-solid fa-pen-nib"></i> วาดลายเซ็น
+                                                style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; align-items: center;">
+                                                <button type="button" class="btn-secondary sig-action-btn" id="btn-draw-signature">
+                                                    <i class="fa-solid fa-pen-nib"></i> <span>วาดลายเซ็น</span>
                                                 </button>
-                                                <button type="button" class="btn-secondary" id="btn-upload-signature">
-                                                    <i class="fa-solid fa-upload"></i> อัปโหลด
+                                                <button type="button" class="btn-secondary sig-action-btn" id="btn-upload-signature">
+                                                    <i class="fa-solid fa-upload"></i> <span>อัปโหลด</span>
                                                 </button>
                                                 <input type="file" id="upload-signature-input" accept="image/*"
                                                     style="display: none;">
-                                                <button type="button" class="btn-secondary"
+                                                <button type="button" class="btn-secondary sig-action-btn"
                                                     id="btn-clear-profile-signature"
                                                     style="display: none; color: #ef4444;">
-                                                    <i class="fa-solid fa-trash"></i> ลบ
+                                                    <i class="fa-solid fa-trash"></i> <span>ลบ</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -2351,7 +2351,7 @@
 
                     <!-- Province Filter -->
                     <div class="filter-group">
-                        <label><i class="fa-solid fa-location-dot" style="margin-right:3px;"></i>จังหวัด</label>
+                        <label>จังหวัด</label>
                         <select id="filter-log-province">
                             <option value="all">ทั้งหมด</option>
                         </select>
@@ -4076,11 +4076,11 @@
                         style="width: 100%; cursor: crosshair; touch-action: none;"></canvas>
                 </div>
                 <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
-                    <button class="btn-secondary" onclick="clearSignatureCanvas()" style="flex: 1;">
-                        <i class="fa-solid fa-eraser"></i> ล้าง
+                    <button class="btn-secondary sig-action-btn" onclick="clearSignatureCanvas()" style="flex: 1;">
+                        <i class="fa-solid fa-eraser"></i> <span>ล้าง</span>
                     </button>
-                    <button class="btn-primary" onclick="confirmSignature()" style="flex: 1;">
-                        <i class="fa-solid fa-check"></i> ยืนยัน
+                    <button class="btn-primary sig-action-btn" onclick="confirmSignature()" style="flex: 1;">
+                        <i class="fa-solid fa-check"></i> <span>ยืนยัน</span>
                     </button>
                 </div>
             </div>

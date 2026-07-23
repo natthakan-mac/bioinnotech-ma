@@ -52,6 +52,18 @@
     z-index: 5;
 }
 
+/* Hide active bubble when no nav item is active (e.g. Profile View) */
+.desktop-menu:not(:has(.nav-btn.active)) .active-bubble,
+.mobile-menu:not(:has(.nav-btn.active)) .active-bubble-mobile,
+.app-footer:not(:has(.nav-btn.active)) .active-bubble,
+.app-footer:not(:has(.nav-btn.active)) .active-bubble-mobile,
+[data-view="profile-view"] .active-bubble,
+[data-view="profile-view"] .active-bubble-mobile {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
 /* Common Hover Bubble Style */
 .hover-bubble,
 .hover-bubble-mobile {

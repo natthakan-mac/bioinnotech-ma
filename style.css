@@ -2402,9 +2402,14 @@ span.flatpickr-weekday {
 
 .calendar-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
+    gap: 0.75rem;
     margin-bottom: 1rem;
+}
+
+.calendar-header h3 {
+    margin: 0;
 }
 
 .calendar-grid {
@@ -9603,3 +9608,32 @@ body.dark-mode .map-province {
     }
 }
 
+/* Symmetrical Alignment for Signature Action Buttons */
+.sig-action-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.45rem !important;
+    padding: 0.5rem 0.9rem !important;
+    font-size: 0.875rem !important;
+    line-height: 1 !important;
+    vertical-align: middle !important;
+    min-height: 38px;
+    box-sizing: border-box;
+}
+
+.sig-action-btn i {
+    font-size: 0.9rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+    width: 1em;
+    text-align: center;
+}
+
+.sig-action-btn span {
+    display: inline-block !important;
+    line-height: 1 !important;
+}
