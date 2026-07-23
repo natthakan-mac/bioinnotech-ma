@@ -1904,6 +1904,7 @@ function exportAnnualPlanPDF() {
     const caseOrigin = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file:') && !window.location.origin.startsWith('about:'))
         ? appBaseUrl
         : 'https://casp-ma.web.app/';
+    const annualPlanQrUrl = `${caseOrigin}${caseOrigin.endsWith('/') ? '' : '/'}?view=plan-view`;
     const yearSelect = document.getElementById('plan-year-select');
     const selectedBE = yearSelect ? yearSelect.value : String(new Date().getFullYear() + 543);
     const userLocale = navigator.language || 'th-TH';
@@ -2016,7 +2017,7 @@ function exportAnnualPlanPDF() {
 <div class="fixed-footer">
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
         <div style="display:flex; align-items:center; gap:8px;">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(caseOrigin)}" alt="QR" style="width:45px; height:45px;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(annualPlanQrUrl)}" alt="QR" style="width:45px; height:45px;">
             <div>
                 <div style="font-size:8px; font-weight:700; color:#333;">สแกนเพื่อเข้าสู่ระบบบำรุงรักษา</div>
                 <div style="font-size:7px; color:#888;">Scan to access maintenance system</div>

@@ -559,6 +559,33 @@ async function init() {
 
 function handleUrlParameters() {
     const urlParams = new URLSearchParams(window.location.search);
+    const viewParam = urlParams.get('view');
+    if (viewParam) {
+        console.log('Switching view from URL parameter:', viewParam);
+        const allowedViews = ["admin-view", "engineer-view", "plan-view", "profile-view", "inventory-view"];
+        let targetView = viewParam;
+        if (viewParam === 'plan' || viewParam === 'annual-plan') {
+            targetView = 'plan-view';
+        } else if (viewParam === 'admin') {
+            targetView = 'admin-view';
+        } else if (viewParam === 'engineer') {
+            targetView = 'engineer-view';
+        } else if (viewParam === 'profile') {
+            targetView = 'profile-view';
+        } else if (viewParam === 'inventory') {
+            targetView = 'inventory-view';
+        }
+
+        if (allowedViews.includes(targetView)) {
+            switchView(targetView);
+            const checkSiteId = urlParams.get('siteId');
+            const checkLogId = urlParams.get('logId');
+            if (!checkSiteId && !checkLogId) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+    }
+
     const siteId = urlParams.get('siteId');
     if (siteId) {
         console.log('Opening site detail from URL parameter:', siteId);
