@@ -337,7 +337,12 @@ function renderCalendar() {
                         <span style="font-size:0.65rem; font-weight:600; color:${statusStyle.color}; background:${statusStyle.color}20; padding:1px 5px; border-radius:4px;">${statusLabel}</span>
                     </div>
                     <span style="white-space:normal; word-break:break-word; line-height:1.3; font-size:0.8rem; color:var(--text-color); margin-bottom:4px;">${siteName}</span>
-                    <div style="display:flex; align-items:center; gap:4px; margin-top:2px;">
+                    <div style="display:flex; align-items:center; gap:4px; margin-top:2px; flex-wrap:wrap;">
+                        ${log.caseId ? `
+                            <span style="font-size:0.65rem; color:#0284c7; background:#e0f2fe; padding:2px 6px; border-radius:4px; border:1px solid #bae6fd; font-weight:600;">
+                                <i class="fa-solid fa-folder-open" style="font-size:0.6rem; color:#0369a1;"></i> ${log.caseId}
+                            </span>
+                        ` : ''}
                         <span style="font-size:0.65rem; color:#64748b; background:#f8fafc; padding:2px 6px; border-radius:4px; border:1px solid #e2e8f0; font-weight:500;">
                             ${catIcon} ${log.category || 'อื่นๆ'}
                         </span>
