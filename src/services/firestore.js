@@ -86,13 +86,13 @@ const FirestoreService = {
         state.lastLogSnapshot = null;
         state.isLoadingLogs = false;
 
-        const q = query(collection(db, "logs"), orderBy("date", "desc"), limit(20));
+        const q = query(collection(db, "logs"), orderBy("date", "desc"));
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.docs.length > 0) {
             state.lastLogSnapshot = querySnapshot.docs[querySnapshot.docs.length - 1];
         }
-        state.hasMoreLogs = querySnapshot.docs.length === 20;
+        state.hasMoreLogs = false;
 
         return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     },

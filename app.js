@@ -229,7 +229,7 @@ function setupRealtimeListeners() {
     });
 
     // --- Logs Listener ---
-    const logsQuery = query(collection(db, 'logs'), orderBy('date', 'desc'), limit(20));
+    const logsQuery = query(collection(db, 'logs'), orderBy('date', 'desc'));
     _unsubscribeLogs = onSnapshot(logsQuery, (snapshot) => {
         if (!logsReady) {
             logsReady = true;
