@@ -58,10 +58,14 @@
 .app-footer:not(:has(.nav-btn.active)) .active-bubble,
 .app-footer:not(:has(.nav-btn.active)) .active-bubble-mobile,
 [data-view="profile-view"] .active-bubble,
-[data-view="profile-view"] .active-bubble-mobile {
+[data-view="profile-view"] .active-bubble-mobile,
+[data-view="profile-view"] .hover-bubble,
+[data-view="profile-view"] .hover-bubble-mobile {
+    display: none !important;
     opacity: 0 !important;
     visibility: hidden !important;
     pointer-events: none !important;
+    transition: none !important;
 }
 
 /* Common Hover Bubble Style */
