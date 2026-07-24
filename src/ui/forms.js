@@ -810,6 +810,7 @@ async function handleLogMaintenance(e) {
         const formData = new FormData(e.target);
 
         const logId = formData.get("logId");
+        let savedLogId = logId;
 
         // Prevent creating new PM case if an active one exists
         const formCategory = formData.get("category");
@@ -1794,6 +1795,7 @@ async function handleLogMaintenance(e) {
             logData.recorderId = recorderId;
             logData.timestamp = new Date().toISOString();
             const newLogId = await FirestoreService.addLog(logData);
+            savedLogId = newLogId;
             console.log('[handleLogMaintenance] New log created with ID:', newLogId, 'Case ID:', logData.caseId);
 
             // Add initial comment from description if provided
@@ -1881,6 +1883,15 @@ async function handleLogMaintenance(e) {
 
         // Safe Reset
         resetLogForm();
+
+        // Automatically open case detail modal (glass panel) after saving edit/new record
+        if (savedLogId) {
+            if (typeof viewLogDetails === 'function') {
+                viewLogDetails(savedLogId);
+            } else if (window.viewLogDetails) {
+                window.viewLogDetails(savedLogId);
+            }
+        }
     } catch (error) {
         console.error("Error logging maintenance:", error);
         hideProgress();

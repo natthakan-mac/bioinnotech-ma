@@ -315,13 +315,14 @@ window.viewInventoryHistory = async function (itemId) {
         let html = "";
         historyData.forEach(data => {
             const dateStr = data.timestamp ? data.timestamp.toDate().toLocaleString('th-TH') : "N/A";
-            const typeStr = data.type === 'add' ? `<span style="color: #16a34a; font-weight: 600;"><i class="fa-solid fa-plus"></i> นำเข้า</span>` : `<span style="color: #dc2626; font-weight: 600;"><i class="fa-solid fa-minus"></i> เบิกจ่าย</span>`;
+            const typeStr = data.type === 'add' ? `<span style="color: #16a34a; font-weight: 600;">นำเข้า</span>` : `<span style="color: #dc2626; font-weight: 600;">เบิกจ่าย</span>`;
+            const qtyFormatted = data.quantity !== undefined && data.quantity !== null && !isNaN(Number(data.quantity)) ? Number(data.quantity).toLocaleString('th-TH') : (data.quantity || 0);
 
             html += `
                 <tr>
                     <td class="cell-date" style="font-size: 0.85rem; white-space: nowrap;" data-label="วันที่-เวลา">${dateStr}</td>
                     <td data-label="ประเภท">${typeStr}</td>
-                    <td style="text-align: center; font-weight: 700;" data-label="จำนวน">${data.quantity}</td>
+                    <td style="text-align: center; font-weight: 700;" data-label="จำนวน">${qtyFormatted}</td>
                     <td style="font-size: 0.9rem;" data-label="รายละเอียด">
                         <div>${data.notes}</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${data.userEmail || ""}</div>
